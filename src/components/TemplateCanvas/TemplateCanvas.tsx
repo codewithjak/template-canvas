@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
+import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
 interface TextElementType {
@@ -18,6 +19,7 @@ interface TextElementType {
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<TextElementType[]>([]);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -50,6 +52,32 @@ function TemplateCanvas() {
     );
   };
 
+  const handleSelectElement = (id: string) => {
+    setSelectedElementId(id);
+  };
+
+  const handleUpdateElement = (id: string, updates: Partial<TextElementType>) => {
+    setElements(
+      elements.map((element) => {
+        if (element.id === id) {
+          return {
+            ...element,
+            ...updates,
+            ...(updates.style && {
+              style: { ...element.style, ...updates.style },
+            }),
+            ...(updates.position && {
+              position: { ...element.position, ...updates.position },
+            }),
+          };
+        }
+        return element;
+      })
+    );
+  };
+
+  const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
+
   const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
     const { active, delta } = event;
 
@@ -75,7 +103,14 @@ function TemplateCanvas() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
         <Toolbar onAddText={handleAddText} />
-        <div className="template-canvas">
+        <div 
+          className="template-canvas"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedElementId(null);
+            }
+          }}
+        >
           {elements.map((element) => (
             <TextElement
               key={element.id}
@@ -84,9 +119,15 @@ function TemplateCanvas() {
               position={element.position}
               style={element.style}
               onUpdate={handleUpdateText}
+              isSelected={element.id === selectedElementId}
+              onSelect={() => handleSelectElement(element.id)}
             />
           ))}
         </div>
+        <PropertiesPanel
+          selectedElement={selectedElement}
+          onUpdate={handleUpdateElement}
+        />
       </div>
     </DndContext>
   );

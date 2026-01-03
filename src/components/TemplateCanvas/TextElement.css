@@ -6,9 +6,15 @@
   touch-action: none;
 }
 
-.canvas-text-element:hover:not(.dragging) {
+.canvas-text-element:hover:not(.dragging):not(.selected) {
   outline: 1px dashed #007bff;
   outline-offset: 2px;
+}
+
+.canvas-text-element.selected {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+  z-index: 100;
 }
 
 .canvas-text-element.dragging {

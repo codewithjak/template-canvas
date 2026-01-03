@@ -12,9 +12,11 @@ interface TextElementProps {
     color: string;
   };
   onUpdate: (id: string, content: string) => void;
+  isSelected?: boolean;
+  onSelect: () => void;
 }
 
-function TextElement({ id, content, position, style, onUpdate }: TextElementProps) {
+function TextElement({ id, content, position, style, onUpdate, isSelected, onSelect }: TextElementProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,6 +43,13 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
       inputRef.current.focus();
     }
   }, [isEditing]);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isEditing) {
+      onSelect();
+    }
+  };
 
   const handleDoubleClick = () => {
     setIsEditing(true);
@@ -114,7 +123,7 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
   return (
     <div
       ref={setNodeRef}
-      className={`canvas-text-element ${isDragging ? 'dragging' : ''}`}
+      className={`canvas-text-element ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`}
       style={{
         position: 'absolute',
         left: `${position.x}px`,
@@ -124,6 +133,7 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
         color: style.color,
         ...style_transform,
       }}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       {...listeners}
       {...attributes}

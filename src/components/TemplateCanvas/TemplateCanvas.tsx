@@ -138,6 +138,49 @@ function TemplateCanvas() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElementId]);
 
+  const handleSaveTemplate = () => {
+    const template = {
+      version: '1.0',
+      elements: elements,
+    };
+    const json = JSON.stringify(template, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `template-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoadTemplate = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const template = JSON.parse(text);
+        
+        if (template.elements && Array.isArray(template.elements)) {
+          setElements(template.elements);
+          setSelectedElementId(null);
+        } else {
+          alert('Invalid template file format');
+        }
+      } catch (error) {
+        console.error('Error loading template:', error);
+        alert('Error loading template file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+    
+    event.target.value = '';
+  };
+
   const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
     const { active, delta } = event;
 
@@ -166,7 +209,10 @@ function TemplateCanvas() {
           onAddText={handleAddText}
           onAddTable={handleAddTable}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
+          onSave={handleSaveTemplate}
+          onLoad={handleLoadTemplate}
           hasSelection={!!selectedElementId}
+          hasElements={elements.length > 0}
         />
         <div 
           className="template-canvas"

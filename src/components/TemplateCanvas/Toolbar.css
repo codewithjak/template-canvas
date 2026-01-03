@@ -33,3 +33,15 @@
   background-color: #004085;
 }
 
+.toolbar-button-danger {
+  background-color: #dc3545;
+}
+
+.toolbar-button-danger:hover {
+  background-color: #c82333;
+}
+
+.toolbar-button-danger:active {
+  background-color: #bd2130;
+}
+

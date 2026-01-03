@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Canvas Editor - Development Tasks</title>
+    <style>
+        @page {
+            margin: 2cm;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        .phase {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        .phase h3 {
+            color: #2980b9;
+            margin-top: 0;
+        }
+        .steps {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .steps ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        .steps li {
+            margin: 8px 0;
+        }
+        .result {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 10px 15px;
+            margin: 15px 0;
+        }
+        .time {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 8px 15px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .overview {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .order {
+            background: #f3e5f5;
+            border: 2px solid #9c27b0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .order ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+        .tech {
+            background: #fffde7;
+            border: 2px solid #fbc02d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .tech pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .total-time {
+            background: #ffebee;
+            border: 3px solid #f44336;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        @media print {
+            body {
+                max-width: 100%;
+            }
+            .phase {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Template Canvas Editor - Development Tasks</h1>
+    
+    <div class="overview">
+        <h2>Overview</h2>
+        <p>This document breaks down the Template Canvas Editor component into manageable development phases. Each phase builds upon the previous one, allowing for incremental development and testing.</p>
+    </div>
+
+    <h2>Development Phases</h2>
+
+    <div class="phase">
+        <h3>Phase 1: Basic Canvas Setup</h3>
+        <p><strong>Goal:</strong> Create a blank canvas that can be rendered on screen.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Create <code>TemplateCanvas.tsx</code> component</li>
+                <li>Add a container div with fixed dimensions (e.g., A4 size: 210mm x 297mm)</li>
+                <li>Add basic styling (border, background, padding)</li>
+                <li>Render it in the App</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> A visual canvas area displayed on the screen.
+        </div>
+        <div class="time">Estimated Time: 30 minutes</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 2: Add Text Elements</h3>
+        <p><strong>Goal:</strong> Allow users to add and display text on the canvas.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Create a Toolbar component with "Add Text" button</li>
+                <li>On click, add a text element to the canvas state</li>
+                <li>Render text elements at their positions</li>
+                <li>Add basic styling (font, size, color)</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can add text blocks to the canvas.
+        </div>
+        <div class="time">Estimated Time: 1-2 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 3: Placeholder Support</h3>
+        <p><strong>Goal:</strong> Support <code>{{variable}}</code> placeholders in text.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Parse text for <code>{{...}}</code> patterns</li>
+                <li>Highlight placeholders visually (different color/background)</li>
+                <li>Allow typing <code>{{</code> to insert placeholders</li>
+                <li>Validate placeholder syntax</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can insert and see placeholders in text.
+        </div>
+        <div class="time">Estimated Time: 2-3 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 4: Drag and Drop</h3>
+        <p><strong>Goal:</strong> Move elements around the canvas.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Install drag-and-drop library (<code>@dnd-kit/core</code>)</li>
+                <li>Make elements draggable</li>
+                <li>Track position when dropped</li>
+                <li>Update element position in state</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can drag elements to reposition them.
+        </div>
+        <div class="time">Estimated Time: 2-3 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 5: Selection and Properties Panel</h3>
+        <p><strong>Goal:</strong> Select elements and edit their properties.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Click to select an element (highlight selected)</li>
+                <li>Create Properties Panel component</li>
+                <li>Show selected element's properties (text content, font size, color, position)</li>
+                <li>Update properties when changed</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can select and edit element properties.
+        </div>
+        <div class="time">Estimated Time: 3-4 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 6: Delete and Resize</h3>
+        <p><strong>Goal:</strong> Remove elements and resize them.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Add delete button (keyboard Delete key or button)</li>
+                <li>Remove selected element from state</li>
+                <li>Add resize handles to selected elements</li>
+                <li>Update element dimensions when resized</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can delete and resize elements.
+        </div>
+        <div class="time">Estimated Time: 2-3 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 7: Tables</h3>
+        <p><strong>Goal:</strong> Add table elements to the canvas.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Add "Add Table" button in toolbar</li>
+                <li>Create table element type</li>
+                <li>Render table with rows/columns</li>
+                <li>Support placeholders in table cells</li>
+                <li>Edit table data in properties panel</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can add and edit tables.
+        </div>
+        <div class="time">Estimated Time: 4-5 hours</div>
+    </div>
+
+    <div class="phase">
+        <h3>Phase 8: Save/Load Template</h3>
+        <p><strong>Goal:</strong> Save template as JSON and load it back.</p>
+        <div class="steps">
+            <strong>Steps:</strong>
+            <ol>
+                <li>Convert canvas state to JSON format</li>
+                <li>Add "Save Template" button</li>
+                <li>Add "Load Template" button</li>
+                <li>Parse JSON and restore canvas state</li>
+            </ol>
+        </div>
+        <div class="result">
+            <strong>Result:</strong> Users can save and load templates.
+        </div>
+        <div class="time">Estimated Time: 1-2 hours</div>
+    </div>
+
+    <div class="order">
+        <h2>Recommended Build Order</h2>
+        <ol>
+            <li><strong>Phase 1:</strong> Basic Canvas (simplest, gives visual feedback)</li>
+            <li><strong>Phase 2:</strong> Add Text Elements (core functionality)</li>
+            <li><strong>Phase 3:</strong> Placeholder Support (needed for MVP)</li>
+            <li><strong>Phase 4:</strong> Drag and Drop (improves UX)</li>
+            <li><strong>Phase 5:</strong> Selection and Properties (essential for editing)</li>
+            <li><strong>Phase 6:</strong> Delete and Resize (polish features)</li>
+            <li><strong>Phase 7:</strong> Tables (advanced feature)</li>
+            <li><strong>Phase 8:</strong> Save/Load (data persistence)</li>
+        </ol>
+    </div>
+
+    <div class="tech">
+        <h2>Technical Requirements</h2>
+        <h3>Dependencies to Install:</h3>
+        <ul>
+            <li><code>@dnd-kit/core</code> - Drag and drop functionality</li>
+            <li><code>@dnd-kit/sortable</code> - Sortable lists</li>
+            <li><code>@dnd-kit/utilities</code> - Utility functions</li>
+        </ul>
+        
+        <h3>Component Structure:</h3>
+        <pre>src/components/
+  └── TemplateCanvas/
+      ├── TemplateCanvas.tsx      (main component)
+      ├── Toolbar.tsx             (add elements)
+      ├── Canvas.tsx               (editing area)
+      ├── PropertiesPanel.tsx      (edit properties)
+      └── TemplateCanvas.css</pre>
+        
+        <h3>Data Structure Example:</h3>
+        <pre>{
+  "elements": [
+    {
+      "type": "text",
+      "content": "Invoice for {{customer_name}}",
+      "position": { "x": 100, "y": 50 },
+      "style": { "fontSize": 24, "fontWeight": "bold" }
+    },
+    {
+      "type": "table",
+      "data": "{{items}}",
+      "columns": ["name", "qty", "price"]
+    }
+  ]
+}</pre>
+    </div>
+
+    <div class="total-time">
+        <h2>Total Estimated Time</h2>
+        <p>15-22 hours</p>
+    </div>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ccc; text-align: center; color: #666;">
+        <p><strong>Document Created:</strong> January 2026</p>
+        <p><strong>Project:</strong> Data to Docs - PDF Generator MVP</p>
+    </div>
+</body>
+</html>
+

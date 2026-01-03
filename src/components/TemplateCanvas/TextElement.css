@@ -1,13 +1,20 @@
 .canvas-text-element {
-  cursor: text;
+  cursor: move;
   user-select: none;
   white-space: nowrap;
   min-width: 50px;
+  touch-action: none;
 }
 
-.canvas-text-element:hover {
+.canvas-text-element:hover:not(.dragging) {
   outline: 1px dashed #007bff;
   outline-offset: 2px;
+}
+
+.canvas-text-element.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  z-index: 1000;
 }
 
 .text-element-input {
@@ -17,6 +24,7 @@
   padding: 2px 4px;
   min-width: 100px;
   font-family: inherit;
+  cursor: text;
 }
 
 .placeholder-text {

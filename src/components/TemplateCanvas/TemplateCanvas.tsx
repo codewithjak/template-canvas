@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import Toolbar from './Toolbar';
+import TextElement from './TextElement';
 import './TemplateCanvas.css';
 
-interface TextElement {
+interface TextElementType {
   id: string;
   type: 'text';
   content: string;
@@ -15,10 +16,10 @@ interface TextElement {
 }
 
 function TemplateCanvas() {
-  const [elements, setElements] = useState<TextElement[]>([]);
+  const [elements, setElements] = useState<TextElementType[]>([]);
 
   const handleAddText = () => {
-    const newElement: TextElement = {
+    const newElement: TextElementType = {
       id: `text-${Date.now()}`,
       type: 'text',
       content: 'New Text',
@@ -32,25 +33,27 @@ function TemplateCanvas() {
     setElements([...elements, newElement]);
   };
 
+  const handleUpdateText = (id: string, content: string) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id ? { ...element, content } : element
+      )
+    );
+  };
+
   return (
     <div className="template-canvas-container">
       <Toolbar onAddText={handleAddText} />
       <div className="template-canvas">
         {elements.map((element) => (
-          <div
+          <TextElement
             key={element.id}
-            className="canvas-text-element"
-            style={{
-              position: 'absolute',
-              left: `${element.position.x}px`,
-              top: `${element.position.y}px`,
-              fontSize: `${element.style.fontSize}px`,
-              fontWeight: element.style.fontWeight,
-              color: element.style.color,
-            }}
-          >
-            {element.content}
-          </div>
+            id={element.id}
+            content={element.content}
+            position={element.position}
+            style={element.style}
+            onUpdate={handleUpdateText}
+          />
         ))}
       </div>
     </div>

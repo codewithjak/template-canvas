@@ -2,16 +2,22 @@ import './Toolbar.css';
 
 interface ToolbarProps {
   onAddText: () => void;
+  onAddTable?: () => void;
   onDelete?: () => void;
   hasSelection?: boolean;
 }
 
-function Toolbar({ onAddText, onDelete, hasSelection }: ToolbarProps) {
+function Toolbar({ onAddText, onAddTable, onDelete, hasSelection }: ToolbarProps) {
   return (
     <div className="toolbar">
       <button className="toolbar-button" onClick={onAddText}>
         Add Text
       </button>
+      {onAddTable && (
+        <button className="toolbar-button" onClick={onAddTable}>
+          Add Table
+        </button>
+      )}
       {hasSelection && onDelete && (
         <button 
           className="toolbar-button toolbar-button-danger" 

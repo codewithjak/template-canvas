@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
+import TableElement from './TableElement';
 import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
@@ -17,8 +18,22 @@ interface TextElementType {
   };
 }
 
+interface TableElementType {
+  id: string;
+  type: 'table';
+  data: string[][];
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType;
+
 function TemplateCanvas() {
-  const [elements, setElements] = useState<TextElementType[]>([]);
+  const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -44,10 +59,37 @@ function TemplateCanvas() {
     setElements([...elements, newElement]);
   };
 
+  const handleAddTable = () => {
+    const newElement: TableElementType = {
+      id: `table-${Date.now()}`,
+      type: 'table',
+      data: [
+        ['Header 1', 'Header 2', 'Header 3'],
+        ['{{item1}}', '{{qty1}}', '{{price1}}'],
+        ['{{item2}}', '{{qty2}}', '{{price2}}'],
+      ],
+      position: { x: 50, y: 50 },
+      style: {
+        fontSize: 14,
+        fontWeight: 'normal',
+        color: '#000000',
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
   const handleUpdateText = (id: string, content: string) => {
     setElements(
       elements.map((element) =>
-        element.id === id ? { ...element, content } : element
+        element.id === id && element.type === 'text' ? { ...element, content } : element
+      )
+    );
+  };
+
+  const handleUpdateTable = (id: string, data: string[][]) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id && element.type === 'table' ? { ...element, data } : element
       )
     );
   };
@@ -56,7 +98,7 @@ function TemplateCanvas() {
     setSelectedElementId(id);
   };
 
-  const handleUpdateElement = (id: string, updates: Partial<TextElementType>) => {
+  const handleUpdateElement = (id: string, updates: Partial<CanvasElement>) => {
     setElements(
       elements.map((element) => {
         if (element.id === id) {
@@ -122,6 +164,7 @@ function TemplateCanvas() {
       <div className="template-canvas-container">
         <Toolbar 
           onAddText={handleAddText}
+          onAddTable={handleAddTable}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           hasSelection={!!selectedElementId}
         />
@@ -133,19 +176,38 @@ function TemplateCanvas() {
             }
           }}
         >
-          {elements.map((element) => (
-            <TextElement
-              key={element.id}
-              id={element.id}
-              content={element.content}
-              position={element.position}
-              style={element.style}
-              onUpdate={handleUpdateText}
-              isSelected={element.id === selectedElementId}
-              onSelect={() => handleSelectElement(element.id)}
-              onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
-            />
-          ))}
+          {elements.map((element) => {
+            if (element.type === 'text') {
+              return (
+                <TextElement
+                  key={element.id}
+                  id={element.id}
+                  content={element.content}
+                  position={element.position}
+                  style={element.style}
+                  onUpdate={handleUpdateText}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
+                  onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                />
+              );
+            } else if (element.type === 'table') {
+              return (
+                <TableElement
+                  key={element.id}
+                  id={element.id}
+                  data={element.data}
+                  position={element.position}
+                  style={element.style}
+                  onUpdate={handleUpdateTable}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
+                  onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                />
+              );
+            }
+            return null;
+          })}
         </div>
         <PropertiesPanel
           selectedElement={selectedElement}

@@ -1,0 +1,36 @@
+# Source files
+src/
+*.ts
+*.tsx
+!dist/**/*.d.ts
+
+# Development files
+.vite/
+node_modules/
+.git/
+.gitignore
+
+# Config files
+tsconfig*.json
+tsup.config.ts
+vite.config.ts
+eslint.config.js
+
+# Development docs
+README_PHASE*.md
+Template_Canvas_Editor_Tasks.md
+Template_Canvas_Editor_Tasks.html
+
+# App files (not part of package)
+index.html
+public/
+App.tsx
+App.css
+main.tsx
+index.css
+assets/
+
+# Build artifacts (keep dist)
+*.log
+.DS_Store
+

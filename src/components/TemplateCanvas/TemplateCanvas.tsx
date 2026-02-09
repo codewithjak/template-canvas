@@ -4,37 +4,39 @@ import Toolbar from './Toolbar';
 import TextElement from './TextElement';
 import TableElement from './TableElement';
 import PropertiesPanel from './PropertiesPanel';
+import type { CanvasElement, TextElementType, TableElementType } from './types';
+import { downloadTemplate, loadTemplate } from './utils';
 import './TemplateCanvas.css';
 
-interface TextElementType {
-  id: string;
-  type: 'text';
-  content: string;
-  position: { x: number; y: number };
-  style: {
-    fontSize: number;
-    fontWeight: string;
-    color: string;
-  };
+export interface TemplateCanvasProps {
+  elements?: CanvasElement[];
+  onElementsChange?: (elements: CanvasElement[]) => void;
+  initialElements?: CanvasElement[];
+  showToolbar?: boolean;
+  showPropertiesPanel?: boolean;
 }
 
-interface TableElementType {
-  id: string;
-  type: 'table';
-  data: string[][];
-  position: { x: number; y: number };
-  style: {
-    fontSize: number;
-    fontWeight: string;
-    color: string;
-  };
-}
-
-type CanvasElement = TextElementType | TableElementType;
-
-function TemplateCanvas() {
-  const [elements, setElements] = useState<CanvasElement[]>([]);
+function TemplateCanvas({
+  elements: controlledElements,
+  onElementsChange,
+  initialElements = [],
+  showToolbar = true,
+  showPropertiesPanel = true,
+}: TemplateCanvasProps = {}) {
+  const [internalElements, setInternalElements] = useState<CanvasElement[]>(initialElements);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+
+  const isControlled = controlledElements !== undefined;
+  const elements = isControlled ? controlledElements : internalElements;
+
+  const setElements = (newElements: CanvasElement[] | ((prev: CanvasElement[]) => CanvasElement[])) => {
+    const updatedElements = typeof newElements === 'function' ? newElements(elements) : newElements;
+    if (isControlled) {
+      onElementsChange?.(updatedElements);
+    } else {
+      setInternalElements(updatedElements);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -102,16 +104,29 @@ function TemplateCanvas() {
     setElements(
       elements.map((element) => {
         if (element.id === id) {
-          return {
-            ...element,
-            ...updates,
-            ...(updates.style && {
-              style: { ...element.style, ...updates.style },
-            }),
-            ...(updates.position && {
-              position: { ...element.position, ...updates.position },
-            }),
-          };
+          if (element.type === 'text') {
+            return {
+              ...element,
+              ...(updates.type === 'text' ? updates : {}),
+              ...(updates.style && {
+                style: { ...element.style, ...updates.style },
+              }),
+              ...(updates.position && {
+                position: { ...element.position, ...updates.position },
+              }),
+            } as TextElementType;
+          } else if (element.type === 'table') {
+            return {
+              ...element,
+              ...(updates.type === 'table' ? updates : {}),
+              ...(updates.style && {
+                style: { ...element.style, ...updates.style },
+              }),
+              ...(updates.position && {
+                position: { ...element.position, ...updates.position },
+              }),
+            } as TableElementType;
+          }
         }
         return element;
       })
@@ -139,20 +154,7 @@ function TemplateCanvas() {
   }, [selectedElementId]);
 
   const handleSaveTemplate = () => {
-    const template = {
-      version: '1.0',
-      elements: elements,
-    };
-    const json = JSON.stringify(template, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `template-${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadTemplate(elements);
   };
 
   const handleLoadTemplate = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,17 +165,12 @@ function TemplateCanvas() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const template = JSON.parse(text);
-        
-        if (template.elements && Array.isArray(template.elements)) {
-          setElements(template.elements);
-          setSelectedElementId(null);
-        } else {
-          alert('Invalid template file format');
-        }
+        const loadedElements = loadTemplate(text);
+        setElements(loadedElements);
+        setSelectedElementId(null);
       } catch (error) {
         console.error('Error loading template:', error);
-        alert('Error loading template file. Please check the file format.');
+        alert(error instanceof Error ? error.message : 'Error loading template file. Please check the file format.');
       }
     };
     reader.readAsText(file);
@@ -181,10 +178,10 @@ function TemplateCanvas() {
     event.target.value = '';
   };
 
-  const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
+  const handleDragEnd = (event: { active: { id: string | number }; delta: { x: number; y: number } | null }) => {
     const { active, delta } = event;
 
-    if (!delta) return;
+    if (!delta || typeof active.id !== 'string') return;
 
     setElements(
       elements.map((element) => {
@@ -205,15 +202,17 @@ function TemplateCanvas() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
-        <Toolbar 
-          onAddText={handleAddText}
-          onAddTable={handleAddTable}
-          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
-          onSave={handleSaveTemplate}
-          onLoad={handleLoadTemplate}
-          hasSelection={!!selectedElementId}
-          hasElements={elements.length > 0}
-        />
+        {showToolbar && (
+          <Toolbar 
+            onAddText={handleAddText}
+            onAddTable={handleAddTable}
+            onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
+            onSave={handleSaveTemplate}
+            onLoad={handleLoadTemplate}
+            hasSelection={!!selectedElementId}
+            hasElements={elements.length > 0}
+          />
+        )}
         <div 
           className="template-canvas"
           onClick={(e) => {
@@ -255,10 +254,12 @@ function TemplateCanvas() {
             return null;
           })}
         </div>
-        <PropertiesPanel
-          selectedElement={selectedElement}
-          onUpdate={handleUpdateElement}
-        />
+        {showPropertiesPanel && (
+          <PropertiesPanel
+            selectedElement={selectedElement}
+            onUpdate={handleUpdateElement}
+          />
+        )}
       </div>
     </DndContext>
   );

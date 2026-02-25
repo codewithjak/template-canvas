@@ -4,6 +4,7 @@ import './Toolbar.css';
 interface ToolbarProps {
   onAddText: () => void;
   onAddTable?: () => void;
+  onAddImage?: () => void;
   onDelete?: () => void;
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -11,7 +12,7 @@ interface ToolbarProps {
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddText, onAddTable, onDelete, onSave, onLoad, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddText, onAddTable, onAddImage, onDelete, onSave, onLoad, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -27,6 +28,11 @@ function Toolbar({ onAddText, onAddTable, onDelete, onSave, onLoad, hasSelection
         {onAddTable && (
           <button className="toolbar-button" onClick={onAddTable}>
             Add Table
+          </button>
+        )}
+        {onAddImage && (
+          <button className="toolbar-button" onClick={onAddImage}>
+            Add Image
           </button>
         )}
       </div>

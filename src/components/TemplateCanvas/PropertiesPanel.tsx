@@ -24,7 +24,20 @@ interface TableElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType;
+interface ImageElementType {
+  id: string;
+  type: 'image';
+  src: string;
+  position: { x: number; y: number };
+  style: {
+    width: number;
+    height: number;
+    objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
+    opacity?: number;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType;
 
 interface PropertiesPanelProps {
   selectedElement: CanvasElement | null;
@@ -116,6 +129,64 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     }
   };
 
+  const handleImageSrcChange = (value: string) => {
+    if (selectedElement.type === 'image') {
+      onUpdate(selectedElement.id, { src: value });
+    }
+  };
+
+  const handleImageWidthChange = (value: number) => {
+    if (selectedElement.type === 'image') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, width: value },
+      });
+    }
+  };
+
+  const handleImageHeightChange = (value: number) => {
+    if (selectedElement.type === 'image') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, height: value },
+      });
+    }
+  };
+
+  const handleObjectFitChange = (value: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down') => {
+    if (selectedElement.type === 'image') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, objectFit: value },
+      });
+    }
+  };
+
+  const handleOpacityChange = (value: number) => {
+    if (selectedElement.type === 'image') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, opacity: value },
+      });
+    }
+  };
+
+  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || selectedElement.type !== 'image') return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      if (base64) {
+        handleImageSrcChange(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
   return (
     <div className="properties-panel">
       <div className="properties-panel-header">Properties</div>
@@ -129,6 +200,80 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
                 value={selectedElement.content}
                 onChange={(e) => handleContentChange(e.target.value)}
                 className="property-input"
+              />
+            </div>
+          </>
+        ) : selectedElement.type === 'image' ? (
+          <>
+            <div className="property-group">
+              <label className="property-label">Image Source</label>
+              <input
+                type="text"
+                value={selectedElement.src}
+                onChange={(e) => handleImageSrcChange(e.target.value)}
+                className="property-input"
+                placeholder="Image URL or {{image_url}}"
+              />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageFileChange}
+                style={{ display: 'none' }}
+                id="image-file-input"
+              />
+              <button
+                className="property-button"
+                onClick={() => document.getElementById('image-file-input')?.click()}
+                style={{ marginTop: '8px', width: '100%' }}
+              >
+                Upload Image
+              </button>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Width (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.width}
+                onChange={(e) => handleImageWidthChange(Number(e.target.value))}
+                className="property-input"
+                min="50"
+                max="1000"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Height (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.height}
+                onChange={(e) => handleImageHeightChange(Number(e.target.value))}
+                className="property-input"
+                min="50"
+                max="1000"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Object Fit</label>
+              <select
+                value={selectedElement.style.objectFit}
+                onChange={(e) => handleObjectFitChange(e.target.value as ImageElementType['style']['objectFit'])}
+                className="property-select"
+              >
+                <option value="contain">Contain</option>
+                <option value="cover">Cover</option>
+                <option value="fill">Fill</option>
+                <option value="none">None</option>
+                <option value="scale-down">Scale Down</option>
+              </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Opacity (%)</label>
+              <input
+                type="number"
+                value={selectedElement.style.opacity !== undefined ? selectedElement.style.opacity : 100}
+                onChange={(e) => handleOpacityChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+                max="100"
               />
             </div>
           </>
@@ -196,40 +341,44 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
           </>
         )}
 
-        <div className="property-group">
-          <label className="property-label">Font Size</label>
-          <input
-            type="number"
-            value={selectedElement.style.fontSize}
-            onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-            className="property-input"
-            min="8"
-            max="72"
-          />
-        </div>
+        {selectedElement.type !== 'image' && (
+          <>
+            <div className="property-group">
+              <label className="property-label">Font Size</label>
+              <input
+                type="number"
+                value={selectedElement.style.fontSize}
+                onChange={(e) => handleFontSizeChange(Number(e.target.value))}
+                className="property-input"
+                min="8"
+                max="72"
+              />
+            </div>
 
-        <div className="property-group">
-          <label className="property-label">Font Weight</label>
-          <select
-            value={selectedElement.style.fontWeight}
-            onChange={(e) => handleFontWeightChange(e.target.value)}
-            className="property-select"
-          >
-            <option value="normal">Normal</option>
-            <option value="bold">Bold</option>
-            <option value="lighter">Lighter</option>
-          </select>
-        </div>
+            <div className="property-group">
+              <label className="property-label">Font Weight</label>
+              <select
+                value={selectedElement.style.fontWeight}
+                onChange={(e) => handleFontWeightChange(e.target.value)}
+                className="property-select"
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+                <option value="lighter">Lighter</option>
+              </select>
+            </div>
 
-        <div className="property-group">
-          <label className="property-label">Color</label>
-          <input
-            type="color"
-            value={selectedElement.style.color}
-            onChange={(e) => handleColorChange(e.target.value)}
-            className="property-color"
-          />
-        </div>
+            <div className="property-group">
+              <label className="property-label">Color</label>
+              <input
+                type="color"
+                value={selectedElement.style.color}
+                onChange={(e) => handleColorChange(e.target.value)}
+                className="property-color"
+              />
+            </div>
+          </>
+        )}
 
         <div className="property-group">
           <label className="property-label">Position X</label>

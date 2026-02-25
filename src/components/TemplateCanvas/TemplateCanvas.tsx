@@ -3,6 +3,7 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
 import TableElement from './TableElement';
+import ImageElement from './ImageElement';
 import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
@@ -30,7 +31,20 @@ interface TableElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType;
+interface ImageElementType {
+  id: string;
+  type: 'image';
+  src: string;
+  position: { x: number; y: number };
+  style: {
+    width: number;
+    height: number;
+    objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
+    opacity?: number;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -76,6 +90,30 @@ function TemplateCanvas() {
       },
     };
     setElements([...elements, newElement]);
+  };
+
+  const handleAddImage = () => {
+    const newElement: ImageElementType = {
+      id: `image-${Date.now()}`,
+      type: 'image',
+      src: '{{image_url}}', // Default placeholder
+      position: { x: 50, y: 50 },
+      style: {
+        width: 200,
+        height: 200,
+        objectFit: 'contain',
+        opacity: 100,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleUpdateImage = (id: string, src: string) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id && element.type === 'image' ? { ...element, src } : element
+      )
+    );
   };
 
   const handleUpdateText = (id: string, content: string) => {
@@ -208,6 +246,7 @@ function TemplateCanvas() {
         <Toolbar 
           onAddText={handleAddText}
           onAddTable={handleAddTable}
+          onAddImage={handleAddImage}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
@@ -249,6 +288,20 @@ function TemplateCanvas() {
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                   onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                />
+              );
+            } else if (element.type === 'image') {
+              return (
+                <ImageElement
+                  key={element.id}
+                  id={element.id}
+                  src={element.src}
+                  position={element.position}
+                  style={element.style}
+                  onUpdate={handleUpdateImage}
+                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
                 />
               );
             }

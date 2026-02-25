@@ -10,6 +10,7 @@ interface TableElementProps {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
   onUpdate: (id: string, data: string[][]) => void;
   isSelected?: boolean;
@@ -166,6 +167,7 @@ function TableElement({
         fontSize: `${style.fontSize}px`,
         fontWeight: style.fontWeight,
         color: style.color,
+        fontFamily: style.fontFamily,
         ...style_transform,
       }}
       onClick={onSelect}

@@ -18,6 +18,7 @@ interface TextElementType {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
 }
 
@@ -30,6 +31,7 @@ interface TableElementType {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
 }
 
@@ -100,6 +102,7 @@ function TemplateCanvas() {
         fontSize: 16,
         fontWeight: 'normal',
         color: '#000000',
+        fontFamily: 'Arial, sans-serif',
       },
     };
     setElements([...elements, newElement]);
@@ -119,6 +122,7 @@ function TemplateCanvas() {
         fontSize: 14,
         fontWeight: 'normal',
         color: '#000000',
+        fontFamily: 'Arial, sans-serif',
       },
     };
     setElements([...elements, newElement]);

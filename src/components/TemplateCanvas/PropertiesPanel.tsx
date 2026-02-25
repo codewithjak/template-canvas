@@ -37,7 +37,37 @@ interface ImageElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType;
+interface LineElementType {
+  id: string;
+  type: 'line';
+  position: { x: number; y: number };
+  style: {
+    length: number;
+    thickness: number;
+    direction: 'horizontal' | 'vertical';
+    color: string;
+    style: 'solid' | 'dashed' | 'dotted';
+    opacity?: number;
+  };
+}
+
+interface BoxElementType {
+  id: string;
+  type: 'box';
+  position: { x: number; y: number };
+  style: {
+    width: number;
+    height: number;
+    borderWidth: number;
+    borderColor: string;
+    borderStyle: 'solid' | 'dashed' | 'dotted' | 'double';
+    backgroundColor: string;
+    opacity?: number;
+    borderRadius?: number;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType;
 
 interface PropertiesPanelProps {
   selectedElement: CanvasElement | null;
@@ -61,21 +91,27 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
   };
 
   const handleFontSizeChange = (value: number) => {
-    onUpdate(selectedElement.id, {
-      style: { ...selectedElement.style, fontSize: value },
-    });
+    if (selectedElement.type === 'text' || selectedElement.type === 'table') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, fontSize: value },
+      } as any);
+    }
   };
 
   const handleFontWeightChange = (value: string) => {
-    onUpdate(selectedElement.id, {
-      style: { ...selectedElement.style, fontWeight: value },
-    });
+    if (selectedElement.type === 'text' || selectedElement.type === 'table') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, fontWeight: value },
+      } as any);
+    }
   };
 
   const handleColorChange = (value: string) => {
-    onUpdate(selectedElement.id, {
-      style: { ...selectedElement.style, color: value },
-    });
+    if (selectedElement.type === 'text' || selectedElement.type === 'table') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, color: value },
+      } as any);
+    }
   };
 
   const handlePositionXChange = (value: number) => {
@@ -187,6 +223,120 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     event.target.value = '';
   };
 
+  // Line element handlers
+  const handleLineLengthChange = (value: number) => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, length: value },
+      });
+    }
+  };
+
+  const handleLineThicknessChange = (value: number) => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, thickness: value },
+      });
+    }
+  };
+
+  const handleLineDirectionChange = (value: 'horizontal' | 'vertical') => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, direction: value },
+      });
+    }
+  };
+
+  const handleLineColorChange = (value: string) => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, color: value },
+      });
+    }
+  };
+
+  const handleLineStyleChange = (value: 'solid' | 'dashed' | 'dotted') => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, style: value },
+      });
+    }
+  };
+
+  const handleLineOpacityChange = (value: number) => {
+    if (selectedElement.type === 'line') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, opacity: value },
+      });
+    }
+  };
+
+  // Box element handlers
+  const handleBoxWidthChange = (value: number) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, width: value },
+      });
+    }
+  };
+
+  const handleBoxHeightChange = (value: number) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, height: value },
+      });
+    }
+  };
+
+  const handleBoxBorderWidthChange = (value: number) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, borderWidth: value },
+      });
+    }
+  };
+
+  const handleBoxBorderColorChange = (value: string) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, borderColor: value },
+      });
+    }
+  };
+
+  const handleBoxBorderStyleChange = (value: 'solid' | 'dashed' | 'dotted' | 'double') => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, borderStyle: value },
+      });
+    }
+  };
+
+  const handleBoxBackgroundColorChange = (value: string) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, backgroundColor: value },
+      });
+    }
+  };
+
+  const handleBoxBorderRadiusChange = (value: number) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, borderRadius: value },
+      });
+    }
+  };
+
+  const handleBoxOpacityChange = (value: number) => {
+    if (selectedElement.type === 'box') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, opacity: value },
+      });
+    }
+  };
+
   return (
     <div className="properties-panel">
       <div className="properties-panel-header">Properties</div>
@@ -277,6 +427,163 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
               />
             </div>
           </>
+        ) : selectedElement.type === 'line' ? (
+          <>
+            <div className="property-group">
+              <label className="property-label">Direction</label>
+              <select
+                value={selectedElement.style.direction}
+                onChange={(e) => handleLineDirectionChange(e.target.value as 'horizontal' | 'vertical')}
+                className="property-select"
+              >
+                <option value="horizontal">Horizontal</option>
+                <option value="vertical">Vertical</option>
+              </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Length (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.length}
+                onChange={(e) => handleLineLengthChange(Number(e.target.value))}
+                className="property-input"
+                min="20"
+                max="1000"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Thickness (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.thickness}
+                onChange={(e) => handleLineThicknessChange(Number(e.target.value))}
+                className="property-input"
+                min="1"
+                max="20"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Color</label>
+              <input
+                type="color"
+                value={selectedElement.style.color}
+                onChange={(e) => handleLineColorChange(e.target.value)}
+                className="property-color"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Style</label>
+              <select
+                value={selectedElement.style.style}
+                onChange={(e) => handleLineStyleChange(e.target.value as 'solid' | 'dashed' | 'dotted')}
+                className="property-select"
+              >
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Opacity (%)</label>
+              <input
+                type="number"
+                value={selectedElement.style.opacity !== undefined ? selectedElement.style.opacity : 100}
+                onChange={(e) => handleLineOpacityChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+                max="100"
+              />
+            </div>
+          </>
+        ) : selectedElement.type === 'box' ? (
+          <>
+            <div className="property-group">
+              <label className="property-label">Width (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.width}
+                onChange={(e) => handleBoxWidthChange(Number(e.target.value))}
+                className="property-input"
+                min="50"
+                max="1000"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Height (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.height}
+                onChange={(e) => handleBoxHeightChange(Number(e.target.value))}
+                className="property-input"
+                min="50"
+                max="1000"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Border Width (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.borderWidth}
+                onChange={(e) => handleBoxBorderWidthChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+                max="20"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Border Color</label>
+              <input
+                type="color"
+                value={selectedElement.style.borderColor}
+                onChange={(e) => handleBoxBorderColorChange(e.target.value)}
+                className="property-color"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Border Style</label>
+              <select
+                value={selectedElement.style.borderStyle}
+                onChange={(e) => handleBoxBorderStyleChange(e.target.value as 'solid' | 'dashed' | 'dotted' | 'double')}
+                className="property-select"
+              >
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+                <option value="double">Double</option>
+              </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Background Color</label>
+              <input
+                type="color"
+                value={selectedElement.style.backgroundColor}
+                onChange={(e) => handleBoxBackgroundColorChange(e.target.value)}
+                className="property-color"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Border Radius (px)</label>
+              <input
+                type="number"
+                value={selectedElement.style.borderRadius !== undefined ? selectedElement.style.borderRadius : 0}
+                onChange={(e) => handleBoxBorderRadiusChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+                max="50"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Opacity (%)</label>
+              <input
+                type="number"
+                value={selectedElement.style.opacity !== undefined ? selectedElement.style.opacity : 100}
+                onChange={(e) => handleBoxOpacityChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+                max="100"
+              />
+            </div>
+          </>
         ) : (
           <>
             <div className="property-group">
@@ -341,7 +648,7 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
           </>
         )}
 
-        {selectedElement.type !== 'image' && (
+        {(selectedElement.type === 'text' || selectedElement.type === 'table') && (
           <>
             <div className="property-group">
               <label className="property-label">Font Size</label>

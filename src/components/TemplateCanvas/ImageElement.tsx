@@ -29,7 +29,6 @@ function ImageElement({
   onSelect 
 }: ImageElementProps) {
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeType, setResizeType] = useState<'corner' | 'right' | 'bottom' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -84,7 +83,6 @@ function ImageElement({
   const handleResizeStart = (e: React.MouseEvent, type: 'corner' | 'right' | 'bottom') => {
     e.stopPropagation();
     setIsResizing(true);
-    setResizeType(type);
     
     const startX = e.clientX;
     const startY = e.clientY;
@@ -120,7 +118,6 @@ function ImageElement({
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      setResizeType(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };

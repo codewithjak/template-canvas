@@ -4,6 +4,8 @@ import Toolbar from './Toolbar';
 import TextElement from './TextElement';
 import TableElement from './TableElement';
 import ImageElement from './ImageElement';
+import LineElement from './LineElement';
+import BoxElement from './BoxElement';
 import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
@@ -44,7 +46,37 @@ interface ImageElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType;
+interface LineElementType {
+  id: string;
+  type: 'line';
+  position: { x: number; y: number };
+  style: {
+    length: number;
+    thickness: number;
+    direction: 'horizontal' | 'vertical';
+    color: string;
+    style: 'solid' | 'dashed' | 'dotted';
+    opacity?: number;
+  };
+}
+
+interface BoxElementType {
+  id: string;
+  type: 'box';
+  position: { x: number; y: number };
+  style: {
+    width: number;
+    height: number;
+    borderWidth: number;
+    borderColor: string;
+    borderStyle: 'solid' | 'dashed' | 'dotted' | 'double';
+    backgroundColor: string;
+    opacity?: number;
+    borderRadius?: number;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -108,6 +140,42 @@ function TemplateCanvas() {
     setElements([...elements, newElement]);
   };
 
+  const handleAddLine = () => {
+    const newElement: LineElementType = {
+      id: `line-${Date.now()}`,
+      type: 'line',
+      position: { x: 50, y: 50 },
+      style: {
+        length: 200,
+        thickness: 2,
+        direction: 'horizontal',
+        color: '#000000',
+        style: 'solid',
+        opacity: 100,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddBox = () => {
+    const newElement: BoxElementType = {
+      id: `box-${Date.now()}`,
+      type: 'box',
+      position: { x: 50, y: 50 },
+      style: {
+        width: 200,
+        height: 200,
+        borderWidth: 1,
+        borderColor: '#000000',
+        borderStyle: 'solid',
+        backgroundColor: 'transparent',
+        opacity: 100,
+        borderRadius: 0,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
   const handleUpdateImage = (id: string, src: string) => {
     setElements(
       elements.map((element) =>
@@ -140,16 +208,23 @@ function TemplateCanvas() {
     setElements(
       elements.map((element) => {
         if (element.id === id) {
-          return {
-            ...element,
-            ...updates,
-            ...(updates.style && {
-              style: { ...element.style, ...updates.style },
-            }),
-            ...(updates.position && {
-              position: { ...element.position, ...updates.position },
-            }),
-          };
+          const updatedElement = { ...element };
+          if (updates.position) {
+            updatedElement.position = { ...updatedElement.position, ...updates.position };
+          }
+          if (updates.style) {
+            updatedElement.style = { ...updatedElement.style, ...updates.style } as any;
+          }
+          if ('content' in updates && 'content' in updatedElement) {
+            (updatedElement as any).content = updates.content;
+          }
+          if ('src' in updates && 'src' in updatedElement) {
+            (updatedElement as any).src = updates.src;
+          }
+          if ('data' in updates && 'data' in updatedElement) {
+            (updatedElement as any).data = updates.data;
+          }
+          return updatedElement;
         }
         return element;
       })
@@ -219,7 +294,7 @@ function TemplateCanvas() {
     event.target.value = '';
   };
 
-  const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
+  const handleDragEnd = (event: any) => {
     const { active, delta } = event;
 
     if (!delta) return;
@@ -247,6 +322,8 @@ function TemplateCanvas() {
           onAddText={handleAddText}
           onAddTable={handleAddTable}
           onAddImage={handleAddImage}
+          onAddLine={handleAddLine}
+          onAddBox={handleAddBox}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
@@ -300,6 +377,32 @@ function TemplateCanvas() {
                   style={element.style}
                   onUpdate={handleUpdateImage}
                   onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'line') {
+              return (
+                <LineElement
+                  key={element.id}
+                  id={element.id}
+                  position={element.position}
+                  style={element.style}
+                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
+                  onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'box') {
+              return (
+                <BoxElement
+                  key={element.id}
+                  id={element.id}
+                  position={element.position}
+                  style={element.style}
+                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
+                  onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                 />

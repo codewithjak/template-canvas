@@ -1,0 +1,111 @@
+.canvas-box-element {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+
+.canvas-box-element:hover:not(.dragging):not(.selected) {
+  outline: 1px dashed #007bff;
+  outline-offset: 2px;
+}
+
+.canvas-box-element.selected {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+  z-index: 100;
+}
+
+.canvas-box-element.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  z-index: 1000;
+}
+
+.box-resize-handle {
+  position: absolute;
+  background-color: #007bff;
+  border: 2px solid white;
+  z-index: 101;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.box-resize-handle:hover {
+  background-color: #0056b3;
+  transform: scale(1.2);
+}
+
+.box-resize-corner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.box-resize-edge {
+  background-color: #007bff;
+  border: 2px solid white;
+}
+
+.box-resize-top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.box-resize-top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.box-resize-bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.box-resize-bottom-right {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
+.box-resize-right {
+  top: 50%;
+  right: -6px;
+  width: 12px;
+  height: 24px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  cursor: ew-resize;
+}
+
+.box-resize-bottom {
+  bottom: -6px;
+  left: 50%;
+  width: 24px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  cursor: ns-resize;
+}
+
+.box-resize-left {
+  top: 50%;
+  left: -6px;
+  width: 12px;
+  height: 24px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  cursor: ew-resize;
+}
+
+.box-resize-top {
+  top: -6px;
+  left: 50%;
+  width: 24px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  cursor: ns-resize;
+}

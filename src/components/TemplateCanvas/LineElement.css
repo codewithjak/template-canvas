@@ -1,0 +1,71 @@
+.canvas-line-element {
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+  box-sizing: border-box;
+}
+
+.canvas-line-element.horizontal {
+  border-bottom: 2px solid;
+  height: 0;
+}
+
+.canvas-line-element.vertical {
+  border-left: 2px solid;
+  width: 0;
+}
+
+.canvas-line-element:hover:not(.dragging):not(.selected) {
+  outline: 1px dashed #007bff;
+  outline-offset: 4px;
+}
+
+.canvas-line-element.selected {
+  outline: 2px solid #007bff;
+  outline-offset: 4px;
+  z-index: 100;
+}
+
+.canvas-line-element.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+  z-index: 1000;
+}
+
+.line-resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: #007bff;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 101;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transform: translate(-50%, -50%);
+}
+
+.line-resize-handle:hover {
+  background-color: #0056b3;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.canvas-line-element.horizontal .line-resize-start {
+  left: 0;
+  top: 50%;
+}
+
+.canvas-line-element.horizontal .line-resize-end {
+  right: 0;
+  top: 50%;
+}
+
+.canvas-line-element.vertical .line-resize-start {
+  left: 50%;
+  top: 0;
+}
+
+.canvas-line-element.vertical .line-resize-end {
+  left: 50%;
+  bottom: 0;
+}

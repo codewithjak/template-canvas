@@ -11,11 +11,12 @@ interface ToolbarProps {
   onDelete?: () => void;
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onExportPDF?: () => void;
   hasSelection?: boolean;
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -75,6 +76,16 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
               Load Template
             </button>
           </>
+        )}
+        {onExportPDF && (
+          <button 
+            className="toolbar-button toolbar-button-secondary" 
+            onClick={onExportPDF}
+            disabled={!hasElements}
+            title="Export template as PDF (A4 size)"
+          >
+            Export PDF
+          </button>
         )}
       </div>
       <div className="toolbar-section">

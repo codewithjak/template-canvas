@@ -12,11 +12,13 @@ interface ToolbarProps {
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onExportPDF?: () => void;
+  onUploadCSV?: () => void;
   hasSelection?: boolean;
   hasElements?: boolean;
+  hasCSVData?: boolean;
 }
 
-function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, onExportPDF, onUploadCSV, hasSelection, hasElements, hasCSVData }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -76,6 +78,15 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
               Load Template
             </button>
           </>
+        )}
+        {onUploadCSV && (
+          <button 
+            className="toolbar-button toolbar-button-secondary" 
+            onClick={onUploadCSV}
+            title="Upload CSV data file"
+          >
+            {hasCSVData ? '📊 Data Loaded' : '📁 Upload CSV'}
+          </button>
         )}
         {onExportPDF && (
           <button 

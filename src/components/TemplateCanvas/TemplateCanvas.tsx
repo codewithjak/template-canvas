@@ -9,6 +9,8 @@ import ImageElement from './ImageElement';
 import LineElement from './LineElement';
 import BoxElement from './BoxElement';
 import PropertiesPanel from './PropertiesPanel';
+import CSVUploadWizard from './CSVUploadWizard';
+import TemplateDataView from './TemplateDataView';
 import './TemplateCanvas.css';
 
 interface TextElementType {
@@ -86,6 +88,10 @@ function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [showCSVUpload, setShowCSVUpload] = useState(false);
+  const [showDataView, setShowDataView] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -301,6 +307,165 @@ function TemplateCanvas() {
     event.target.value = '';
   };
 
+  const handleCSVDataLoaded = (data: any[], headers: string[]) => {
+    setCsvData(data);
+    setCsvHeaders(headers);
+    setShowCSVUpload(false);
+    setShowDataView(true);
+  };
+
+  const replacePlaceholdersWithData = (elements: CanvasElement[], dataRow: any, fieldMapping?: Record<string, string>): CanvasElement[] => {
+    // Auto-create field mapping if not provided
+    let mapping: Record<string, string> = fieldMapping || {};
+    
+    if (!fieldMapping) {
+      mapping = {};
+      const placeholders = new Set<string>();
+      
+      elements.forEach(element => {
+        if (element.type === 'text' && element.content) {
+          const matches = element.content.match(/\{\{([^}]+)\}\}/g);
+          if (matches) {
+            matches.forEach(match => {
+              const placeholder = match.replace(/[{}]/g, '');
+              placeholders.add(placeholder);
+            });
+          }
+        }
+        if (element.type === 'table' && element.data) {
+          element.data.forEach((row: string[]) => {
+            row.forEach((cell: string) => {
+              const matches = cell.match(/\{\{([^}]+)\}\}/g);
+              if (matches) {
+                matches.forEach(match => {
+                  const placeholder = match.replace(/[{}]/g, '');
+                  placeholders.add(placeholder);
+                });
+              }
+            });
+          });
+        }
+        if (element.type === 'image' && element.src) {
+          const matches = element.src.match(/\{\{([^}]+)\}\}/g);
+          if (matches) {
+            matches.forEach(match => {
+              const placeholder = match.replace(/[{}]/g, '');
+              placeholders.add(placeholder);
+            });
+          }
+        }
+      });
+
+      placeholders.forEach(placeholder => {
+        if (csvHeaders.includes(placeholder)) {
+          mapping[placeholder] = placeholder;
+        } else {
+          const lowerPlaceholder = placeholder.toLowerCase();
+          const matched = csvHeaders.find(header => 
+            header.toLowerCase() === lowerPlaceholder ||
+            header.toLowerCase().replace(/[^a-z0-9]/g, '') === lowerPlaceholder.replace(/[^a-z0-9]/g, '')
+          );
+          if (matched) {
+            mapping[placeholder] = matched;
+          }
+        }
+      });
+    }
+
+    return elements.map(element => {
+      const filled = { ...element };
+      
+      if (element.type === 'text' && element.content) {
+        let content = element.content;
+        Object.keys(mapping).forEach(placeholder => {
+          const csvField = mapping[placeholder];
+          const value = dataRow[csvField] || '';
+          content = content.replace(new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g'), value);
+        });
+        (filled as TextElementType).content = content;
+      }
+      
+      if (element.type === 'table' && element.data) {
+        (filled as TableElementType).data = element.data.map((row: string[]) => 
+          row.map((cell: string) => {
+            let filledCell = cell;
+            Object.keys(mapping).forEach(placeholder => {
+              const csvField = mapping[placeholder];
+              const value = dataRow[csvField] || '';
+              filledCell = filledCell.replace(new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g'), value);
+            });
+            return filledCell;
+          })
+        );
+      }
+      
+      if (element.type === 'image' && element.src) {
+        let src = element.src;
+        Object.keys(mapping).forEach(placeholder => {
+          const csvField = mapping[placeholder];
+          const value = dataRow[csvField] || '';
+          src = src.replace(new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g'), value);
+        });
+        (filled as ImageElementType).src = src;
+      }
+      
+      return filled;
+    });
+  };
+
+  const handleGeneratePDFWithData = async (rowIndex: number, fieldMapping: Record<string, string>) => {
+    if (rowIndex >= csvData.length) return;
+    
+    const dataRow = csvData[rowIndex];
+    
+    console.log('Generating PDF with data:', { rowIndex, dataRow, fieldMapping });
+    
+    // Use the field mapping from the view
+    const filledElements = replacePlaceholdersWithData(elements, dataRow, fieldMapping);
+    
+    // Debug: Check if replacement worked
+    console.log('Original elements sample:', elements[0]);
+    console.log('Filled elements sample:', filledElements[0]);
+    
+    // Temporarily replace elements for PDF generation
+    const originalElements = [...elements];
+    setElements(filledElements);
+    
+    // Close the data view to avoid UI interference
+    setShowDataView(false);
+    
+    // Wait longer for React to re-render and DOM to update
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Double-check that elements are updated in DOM
+    if (canvasRef.current) {
+      // Force a reflow to ensure DOM is updated
+      const height = canvasRef.current.offsetHeight;
+      console.log('Canvas height:', height);
+      
+      // Check if text content is actually replaced in DOM
+      const textElements = canvasRef.current.querySelectorAll('.canvas-text-element');
+      if (textElements.length > 0) {
+        const firstText = textElements[0] as HTMLElement;
+        console.log('First text element content:', firstText.textContent);
+      }
+      
+      // Wait a bit more for any images to load
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    // Generate PDF
+    try {
+      await handleExportPDF();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Check console for details.');
+    } finally {
+      // Always restore original elements, even if PDF generation fails
+      setElements(originalElements);
+    }
+  };
+
   const handleExportPDF = async () => {
     if (!canvasRef.current || elements.length === 0) {
       alert('No template to export');
@@ -434,8 +599,10 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onExportPDF={handleExportPDF}
+          onUploadCSV={() => setShowCSVUpload(true)}
           hasSelection={!!selectedElementId}
           hasElements={elements.length > 0}
+          hasCSVData={csvData.length > 0}
         />
         <div 
           ref={canvasRef}
@@ -524,6 +691,23 @@ function TemplateCanvas() {
           onUpdate={handleUpdateElement}
         />
       </div>
+      
+      {showCSVUpload && (
+        <CSVUploadWizard
+          onDataLoaded={handleCSVDataLoaded}
+          onClose={() => setShowCSVUpload(false)}
+        />
+      )}
+      
+      {showDataView && csvData.length > 0 && (
+        <TemplateDataView
+          templateElements={elements}
+          csvData={csvData}
+          csvHeaders={csvHeaders}
+          onClose={() => setShowDataView(false)}
+          onGeneratePDF={handleGeneratePDFWithData}
+        />
+      )}
     </DndContext>
   );
 }

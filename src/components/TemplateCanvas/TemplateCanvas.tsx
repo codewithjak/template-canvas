@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
 import './TemplateCanvas.css';
@@ -17,6 +18,14 @@ interface TextElementType {
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<TextElementType[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const handleAddText = () => {
     const newElement: TextElementType = {
@@ -41,22 +50,45 @@ function TemplateCanvas() {
     );
   };
 
+  const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
+    const { active, delta } = event;
+
+    if (!delta) return;
+
+    setElements(
+      elements.map((element) => {
+        if (element.id === active.id) {
+          return {
+            ...element,
+            position: {
+              x: element.position.x + delta.x,
+              y: element.position.y + delta.y,
+            },
+          };
+        }
+        return element;
+      })
+    );
+  };
+
   return (
-    <div className="template-canvas-container">
-      <Toolbar onAddText={handleAddText} />
-      <div className="template-canvas">
-        {elements.map((element) => (
-          <TextElement
-            key={element.id}
-            id={element.id}
-            content={element.content}
-            position={element.position}
-            style={element.style}
-            onUpdate={handleUpdateText}
-          />
-        ))}
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="template-canvas-container">
+        <Toolbar onAddText={handleAddText} />
+        <div className="template-canvas">
+          {elements.map((element) => (
+            <TextElement
+              key={element.id}
+              id={element.id}
+              content={element.content}
+              position={element.position}
+              style={element.style}
+              onUpdate={handleUpdateText}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    </DndContext>
   );
 }
 

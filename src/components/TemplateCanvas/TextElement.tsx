@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import './TextElement.css';
 
 interface TextElementProps {
@@ -17,6 +18,23 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id,
+    disabled: isEditing,
+  });
+
+  const style_transform = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -95,7 +113,8 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
 
   return (
     <div
-      className="canvas-text-element"
+      ref={setNodeRef}
+      className={`canvas-text-element ${isDragging ? 'dragging' : ''}`}
       style={{
         position: 'absolute',
         left: `${position.x}px`,
@@ -103,8 +122,11 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
         fontSize: `${style.fontSize}px`,
         fontWeight: style.fontWeight,
         color: style.color,
+        ...style_transform,
       }}
       onDoubleClick={handleDoubleClick}
+      {...listeners}
+      {...attributes}
     >
       {isEditing ? (
         <input
@@ -114,6 +136,8 @@ function TextElement({ id, content, position, style, onUpdate }: TextElementProp
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
           className="text-element-input"
           style={{
             fontSize: `${style.fontSize}px`,

@@ -1,0 +1,81 @@
+.properties-panel {
+  position: fixed;
+  right: 20px;
+  top: 80px;
+  width: 280px;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.properties-panel-header {
+  padding: 16px;
+  font-weight: 600;
+  font-size: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.properties-panel-empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+}
+
+.properties-panel-content {
+  padding: 16px;
+}
+
+.property-group {
+  margin-bottom: 20px;
+}
+
+.property-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.property-input,
+.property-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.property-input:focus,
+.property-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.property-color {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.property-color::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.property-color::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+

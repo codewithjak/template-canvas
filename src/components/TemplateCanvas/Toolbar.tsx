@@ -1,10 +1,13 @@
 import React from 'react';
+import StructuresDropdown from './StructuresDropdown';
 import './Toolbar.css';
 
 interface ToolbarProps {
   onAddText: () => void;
   onAddTable?: () => void;
   onAddImage?: () => void;
+  onAddLine?: () => void;
+  onAddBox?: () => void;
   onDelete?: () => void;
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -12,7 +15,7 @@ interface ToolbarProps {
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddText, onAddTable, onAddImage, onDelete, onSave, onLoad, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -34,6 +37,14 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onDelete, onSave, onLoad, 
           <button className="toolbar-button" onClick={onAddImage}>
             Add Image
           </button>
+        )}
+      </div>
+      <div className="toolbar-section">
+        {(onAddLine || onAddBox) && (
+          <StructuresDropdown
+            onAddLine={onAddLine || (() => {})}
+            onAddBox={onAddBox || (() => {})}
+          />
         )}
       </div>
       <div className="toolbar-section">

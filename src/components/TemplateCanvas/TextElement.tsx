@@ -10,6 +10,7 @@ interface TextElementProps {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
   onUpdate: (id: string, content: string) => void;
   isSelected?: boolean;
@@ -164,6 +165,7 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
         fontSize: `${style.fontSize}px`,
         fontWeight: style.fontWeight,
         color: style.color,
+        fontFamily: style.fontFamily,
         ...style_transform,
       }}
       onClick={handleClick}
@@ -186,6 +188,7 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
             fontSize: `${style.fontSize}px`,
             fontWeight: style.fontWeight,
             color: style.color,
+            fontFamily: style.fontFamily,
           }}
         />
       ) : (

@@ -9,6 +9,7 @@ interface TextElementType {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
 }
 
@@ -21,6 +22,7 @@ interface TableElementType {
     fontSize: number;
     fontWeight: string;
     color: string;
+    fontFamily: string;
   };
 }
 
@@ -110,6 +112,14 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     if (selectedElement.type === 'text' || selectedElement.type === 'table') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, color: value },
+      } as any);
+    }
+  };
+
+  const handleFontFamilyChange = (value: string) => {
+    if (selectedElement.type === 'text' || selectedElement.type === 'table') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, fontFamily: value },
       } as any);
     }
   };
@@ -672,6 +682,32 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
                 <option value="normal">Normal</option>
                 <option value="bold">Bold</option>
                 <option value="lighter">Lighter</option>
+              </select>
+            </div>
+
+            <div className="property-group">
+              <label className="property-label">Font Family</label>
+              <select
+                value={selectedElement.style.fontFamily}
+                onChange={(e) => handleFontFamilyChange(e.target.value)}
+                className="property-select"
+              >
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Helvetica, sans-serif">Helvetica</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="Impact, sans-serif">Impact</option>
+                <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                <option value="'Lucida Console', monospace">Lucida Console</option>
+                <option value="Tahoma, sans-serif">Tahoma</option>
+                <option value="'Palatino Linotype', serif">Palatino Linotype</option>
+                <option value="'Garamond', serif">Garamond</option>
+                <option value="'Book Antiqua', serif">Book Antiqua</option>
+                <option value="'Century Gothic', sans-serif">Century Gothic</option>
+                <option value="'Lucida Sans Unicode', sans-serif">Lucida Sans Unicode</option>
               </select>
             </div>
 

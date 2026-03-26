@@ -12,9 +12,23 @@ interface TextElementType {
   };
 }
 
+interface TableElementType {
+  id: string;
+  type: 'table';
+  data: string[][];
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType;
+
 interface PropertiesPanelProps {
-  selectedElement: TextElementType | null;
-  onUpdate: (id: string, updates: Partial<TextElementType>) => void;
+  selectedElement: CanvasElement | null;
+  onUpdate: (id: string, updates: Partial<CanvasElement>) => void;
 }
 
 function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
@@ -63,19 +77,124 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     });
   };
 
+  const handleTableDataChange = (rowIndex: number, colIndex: number, value: string) => {
+    if (selectedElement.type === 'table') {
+      const newData = selectedElement.data.map((row, rIdx) =>
+        rIdx === rowIndex
+          ? row.map((cell, cIdx) => (cIdx === colIndex ? value : cell))
+          : row
+      );
+      onUpdate(selectedElement.id, { data: newData });
+    }
+  };
+
+  const handleAddTableRow = () => {
+    if (selectedElement.type === 'table' && selectedElement.data.length > 0) {
+      const newRow = new Array(selectedElement.data[0].length).fill('');
+      onUpdate(selectedElement.id, { data: [...selectedElement.data, newRow] });
+    }
+  };
+
+  const handleAddTableColumn = () => {
+    if (selectedElement.type === 'table') {
+      const newData = selectedElement.data.map((row) => [...row, '']);
+      onUpdate(selectedElement.id, { data: newData });
+    }
+  };
+
+  const handleRemoveTableRow = (rowIndex: number) => {
+    if (selectedElement.type === 'table' && selectedElement.data.length > 1) {
+      const newData = selectedElement.data.filter((_, idx) => idx !== rowIndex);
+      onUpdate(selectedElement.id, { data: newData });
+    }
+  };
+
+  const handleRemoveTableColumn = (colIndex: number) => {
+    if (selectedElement.type === 'table' && selectedElement.data[0] && selectedElement.data[0].length > 1) {
+      const newData = selectedElement.data.map((row) => row.filter((_, idx) => idx !== colIndex));
+      onUpdate(selectedElement.id, { data: newData });
+    }
+  };
+
   return (
     <div className="properties-panel">
       <div className="properties-panel-header">Properties</div>
       <div className="properties-panel-content">
-        <div className="property-group">
-          <label className="property-label">Content</label>
-          <input
-            type="text"
-            value={selectedElement.content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            className="property-input"
-          />
-        </div>
+        {selectedElement.type === 'text' ? (
+          <>
+            <div className="property-group">
+              <label className="property-label">Content</label>
+              <input
+                type="text"
+                value={selectedElement.content}
+                onChange={(e) => handleContentChange(e.target.value)}
+                className="property-input"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="property-group">
+              <label className="property-label">Table Data</label>
+              <div className="table-editor">
+                <table className="table-editor-table">
+                  <tbody>
+                    {selectedElement.data.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {row.map((cell, colIndex) => (
+                          <td key={colIndex}>
+                            <input
+                              type="text"
+                              value={cell}
+                              onChange={(e) => handleTableDataChange(rowIndex, colIndex, e.target.value)}
+                              className="table-editor-cell"
+                              placeholder={`Row ${rowIndex + 1}, Col ${colIndex + 1}`}
+                            />
+                          </td>
+                        ))}
+                        <td className="table-editor-actions">
+                          <button
+                            className="table-editor-button"
+                            onClick={() => handleRemoveTableRow(rowIndex)}
+                            disabled={selectedElement.data.length <= 1}
+                            title="Remove row"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      {selectedElement.data[0]?.map((_, colIndex) => (
+                        <td key={colIndex} className="table-editor-actions">
+                          <button
+                            className="table-editor-button"
+                            onClick={() => handleRemoveTableColumn(colIndex)}
+                            disabled={selectedElement.data[0] && selectedElement.data[0].length <= 1}
+                            title="Remove column"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      ))}
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+                <div className="table-editor-controls">
+                  <button className="table-editor-button-add" onClick={handleAddTableRow}>
+                    + Add Row
+                  </button>
+                  <button className="table-editor-button-add" onClick={handleAddTableColumn}>
+                    + Add Column
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="property-group">
           <label className="property-label">Font Size</label>

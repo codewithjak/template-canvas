@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
 import TableElement from './TableElement';
@@ -83,6 +85,7 @@ type CanvasElement = TextElementType | TableElementType | ImageElementType | Lin
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -298,6 +301,105 @@ function TemplateCanvas() {
     event.target.value = '';
   };
 
+  const handleExportPDF = async () => {
+    if (!canvasRef.current || elements.length === 0) {
+      alert('No template to export');
+      return;
+    }
+
+    try {
+      // Show loading indicator
+      const originalCursor = document.body.style.cursor;
+      document.body.style.cursor = 'wait';
+
+      // Temporarily hide UI elements that shouldn't be in PDF
+      const toolbar = document.querySelector('.toolbar');
+      const propertiesPanel = document.querySelector('.properties-panel');
+      const toolbarHidden = toolbar ? (toolbar as HTMLElement).style.display : null;
+      const panelHidden = propertiesPanel ? (propertiesPanel as HTMLElement).style.display : null;
+      
+      if (toolbar) (toolbar as HTMLElement).style.display = 'none';
+      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = 'none';
+
+      // Wait a bit for UI to update
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture the canvas with high quality
+      const canvas = await html2canvas(canvasRef.current, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true, // Allow cross-origin images
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: canvasRef.current.offsetWidth,
+        height: canvasRef.current.offsetHeight,
+        windowWidth: canvasRef.current.scrollWidth,
+        windowHeight: canvasRef.current.scrollHeight,
+      });
+
+      // Restore UI elements
+      if (toolbar) (toolbar as HTMLElement).style.display = toolbarHidden || '';
+      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = panelHidden || '';
+      document.body.style.cursor = originalCursor;
+
+      // A4 dimensions in mm (standard A4: 210mm x 297mm)
+      const A4_WIDTH_MM = 210;
+      const A4_HEIGHT_MM = 297;
+      
+      // Calculate scaling to fit A4
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const imgAspectRatio = imgWidth / imgHeight;
+      const pdfAspectRatio = A4_WIDTH_MM / A4_HEIGHT_MM;
+
+      let finalWidth: number;
+      let finalHeight: number;
+      let xOffset = 0;
+      let yOffset = 0;
+
+      if (imgAspectRatio > pdfAspectRatio) {
+        // Image is wider - fit to width
+        finalWidth = A4_WIDTH_MM;
+        finalHeight = A4_WIDTH_MM / imgAspectRatio;
+        yOffset = (A4_HEIGHT_MM - finalHeight) / 2;
+      } else {
+        // Image is taller - fit to height
+        finalHeight = A4_HEIGHT_MM;
+        finalWidth = A4_HEIGHT_MM * imgAspectRatio;
+        xOffset = (A4_WIDTH_MM - finalWidth) / 2;
+      }
+
+      // Create PDF with A4 size
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true,
+      });
+
+      // Convert canvas to image data
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      // Add image to PDF with calculated dimensions
+      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST');
+
+      // Generate filename with timestamp
+      const filename = `template-${Date.now()}.pdf`;
+
+      // Save PDF
+      pdf.save(filename);
+
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Error exporting PDF. Please try again.');
+      // Restore UI in case of error
+      const toolbar = document.querySelector('.toolbar');
+      const propertiesPanel = document.querySelector('.properties-panel');
+      if (toolbar) (toolbar as HTMLElement).style.display = '';
+      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = '';
+      document.body.style.cursor = '';
+    }
+  };
+
   const handleDragEnd = (event: any) => {
     const { active, delta } = event;
 
@@ -331,10 +433,12 @@ function TemplateCanvas() {
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
+          onExportPDF={handleExportPDF}
           hasSelection={!!selectedElementId}
           hasElements={elements.length > 0}
         />
         <div 
+          ref={canvasRef}
           className="template-canvas"
           onClick={(e) => {
             if (e.target === e.currentTarget) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import Toolbar from './Toolbar';
 import TextElement from './TextElement';
@@ -78,6 +78,24 @@ function TemplateCanvas() {
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
 
+  const handleDeleteElement = (id: string) => {
+    setElements((prevElements) => prevElements.filter((element) => element.id !== id));
+    setSelectedElementId((prevId) => (prevId === id ? null : prevId));
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
+        if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+          handleDeleteElement(selectedElementId);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElementId]);
+
   const handleDragEnd = (event: { active: { id: string }; delta: { x: number; y: number } | null }) => {
     const { active, delta } = event;
 
@@ -102,7 +120,11 @@ function TemplateCanvas() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
-        <Toolbar onAddText={handleAddText} />
+        <Toolbar 
+          onAddText={handleAddText}
+          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
+          hasSelection={!!selectedElementId}
+        />
         <div 
           className="template-canvas"
           onClick={(e) => {
@@ -121,6 +143,7 @@ function TemplateCanvas() {
               onUpdate={handleUpdateText}
               isSelected={element.id === selectedElementId}
               onSelect={() => handleSelectElement(element.id)}
+              onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
             />
           ))}
         </div>

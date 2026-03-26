@@ -14,12 +14,15 @@ interface TextElementProps {
   onUpdate: (id: string, content: string) => void;
   isSelected?: boolean;
   onSelect: () => void;
+  onResize?: (id: string, fontSize: number) => void;
 }
 
-function TextElement({ id, content, position, style, onUpdate, isSelected, onSelect }: TextElementProps) {
+function TextElement({ id, content, position, style, onUpdate, isSelected, onSelect, onResize }: TextElementProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
+  const [isResizing, setIsResizing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const elementRef = useRef<HTMLDivElement>(null);
 
   const {
     attributes,
@@ -118,11 +121,41 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
     return parts;
   };
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsResizing(true);
+    const startY = e.clientY;
+    const startFontSize = style.fontSize;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = startY - moveEvent.clientY;
+      const scaleFactor = 1 + deltaY / 100;
+      const newFontSize = Math.max(8, Math.min(72, Math.round(startFontSize * scaleFactor)));
+      if (onResize) {
+        onResize(id, newFontSize);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const parts = parseTextWithPlaceholders(content);
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        if (node) {
+          (elementRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+        }
+      }}
       className={`canvas-text-element ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`}
       style={{
         position: 'absolute',
@@ -177,6 +210,13 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
             )
           )}
         </span>
+      )}
+      {isSelected && !isEditing && (
+        <div
+          className="resize-handle"
+          onMouseDown={handleResizeStart}
+          title="Drag to resize font size"
+        />
       )}
     </div>
   );

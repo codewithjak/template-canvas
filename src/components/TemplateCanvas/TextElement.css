@@ -1,0 +1,36 @@
+.canvas-text-element {
+  cursor: text;
+  user-select: none;
+  white-space: nowrap;
+  min-width: 50px;
+}
+
+.canvas-text-element:hover {
+  outline: 1px dashed #007bff;
+  outline-offset: 2px;
+}
+
+.text-element-input {
+  background: transparent;
+  border: 1px solid #007bff;
+  outline: none;
+  padding: 2px 4px;
+  min-width: 100px;
+  font-family: inherit;
+}
+
+.placeholder-text {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  border: 1px solid #ffc107;
+}
+
+.placeholder-text.placeholder-invalid {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #dc3545;
+}
+

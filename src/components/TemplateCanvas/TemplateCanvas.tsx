@@ -28,6 +28,20 @@ interface TableElementType {
   id: string;
   type: 'table';
   data: string[][];
+  merges?: Array<{ r0: number; c0: number; r1: number; c1: number }>;
+  cellStyles?: Record<
+    string,
+    {
+      fontSize?: number;
+      fontWeight?: string;
+      fontStyle?: string;
+      textDecoration?: string;
+      textAlign?: 'left' | 'center' | 'right';
+      color?: string;
+      fontFamily?: string;
+      backgroundColor?: string;
+    }
+  >;
   position: { x: number; y: number };
   style: {
     fontSize: number;
@@ -85,6 +99,10 @@ type CanvasElement = TextElementType | TableElementType | ImageElementType | Lin
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [tableSelections, setTableSelections] = useState<
+    Record<string, { r0: number; c0: number; r1: number; c1: number } | null>
+  >({});
+  const [tableSelectionModes, setTableSelectionModes] = useState<Record<string, 'cell' | 'row' | 'column'>>({});
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const sensors = useSensors(
@@ -120,6 +138,8 @@ function TemplateCanvas() {
         ['{{item1}}', '{{qty1}}', '{{price1}}'],
         ['{{item2}}', '{{qty2}}', '{{price2}}'],
       ],
+      merges: [],
+      cellStyles: {},
       position: { x: 50, y: 50 },
       style: {
         fontSize: 14,
@@ -231,6 +251,12 @@ function TemplateCanvas() {
           if ('data' in updates && 'data' in updatedElement) {
             (updatedElement as any).data = updates.data;
           }
+          if ('merges' in updates && (updatedElement as any).type === 'table') {
+            (updatedElement as any).merges = (updates as any).merges || [];
+          }
+          if ('cellStyles' in updates && (updatedElement as any).type === 'table') {
+            (updatedElement as any).cellStyles = (updates as any).cellStyles || {};
+          }
           return updatedElement;
         }
         return element;
@@ -307,19 +333,26 @@ function TemplateCanvas() {
       return;
     }
 
+    const originalCursor = document.body.style.cursor;
+    const toolbar = document.querySelector('.toolbar');
+    const propertiesPanel = document.querySelector('.properties-panel');
+    const toolbarDisplay = toolbar ? (toolbar as HTMLElement).style.display : '';
+    const panelDisplay = propertiesPanel ? (propertiesPanel as HTMLElement).style.display : '';
+
     try {
       // Show loading indicator
-      const originalCursor = document.body.style.cursor;
       document.body.style.cursor = 'wait';
 
       // Temporarily hide UI elements that shouldn't be in PDF
-      const toolbar = document.querySelector('.toolbar');
-      const propertiesPanel = document.querySelector('.properties-panel');
-      const toolbarHidden = toolbar ? (toolbar as HTMLElement).style.display : null;
-      const panelHidden = propertiesPanel ? (propertiesPanel as HTMLElement).style.display : null;
-      
       if (toolbar) (toolbar as HTMLElement).style.display = 'none';
       if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = 'none';
+      canvasRef.current.classList.add('export-mode');
+
+      // Clear selection/focus artifacts (blue focus ring/caret) before capture.
+      const active = document.activeElement as HTMLElement | null;
+      if (active && typeof active.blur === 'function') {
+        active.blur();
+      }
 
       // Wait a bit for UI to update
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -335,11 +368,6 @@ function TemplateCanvas() {
         windowWidth: canvasRef.current.scrollWidth,
         windowHeight: canvasRef.current.scrollHeight,
       });
-
-      // Restore UI elements
-      if (toolbar) (toolbar as HTMLElement).style.display = toolbarHidden || '';
-      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = panelHidden || '';
-      document.body.style.cursor = originalCursor;
 
       // A4 dimensions in mm (standard A4: 210mm x 297mm)
       const A4_WIDTH_MM = 210;
@@ -391,12 +419,14 @@ function TemplateCanvas() {
     } catch (error) {
       console.error('Error exporting PDF:', error);
       alert('Error exporting PDF. Please try again.');
-      // Restore UI in case of error
-      const toolbar = document.querySelector('.toolbar');
-      const propertiesPanel = document.querySelector('.properties-panel');
-      if (toolbar) (toolbar as HTMLElement).style.display = '';
-      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = '';
-      document.body.style.cursor = '';
+    } finally {
+      // Always restore UI state after export attempt.
+      if (canvasRef.current) {
+        canvasRef.current.classList.remove('export-mode');
+      }
+      if (toolbar) (toolbar as HTMLElement).style.display = toolbarDisplay;
+      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = panelDisplay;
+      document.body.style.cursor = originalCursor;
     }
   };
 
@@ -467,12 +497,19 @@ function TemplateCanvas() {
                   key={element.id}
                   id={element.id}
                   data={element.data}
+                  merges={element.merges || []}
+                  cellStyles={element.cellStyles || {}}
                   position={element.position}
                   style={element.style}
                   onUpdate={handleUpdateTable}
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                   onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                  selection={tableSelections[element.id] || null}
+                  selectionMode={tableSelectionModes[element.id] || 'cell'}
+                  onSelectionChange={(id, selection) =>
+                    setTableSelections((prev) => ({ ...prev, [id]: selection }))
+                  }
                 />
               );
             } else if (element.type === 'image') {
@@ -522,6 +559,21 @@ function TemplateCanvas() {
         <PropertiesPanel
           selectedElement={selectedElement}
           onUpdate={handleUpdateElement}
+          tableSelection={
+            selectedElement && selectedElement.type === 'table'
+              ? (tableSelections[selectedElement.id] || null)
+              : null
+          }
+          tableSelectionMode={
+            selectedElement && selectedElement.type === 'table'
+              ? (tableSelectionModes[selectedElement.id] || 'cell')
+              : 'cell'
+          }
+          onTableSelectionModeChange={(mode) => {
+            if (selectedElement && selectedElement.type === 'table') {
+              setTableSelectionModes((prev) => ({ ...prev, [selectedElement.id]: mode }));
+            }
+          }}
         />
       </div>
     </DndContext>

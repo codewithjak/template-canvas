@@ -19,3 +19,7 @@
   overflow: visible;
 }
 
+.template-canvas.export-mode {
+  border: none;
+  box-shadow: none;
+}

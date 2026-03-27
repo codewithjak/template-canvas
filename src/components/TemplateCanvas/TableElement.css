@@ -1,7 +1,9 @@
 .canvas-table-element {
-  cursor: move;
+  cursor: default;
   user-select: none;
   touch-action: none;
+  position: relative;
+  padding-top: 8px;
 }
 
 .canvas-table-element:hover:not(.dragging):not(.selected) {
@@ -21,14 +23,30 @@
   z-index: 1000;
 }
 
+.table-drag-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 8px;
+  cursor: move;
+  background: transparent;
+  z-index: 2;
+}
+
+.canvas-table-element.selected .table-drag-handle,
+.canvas-table-element:hover .table-drag-handle {
+  background: rgba(0, 123, 255, 0.2);
+}
+
 .table-element-table {
   border-collapse: collapse;
-  border: 1px solid #ddd;
+  border: 1px solid #444;
   background-color: white;
 }
 
 .table-cell {
-  border: 1px solid #ddd;
+  border: 1px solid #666;
   padding: 8px 12px;
   min-width: 80px;
   min-height: 30px;
@@ -36,8 +54,31 @@
   cursor: text;
 }
 
+.table-cell-selected {
+  background-color: #e7f5ff;
+  outline: 2px solid #339af0;
+  outline-offset: -2px;
+}
+
 .table-cell:hover {
   background-color: #f8f9fa;
+}
+
+.template-canvas.export-mode .canvas-table-element,
+.template-canvas.export-mode .canvas-table-element.selected,
+.template-canvas.export-mode .canvas-table-element:hover {
+  outline: none !important;
+}
+
+.template-canvas.export-mode .table-drag-handle,
+.template-canvas.export-mode .resize-handle {
+  display: none !important;
+}
+
+.template-canvas.export-mode .table-cell-selected,
+.template-canvas.export-mode .table-cell:hover {
+  background-color: transparent !important;
+  outline: none !important;
 }
 
 .table-cell-content {

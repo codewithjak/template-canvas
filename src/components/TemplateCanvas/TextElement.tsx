@@ -21,7 +21,6 @@ interface TextElementProps {
 function TextElement({ id, content, position, style, onUpdate, isSelected, onSelect, onResize }: TextElementProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
-  const [isResizing, setIsResizing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const elementRef = useRef<HTMLDivElement>(null);
 
@@ -124,7 +123,6 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsResizing(true);
     const startY = e.clientY;
     const startFontSize = style.fontSize;
 
@@ -138,7 +136,6 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
     };
 
     const handleMouseUp = () => {
-      setIsResizing(false);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };

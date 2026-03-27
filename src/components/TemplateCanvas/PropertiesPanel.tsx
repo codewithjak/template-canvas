@@ -17,6 +17,20 @@ interface TableElementType {
   id: string;
   type: 'table';
   data: string[][];
+  merges?: Array<{ r0: number; c0: number; r1: number; c1: number }>;
+  cellStyles?: Record<
+    string,
+    {
+      fontSize?: number;
+      fontWeight?: string;
+      fontStyle?: string;
+      textDecoration?: string;
+      textAlign?: 'left' | 'center' | 'right';
+      color?: string;
+      fontFamily?: string;
+      backgroundColor?: string;
+    }
+  >;
   position: { x: number; y: number };
   style: {
     fontSize: number;
@@ -74,9 +88,18 @@ type CanvasElement = TextElementType | TableElementType | ImageElementType | Lin
 interface PropertiesPanelProps {
   selectedElement: CanvasElement | null;
   onUpdate: (id: string, updates: Partial<CanvasElement>) => void;
+  tableSelection?: { r0: number; c0: number; r1: number; c1: number } | null;
+  tableSelectionMode?: 'cell' | 'row' | 'column';
+  onTableSelectionModeChange?: (mode: 'cell' | 'row' | 'column') => void;
 }
 
-function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
+function PropertiesPanel({
+  selectedElement,
+  onUpdate,
+  tableSelection = null,
+  tableSelectionMode = 'cell',
+  onTableSelectionModeChange,
+}: PropertiesPanelProps) {
   if (!selectedElement) {
     return (
       <div className="properties-panel">
@@ -88,11 +111,114 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     );
   }
 
+  const normalizeSelection = (s: { r0: number; c0: number; r1: number; c1: number }) => ({
+    r0: Math.min(s.r0, s.r1),
+    c0: Math.min(s.c0, s.c1),
+    r1: Math.max(s.r0, s.r1),
+    c1: Math.max(s.c0, s.c1),
+  });
+
+  const selectionToA1 = (sel: { r0: number; c0: number; r1: number; c1: number }) => {
+    const s = normalizeSelection(sel);
+    const colName = (c: number) => String.fromCharCode(65 + (c % 26));
+    const a = `${colName(s.c0)}${s.r0 + 1}`;
+    const b = `${colName(s.c1)}${s.r1 + 1}`;
+    return a === b ? a : `${a}:${b}`;
+  };
+
+  const intersects = (
+    a: { r0: number; c0: number; r1: number; c1: number },
+    b: { r0: number; c0: number; r1: number; c1: number }
+  ) => !(a.r1 < b.r0 || a.r0 > b.r1 || a.c1 < b.c0 || a.c0 > b.c1);
+
+  const adjustMergesAfterRemoveRow = (
+    merges: Array<{ r0: number; c0: number; r1: number; c1: number }>,
+    removedRow: number
+  ) =>
+    merges
+      .map((m) => {
+        // If row is above merge, shift up
+        if (removedRow < m.r0) return { ...m, r0: m.r0 - 1, r1: m.r1 - 1 };
+        // If row is below merge, unchanged
+        if (removedRow > m.r1) return m;
+        // Row is inside merge: shrink merge
+        const shrunk = { ...m, r1: m.r1 - 1 };
+        return shrunk;
+      })
+      .filter((m) => m.r0 <= m.r1);
+
+  const adjustMergesAfterRemoveCol = (
+    merges: Array<{ r0: number; c0: number; r1: number; c1: number }>,
+    removedCol: number
+  ) =>
+    merges
+      .map((m) => {
+        if (removedCol < m.c0) return { ...m, c0: m.c0 - 1, c1: m.c1 - 1 };
+        if (removedCol > m.c1) return m;
+        const shrunk = { ...m, c1: m.c1 - 1 };
+        return shrunk;
+      })
+      .filter((m) => m.c0 <= m.c1);
+
+  const handleMergeSelection = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const sel = normalizeSelection(tableSelection);
+    const merges = selectedElement.merges || [];
+    const isMultiCell = sel.r0 !== sel.r1 || sel.c0 !== sel.c1;
+    if (!isMultiCell) return;
+    const overlap = merges.some((m) => intersects(m, sel));
+    if (overlap) {
+      alert('Cannot merge: selection overlaps an existing merged region. Unmerge first.');
+      return;
+    }
+    onUpdate(selectedElement.id, { merges: [...merges, sel] } as any);
+  };
+
+  const handleUnmergeSelection = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const sel = normalizeSelection(tableSelection);
+    const merges = selectedElement.merges || [];
+    const remaining = merges.filter((m) => !intersects(m, sel));
+    if (remaining.length === merges.length) return;
+    onUpdate(selectedElement.id, { merges: remaining } as any);
+  };
+
   const handleContentChange = (value: string) => {
     onUpdate(selectedElement.id, { content: value });
   };
 
+  const applyTableCellStylesToSelection = (
+    patch: {
+      fontSize?: number;
+      fontWeight?: string;
+      fontStyle?: string;
+      textDecoration?: string;
+      textAlign?: 'left' | 'center' | 'right';
+      color?: string;
+      fontFamily?: string;
+      backgroundColor?: string;
+    }
+  ) => {
+    if (selectedElement.type !== 'table') return false;
+    if (!tableSelection) return false;
+    const s = normalizeSelection(tableSelection);
+    const existing = selectedElement.cellStyles || {};
+    const updated = { ...existing };
+    for (let r = s.r0; r <= s.r1; r += 1) {
+      for (let c = s.c0; c <= s.c1; c += 1) {
+        const key = `${r}:${c}`;
+        updated[key] = { ...(updated[key] || {}), ...patch };
+      }
+    }
+    onUpdate(selectedElement.id, { cellStyles: updated } as any);
+    return true;
+  };
+
   const handleFontSizeChange = (value: number) => {
+    if (selectedElement.type === 'table' && tableSelection) {
+      applyTableCellStylesToSelection({ fontSize: value });
+      return;
+    }
     if (selectedElement.type === 'text' || selectedElement.type === 'table') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, fontSize: value },
@@ -101,6 +227,10 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
   };
 
   const handleFontWeightChange = (value: string) => {
+    if (selectedElement.type === 'table' && tableSelection) {
+      applyTableCellStylesToSelection({ fontWeight: value });
+      return;
+    }
     if (selectedElement.type === 'text' || selectedElement.type === 'table') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, fontWeight: value },
@@ -109,6 +239,10 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
   };
 
   const handleColorChange = (value: string) => {
+    if (selectedElement.type === 'table' && tableSelection) {
+      applyTableCellStylesToSelection({ color: value });
+      return;
+    }
     if (selectedElement.type === 'text' || selectedElement.type === 'table') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, color: value },
@@ -117,6 +251,10 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
   };
 
   const handleFontFamilyChange = (value: string) => {
+    if (selectedElement.type === 'table' && tableSelection) {
+      applyTableCellStylesToSelection({ fontFamily: value });
+      return;
+    }
     if (selectedElement.type === 'text' || selectedElement.type === 'table') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, fontFamily: value },
@@ -147,6 +285,74 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
     }
   };
 
+  const handleTableBackgroundChange = (value: string) => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    applyTableCellStylesToSelection({ backgroundColor: value });
+  };
+
+  const handleTableBoldToggle = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const s = normalizeSelection(tableSelection);
+    const existing = selectedElement.cellStyles || {};
+    let hasBold = false;
+    for (let r = s.r0; r <= s.r1; r += 1) {
+      for (let c = s.c0; c <= s.c1; c += 1) {
+        if ((existing[`${r}:${c}`]?.fontWeight || selectedElement.style.fontWeight) === 'bold') {
+          hasBold = true;
+        }
+      }
+    }
+    applyTableCellStylesToSelection({ fontWeight: hasBold ? 'normal' : 'bold' });
+  };
+
+  const handleTableItalicToggle = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const s = normalizeSelection(tableSelection);
+    const existing = selectedElement.cellStyles || {};
+    let hasItalic = false;
+    for (let r = s.r0; r <= s.r1; r += 1) {
+      for (let c = s.c0; c <= s.c1; c += 1) {
+        if ((existing[`${r}:${c}`]?.fontStyle || 'normal') === 'italic') {
+          hasItalic = true;
+        }
+      }
+    }
+    applyTableCellStylesToSelection({ fontStyle: hasItalic ? 'normal' : 'italic' });
+  };
+
+  const handleTableUnderlineToggle = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const s = normalizeSelection(tableSelection);
+    const existing = selectedElement.cellStyles || {};
+    let hasUnderline = false;
+    for (let r = s.r0; r <= s.r1; r += 1) {
+      for (let c = s.c0; c <= s.c1; c += 1) {
+        if ((existing[`${r}:${c}`]?.textDecoration || 'none') === 'underline') {
+          hasUnderline = true;
+        }
+      }
+    }
+    applyTableCellStylesToSelection({ textDecoration: hasUnderline ? 'none' : 'underline' });
+  };
+
+  const handleTableTextAlignChange = (textAlign: 'left' | 'center' | 'right') => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    applyTableCellStylesToSelection({ textAlign });
+  };
+
+  const handleClearTableFormatting = () => {
+    if (selectedElement.type !== 'table' || !tableSelection) return;
+    const s = normalizeSelection(tableSelection);
+    const existing = selectedElement.cellStyles || {};
+    const updated = { ...existing };
+    for (let r = s.r0; r <= s.r1; r += 1) {
+      for (let c = s.c0; c <= s.c1; c += 1) {
+        delete updated[`${r}:${c}`];
+      }
+    }
+    onUpdate(selectedElement.id, { cellStyles: updated } as any);
+  };
+
   const handleAddTableRow = () => {
     if (selectedElement.type === 'table' && selectedElement.data.length > 0) {
       const newRow = new Array(selectedElement.data[0].length).fill('');
@@ -164,14 +370,18 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
   const handleRemoveTableRow = (rowIndex: number) => {
     if (selectedElement.type === 'table' && selectedElement.data.length > 1) {
       const newData = selectedElement.data.filter((_, idx) => idx !== rowIndex);
-      onUpdate(selectedElement.id, { data: newData });
+      const merges = selectedElement.merges || [];
+      const newMerges = adjustMergesAfterRemoveRow(merges, rowIndex);
+      onUpdate(selectedElement.id, { data: newData, merges: newMerges } as any);
     }
   };
 
   const handleRemoveTableColumn = (colIndex: number) => {
     if (selectedElement.type === 'table' && selectedElement.data[0] && selectedElement.data[0].length > 1) {
       const newData = selectedElement.data.map((row) => row.filter((_, idx) => idx !== colIndex));
-      onUpdate(selectedElement.id, { data: newData });
+      const merges = selectedElement.merges || [];
+      const newMerges = adjustMergesAfterRemoveCol(merges, colIndex);
+      onUpdate(selectedElement.id, { data: newData, merges: newMerges } as any);
     }
   };
 
@@ -599,6 +809,118 @@ function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelProps) {
             <div className="property-group">
               <label className="property-label">Table Data</label>
               <div className="table-editor">
+                <div className="table-range-controls">
+                  <div className="table-range-label">
+                    Range: {tableSelection ? selectionToA1(tableSelection) : '—'}
+                  </div>
+                  <div className="table-range-buttons">
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleMergeSelection}
+                      disabled={
+                        !tableSelection ||
+                        (() => {
+                          const s = tableSelection ? normalizeSelection(tableSelection) : null;
+                          return !s || (s.r0 === s.r1 && s.c0 === s.c1);
+                        })()
+                      }
+                      title="Merge selected cells (creates colSpan/rowSpan)"
+                    >
+                      Merge
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleUnmergeSelection}
+                      disabled={!tableSelection}
+                      title="Unmerge cells intersecting the selected range"
+                    >
+                      Unmerge
+                    </button>
+                  </div>
+                </div>
+                <div className="table-format-toolbar">
+                  <div className="table-format-toolbar-row">
+                    <label className="property-label">Selection Scope</label>
+                    <select
+                      className="property-select"
+                      value={tableSelectionMode}
+                      onChange={(e) =>
+                        onTableSelectionModeChange?.(e.target.value as 'cell' | 'row' | 'column')
+                      }
+                      title="Choose whether clicks select cells, full rows, or full columns"
+                    >
+                      <option value="cell">Cell</option>
+                      <option value="row">Row</option>
+                      <option value="column">Column</option>
+                    </select>
+                  </div>
+                  <div className="table-format-toolbar-row table-format-controls">
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleTableBoldToggle}
+                      disabled={!tableSelection}
+                      title="Toggle bold on selected cells/rows/columns"
+                    >
+                      Bold
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleTableItalicToggle}
+                      disabled={!tableSelection}
+                      title="Toggle italic on selected cells/rows/columns"
+                    >
+                      Italic
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleTableUnderlineToggle}
+                      disabled={!tableSelection}
+                      title="Toggle underline on selected cells/rows/columns"
+                    >
+                      Underline
+                    </button>
+                    <input
+                      type="color"
+                      className="property-color"
+                      onChange={(e) => handleTableBackgroundChange(e.target.value)}
+                      title="Background color for selected cells/rows/columns"
+                    />
+                  </div>
+                  <div className="table-format-toolbar-row table-format-controls">
+                    <button
+                      className="table-editor-button-add"
+                      onClick={() => handleTableTextAlignChange('left')}
+                      disabled={!tableSelection}
+                      title="Align selected cells left"
+                    >
+                      Align Left
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={() => handleTableTextAlignChange('center')}
+                      disabled={!tableSelection}
+                      title="Align selected cells center"
+                    >
+                      Align Center
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={() => handleTableTextAlignChange('right')}
+                      disabled={!tableSelection}
+                      title="Align selected cells right"
+                    >
+                      Align Right
+                    </button>
+                    <button
+                      className="table-editor-button-add"
+                      onClick={handleClearTableFormatting}
+                      disabled={!tableSelection}
+                      title="Remove all direct formatting from selected cells"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
                 <table className="table-editor-table">
                   <tbody>
                     {selectedElement.data.map((row, rowIndex) => (

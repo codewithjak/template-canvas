@@ -26,17 +26,17 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
   return (
     <div className="toolbar">
       <div className="toolbar-section">
-        <button className="toolbar-button" onClick={onAddText}>
-          Add Text
+        <button className="toolbar-icon-button" onClick={onAddText} title="Add text" aria-label="Add text">
+          <span className="toolbar-icon" aria-hidden="true">T</span>
         </button>
         {onAddTable && (
-          <button className="toolbar-button" onClick={onAddTable}>
-            Add Table
+          <button className="toolbar-icon-button" onClick={onAddTable} title="Add table" aria-label="Add table">
+            <span className="toolbar-icon" aria-hidden="true">#</span>
           </button>
         )}
         {onAddImage && (
-          <button className="toolbar-button" onClick={onAddImage}>
-            Add Image
+          <button className="toolbar-icon-button" onClick={onAddImage} title="Add image" aria-label="Add image">
+            <span className="toolbar-icon" aria-hidden="true">O</span>
           </button>
         )}
       </div>
@@ -51,12 +51,13 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
       <div className="toolbar-section">
         {onSave && (
           <button 
-            className="toolbar-button toolbar-button-secondary" 
+            className="toolbar-icon-button toolbar-icon-button-secondary"
             onClick={onSave}
             disabled={!hasElements}
             title="Save template as JSON file"
+            aria-label="Save template"
           >
-            Save Template
+            <span className="toolbar-icon" aria-hidden="true">S</span>
           </button>
         )}
         {onLoad && (
@@ -69,33 +70,36 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
               style={{ display: 'none' }}
             />
             <button 
-              className="toolbar-button toolbar-button-secondary" 
+              className="toolbar-icon-button toolbar-icon-button-secondary"
               onClick={handleLoadClick}
               title="Load template from JSON file"
+              aria-label="Load template"
             >
-              Load Template
+              <span className="toolbar-icon" aria-hidden="true">L</span>
             </button>
           </>
         )}
         {onExportPDF && (
           <button 
-            className="toolbar-button toolbar-button-secondary" 
+            className="toolbar-icon-button toolbar-icon-button-secondary"
             onClick={onExportPDF}
             disabled={!hasElements}
             title="Export template as PDF (A4 size)"
+            aria-label="Export PDF"
           >
-            Export PDF
+            <span className="toolbar-icon" aria-hidden="true">P</span>
           </button>
         )}
       </div>
       <div className="toolbar-section">
         {hasSelection && onDelete && (
           <button 
-            className="toolbar-button toolbar-button-danger" 
+            className="toolbar-icon-button toolbar-icon-button-danger"
             onClick={onDelete}
             title="Delete selected element (Delete key)"
+            aria-label="Delete selected element"
           >
-            Delete
+            <span className="toolbar-icon" aria-hidden="true">X</span>
           </button>
         )}
       </div>

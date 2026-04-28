@@ -559,10 +559,14 @@ function PropertiesPanel({
 
   return (
     <div className="properties-panel">
-      <div className="properties-panel-header">Properties</div>
+      <div className="properties-panel-header">
+        Properties
+        <span className="panel-type-label">{selectedElement.type}</span>
+      </div>
       <div className="properties-panel-content">
         {selectedElement.type === 'text' ? (
-          <>
+          <div className="property-section">
+            <div className="property-section-title">Text</div>
             <div className="property-group">
               <label className="property-label">Content</label>
               <input
@@ -572,9 +576,10 @@ function PropertiesPanel({
                 className="property-input"
               />
             </div>
-          </>
+          </div>
         ) : selectedElement.type === 'image' ? (
-          <>
+          <div className="property-section">
+            <div className="property-section-title">Image</div>
             <div className="property-group">
               <label className="property-label">Image Source</label>
               <input
@@ -594,32 +599,33 @@ function PropertiesPanel({
               <button
                 className="property-button"
                 onClick={() => document.getElementById('image-file-input')?.click()}
-                style={{ marginTop: '8px', width: '100%' }}
               >
                 Upload Image
               </button>
             </div>
-            <div className="property-group">
-              <label className="property-label">Width (px)</label>
-              <input
-                type="number"
-                value={selectedElement.style.width}
-                onChange={(e) => handleImageWidthChange(Number(e.target.value))}
-                className="property-input"
-                min="50"
-                max="1000"
-              />
-            </div>
-            <div className="property-group">
-              <label className="property-label">Height (px)</label>
-              <input
-                type="number"
-                value={selectedElement.style.height}
-                onChange={(e) => handleImageHeightChange(Number(e.target.value))}
-                className="property-input"
-                min="50"
-                max="1000"
-              />
+            <div className="property-grid-two">
+              <div className="property-group">
+                <label className="property-label">Width (px)</label>
+                <input
+                  type="number"
+                  value={selectedElement.style.width}
+                  onChange={(e) => handleImageWidthChange(Number(e.target.value))}
+                  className="property-input"
+                  min="50"
+                  max="1000"
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Height (px)</label>
+                <input
+                  type="number"
+                  value={selectedElement.style.height}
+                  onChange={(e) => handleImageHeightChange(Number(e.target.value))}
+                  className="property-input"
+                  min="50"
+                  max="1000"
+                />
+              </div>
             </div>
             <div className="property-group">
               <label className="property-label">Object Fit</label>
@@ -646,9 +652,10 @@ function PropertiesPanel({
                 max="100"
               />
             </div>
-          </>
+          </div>
         ) : selectedElement.type === 'line' ? (
-          <>
+          <div className="property-section">
+            <div className="property-section-title">Line</div>
             <div className="property-group">
               <label className="property-label">Direction</label>
               <select
@@ -714,30 +721,33 @@ function PropertiesPanel({
                 max="100"
               />
             </div>
-          </>
+          </div>
         ) : selectedElement.type === 'box' ? (
-          <>
-            <div className="property-group">
-              <label className="property-label">Width (px)</label>
-              <input
-                type="number"
-                value={selectedElement.style.width}
-                onChange={(e) => handleBoxWidthChange(Number(e.target.value))}
-                className="property-input"
-                min="50"
-                max="1000"
-              />
-            </div>
-            <div className="property-group">
-              <label className="property-label">Height (px)</label>
-              <input
-                type="number"
-                value={selectedElement.style.height}
-                onChange={(e) => handleBoxHeightChange(Number(e.target.value))}
-                className="property-input"
-                min="50"
-                max="1000"
-              />
+          <div className="property-section">
+            <div className="property-section-title">Box</div>
+            <div className="property-grid-two">
+              <div className="property-group">
+                <label className="property-label">Width (px)</label>
+                <input
+                  type="number"
+                  value={selectedElement.style.width}
+                  onChange={(e) => handleBoxWidthChange(Number(e.target.value))}
+                  className="property-input"
+                  min="50"
+                  max="1000"
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Height (px)</label>
+                <input
+                  type="number"
+                  value={selectedElement.style.height}
+                  onChange={(e) => handleBoxHeightChange(Number(e.target.value))}
+                  className="property-input"
+                  min="50"
+                  max="1000"
+                />
+              </div>
             </div>
             <div className="property-group">
               <label className="property-label">Border Width (px)</label>
@@ -803,9 +813,10 @@ function PropertiesPanel({
                 max="100"
               />
             </div>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="property-section">
+            <div className="property-section-title">Table</div>
             <div className="property-group">
               <label className="property-label">Table Data</label>
               <div className="table-editor">
@@ -977,11 +988,12 @@ function PropertiesPanel({
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {(selectedElement.type === 'text' || selectedElement.type === 'table') && (
-          <>
+          <div className="property-section">
+            <div className="property-section-title">Typography</div>
             <div className="property-group">
               <label className="property-label">Font Size</label>
               <input
@@ -1042,29 +1054,33 @@ function PropertiesPanel({
                 className="property-color"
               />
             </div>
-          </>
+          </div>
         )}
 
-        <div className="property-group">
-          <label className="property-label">Position X</label>
-          <input
-            type="number"
-            value={Math.round(selectedElement.position.x)}
-            onChange={(e) => handlePositionXChange(Number(e.target.value))}
-            className="property-input"
-            min="0"
-          />
-        </div>
-
-        <div className="property-group">
-          <label className="property-label">Position Y</label>
-          <input
-            type="number"
-            value={Math.round(selectedElement.position.y)}
-            onChange={(e) => handlePositionYChange(Number(e.target.value))}
-            className="property-input"
-            min="0"
-          />
+        <div className="property-section">
+          <div className="property-section-title">Position</div>
+          <div className="property-grid-two">
+            <div className="property-group">
+              <label className="property-label">Position X</label>
+              <input
+                type="number"
+                value={Math.round(selectedElement.position.x)}
+                onChange={(e) => handlePositionXChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Position Y</label>
+              <input
+                type="number"
+                value={Math.round(selectedElement.position.y)}
+                onChange={(e) => handlePositionYChange(Number(e.target.value))}
+                className="property-input"
+                min="0"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -3,48 +3,44 @@
 }
 
 .structures-button {
-  background-color: #6c757d;
+  background: #f9fafc;
 }
 
 .structures-button:hover {
-  background-color: #5a6268;
-}
-
-.structures-button:active {
-  background-color: #545b62;
+  background: #eef3ff;
 }
 
 .structures-menu {
   position: absolute;
   top: 100%;
   left: 0;
-  margin-top: 4px;
+  margin-top: 6px;
   background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
   min-width: 160px;
   z-index: 1001;
   overflow: hidden;
 }
 
 .structures-menu-item {
-  padding: 10px 16px;
+  padding: 9px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 14px;
-  color: #333;
+  font-size: 13px;
+  color: #1f2937;
   transition: background-color 0.15s;
 }
 
 .structures-menu-item:hover {
-  background-color: #f8f9fa;
+  background-color: #f2f6ff;
 }
 
 .structures-menu-item:active {
-  background-color: #e9ecef;
+  background-color: #e8f0ff;
 }
 
 .structures-icon {

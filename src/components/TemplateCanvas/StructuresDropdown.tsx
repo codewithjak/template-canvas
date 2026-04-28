@@ -43,11 +43,12 @@ function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
   return (
     <div className="structures-dropdown" ref={dropdownRef}>
       <button
-        className="toolbar-button structures-button"
+        className="toolbar-icon-button structures-button"
         onClick={handleToggle}
         title="Add structural elements"
+        aria-label="Add structural elements"
       >
-        Structures {isOpen ? '▲' : '▼'}
+        <span className="toolbar-icon" aria-hidden="true">{isOpen ? 'V' : '+'}</span>
       </button>
       {isOpen && (
         <div className="structures-menu">

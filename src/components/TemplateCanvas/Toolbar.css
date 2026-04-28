@@ -1,80 +1,83 @@
 .toolbar {
   position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  left: 12px;
+  right: 328px;
   display: flex;
-  gap: 20px;
-  padding: 10px 20px;
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: #ffffff;
+  border: 1px solid #d7dce5;
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
   z-index: 1000;
   align-items: center;
 }
 
 .toolbar-section {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .toolbar-section:not(:last-child)::after {
   content: '';
   width: 1px;
-  height: 24px;
-  background-color: #ddd;
-  margin-left: 10px;
+  height: 20px;
+  background-color: #e3e8f0;
+  margin-left: 4px;
 }
 
-.toolbar-button {
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+.toolbar-icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #cfd6e3;
+  border-radius: 8px;
+  background: #f9fafc;
+  color: #1f2a37;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-icon-button:hover:not(:disabled) {
+  background: #eef3ff;
+  border-color: #b7c5df;
+}
+
+.toolbar-icon-button:active:not(:disabled) {
+  background: #dde7fc;
+}
+
+.toolbar-icon {
   font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.toolbar-button:hover {
-  background-color: #0056b3;
+.toolbar-icon-button-secondary {
+  background: #f3f7ff;
 }
 
-.toolbar-button:active {
-  background-color: #004085;
+.toolbar-icon-button-danger {
+  color: #b42318;
+  background: #fff5f5;
+  border-color: #efc8c8;
 }
 
-.toolbar-button-danger {
-  background-color: #dc3545;
+.toolbar-icon-button-danger:hover:not(:disabled) {
+  background: #ffeaea;
 }
 
-.toolbar-button-danger:hover {
-  background-color: #c82333;
-}
-
-.toolbar-button-danger:active {
-  background-color: #bd2130;
-}
-
-.toolbar-button-secondary {
-  background-color: #28a745;
-}
-
-.toolbar-button-secondary:hover:not(:disabled) {
-  background-color: #218838;
-}
-
-.toolbar-button-secondary:active:not(:disabled) {
-  background-color: #1e7e34;
-}
-
-.toolbar-button:disabled {
-  background-color: #ccc;
+.toolbar-icon-button:disabled {
+  background: #f1f3f8;
+  border-color: #d7dce5;
+  color: #98a2b3;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 

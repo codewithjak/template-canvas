@@ -2,9 +2,6 @@ import { useState } from 'react'
 import TemplateCanvas from './components/TemplateCanvas/TemplateCanvas'
 import './App.css'
 
-const feedbackFormUrl =
-  'https://docs.google.com/forms/d/e/1FAIpQLSdX5hhEWa7775FCeSbRk9PvFtRU9Q_LtCMlM-eCeICMFa7PLA/viewform?usp=publish-editor'
-
 function App() {
   const [showCanvas, setShowCanvas] = useState(false)
 
@@ -14,70 +11,87 @@ function App() {
 
   return (
     <main className="landing-page">
+      <header className="topbar">
+        <div className="brand">Mapdoc</div>
+        <button className="button button--secondary topbar__launch" type="button" onClick={() => setShowCanvas(true)}>
+          Launch App
+        </button>
+      </header>
+
       <section className="hero">
         <div className="hero__content">
           <span className="eyebrow">Design once. Reuse anytime.</span>
-          <h1>Create repeatable document templates without rebuilding the same layout every time.</h1>
+          <h1>Build reusable business document templates in minutes.</h1>
           <p className="hero__text">
-            TemplateCanvas is a visual template system for receipts, invoices, reports,
-            brochures, and other structured documents, so teams stop repeating layout work
-            every time content changes.
+            Mapdoc helps teams create invoices, receipts, reports, and proposals with a single
+            reusable template so every document looks polished and consistent.
           </p>
+
           <div className="hero__actions">
             <button className="button button--primary" type="button" onClick={() => setShowCanvas(true)}>
-              Open Template Canvas
+              Open Mapdoc
             </button>
-            <a
-              className="button button--secondary"
-              href={feedbackFormUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Give Feedback
+            <a className="button button--secondary" href="#how-it-works">
+              Watch Demo
             </a>
           </div>
+
+          <ul className="hero__highlights">
+            <li>Create once and reuse every time</li>
+            <li>Keep formatting consistent across documents</li>
+            <li>Speed up operations for teams and clients</li>
+          </ul>
         </div>
 
         <div className="hero__card" aria-label="Product summary card">
           <div className="metric-card">
-            <p className="metric-card__label">Solution</p>
-            <p className="metric-card__value">One place to design reusable document structures.</p>
+            <p className="metric-card__label">Why Mapdoc</p>
+            <p className="metric-card__value">Design smarter templates with consistent results.</p>
             <p className="metric-card__detail">
-              The product removes repeated formatting and rebuilding by letting teams create
-              a template once and use it across many documents and document types.
+              Mapdoc eliminates repeated layout work and makes it easy to update,
+              export, and reuse document templates across your team.
             </p>
+            <div className="metric-summary">
+              <div>
+                <strong>3x faster</strong>
+                <span>template setup</span>
+              </div>
+              <div>
+                <strong>100%</strong>
+                <span>layout consistency</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       <section className="section section--muted" id="solution">
         <div className="section-heading">
-          <span className="section-heading__eyebrow">What it does</span>
-          <h2>TemplateCanvas removes repetitive layout work from recurring documents.</h2>
+          <span className="section-heading__eyebrow">Why it works</span>
+          <h2>Keep every recurring document accurate, branded, and easy to update.</h2>
           <p>
-            If a team keeps producing the same kind of document with different content,
-            TemplateCanvas turns that repeated manual effort into a reusable visual template
-            workflow.
+            Mapdoc gives teams a visual way to define page structure and reuse it for invoices,
+            delivery notes, quotes, and more—without rebuilding the same layout every time.
           </p>
         </div>
 
         <div className="pain-grid">
           <article className="info-card">
-            <h3>Receipts and invoices</h3>
+            <h3>Save time</h3>
             <p>
-              Reuse the same structure instead of rebuilding the same business document layout.
+              Build a template once, then use it across every document without redesigning.
             </p>
           </article>
           <article className="info-card">
-            <h3>Reports and brochures</h3>
+            <h3>Stay consistent</h3>
             <p>
-              Keep repeatable formats consistent even when the content changes each time.
+              Use the same structure for all business documents so formatting stays aligned.
             </p>
           </article>
           <article className="info-card">
-            <h3>Direct product access</h3>
+            <h3>Scale better</h3>
             <p>
-              The primary CTA opens the actual canvas so users can start designing immediately.
+              Manage templates for growing teams, new document types, and evolving workflows.
             </p>
           </article>
         </div>
@@ -85,8 +99,12 @@ function App() {
 
       <section className="section" id="how-it-works">
         <div className="section-heading">
-          <span className="section-heading__eyebrow">See it in action</span>
-          <h2>Watch how to create and use templates in minutes.</h2>
+          <span className="section-heading__eyebrow">See Mapdoc in action</span>
+          <h2>Watch how to build a template and export polished documents.</h2>
+          <p>
+            The demo shows template creation, element arrangement, and the workflow for launching
+            consistent documents across teams.
+          </p>
         </div>
         <div className="video-container">
           <video width="100%" controls poster="/video-placeholder.jpg">
@@ -95,6 +113,55 @@ function App() {
           </video>
         </div>
       </section>
+
+      <footer className="footer-section">
+        <div className="footer-content">
+          <div className="footer-waitlist">
+            <span className="eyebrow">Join the waitlist</span>
+            <h2>Turn your templates into automated documents using dynamic data mapping.</h2>
+            <p>
+              Upload CSV, Excel, or connect your API to instantly map fields and generate documents at scale — no manual copy-paste, no repetitive work.
+            </p>
+            <p>
+              Perfect for invoices, HR letters, reports, forms, claims, and bulk document workflows.
+            </p>
+            <p>
+              Be the first to access early launch updates and priority onboarding.
+            </p>
+            <form className="waitlist-form" onSubmit={(event) => event.preventDefault()}>
+              <input
+                type="email"
+                aria-label="Enter your email"
+                placeholder="Enter your email"
+                className="waitlist-input"
+                required
+              />
+              <button className="button button--primary waitlist-button" type="submit">
+                Join waitlist
+              </button>
+            </form>
+          </div>
+
+          <div className="footer-nav">
+            <div>
+              <h3>Quick links</h3>
+              <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#solution">Features</a></li>
+                <li><a href="#how-it-works">Demo</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3>Company</h3>
+              <ul>
+                <li><a href="#">Careers</a></li>
+                <li><button type="button" className="footer-link footer-link--disabled" disabled>Privacy</button></li>
+                <li><button type="button" className="footer-link footer-link--disabled" disabled>Terms</button></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }

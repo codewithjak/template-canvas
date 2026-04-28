@@ -26,17 +26,20 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
   return (
     <div className="toolbar">
       <div className="toolbar-section">
-        <button className="toolbar-icon-button" onClick={onAddText} title="Add text" aria-label="Add text">
-          <span className="toolbar-icon" aria-hidden="true">T</span>
+        <button className="toolbar-icon-button" onClick={onAddText} title="Add text element (T)" aria-label="Add text">
+          <span className="toolbar-icon" aria-hidden="true">📝</span>
+          <span className="toolbar-label">Text</span>
         </button>
         {onAddTable && (
-          <button className="toolbar-icon-button" onClick={onAddTable} title="Add table" aria-label="Add table">
-            <span className="toolbar-icon" aria-hidden="true">#</span>
+          <button className="toolbar-icon-button" onClick={onAddTable} title="Add table element" aria-label="Add table">
+            <span className="toolbar-icon" aria-hidden="true">📊</span>
+            <span className="toolbar-label">Table</span>
           </button>
         )}
         {onAddImage && (
-          <button className="toolbar-icon-button" onClick={onAddImage} title="Add image" aria-label="Add image">
-            <span className="toolbar-icon" aria-hidden="true">O</span>
+          <button className="toolbar-icon-button" onClick={onAddImage} title="Add image element" aria-label="Add image">
+            <span className="toolbar-icon" aria-hidden="true">🖼️</span>
+            <span className="toolbar-label">Image</span>
           </button>
         )}
       </div>
@@ -57,7 +60,8 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
             title="Save template as JSON file"
             aria-label="Save template"
           >
-            <span className="toolbar-icon" aria-hidden="true">S</span>
+            <span className="toolbar-icon" aria-hidden="true">💾</span>
+            <span className="toolbar-label">Save</span>
           </button>
         )}
         {onLoad && (
@@ -75,7 +79,8 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
               title="Load template from JSON file"
               aria-label="Load template"
             >
-              <span className="toolbar-icon" aria-hidden="true">L</span>
+              <span className="toolbar-icon" aria-hidden="true">📂</span>
+              <span className="toolbar-label">Load</span>
             </button>
           </>
         )}
@@ -87,7 +92,8 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
             title="Export template as PDF (A4 size)"
             aria-label="Export PDF"
           >
-            <span className="toolbar-icon" aria-hidden="true">P</span>
+            <span className="toolbar-icon" aria-hidden="true">📄</span>
+            <span className="toolbar-label">Export</span>
           </button>
         )}
       </div>
@@ -99,7 +105,8 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
             title="Delete selected element (Delete key)"
             aria-label="Delete selected element"
           >
-            <span className="toolbar-icon" aria-hidden="true">X</span>
+            <span className="toolbar-icon" aria-hidden="true">🗑️</span>
+            <span className="toolbar-label">Delete</span>
           </button>
         )}
       </div>

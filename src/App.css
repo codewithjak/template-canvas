@@ -10,6 +10,27 @@
     linear-gradient(180deg, #f8fbff 0%, #eef4ff 48%, #ffffff 100%);
 }
 
+.topbar {
+  width: min(1120px, calc(100% - 3rem));
+  margin: 0 auto;
+  padding: 1.1rem 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.topbar__launch {
+  min-width: 140px;
+  padding: 0.85rem 1.25rem;
+}
+
 .hero,
 .section {
   width: min(1120px, calc(100% - 3rem));
@@ -144,6 +165,32 @@
 .hero__card {
   display: grid;
   gap: 1rem;
+  align-items: start;
+}
+
+.metric-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.metric-summary div {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.metric-summary strong {
+  display: block;
+  font-size: 1.2rem;
+  margin-bottom: 0.2rem;
+  color: #0f172a;
+}
+
+.metric-summary span {
+  color: #475569;
+  font-size: 0.95rem;
 }
 
 .metric-card,
@@ -344,7 +391,139 @@
   background: #000;
 }
 
+.footer-section {
+  padding: 4rem 0 5rem;
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  color: #f8fafc;
+}
+
+.footer-content {
+  width: min(1120px, calc(100% - 3rem));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.8fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.footer-waitlist {
+  display: grid;
+  gap: 1rem;
+}
+
+.footer-waitlist h2 {
+  margin: 0.5rem 0 0;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1.05;
+}
+
+.footer-waitlist p {
+  max-width: 46ch;
+  color: #cbd5e1;
+}
+
+.waitlist-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.waitlist-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.waitlist-input::placeholder {
+  color: rgba(248, 250, 252, 0.68);
+}
+
+.waitlist-button {
+  min-width: 160px;
+}
+
+.footer-nav {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.footer-nav h3 {
+  margin-bottom: 1rem;
+  color: #f8fafc;
+}
+
+.footer-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.footer-nav a,
+.footer-link {
+  color: rgba(248, 250, 252, 0.78);
+  text-decoration: none;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.footer-nav a:hover,
+.footer-link:hover {
+  color: #ffffff;
+}
+
+.footer-link--disabled {
+  color: rgba(248, 250, 252, 0.44);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.footer-link--disabled:hover {
+  color: rgba(248, 250, 252, 0.44);
+}
+
 @media (max-width: 960px) {
+  .footer-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .section {
+    width: min(100% - 1.5rem, 1120px);
+  }
+
+  .hero {
+    padding-bottom: 3rem;
+  }
+
+  .section {
+    padding-bottom: 3.5rem;
+  }
+
+  .metric-card,
+  .preview-card,
+  .info-card,
+  .step-card,
+  .benefit-card,
+  .testimonial,
+  .cta-card,
+  .feedback-card {
+    border-radius: 20px;
+  }
+}
   .hero,
   .section--split,
   .pain-grid,

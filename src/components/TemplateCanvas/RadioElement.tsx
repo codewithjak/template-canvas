@@ -40,7 +40,7 @@ function RadioElement({ id, options = 2, selected = '', orientation = 'vertical'
         top: `${position.y}px`,
         display: 'flex',
         flexDirection: orientation === 'horizontal' ? 'row' : 'column',
-        gap: '8px',
+        gap: `${position.relativeOffset || 8}px`,
         ...style_transform,
       }}
       onClick={handleElementClick}

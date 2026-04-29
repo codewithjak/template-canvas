@@ -42,7 +42,7 @@ function CheckboxElement({ id, count = 1, checkedValues = [], orientation = 'ver
         top: `${position.y}px`,
         display: 'flex',
         flexDirection: orientation === 'horizontal' ? 'row' : 'column',
-        gap: '8px',
+        gap: `${position.relativeOffset || 8}px`,
         ...style_transform,
       }}
       onClick={handleElementClick}

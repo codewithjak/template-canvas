@@ -118,7 +118,7 @@ interface RadioElementType {
   options: number;
   selected?: string;
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
 }
 
 interface CheckboxElementType {
@@ -127,7 +127,7 @@ interface CheckboxElementType {
   count?: number;
   checkedValues?: string[];
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
 }
 
 type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
@@ -324,7 +324,7 @@ function TemplateCanvas() {
       options: 2,
       selected: '',
       orientation: 'vertical',
-      position: { x: 50, y: 50 },
+      position: { x: 50, y: 50, relativeOffset: 8 },
     };
     setElements([...elements, newElement]);
   };
@@ -336,7 +336,7 @@ function TemplateCanvas() {
       count: 1,
       checkedValues: [],
       orientation: 'vertical',
-      position: { x: 50, y: 50 },
+      position: { x: 50, y: 50, relativeOffset: 8 },
     };
     setElements([...elements, newElement]);
   };

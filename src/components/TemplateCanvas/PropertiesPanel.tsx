@@ -103,7 +103,7 @@ interface RadioElementType {
   options: number;
   selected?: string;
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
 }
 
 interface CheckboxElementType {
@@ -112,7 +112,7 @@ interface CheckboxElementType {
   count?: number;
   checkedValues?: string[];
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
 }
 
 type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
@@ -1036,6 +1036,17 @@ function PropertiesPanel({
                 <option value="vertical">Vertical</option>
                 <option value="horizontal">Horizontal</option>
               </select>
+            </div>
+            <div className="property-group">
+              <label className="property-label">Relative Offset (Padding)</label>
+              <input
+                type="number"
+                value={selectedElement.position.relativeOffset || 8}
+                onChange={(e) => onUpdate(selectedElement.id, { position: { ...selectedElement.position, relativeOffset: Number(e.target.value) } })}
+                className="property-input"
+                min="0"
+                max="50"
+              />
             </div>
             {selectedElement.type === 'checkbox' && (
               <div className="property-group">

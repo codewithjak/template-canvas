@@ -3,11 +3,17 @@ import StructuresDropdown from './StructuresDropdown';
 import './Toolbar.css';
 
 interface ToolbarProps {
+  onAddParagraph?: () => void;
+  onAddRadio?: () => void;
+  onAddCheckbox?: () => void;
   onAddText: () => void;
   onAddTable?: () => void;
   onAddImage?: () => void;
   onAddLine?: () => void;
   onAddBox?: () => void;
+  onAddRectangle?: () => void;
+  onAddTriangle?: () => void;
+  onAddEllipse?: () => void;
   onDelete?: () => void;
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -16,7 +22,7 @@ interface ToolbarProps {
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDelete, onSave, onLoad, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse, onDelete, onSave, onLoad, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -44,10 +50,33 @@ function Toolbar({ onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onDel
         )}
       </div>
       <div className="toolbar-section">
-        {(onAddLine || onAddBox) && (
+        {onAddParagraph && (
+          <button className="toolbar-icon-button" onClick={onAddParagraph} title="Add paragraph" aria-label="Add paragraph">
+            <span className="toolbar-icon" aria-hidden="true">📄</span>
+            <span className="toolbar-label">Paragraph</span>
+          </button>
+        )}
+        {onAddRadio && (
+          <button className="toolbar-icon-button" onClick={onAddRadio} title="Add radio buttons" aria-label="Add radio buttons">
+            <span className="toolbar-icon" aria-hidden="true">🔘</span>
+            <span className="toolbar-label">Radio</span>
+          </button>
+        )}
+        {onAddCheckbox && (
+          <button className="toolbar-icon-button" onClick={onAddCheckbox} title="Add checkbox" aria-label="Add checkbox">
+            <span className="toolbar-icon" aria-hidden="true">☑️</span>
+            <span className="toolbar-label">Checkbox</span>
+          </button>
+        )}
+      </div>
+      <div className="toolbar-section">
+        {(onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse) && (
           <StructuresDropdown
             onAddLine={onAddLine || (() => {})}
             onAddBox={onAddBox || (() => {})}
+            onAddRectangle={onAddRectangle || (() => {})}
+            onAddTriangle={onAddTriangle || (() => {})}
+            onAddEllipse={onAddEllipse || (() => {})}
           />
         )}
       </div>

@@ -83,7 +83,39 @@ interface BoxElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType;
+interface ParagraphElementType {
+  id: string;
+  type: 'paragraph';
+  content: string;
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+    lineHeight?: number;
+  };
+}
+
+interface RadioElementType {
+  id: string;
+  type: 'radio';
+  options: number;
+  selected?: string;
+  orientation?: 'horizontal' | 'vertical';
+  position: { x: number; y: number };
+}
+
+interface CheckboxElementType {
+  id: string;
+  type: 'checkbox';
+  count?: number;
+  checkedValues?: string[];
+  orientation?: 'horizontal' | 'vertical';
+  position: { x: number; y: number };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
 
 interface PropertiesPanelProps {
   selectedElement: CanvasElement | null;
@@ -814,7 +846,7 @@ function PropertiesPanel({
               />
             </div>
           </div>
-        ) : (
+        ) : selectedElement.type === 'table' ? (
           <div className="property-section">
             <div className="property-section-title">Table</div>
             <div className="property-group">
@@ -989,9 +1021,52 @@ function PropertiesPanel({
               </div>
             </div>
           </div>
+        ) : null}
+
+        {(selectedElement.type === 'radio' || selectedElement.type === 'checkbox') && (
+          <div className="property-section">
+            <div className="property-section-title">Layout</div>
+            <div className="property-group">
+              <label className="property-label">Orientation</label>
+              <select
+                value={selectedElement.orientation || 'vertical'}
+                onChange={(e) => onUpdate(selectedElement.id, { orientation: e.target.value as 'horizontal' | 'vertical' })}
+                className="property-select"
+              >
+                <option value="vertical">Vertical</option>
+                <option value="horizontal">Horizontal</option>
+              </select>
+            </div>
+            {selectedElement.type === 'checkbox' && (
+              <div className="property-group">
+                <label className="property-label">Number of Checkboxes</label>
+                <input
+                  type="number"
+                  value={selectedElement.count || 1}
+                  onChange={(e) => onUpdate(selectedElement.id, { count: Number(e.target.value) })}
+                  className="property-input"
+                  min="1"
+                  max="10"
+                />
+              </div>
+            )}
+            {selectedElement.type === 'radio' && (
+              <div className="property-group">
+                <label className="property-label">Number of Options</label>
+                <input
+                  type="number"
+                  value={selectedElement.options || 2}
+                  onChange={(e) => onUpdate(selectedElement.id, { options: Number(e.target.value) })}
+                  className="property-input"
+                  min="2"
+                  max="10"
+                />
+              </div>
+            )}
+          </div>
         )}
 
-        {(selectedElement.type === 'text' || selectedElement.type === 'table') && (
+        {(selectedElement.type === 'text' || selectedElement.type === 'paragraph' || selectedElement.type === 'table') && (
           <div className="property-section">
             <div className="property-section-title">Typography</div>
             <div className="property-group">

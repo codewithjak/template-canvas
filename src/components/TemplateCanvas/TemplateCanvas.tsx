@@ -8,6 +8,9 @@ import TableElement from './TableElement';
 import ImageElement from './ImageElement';
 import LineElement from './LineElement';
 import BoxElement from './BoxElement';
+import ParagraphElement from './ParagraphElement';
+import RadioElement from './RadioElement';
+import CheckboxElement from './CheckboxElement';
 import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
@@ -81,6 +84,7 @@ interface LineElementType {
 interface BoxElementType {
   id: string;
   type: 'box';
+  shape?: 'box' | 'rectangle' | 'triangle' | 'ellipse';
   position: { x: number; y: number };
   style: {
     width: number;
@@ -94,7 +98,39 @@ interface BoxElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType;
+interface ParagraphElementType {
+  id: string;
+  type: 'paragraph';
+  content: string;
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+    lineHeight?: number;
+  };
+}
+
+interface RadioElementType {
+  id: string;
+  type: 'radio';
+  options: number;
+  selected?: string;
+  orientation?: 'horizontal' | 'vertical';
+  position: { x: number; y: number };
+}
+
+interface CheckboxElementType {
+  id: string;
+  type: 'checkbox';
+  count?: number;
+  checkedValues?: string[];
+  orientation?: 'horizontal' | 'vertical';
+  position: { x: number; y: number };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -188,6 +224,7 @@ function TemplateCanvas() {
     const newElement: BoxElementType = {
       id: `box-${Date.now()}`,
       type: 'box',
+      shape: 'box',
       position: { x: 50, y: 50 },
       style: {
         width: 200,
@@ -199,6 +236,107 @@ function TemplateCanvas() {
         opacity: 100,
         borderRadius: 0,
       },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddRectangle = () => {
+    const newElement: BoxElementType = {
+      id: `rectangle-${Date.now()}`,
+      type: 'box',
+      shape: 'rectangle',
+      position: { x: 50, y: 50 },
+      style: {
+        width: 220,
+        height: 140,
+        borderWidth: 1,
+        borderColor: '#007bff',
+        borderStyle: 'solid',
+        backgroundColor: '#e7f1ff',
+        opacity: 100,
+        borderRadius: 0,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddTriangle = () => {
+    const newElement: BoxElementType = {
+      id: `triangle-${Date.now()}`,
+      type: 'box',
+      shape: 'triangle',
+      position: { x: 50, y: 50 },
+      style: {
+        width: 140,
+        height: 120,
+        borderWidth: 0,
+        borderColor: '#000000',
+        borderStyle: 'solid',
+        backgroundColor: '#ffb200',
+        opacity: 100,
+        borderRadius: 0,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddEllipse = () => {
+    const newElement: BoxElementType = {
+      id: `ellipse-${Date.now()}`,
+      type: 'box',
+      shape: 'ellipse',
+      position: { x: 50, y: 50 },
+      style: {
+        width: 200,
+        height: 120,
+        borderWidth: 1,
+        borderColor: '#2a9d8f',
+        borderStyle: 'solid',
+        backgroundColor: '#d8f3ef',
+        opacity: 100,
+        borderRadius: 9999,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddParagraph = () => {
+    const newElement: ParagraphElementType = {
+      id: `paragraph-${Date.now()}`,
+      type: 'paragraph',
+      content: 'Add your text here...',
+      position: { x: 50, y: 50 },
+      style: {
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: '#000000',
+        fontFamily: 'Arial, sans-serif',
+        lineHeight: 24,
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddRadio = () => {
+    const newElement: RadioElementType = {
+      id: `radio-${Date.now()}`,
+      type: 'radio',
+      options: 2,
+      selected: '',
+      orientation: 'vertical',
+      position: { x: 50, y: 50 },
+    };
+    setElements([...elements, newElement]);
+  };
+
+  const handleAddCheckbox = () => {
+    const newElement: CheckboxElementType = {
+      id: `checkbox-${Date.now()}`,
+      type: 'checkbox',
+      count: 1,
+      checkedValues: [],
+      orientation: 'vertical',
+      position: { x: 50, y: 50 },
     };
     setElements([...elements, newElement]);
   };
@@ -227,11 +365,35 @@ function TemplateCanvas() {
     );
   };
 
+  const handleUpdateParagraph = (id: string, content: string) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id && element.type === 'paragraph' ? { ...element, content } : element
+      )
+    );
+  };
+
+  const handleUpdateRadio = (id: string, updates: { selected?: string; orientation?: 'horizontal' | 'vertical' }) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id && element.type === 'radio' ? { ...element, ...updates } : element
+      )
+    );
+  };
+
+  const handleUpdateCheckbox = (id: string, updates: { checkedValues?: string[]; orientation?: 'horizontal' | 'vertical' }) => {
+    setElements(
+      elements.map((element) =>
+        element.id === id && element.type === 'checkbox' ? { ...element, ...updates } : element
+      )
+    );
+  };
+
   const handleSelectElement = (id: string) => {
     setSelectedElementId(id);
   };
 
-  const handleUpdateElement = (id: string, updates: Partial<CanvasElement>) => {
+  const handleUpdateElement = (id: string, updates: any) => {
     setElements(
       elements.map((element) => {
         if (element.id === id) {
@@ -239,14 +401,26 @@ function TemplateCanvas() {
           if (updates.position) {
             updatedElement.position = { ...updatedElement.position, ...updates.position };
           }
-          if (updates.style) {
-            updatedElement.style = { ...updatedElement.style, ...updates.style } as any;
+          if (updates.style && 'style' in updatedElement) {
+            (updatedElement as any).style = { ...(updatedElement as any).style, ...updates.style };
           }
           if ('content' in updates && 'content' in updatedElement) {
             (updatedElement as any).content = updates.content;
           }
           if ('src' in updates && 'src' in updatedElement) {
             (updatedElement as any).src = updates.src;
+          }
+          if ('orientation' in updates) {
+            (updatedElement as any).orientation = updates.orientation;
+          }
+          if ('count' in updates) {
+            (updatedElement as any).count = updates.count;
+          }
+          if ('options' in updates) {
+            (updatedElement as any).options = updates.options;
+          }
+          if ('shape' in updates) {
+            (updatedElement as any).shape = updates.shape;
           }
           if ('data' in updates && 'data' in updatedElement) {
             (updatedElement as any).data = updates.data;
@@ -454,13 +628,17 @@ function TemplateCanvas() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
-        <Toolbar 
+        <Toolbar
+          onAddParagraph={handleAddParagraph}
+          onAddRadio={handleAddRadio}
+          onAddCheckbox={handleAddCheckbox}
           onAddText={handleAddText}
           onAddTable={handleAddTable}
           onAddImage={handleAddImage}
           onAddLine={handleAddLine}
-          onAddBox={handleAddBox}
-          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
+          onAddBox={handleAddBox}          onAddRectangle={handleAddRectangle}
+          onAddTriangle={handleAddTriangle}
+          onAddEllipse={handleAddEllipse}          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onExportPDF={handleExportPDF}
@@ -489,6 +667,46 @@ function TemplateCanvas() {
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                   onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                />
+              );
+            } else if (element.type === 'paragraph') {
+              return (
+                <ParagraphElement
+                  key={element.id}
+                  id={element.id}
+                  content={element.content}
+                  position={element.position}
+                  style={element.style}
+                  onUpdate={handleUpdateParagraph}
+                  isSelected={element.id === selectedElementId}
+                  onSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'radio') {
+              return (
+                <RadioElement
+                  key={element.id}
+                  id={element.id}
+                  options={element.options}
+                  selected={element.selected}
+                  orientation={element.orientation}
+                  position={element.position}
+                  onSelect={(id, option) => handleUpdateRadio(id, { selected: option })}
+                  onUpdate={handleUpdateRadio}
+                  onElementSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'checkbox') {
+              return (
+                <CheckboxElement
+                  key={element.id}
+                  id={element.id}
+                  count={element.count}
+                  checkedValues={element.checkedValues}
+                  orientation={element.orientation}
+                  position={element.position}
+                  onUpdate={handleUpdateCheckbox}
+                  onElementSelect={() => handleSelectElement(element.id)}
                 />
               );
             } else if (element.type === 'table') {
@@ -545,6 +763,7 @@ function TemplateCanvas() {
                   key={element.id}
                   id={element.id}
                   position={element.position}
+                  shape={element.shape}
                   style={element.style}
                   onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
                   onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}

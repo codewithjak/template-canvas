@@ -4,9 +4,12 @@ import './StructuresDropdown.css';
 interface StructuresDropdownProps {
   onAddLine: () => void;
   onAddBox: () => void;
+  onAddRectangle: () => void;
+  onAddTriangle: () => void;
+  onAddEllipse: () => void;
 }
 
-function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
+function StructuresDropdown({ onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse }: StructuresDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +43,21 @@ function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
     setIsOpen(false);
   };
 
+  const handleAddRectangle = () => {
+    onAddRectangle();
+    setIsOpen(false);
+  };
+
+  const handleAddTriangle = () => {
+    onAddTriangle();
+    setIsOpen(false);
+  };
+
+  const handleAddEllipse = () => {
+    onAddEllipse();
+    setIsOpen(false);
+  };
+
   return (
     <div className="structures-dropdown" ref={dropdownRef}>
       <button
@@ -60,6 +78,18 @@ function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
           <div className="structures-menu-item" onClick={handleAddBox}>
             <span className="structures-icon">▢</span>
             <span>Add Box</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddRectangle}>
+            <span className="structures-icon">▭</span>
+            <span>Add Rectangle</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddTriangle}>
+            <span className="structures-icon">▲</span>
+            <span>Add Triangle</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddEllipse}>
+            <span className="structures-icon">◯</span>
+            <span>Add Ellipse</span>
           </div>
         </div>
       )}

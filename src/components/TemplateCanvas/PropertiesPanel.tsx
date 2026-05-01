@@ -115,7 +115,23 @@ interface CheckboxElementType {
   position: { x: number; y: number; relativeOffset?: number };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
+interface DateElementType {
+  id: string;
+  type: 'date';
+  value?: string;
+  time?: string;
+  includeTime?: boolean;
+  format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD Mon YYYY';
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType;
 
 interface PropertiesPanelProps {
   selectedElement: CanvasElement | null;
@@ -1168,6 +1184,121 @@ function PropertiesPanel({
             </div>
           </div>
         </div>
+
+        {selectedElement.type === 'date' && (
+          <div className="property-section">
+            <div className="property-section-title">Date Properties</div>
+            <div className="property-group">
+              <label className="property-label">Include Time</label>
+              <input
+                type="checkbox"
+                checked={selectedElement.includeTime || false}
+                onChange={(e) => onUpdate(selectedElement.id, { includeTime: e.target.checked })}
+                className="property-checkbox"
+              />
+            </div>
+            <div className="property-group">
+              <label className="property-label">Date Value</label>
+              <input
+                type="date"
+                value={selectedElement.value || ''}
+                onChange={(e) => onUpdate(selectedElement.id, { value: e.target.value })}
+                className="property-input"
+              />
+            </div>
+            {(selectedElement.includeTime || false) && (
+              <div className="property-group">
+                <label className="property-label">Time Value</label>
+                <input
+                  type="time"
+                  value={selectedElement.time || ''}
+                  onChange={(e) => onUpdate(selectedElement.id, { time: e.target.value })}
+                  className="property-input"
+                />
+              </div>
+            )}
+            <div className="property-group">
+              <label className="property-label">Date Format</label>
+              <select
+                value={selectedElement.format || 'MM/DD/YYYY'}
+                onChange={(e) => onUpdate(selectedElement.id, { format: e.target.value as 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD Mon YYYY' })}
+                className="property-select"
+              >
+                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                <option value="MMM DD, YYYY">MMM DD, YYYY</option>
+                <option value="DD Mon YYYY">DD Mon YYYY</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {selectedElement.type === 'date' && (
+          <div className="property-section">
+            <div className="property-section-title">Typography</div>
+            <div className="property-group">
+              <label className="property-label">Font Size</label>
+              <input
+                type="number"
+                value={selectedElement.style.fontSize}
+                onChange={(e) => onUpdate(selectedElement.id, { style: { ...selectedElement.style, fontSize: Number(e.target.value) } })}
+                className="property-input"
+                min="8"
+                max="72"
+              />
+            </div>
+
+            <div className="property-group">
+              <label className="property-label">Font Weight</label>
+              <select
+                value={selectedElement.style.fontWeight}
+                onChange={(e) => onUpdate(selectedElement.id, { style: { ...selectedElement.style, fontWeight: e.target.value } })}
+                className="property-select"
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+                <option value="lighter">Lighter</option>
+              </select>
+            </div>
+
+            <div className="property-group">
+              <label className="property-label">Font Family</label>
+              <select
+                value={selectedElement.style.fontFamily}
+                onChange={(e) => onUpdate(selectedElement.id, { style: { ...selectedElement.style, fontFamily: e.target.value } })}
+                className="property-select"
+              >
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Helvetica, sans-serif">Helvetica</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="'Courier New', monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="Impact, sans-serif">Impact</option>
+                <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+                <option value="'Lucida Console', monospace">Lucida Console</option>
+                <option value="Tahoma, sans-serif">Tahoma</option>
+                <option value="'Palatino Linotype', serif">Palatino Linotype</option>
+                <option value="'Garamond', serif">Garamond</option>
+                <option value="'Book Antiqua', serif">Book Antiqua</option>
+                <option value="'Century Gothic', sans-serif">Century Gothic</option>
+                <option value="'Lucida Sans Unicode', sans-serif">Lucida Sans Unicode</option>
+              </select>
+            </div>
+
+            <div className="property-group">
+              <label className="property-label">Color</label>
+              <input
+                type="color"
+                value={selectedElement.style.color}
+                onChange={(e) => onUpdate(selectedElement.id, { style: { ...selectedElement.style, color: e.target.value } })}
+                className="property-color"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

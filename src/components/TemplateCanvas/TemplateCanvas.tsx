@@ -11,6 +11,7 @@ import BoxElement from './BoxElement';
 import ParagraphElement from './ParagraphElement';
 import RadioElement from './RadioElement';
 import CheckboxElement from './CheckboxElement';
+import DateElement from './DateElement';
 import PropertiesPanel from './PropertiesPanel';
 import './TemplateCanvas.css';
 
@@ -130,7 +131,23 @@ interface CheckboxElementType {
   position: { x: number; y: number; relativeOffset?: number };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType;
+interface DateElementType {
+  id: string;
+  type: 'date';
+  value?: string;
+  time?: string;
+  includeTime?: boolean;
+  format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD Mon YYYY';
+  position: { x: number; y: number };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+  };
+}
+
+type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -341,6 +358,25 @@ function TemplateCanvas() {
     setElements([...elements, newElement]);
   };
 
+  const handleAddDate = () => {
+    const newElement: DateElementType = {
+      id: `date-${Date.now()}`,
+      type: 'date',
+      value: '',
+      time: '',
+      includeTime: false,
+      format: 'MM/DD/YYYY',
+      position: { x: 50, y: 50 },
+      style: {
+        fontSize: 14,
+        fontWeight: 'normal',
+        color: '#000000',
+        fontFamily: 'Arial, sans-serif',
+      },
+    };
+    setElements([...elements, newElement]);
+  };
+
   const handleUpdateImage = (id: string, src: string) => {
     setElements(
       elements.map((element) =>
@@ -424,6 +460,18 @@ function TemplateCanvas() {
           }
           if ('data' in updates && 'data' in updatedElement) {
             (updatedElement as any).data = updates.data;
+          }
+          if ('value' in updates && 'value' in updatedElement) {
+            (updatedElement as any).value = updates.value;
+          }
+          if ('time' in updates && 'time' in updatedElement) {
+            (updatedElement as any).time = updates.time;
+          }
+          if ('includeTime' in updates && 'includeTime' in updatedElement) {
+            (updatedElement as any).includeTime = updates.includeTime;
+          }
+          if ('format' in updates && 'format' in updatedElement) {
+            (updatedElement as any).format = updates.format;
           }
           if ('merges' in updates && (updatedElement as any).type === 'table') {
             (updatedElement as any).merges = (updates as any).merges || [];
@@ -632,13 +680,16 @@ function TemplateCanvas() {
           onAddParagraph={handleAddParagraph}
           onAddRadio={handleAddRadio}
           onAddCheckbox={handleAddCheckbox}
+          onAddDate={handleAddDate}
           onAddText={handleAddText}
           onAddTable={handleAddTable}
           onAddImage={handleAddImage}
           onAddLine={handleAddLine}
-          onAddBox={handleAddBox}          onAddRectangle={handleAddRectangle}
+          onAddBox={handleAddBox}
+          onAddRectangle={handleAddRectangle}
           onAddTriangle={handleAddTriangle}
-          onAddEllipse={handleAddEllipse}          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
+          onAddEllipse={handleAddEllipse}
+          onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onExportPDF={handleExportPDF}
@@ -769,6 +820,21 @@ function TemplateCanvas() {
                   onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'date') {
+              return (
+                <DateElement
+                  key={element.id}
+                  id={element.id}
+                  value={element.value}
+                  time={element.time}
+                  includeTime={element.includeTime}
+                  format={element.format}
+                  position={element.position}
+                  style={element.style}
+                  onUpdate={handleUpdateElement}
+                  onElementSelect={() => handleSelectElement(element.id)}
                 />
               );
             }

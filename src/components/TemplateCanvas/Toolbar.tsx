@@ -18,12 +18,13 @@ interface ToolbarProps {
   onDelete?: () => void;
   onSave?: () => void;
   onLoad?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onUpload?: () => void;
   onExportPDF?: () => void;
   hasSelection?: boolean;
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse, onDelete, onSave, onLoad, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse, onDelete, onSave, onLoad, onUpload, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -119,6 +120,17 @@ function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddTe
               <span className="toolbar-label">Load</span>
             </button>
           </>
+        )}
+        {onUpload && (
+          <button
+            className="toolbar-icon-button toolbar-icon-button-secondary"
+            onClick={onUpload}
+            title="Upload file"
+            aria-label="Upload file"
+          >
+            <span className="toolbar-icon" aria-hidden="true">📁</span>
+            <span className="toolbar-label">Upload File</span>
+          </button>
         )}
         {onExportPDF && (
           <button 

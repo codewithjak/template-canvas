@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import Toolbar from './Toolbar';
+import UploadData from './UploadData';
 import TextElement from './TextElement';
 import TableElement from './TableElement';
 import ImageElement from './ImageElement';
@@ -13,6 +14,8 @@ import RadioElement from './RadioElement';
 import CheckboxElement from './CheckboxElement';
 import DateElement from './DateElement';
 import PropertiesPanel from './PropertiesPanel';
+import type { DataRow } from '../../services/mappingEngine';
+import { getAllPlaceholders, mapTemplateToData } from '../../services/mappingEngine';
 import './TemplateCanvas.css';
 
 interface TextElementType {
@@ -152,11 +155,14 @@ type CanvasElement = TextElementType | TableElementType | ImageElementType | Lin
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
   const [tableSelections, setTableSelections] = useState<
     Record<string, { r0: number; c0: number; r1: number; c1: number } | null>
   >({});
   const [tableSelectionModes, setTableSelectionModes] = useState<Record<string, 'cell' | 'row' | 'column'>>({});
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  const templatePlaceholders = useMemo(() => getAllPlaceholders(elements), [elements]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -549,6 +555,14 @@ function TemplateCanvas() {
     event.target.value = '';
   };
 
+  const handleOpenUpload = () => setUploadPanelOpen(true);
+  const handleCloseUpload = () => setUploadPanelOpen(false);
+
+  const handleUploadMapped = (dataRow: DataRow, fieldMapping: Record<string, string>) => {
+    setElements((current) => mapTemplateToData(current, dataRow, fieldMapping));
+    setUploadPanelOpen(false);
+  };
+
   const handleExportPDF = async () => {
     if (!canvasRef.current || elements.length === 0) {
       alert('No template to export');
@@ -692,10 +706,20 @@ function TemplateCanvas() {
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
+          onUpload={handleOpenUpload}
           onExportPDF={handleExportPDF}
           hasSelection={!!selectedElementId}
           hasElements={elements.length > 0}
         />
+        {uploadPanelOpen && (
+          <div className="upload-panel-backdrop">
+            <UploadData
+              templatePlaceholders={templatePlaceholders}
+              onClose={handleCloseUpload}
+              onDataMapped={handleUploadMapped}
+            />
+          </div>
+        )}
         <div 
           ref={canvasRef}
           className="template-canvas"

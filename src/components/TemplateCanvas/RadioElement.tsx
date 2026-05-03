@@ -6,7 +6,7 @@ interface RadioElementProps {
   options: number;
   selected?: string;
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
   onSelect: (id: string, option: string) => void;
   onUpdate: (id: string, updates: { selected?: string; orientation?: 'horizontal' | 'vertical' }) => void;
   onElementSelect?: () => void;

@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import Toolbar from './Toolbar';
 import UploadData from './UploadData';
 import TextElement from './TextElement';
@@ -160,9 +158,18 @@ function TemplateCanvas() {
     Record<string, { r0: number; c0: number; r1: number; c1: number } | null>
   >({});
   const [tableSelectionModes, setTableSelectionModes] = useState<Record<string, 'cell' | 'row' | 'column'>>({});
+  const [batchData, setBatchData] = useState<{ rows: DataRow[]; mapping: Record<string, string> } | null>(null);
+  const [previewRowIndex, setPreviewRowIndex] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const templatePlaceholders = useMemo(() => getAllPlaceholders(elements), [elements]);
+  const renderedElements = useMemo(
+    () => (batchData ? mapTemplateToData(elements, batchData.rows[previewRowIndex], batchData.mapping) : elements),
+    [batchData, elements, previewRowIndex]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -558,111 +565,128 @@ function TemplateCanvas() {
   const handleOpenUpload = () => setUploadPanelOpen(true);
   const handleCloseUpload = () => setUploadPanelOpen(false);
 
-  const handleUploadMapped = (dataRow: DataRow, fieldMapping: Record<string, string>) => {
-    setElements((current) => mapTemplateToData(current, dataRow, fieldMapping));
+  const handleUploadMapped = (dataRows: DataRow[], fieldMapping: Record<string, string>, isBatch: boolean) => {
+    if (isBatch) {
+      setBatchData({ rows: dataRows, mapping: fieldMapping });
+      setPreviewRowIndex(0);
+    } else {
+      setBatchData(null);
+      setElements((current) => mapTemplateToData(current, dataRows[0], fieldMapping));
+    }
     setUploadPanelOpen(false);
   };
 
-  const handleExportPDF = async () => {
+  const handleClearBatchData = () => {
+    setBatchData(null);
+    setPreviewRowIndex(0);
+    setExportProgress(null);
+    setExportStatus(null);
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const generatePdfForRow = async (row: DataRow, index: number, total: number) => {
+    const outputFileName = `record-${index + 1}.pdf`;
+    setExportStatus(`Printing record ${index + 1} of ${total}`);
+
+    const response = await fetch('http://localhost:3001/generate-pdf', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        templateElements: elements,
+        dataRow: row,
+        fieldMapping: batchData?.mapping || {},
+        outputFileName,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.error || 'Failed to generate PDF');
+    }
+
+    const blob = await response.blob();
+    downloadBlob(blob, outputFileName);
+  };
+
+  const handleExportCurrentRow = async () => {
     if (!canvasRef.current || elements.length === 0) {
       alert('No template to export');
       return;
     }
 
-    const originalCursor = document.body.style.cursor;
-    const toolbar = document.querySelector('.toolbar');
-    const propertiesPanel = document.querySelector('.properties-panel');
-    const toolbarDisplay = toolbar ? (toolbar as HTMLElement).style.display : '';
-    const panelDisplay = propertiesPanel ? (propertiesPanel as HTMLElement).style.display : '';
-
     try {
-      // Show loading indicator
-      document.body.style.cursor = 'wait';
+      setIsExporting(true);
+      setExportProgress({ current: 1, total: 1 });
+      setExportStatus('Printing current record...');
 
-      // Temporarily hide UI elements that shouldn't be in PDF
-      if (toolbar) (toolbar as HTMLElement).style.display = 'none';
-      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = 'none';
-      canvasRef.current.classList.add('export-mode');
-
-      // Clear selection/focus artifacts (blue focus ring/caret) before capture.
-      const active = document.activeElement as HTMLElement | null;
-      if (active && typeof active.blur === 'function') {
-        active.blur();
-      }
-
-      // Wait a bit for UI to update
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Capture the canvas with high quality
-      const canvas = await html2canvas(canvasRef.current, {
-        scale: 2, // Higher scale for better quality
-        useCORS: true, // Allow cross-origin images
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: canvasRef.current.offsetWidth,
-        height: canvasRef.current.offsetHeight,
-        windowWidth: canvasRef.current.scrollWidth,
-        windowHeight: canvasRef.current.scrollHeight,
+      const row = batchData ? batchData.rows[previewRowIndex] : null;
+      const dataRow = row || {};
+      const response = await fetch('http://localhost:3001/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          templateElements: elements,
+          dataRow,
+          fieldMapping: batchData?.mapping || {},
+          outputFileName: `document-${Date.now()}.pdf`,
+        }),
       });
 
-      // A4 dimensions in mm (standard A4: 210mm x 297mm)
-      const A4_WIDTH_MM = 210;
-      const A4_HEIGHT_MM = 297;
-      
-      // Calculate scaling to fit A4
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const imgAspectRatio = imgWidth / imgHeight;
-      const pdfAspectRatio = A4_WIDTH_MM / A4_HEIGHT_MM;
-
-      let finalWidth: number;
-      let finalHeight: number;
-      let xOffset = 0;
-      let yOffset = 0;
-
-      if (imgAspectRatio > pdfAspectRatio) {
-        // Image is wider - fit to width
-        finalWidth = A4_WIDTH_MM;
-        finalHeight = A4_WIDTH_MM / imgAspectRatio;
-        yOffset = (A4_HEIGHT_MM - finalHeight) / 2;
-      } else {
-        // Image is taller - fit to height
-        finalHeight = A4_HEIGHT_MM;
-        finalWidth = A4_HEIGHT_MM * imgAspectRatio;
-        xOffset = (A4_WIDTH_MM - finalWidth) / 2;
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Failed to generate PDF');
       }
 
-      // Create PDF with A4 size
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-        compress: true,
-      });
-
-      // Convert canvas to image data
-      const imgData = canvas.toDataURL('image/png', 1.0);
-
-      // Add image to PDF with calculated dimensions
-      pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST');
-
-      // Generate filename with timestamp
-      const filename = `template-${Date.now()}.pdf`;
-
-      // Save PDF
-      pdf.save(filename);
-
+      const blob = await response.blob();
+      downloadBlob(blob, batchData ? `record-${previewRowIndex + 1}.pdf` : `template-${Date.now()}.pdf`);
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('Error exporting PDF. Please try again.');
+      alert(error instanceof Error ? error.message : 'Error exporting PDF.');
     } finally {
-      // Always restore UI state after export attempt.
-      if (canvasRef.current) {
-        canvasRef.current.classList.remove('export-mode');
+      setIsExporting(false);
+      setExportProgress(null);
+      setExportStatus(null);
+    }
+  };
+
+  const handleExportAllRows = async () => {
+    if (!batchData) {
+      alert('No batch records to export');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      setExportProgress({ current: 0, total: batchData.rows.length });
+      setExportStatus('Starting batch export...');
+
+      for (let index = 0; index < batchData.rows.length; index += 1) {
+        setExportProgress({ current: index + 1, total: batchData.rows.length });
+        await generatePdfForRow(batchData.rows[index], index, batchData.rows.length);
       }
-      if (toolbar) (toolbar as HTMLElement).style.display = toolbarDisplay;
-      if (propertiesPanel) (propertiesPanel as HTMLElement).style.display = panelDisplay;
-      document.body.style.cursor = originalCursor;
+
+      setExportStatus('Batch export complete. All PDFs downloaded.');
+    } catch (error) {
+      console.error('Error exporting batch PDFs:', error);
+      alert(error instanceof Error ? error.message : 'Batch export failed.');
+    } finally {
+      setIsExporting(false);
+      setExportProgress(null);
+      setTimeout(() => setExportStatus(null), 3000);
     }
   };
 
@@ -707,7 +731,7 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onUpload={handleOpenUpload}
-          onExportPDF={handleExportPDF}
+          onExportPDF={handleExportCurrentRow}
           hasSelection={!!selectedElementId}
           hasElements={elements.length > 0}
         />
@@ -720,6 +744,43 @@ function TemplateCanvas() {
             />
           </div>
         )}
+        {batchData && (
+          <div className="batch-export-controls">
+            <div className="batch-export-summary">
+              Previewing record {previewRowIndex + 1} of {batchData.rows.length}
+            </div>
+            <div className="batch-export-actions">
+              <label>
+                Select preview row:
+                <select value={previewRowIndex} onChange={(e) => setPreviewRowIndex(Number(e.target.value))}>
+                  {batchData.rows.map((_, idx) => (
+                    <option key={idx} value={idx}>
+                      Row {idx + 1}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="export-button" onClick={handleExportAllRows} disabled={isExporting}>
+                Export all rows
+              </button>
+              <button type="button" className="clear-button" onClick={handleClearBatchData}>
+                Back to Canvas
+              </button>
+            </div>
+          </div>
+        )}
+        {isExporting && (
+          <div className="export-overlay">
+            <div className="export-overlay-card">
+              <p>{exportStatus || 'Exporting PDFs...'}</p>
+              {exportProgress && (
+                <p>
+                  {exportProgress.current} / {exportProgress.total}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
         <div 
           ref={canvasRef}
           className="template-canvas"
@@ -729,7 +790,7 @@ function TemplateCanvas() {
             }
           }}
         >
-          {elements.map((element) => {
+          {renderedElements.map((element) => {
             if (element.type === 'text') {
               return (
                 <TextElement

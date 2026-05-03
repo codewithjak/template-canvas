@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { autoMapFields } from '../../services/mappingEngine';
 import type { DataRow } from '../../services/mappingEngine';
 import './UploadData.css';
@@ -16,7 +14,7 @@ interface ParsedData {
 interface UploadDataProps {
   templatePlaceholders: string[];
   onClose: () => void;
-  onDataMapped: (dataRow: DataRow, fieldMapping: Record<string, string>) => void;
+  onDataMapped: (dataRows: DataRow[], fieldMapping: Record<string, string>, isBatch: boolean) => void;
 }
 
 const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, onDataMapped }) => {
@@ -25,6 +23,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
   const [error, setError] = useState<string | null>(null);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [selectedRowIndex, setSelectedRowIndex] = useState(0);
+  const [isBatchExport, setIsBatchExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,88 +33,30 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
     };
   }, []);
 
-  const normalizeRowTable = useCallback((rows: any[][]) => {
-    const cleanedRows = rows
-      .filter((row) => Array.isArray(row) && row.some((cell) => String(cell ?? '').trim() !== ''))
-      .map((row) => row.map((cell) => String(cell ?? '').trim()));
+  const parseServerFile = useCallback(async (file: File): Promise<ParsedData> => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-    if (cleanedRows.length === 0) {
-      return { headers: [] as string[], dataRows: [] as any[][] };
-    }
-
-    const firstRow = cleanedRows[0];
-    const hasHeaderRow = firstRow.every((value) => {
-      const normalized = String(value).trim();
-      return normalized.length > 0 && isNaN(Number(normalized));
+    const response = await fetch('http://localhost:3001/parse-data', {
+      method: 'POST',
+      body: formData,
     });
 
-    const headers = hasHeaderRow
-      ? firstRow.map((cell, idx) => (String(cell).trim() || `Column_${idx + 1}`))
-      : firstRow.map((_, idx) => `Column_${idx + 1}`);
+    if (!response.ok) {
+      const responseData = await response.json().catch(() => null);
+      const message = responseData?.error || 'Unable to parse file on server.';
+      throw new Error(message);
+    }
 
-    const dataRows = hasHeaderRow ? cleanedRows.slice(1) : cleanedRows;
-    return { headers, dataRows };
+    const data = await response.json();
+
+    return {
+      headers: data.headers,
+      rows: data.rows,
+      fileType: data.fileType && String(data.fileType).includes('csv') ? 'csv' : 'excel',
+      fileName: data.fileName || file.name,
+    };
   }, []);
-
-  const parseCSVFile = useCallback((file: File): Promise<ParsedData> => {
-    return new Promise((resolve, reject) => {
-      Papa.parse(file, {
-        header: false,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const rows = results.data as any[][];
-          const { headers, dataRows } = normalizeRowTable(rows);
-          if (headers.length === 0) {
-            reject(new Error('CSV file contains no rows.'));
-            return;
-          }
-
-          const parsedRows = dataRows.map((row) => {
-            const obj: DataRow = {};
-            headers.forEach((header, index) => {
-              obj[header] = row[index] ?? '';
-            });
-            return obj;
-          });
-
-          resolve({ headers, rows: parsedRows, fileType: 'csv', fileName: file.name });
-        },
-        error: (err) => reject(new Error(`CSV parsing failed: ${err.message}`)),
-      });
-    });
-  }, [normalizeRowTable]);
-
-  const parseExcelFile = useCallback(async (file: File): Promise<ParsedData> => {
-    const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-
-    if (!worksheet) {
-      throw new Error('Excel file contains no readable sheets.');
-    }
-
-    const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, {
-      header: 1,
-      blankrows: false,
-      defval: '',
-    });
-
-    const { headers, dataRows } = normalizeRowTable(rows);
-    if (headers.length === 0) {
-      throw new Error('Excel file contains no rows.');
-    }
-
-    const parsedRows = dataRows.map((row) => {
-      const obj: DataRow = {};
-      headers.forEach((header, index) => {
-        obj[header] = row[index] ?? '';
-      });
-      return obj;
-    });
-
-    return { headers, rows: parsedRows, fileType: 'excel', fileName: file.name };
-  }, [normalizeRowTable]);
 
   const initializeFieldMapping = useCallback((headers: string[]) => {
     const mapping = autoMapFields(templatePlaceholders, headers);
@@ -138,17 +79,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
         throw new Error('No file selected.');
       }
 
-      let data: ParsedData;
-      const fileName = file.name.toLowerCase();
-
-      if (fileName.endsWith('.csv')) {
-        data = await parseCSVFile(file);
-      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-        data = await parseExcelFile(file);
-      } else {
-        throw new Error('Unsupported file type. Please upload CSV or Excel files.');
-      }
-
+      const data = await parseServerFile(file);
       setParsedData(data);
       setSelectedRowIndex(0);
       initializeFieldMapping(data.headers);
@@ -157,7 +88,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
     } finally {
       setParsing(false);
     }
-  }, [initializeFieldMapping, parseCSVFile, parseExcelFile]);
+  }, [initializeFieldMapping, parseServerFile]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -177,8 +108,12 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
 
   const handleConfirm = () => {
     if (!parsedData) return;
-    const dataRow = parsedData.rows[selectedRowIndex] || parsedData.rows[0];
-    onDataMapped(dataRow, fieldMapping);
+    if (isBatchExport) {
+      onDataMapped(parsedData.rows, fieldMapping, true);
+    } else {
+      const dataRow = parsedData.rows[selectedRowIndex] || parsedData.rows[0];
+      onDataMapped([dataRow], fieldMapping, false);
+    }
   };
 
   const headerOptions = parsedData?.headers || [];
@@ -283,6 +218,19 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {parsedData && (
+          <div className="batch-export-option">
+            <label>
+              <input
+                type="checkbox"
+                checked={isBatchExport}
+                onChange={(e) => setIsBatchExport(e.target.checked)}
+              />
+              Export all rows as batch PDF (one page per row)
+            </label>
           </div>
         )}
 

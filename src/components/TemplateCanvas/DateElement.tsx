@@ -19,7 +19,7 @@ interface DateElementProps {
   isSelected?: boolean;
 }
 
-function DateElement({ id, value = '', time = '', includeTime = false, format = 'MM/DD/YYYY', position, style, onUpdate, onElementSelect, isSelected }: DateElementProps) {
+function DateElement({ id, value = '', time = '', includeTime = false, format = 'MM/DD/YYYY', position, style, onElementSelect, isSelected }: DateElementProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id,
   });

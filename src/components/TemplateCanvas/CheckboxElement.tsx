@@ -6,7 +6,7 @@ interface CheckboxElementProps {
   count?: number;
   checkedValues?: string[];
   orientation?: 'horizontal' | 'vertical';
-  position: { x: number; y: number };
+  position: { x: number; y: number; relativeOffset?: number };
   onUpdate: (id: string, updates: { checkedValues?: string[]; orientation?: 'horizontal' | 'vertical' }) => void;
   onElementSelect?: () => void;
 }

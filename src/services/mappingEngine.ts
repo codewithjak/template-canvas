@@ -3,10 +3,7 @@
  * Maps data to template placeholders, handles loops and conditions
  */
 
-import type { DataRow } from './dataApi';
-
-// Re-export for convenience
-export type { DataRow };
+export type DataRow = Record<string, any>;
 
 export type CanvasElement =
   | {
@@ -61,6 +58,7 @@ export type CanvasElement =
   | {
       id: string;
       type: 'box';
+      shape?: 'box' | 'rectangle' | 'triangle' | 'ellipse';
       position: { x: number; y: number };
       style: any;
       loop?: string;

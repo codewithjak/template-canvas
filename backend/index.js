@@ -59,111 +59,167 @@ function replacePlaceholders(text, data, fieldMapping = {}) {
   });
 }
 
-function renderElement(element) {
-  const commonStyles = [];
+// Helper to build common style attribute for elements that use the common style set
+function getCommonStyleAttr(element) {
+  const styles = [];
   if (element.position) {
     const { x, y } = element.position;
-    commonStyles.push(`position:absolute`, `left:${x}px`, `top:${y}px`);
+    styles.push(`position:absolute`, `left:${x}px`, `top:${y}px`);
   }
-
   if (element.style) {
-    if (element.style.width) commonStyles.push(`width:${element.style.width}px`);
-    if (element.style.height) commonStyles.push(`height:${element.style.height}px`);
-    if (element.style.color) commonStyles.push(`color:${element.style.color}`);
-    if (element.style.fontSize) commonStyles.push(`font-size:${element.style.fontSize}px`);
-    if (element.style.fontWeight) commonStyles.push(`font-weight:${element.style.fontWeight}`);
-    if (element.style.fontFamily) commonStyles.push(`font-family:${element.style.fontFamily}`);
-    if (element.style.backgroundColor) commonStyles.push(`background-color:${element.style.backgroundColor}`);
-    if (element.style.borderColor && element.style.borderWidth !== undefined) {
-      commonStyles.push(`border:${element.style.borderWidth}px solid ${element.style.borderColor}`);
+    const s = element.style;
+    if (s.width) styles.push(`width:${s.width}px`);
+    if (s.height) styles.push(`height:${s.height}px`);
+    if (s.color) styles.push(`color:${s.color}`);
+    if (s.fontSize) styles.push(`font-size:${s.fontSize}px`);
+    if (s.fontWeight) styles.push(`font-weight:${s.fontWeight}`);
+    if (s.fontFamily) styles.push(`font-family:${s.fontFamily}`);
+    if (s.backgroundColor) styles.push(`background-color:${s.backgroundColor}`);
+    if (s.borderColor && s.borderWidth !== undefined) {
+      styles.push(`border:${s.borderWidth}px solid ${s.borderColor}`);
     }
-    if (element.style.textAlign) commonStyles.push(`text-align:${element.style.textAlign}`);
-    if (element.style.lineHeight) commonStyles.push(`line-height:${element.style.lineHeight}px`);
-    if (element.style.borderRadius) commonStyles.push(`border-radius:${element.style.borderRadius}px`);
-    if (element.style.opacity !== undefined) {
-      const opacity = Number(element.style.opacity);
+    if (s.textAlign) styles.push(`text-align:${s.textAlign}`);
+    if (s.lineHeight) styles.push(`line-height:${s.lineHeight}px`);
+    if (s.borderRadius) styles.push(`border-radius:${s.borderRadius}px`);
+    if (s.opacity !== undefined) {
+      const opacity = Number(s.opacity);
       if (!Number.isNaN(opacity)) {
-        commonStyles.push(`opacity:${opacity / 100}`);
+        styles.push(`opacity:${opacity / 100}`);
       }
     }
   }
+  return `style="${styles.join(';')}"`;
+}
 
-  const styleAttr = `style="${commonStyles.join(';')}"`;
+// Renderer functions
+function renderText(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  return `<div ${styleAttr}>${element.content || ''}</div>`;
+}
 
-  switch (element.type) {
-    case 'text':
-      return `<div ${styleAttr}>${element.content || ''}</div>`;
-    case 'paragraph':
-      return `<div ${styleAttr}>${element.content || ''}</div>`;
-    case 'image': {
-      const width = element.style?.width ? `width:${element.style.width}px;` : '';
-      const height = element.style?.height ? `height:${element.style.height}px;` : '';
-      const objectFit = element.style?.objectFit ? `object-fit:${element.style.objectFit};` : '';
-      return `<img src="${element.src || ''}" alt="" style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;${width}${height}${objectFit};" />`;
-    }
-    case 'line': {
-      const { color = '#000', thickness = 1, style: lineStyle = 'solid', length = 100, direction = 'horizontal' } = element.style || {};
-      const { x = 0, y = 0 } = element.position || {};
+function renderParagraph(element) {
+  return renderText(element); // same as text
+}
 
-      const isVertical = direction === 'vertical';
+function renderImage(element) {
+  const width = element.style?.width ? `width:${element.style.width}px;` : '';
+  const height = element.style?.height ? `height:${element.style.height}px;` : '';
+  const objectFit = element.style?.objectFit ? `object-fit:${element.style.objectFit};` : '';
+  return `<img src="${element.src || ''}" alt="" style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;${width}${height}${objectFit};" />`;
+}
 
-      const svgW = isVertical ? thickness : length;
-      const svgH = isVertical ? length : thickness;
+function renderLine(element) {
+  const { color = '#000', thickness = 1, style: lineStyle = 'solid', length = 100, direction = 'horizontal' } = element.style || {};
+  const { x = 0, y = 0 } = element.position || {};
 
-      let dashArray = 'none';
+  const isVertical = direction === 'vertical';
 
-      if (lineStyle === 'dashed') {
-        dashArray = '6,4'; // dash length, gap
-      } else if (lineStyle === 'dotted') {
-        dashArray = '2,3';
-      }
+  const svgW = isVertical ? thickness : length;
+  const svgH = isVertical ? length : thickness;
 
-      const svg = `
-        <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
-          <line 
-            x1="${isVertical ? svgW / 2 : 0}" 
-            y1="${isVertical ? 0 : svgH / 2}"
-            x2="${isVertical ? svgW / 2 : svgW}" 
-            y2="${isVertical ? svgH : svgH / 2}"
-            stroke="${color}" 
-            stroke-width="${thickness}"
-            ${dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : ''}
-            stroke-linecap="round"
-          />
-        </svg>
-      `;
+  let dashArray = 'none';
 
-      return `<div style="position:absolute; left:${x}px; top:${y}px;">${svg}</div>`;
-    }
-    case 'box': {
-      return `<div ${styleAttr}></div>`;
-    }
-    case 'table': {
-      const rowsHtml = (element.data || [])
-        .map((row) => `<tr>${row.map((cell) => `<td style="padding:4px;border:1px solid #ccc;">${cell}</td>`).join('')}</tr>`)
-        .join('');
-      return `<table style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;border-collapse:collapse;${element.style?.width ? `width:${element.style.width}px;` : ''};">${rowsHtml}</table>`;
-    }
-    case 'radio': {
-      const optionsHtml = new Array(element.options || 2)
-        .fill(0)
-        .map((_, idx) => `<div>${element.selected === String(idx) ? '◉' : '○'} Option ${idx + 1}</div>`)
-        .join('');
-      return `<div ${styleAttr}>${optionsHtml}</div>`;
-    }
-    case 'checkbox': {
-      const items = new Array(element.count || 1)
-        .fill(0)
-        .map((_, idx) => `<div>${(element.checkedValues || []).includes(String(idx)) ? '☑' : '☐'} Item ${idx + 1}</div>`)
-        .join('');
-      return `<div ${styleAttr}>${items}</div>`;
-    }
-    case 'date': {
-      return `<div ${styleAttr}>${element.value || ''}${element.time ? ' ' + element.time : ''}</div>`;
-    }
-    default:
-      return `<div ${styleAttr}></div>`;
+  if (lineStyle === 'dashed') {
+    dashArray = '6,4'; // dash length, gap
+  } else if (lineStyle === 'dotted') {
+    dashArray = '2,3';
   }
+
+  const svg = `
+    <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+      <line
+        x1="${isVertical ? svgW / 2 : 0}"
+        y1="${isVertical ? 0 : svgH / 2}"
+        x2="${isVertical ? svgW / 2 : svgW}"
+        y2="${isVertical ? svgH : svgH / 2}"
+        stroke="${color}"
+        stroke-width="${thickness}"
+        ${dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : ''}
+        stroke-linecap="round"
+      />
+    </svg>
+  `;
+
+  return `<div style="position:absolute; left:${x}px; top:${y}px;">${svg}</div>`;
+}
+
+function renderBox(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  return `<div ${styleAttr}></div>`;
+}
+
+function renderTable(element, dataRow, fieldMapping) {
+  let tableData = [];
+  if (element.dataKey && dataRow) {
+    const dynamicData = dataRow[element.dataKey];
+    if (Array.isArray(dynamicData)) {
+      tableData = dynamicData;
+    }
+  } else if (element.data) {
+    tableData = element.data;
+  }
+
+  // Replace placeholders in tableData
+  tableData = tableData.map((row) =>
+    row.map((cell) => replacePlaceholders(cell, dataRow || {}, fieldMapping || {}))
+  );
+
+  const rowsHtml = tableData
+    .map((row) => `<tr>${row.map((cell) => `<td style="padding:4px;border:1px solid #ccc;">${cell}</td>`).join('')}</tr>`)
+    .join('');
+
+  const widthStyle = element.style?.width ? `width:${element.style.width}px;` : '';
+  return `<table style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;border-collapse:collapse;${widthStyle}">${rowsHtml}</table>`;
+}
+
+function renderRadio(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  const optionsHtml = new Array(element.options || 2)
+    .fill(0)
+    .map((_, idx) => `<div>${element.selected === String(idx) ? '◉' : '○'} Option ${idx + 1}</div>`)
+    .join('');
+  return `<div ${styleAttr}>${optionsHtml}</div>`;
+}
+
+function renderCheckbox(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  const items = new Array(element.count || 1)
+    .fill(0)
+    .map((_, idx) => `<div>${(element.checkedValues || []).includes(String(idx)) ? '☑' : '☐'} Item ${idx + 1}</div>`)
+    .join('');
+  return `<div ${styleAttr}>${items}</div>`;
+}
+
+function renderDate(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  return `<div ${styleAttr}>${element.value || ''}${element.time ? ' ' + element.time : ''}</div>`;
+}
+
+function renderDefault(element) {
+  const styleAttr = getCommonStyleAttr(element);
+  return `<div ${styleAttr}></div>`;
+}
+
+// Map of element types to renderer functions
+const renderers = {
+  text: renderText,
+  paragraph: renderParagraph,
+  image: renderImage,
+  line: renderLine,
+  box: renderBox,
+  table: renderTable,
+  radio: renderRadio,
+  checkbox: renderCheckbox,
+  date: renderDate,
+};
+
+// Main render function: delegates to the appropriate renderer
+function renderElement(element, dataRow, fieldMapping) {
+  const renderer = renderers[element.type];
+  if (renderer) {
+    return renderer(element, dataRow, fieldMapping);
+  }
+  return renderDefault(element);
 }
 
 function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
@@ -185,7 +241,7 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
     return cloned;
   });
 
-  const bodyHtml = mappedElements.map(renderElement).join('');
+  const bodyHtml = mappedElements.map((el) => renderElement(el, dataRow, fieldMapping)).join('');
 
   return `
   <!DOCTYPE html>

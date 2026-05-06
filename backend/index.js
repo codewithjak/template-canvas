@@ -102,10 +102,38 @@ function renderElement(element) {
       return `<img src="${element.src || ''}" alt="" style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;${width}${height}${objectFit};" />`;
     }
     case 'line': {
-      const width = element.style?.direction === 'vertical' ? '1px' : `${element.style?.length || 100}px`;
-      const height = element.style?.direction === 'vertical' ? `${element.style?.length || 100}px` : '1px';
-      const borderStyle = element.style?.style || 'solid';
-      return `<div style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;width:${width};height:${height};background:${element.style?.color || '#000'};border:${element.style?.thickness || 1}px ${borderStyle} ${element.style?.color || '#000'};"></div>`;
+      const { color = '#000', thickness = 1, style: lineStyle = 'solid', length = 100, direction = 'horizontal' } = element.style || {};
+      const { x = 0, y = 0 } = element.position || {};
+
+      const isVertical = direction === 'vertical';
+
+      const svgW = isVertical ? thickness : length;
+      const svgH = isVertical ? length : thickness;
+
+      let dashArray = 'none';
+
+      if (lineStyle === 'dashed') {
+        dashArray = '6,4'; // dash length, gap
+      } else if (lineStyle === 'dotted') {
+        dashArray = '2,3';
+      }
+
+      const svg = `
+        <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+          <line 
+            x1="${isVertical ? svgW / 2 : 0}" 
+            y1="${isVertical ? 0 : svgH / 2}"
+            x2="${isVertical ? svgW / 2 : svgW}" 
+            y2="${isVertical ? svgH : svgH / 2}"
+            stroke="${color}" 
+            stroke-width="${thickness}"
+            ${dashArray !== 'none' ? `stroke-dasharray="${dashArray}"` : ''}
+            stroke-linecap="round"
+          />
+        </svg>
+      `;
+
+      return `<div style="position:absolute; left:${x}px; top:${y}px;">${svg}</div>`;
     }
     case 'box': {
       return `<div ${styleAttr}></div>`;
@@ -219,7 +247,9 @@ app.post('/generate-pdf', async (req, res) => {
 
   try {
     const html = renderTemplateHtml(templateElements, dataRow, fieldMapping);
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({

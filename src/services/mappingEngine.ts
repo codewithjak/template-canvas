@@ -17,29 +17,6 @@ export type CanvasElement =
     }
   | {
       id: string;
-      type: 'table';
-      data: string[][];
-      merges?: Array<{ r0: number; c0: number; r1: number; c1: number }>;
-      cellStyles?: Record<
-        string,
-        {
-          fontSize?: number;
-          fontWeight?: string;
-          fontStyle?: string;
-          textDecoration?: string;
-          textAlign?: 'left' | 'center' | 'right';
-          color?: string;
-          fontFamily?: string;
-          backgroundColor?: string;
-        }
-      >;
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
       type: 'image';
       src: string;
       position: { x: number; y: number };
@@ -240,13 +217,6 @@ export function mapTemplateToData(
     if (element.type === 'text' && element.content) {
       extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
     }
-    if (element.type === 'table' && element.data) {
-      element.data.forEach(row => {
-        row.forEach(cell => {
-          extractPlaceholders(cell).forEach(p => allPlaceholders.add(p));
-        });
-      });
-    }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => allPlaceholders.add(p));
     }
@@ -268,12 +238,6 @@ export function mapTemplateToData(
 
     if (element.type === 'paragraph' && element.content) {
       mapped.content = replacePlaceholders(element.content, data, fieldMapping);
-    }
-
-    if (element.type === 'table' && element.data) {
-      mapped.data = element.data.map(row =>
-        row.map(cell => replacePlaceholders(cell, data, fieldMapping))
-      );
     }
 
     if (element.type === 'image' && element.src) {
@@ -310,13 +274,6 @@ export function getAllPlaceholders(elements: CanvasElement[]): string[] {
   elements.forEach(element => {
     if (element.type === 'text' && element.content) {
       extractPlaceholders(element.content).forEach(p => placeholders.add(p));
-    }
-    if (element.type === 'table' && element.data) {
-      element.data.forEach(row => {
-        row.forEach(cell => {
-          extractPlaceholders(cell).forEach(p => placeholders.add(p));
-        });
-      });
     }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => placeholders.add(p));

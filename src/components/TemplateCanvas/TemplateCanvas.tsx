@@ -3,7 +3,6 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import Toolbar from './Toolbar';
 import UploadData from './UploadData';
 import TextElement from './TextElement';
-import TableElement from './TableElement';
 import ImageElement from './ImageElement';
 import LineElement from './LineElement';
 import BoxElement from './BoxElement';
@@ -20,33 +19,6 @@ interface TextElementType {
   id: string;
   type: 'text';
   content: string;
-  position: { x: number; y: number };
-  style: {
-    fontSize: number;
-    fontWeight: string;
-    color: string;
-    fontFamily: string;
-  };
-}
-
-interface TableElementType {
-  id: string;
-  type: 'table';
-  data: string[][];
-  merges?: Array<{ r0: number; c0: number; r1: number; c1: number }>;
-  cellStyles?: Record<
-    string,
-    {
-      fontSize?: number;
-      fontWeight?: string;
-      fontStyle?: string;
-      textDecoration?: string;
-      textAlign?: 'left' | 'center' | 'right';
-      color?: string;
-      fontFamily?: string;
-      backgroundColor?: string;
-    }
-  >;
   position: { x: number; y: number };
   style: {
     fontSize: number;
@@ -148,16 +120,12 @@ interface DateElementType {
   };
 }
 
-type CanvasElement = TextElementType | TableElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType;
+type CanvasElement = TextElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
-  const [tableSelections, setTableSelections] = useState<
-    Record<string, { r0: number; c0: number; r1: number; c1: number } | null>
-  >({});
-  const [tableSelectionModes, setTableSelectionModes] = useState<Record<string, 'cell' | 'row' | 'column'>>({});
   const [batchData, setBatchData] = useState<{ rows: DataRow[]; mapping: Record<string, string> } | null>(null);
   const [previewRowIndex, setPreviewRowIndex] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
@@ -187,28 +155,6 @@ function TemplateCanvas() {
       position: { x: 50, y: 50 },
       style: {
         fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        fontFamily: 'Arial, sans-serif',
-      },
-    };
-    setElements([...elements, newElement]);
-  };
-
-  const handleAddTable = () => {
-    const newElement: TableElementType = {
-      id: `table-${Date.now()}`,
-      type: 'table',
-      data: [
-        ['Header 1', 'Header 2', 'Header 3'],
-        ['{{item1}}', '{{qty1}}', '{{price1}}'],
-        ['{{item2}}', '{{qty2}}', '{{price2}}'],
-      ],
-      merges: [],
-      cellStyles: {},
-      position: { x: 50, y: 50 },
-      style: {
-        fontSize: 14,
         fontWeight: 'normal',
         color: '#000000',
         fontFamily: 'Arial, sans-serif',
@@ -406,14 +352,6 @@ function TemplateCanvas() {
     );
   };
 
-  const handleUpdateTable = (id: string, data: string[][]) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'table' ? { ...element, data } : element
-      )
-    );
-  };
-
   const handleUpdateParagraph = (id: string, content: string) => {
     setElements(
       elements.map((element) =>
@@ -471,9 +409,6 @@ function TemplateCanvas() {
           if ('shape' in updates) {
             (updatedElement as any).shape = updates.shape;
           }
-          if ('data' in updates && 'data' in updatedElement) {
-            (updatedElement as any).data = updates.data;
-          }
           if ('value' in updates && 'value' in updatedElement) {
             (updatedElement as any).value = updates.value;
           }
@@ -485,12 +420,6 @@ function TemplateCanvas() {
           }
           if ('format' in updates && 'format' in updatedElement) {
             (updatedElement as any).format = updates.format;
-          }
-          if ('merges' in updates && (updatedElement as any).type === 'table') {
-            (updatedElement as any).merges = (updates as any).merges || [];
-          }
-          if ('cellStyles' in updates && (updatedElement as any).type === 'table') {
-            (updatedElement as any).cellStyles = (updates as any).cellStyles || {};
           }
           return updatedElement;
         }
@@ -547,7 +476,8 @@ function TemplateCanvas() {
         const template = JSON.parse(text);
         
         if (template.elements && Array.isArray(template.elements)) {
-          setElements(template.elements);
+          const loaded = template.elements.filter((el: { type?: string }) => el?.type !== 'table');
+          setElements(loaded);
           setSelectedElementId(null);
         } else {
           alert('Invalid template file format');
@@ -720,7 +650,6 @@ function TemplateCanvas() {
           onAddCheckbox={handleAddCheckbox}
           onAddDate={handleAddDate}
           onAddText={handleAddText}
-          onAddTable={handleAddTable}
           onAddImage={handleAddImage}
           onAddLine={handleAddLine}
           onAddBox={handleAddBox}
@@ -845,27 +774,6 @@ function TemplateCanvas() {
                   onElementSelect={() => handleSelectElement(element.id)}
                 />
               );
-            } else if (element.type === 'table') {
-              return (
-                <TableElement
-                  key={element.id}
-                  id={element.id}
-                  data={element.data}
-                  merges={element.merges || []}
-                  cellStyles={element.cellStyles || {}}
-                  position={element.position}
-                  style={element.style}
-                  onUpdate={handleUpdateTable}
-                  isSelected={element.id === selectedElementId}
-                  onSelect={() => handleSelectElement(element.id)}
-                  onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
-                  selection={tableSelections[element.id] || null}
-                  selectionMode={tableSelectionModes[element.id] || 'cell'}
-                  onSelectionChange={(id, selection) =>
-                    setTableSelections((prev) => ({ ...prev, [id]: selection }))
-                  }
-                />
-              );
             } else if (element.type === 'image') {
               return (
                 <ImageElement
@@ -926,25 +834,7 @@ function TemplateCanvas() {
             return null;
           })}
         </div>
-        <PropertiesPanel
-          selectedElement={selectedElement}
-          onUpdate={handleUpdateElement}
-          tableSelection={
-            selectedElement && selectedElement.type === 'table'
-              ? (tableSelections[selectedElement.id] || null)
-              : null
-          }
-          tableSelectionMode={
-            selectedElement && selectedElement.type === 'table'
-              ? (tableSelectionModes[selectedElement.id] || 'cell')
-              : 'cell'
-          }
-          onTableSelectionModeChange={(mode) => {
-            if (selectedElement && selectedElement.type === 'table') {
-              setTableSelectionModes((prev) => ({ ...prev, [selectedElement.id]: mode }));
-            }
-          }}
-        />
+        <PropertiesPanel selectedElement={selectedElement} onUpdate={handleUpdateElement} />
       </div>
     </DndContext>
   );

@@ -8,7 +8,6 @@ interface ToolbarProps {
   onAddCheckbox?: () => void;
   onAddDate?: () => void;
   onAddText: () => void;
-  onAddTable?: () => void;
   onAddImage?: () => void;
   onAddLine?: () => void;
   onAddBox?: () => void;
@@ -24,7 +23,7 @@ interface ToolbarProps {
   hasElements?: boolean;
 }
 
-function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddText, onAddTable, onAddImage, onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse, onDelete, onSave, onLoad, onUpload, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
+function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddText, onAddImage, onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse, onDelete, onSave, onLoad, onUpload, onExportPDF, hasSelection, hasElements }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -38,12 +37,6 @@ function Toolbar({ onAddParagraph, onAddRadio, onAddCheckbox, onAddDate, onAddTe
           <span className="toolbar-icon" aria-hidden="true">📝</span>
           <span className="toolbar-label">Text</span>
         </button>
-        {onAddTable && (
-          <button className="toolbar-icon-button" onClick={onAddTable} title="Add table element" aria-label="Add table">
-            <span className="toolbar-icon" aria-hidden="true">📊</span>
-            <span className="toolbar-label">Table</span>
-          </button>
-        )}
         {onAddImage && (
           <button className="toolbar-icon-button" onClick={onAddImage} title="Add image element" aria-label="Add image">
             <span className="toolbar-icon" aria-hidden="true">🖼️</span>

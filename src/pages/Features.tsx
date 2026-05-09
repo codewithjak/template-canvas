@@ -36,7 +36,7 @@ function Features() {
             <p className="metric-card__value">Visual Template Builder</p>
             <p className="metric-card__detail">
               Drag-and-drop interface for creating professional document layouts
-              with text, images, tables, and shapes.
+              with text, images, and shapes.
             </p>
           </div>
         </div>
@@ -52,7 +52,7 @@ function Features() {
           <article className="info-card">
             <h3>Template Elements</h3>
             <p>
-              Add text, images, tables, lines, and boxes to create any document layout.
+              Add text, images, lines, and boxes to create any document layout.
             </p>
           </article>
           <article className="info-card">

@@ -148,30 +148,6 @@ function renderBox(element) {
   return `<div ${styleAttr}></div>`;
 }
 
-function renderTable(element, dataRow, fieldMapping) {
-  let tableData = [];
-  if (element.dataKey && dataRow) {
-    const dynamicData = dataRow[element.dataKey];
-    if (Array.isArray(dynamicData)) {
-      tableData = dynamicData;
-    }
-  } else if (element.data) {
-    tableData = element.data;
-  }
-
-  // Replace placeholders in tableData
-  tableData = tableData.map((row) =>
-    row.map((cell) => replacePlaceholders(cell, dataRow || {}, fieldMapping || {}))
-  );
-
-  const rowsHtml = tableData
-    .map((row) => `<tr>${row.map((cell) => `<td style="padding:4px;border:1px solid #ccc;">${cell}</td>`).join('')}</tr>`)
-    .join('');
-
-  const widthStyle = element.style?.width ? `width:${element.style.width}px;` : '';
-  return `<table style="position:absolute;left:${element.position?.x}px;top:${element.position?.y}px;border-collapse:collapse;${widthStyle}">${rowsHtml}</table>`;
-}
-
 function renderRadio(element) {
   const styleAttr = getCommonStyleAttr(element);
   const optionsHtml = new Array(element.options || 2)
@@ -207,7 +183,6 @@ const renderers = {
   image: renderImage,
   line: renderLine,
   box: renderBox,
-  table: renderTable,
   radio: renderRadio,
   checkbox: renderCheckbox,
   date: renderDate,
@@ -230,10 +205,6 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
       cloned.content = replacePlaceholders(cloned.content, dataRow, fieldMapping);
     }
 
-    if (cloned.type === 'table' && Array.isArray(cloned.data)) {
-      cloned.data = cloned.data.map((row) => row.map((cell) => replacePlaceholders(cell, dataRow, fieldMapping)));
-    }
-
     if (cloned.type === 'image') {
       cloned.src = replacePlaceholders(cloned.src, dataRow, fieldMapping);
     }
@@ -251,7 +222,6 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; position: relative; width: 210mm; min-height: 297mm; }
-        table { border-collapse: collapse; }
         td { word-break: break-word; }
       </style>
     </head>

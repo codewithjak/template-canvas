@@ -59,6 +59,116 @@ function replacePlaceholders(text, data, fieldMapping = {}) {
   });
 }
 
+function getNestedValue(obj, path) {
+  if (!path || typeof path !== 'string') return undefined;
+  const keys = path.split('.');
+  let v = obj;
+  for (let i = 0; i < keys.length; i += 1) {
+    if (v == null) return undefined;
+    v = v[keys[i]];
+  }
+  return v;
+}
+
+function resolveLayoutTableCell(cell, dataRow, fieldMapping) {
+  if (cell.binding && cell.binding.path) {
+    const resolved = getNestedValue(dataRow, cell.binding.path);
+    if (resolved !== undefined && resolved !== null) return String(resolved);
+    if (cell.binding.fallback != null && String(cell.binding.fallback) !== '') {
+      return String(cell.binding.fallback);
+    }
+  }
+  const raw = cell.content && cell.content.value != null ? String(cell.content.value) : '';
+  return raw.replace(/\{\{([^}]+)\}\}/g, (match, placeholder) => {
+    const key = placeholder.trim();
+    const dataKey = fieldMapping[key] || key;
+    const value = getNestedValue(dataRow, dataKey);
+    return value !== undefined && value !== null ? String(value) : '';
+  });
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderLayoutTable(element) {
+  const x = element.position?.x ?? 0;
+  const y = element.position?.y ?? 0;
+  const cols = element.columns || [];
+  const rows = element.rows || [];
+  const st = element.style || {};
+  const borderW = st.borderWidth != null ? Number(st.borderWidth) : 1;
+  const borderC = st.borderColor || '#d1d5db';
+  const defaultFontSize = st.fontSize || 14;
+  const defaultFont = st.fontWeight || 'normal';
+  const defaultColor = st.color || '#111';
+  const defaultFamily = st.fontFamily || 'Arial,sans-serif';
+  const colgroup = cols.map((c) => `<col style="width:${c.width}px" />`).join('');
+  const headerRow = element.headerRow;
+  const thead =
+    headerRow && headerRow.cells
+      ? `<thead><tr>${headerRow.cells
+          .map((cell, idx) => {
+            if (cell.mergedInto) return '';
+            const cs = cell.style || {};
+            const align = cs.textAlign || (cols[idx] && cols[idx].alignment) || 'left';
+            const fs = cs.fontSize != null ? cs.fontSize : Math.max(10, defaultFontSize - 1);
+            const fw = cs.fontWeight || 'bold';
+            const fst = cs.fontStyle || 'normal';
+            const td = cs.textDecoration || 'none';
+            const col = cs.color || defaultColor;
+            const ff = cs.fontFamily || defaultFamily;
+            const bg = cs.backgroundColor ? `background-color:${escapeHtml(cs.backgroundColor)};` : 'background:#f3f4f6;';
+            const rs = cell.span && cell.span.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
+            const clsp = cell.span && cell.span.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
+            const text = escapeHtml(cell.content && cell.content.value != null ? cell.content.value : '');
+            return `<th${rs}${clsp} style="padding:6px 8px;border:1px solid ${escapeHtml(
+              borderC
+            )};text-align:${align};font-size:${fs}px;font-weight:${fw};font-style:${fst};text-decoration:${td};color:${escapeHtml(
+              col
+            )};font-family:${escapeHtml(ff)};${bg}">${text}</th>`;
+          })
+          .join('')}</tr></thead>`
+      : '';
+  const body = rows
+    .map((row) => {
+      const tds = (row.cells || [])
+        .map((cell, idx) => {
+          if (cell.mergedInto) return '';
+          const cs = cell.style || {};
+          const align = cs.textAlign || (cols[idx] && cols[idx].alignment) || 'left';
+          const fs = cs.fontSize != null ? cs.fontSize : defaultFontSize;
+          const fw = cs.fontWeight || defaultFont;
+          const fst = cs.fontStyle || 'normal';
+          const td = cs.textDecoration || 'none';
+          const col = cs.color || defaultColor;
+          const ff = cs.fontFamily || defaultFamily;
+          const bg = cs.backgroundColor ? `background-color:${escapeHtml(cs.backgroundColor)};` : '';
+          const rs = cell.span && cell.span.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
+          const clsp = cell.span && cell.span.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
+          const text = escapeHtml(cell.content && cell.content.value != null ? cell.content.value : '');
+          return `<td${rs}${clsp} style="padding:4px 8px;border:1px solid ${escapeHtml(
+            borderC
+          )};text-align:${align};font-size:${fs}px;font-weight:${fw};font-style:${fst};text-decoration:${td};color:${escapeHtml(
+            col
+          )};font-family:${escapeHtml(ff)};${bg}">${text}</td>`;
+        })
+        .join('');
+      return `<tr>${tds}</tr>`;
+    })
+    .join('');
+  const tableBorder =
+    borderW > 0
+      ? `border:${borderW}px solid ${escapeHtml(borderC)};border-collapse:collapse;`
+      : 'border-collapse:collapse;';
+  const baseFont = `font-size:${defaultFontSize}px;font-family:${escapeHtml(defaultFamily)};color:${escapeHtml(defaultColor)};`;
+  return `<table style="position:absolute;left:${x}px;top:${y}px;${tableBorder}${baseFont}"><colgroup>${colgroup}</colgroup>${thead}<tbody>${body}</tbody></table>`;
+}
+
 // Helper to build common style attribute for elements that use the common style set
 function getCommonStyleAttr(element) {
   const styles = [];
@@ -183,6 +293,7 @@ const renderers = {
   image: renderImage,
   line: renderLine,
   box: renderBox,
+  table: renderLayoutTable,
   radio: renderRadio,
   checkbox: renderCheckbox,
   date: renderDate,
@@ -209,6 +320,41 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
       cloned.src = replacePlaceholders(cloned.src, dataRow, fieldMapping);
     }
 
+    if (cloned.type === 'table' && cloned.schemaVersion === 2 && Array.isArray(cloned.rows)) {
+      if (cloned.headerRow && Array.isArray(cloned.headerRow.cells)) {
+        cloned.headerRow = {
+          ...cloned.headerRow,
+          cells: cloned.headerRow.cells.map((cell) =>
+            cell.mergedInto
+              ? cell
+              : {
+                  ...cell,
+                  content: {
+                    type: 'text',
+                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping),
+                  },
+                  binding: undefined,
+                }
+          ),
+        };
+      }
+      cloned.rows = cloned.rows.map((row) => ({
+        ...row,
+        cells: (row.cells || []).map((cell) =>
+          cell.mergedInto
+            ? cell
+            : {
+                ...cell,
+                content: {
+                  type: 'text',
+                  value: resolveLayoutTableCell(cell, dataRow, fieldMapping),
+                },
+                binding: undefined,
+              }
+        ),
+      }));
+    }
+
     return cloned;
   });
 
@@ -222,6 +368,7 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <style>
         body { margin: 0; padding: 0; font-family: Arial, sans-serif; position: relative; width: 210mm; min-height: 297mm; }
+        table { border-collapse: collapse; }
         td { word-break: break-word; }
       </style>
     </head>

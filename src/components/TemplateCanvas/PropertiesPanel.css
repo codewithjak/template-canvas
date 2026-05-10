@@ -137,3 +137,74 @@
   background: #dfeaff;
 }
 
+.property-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.property-subtitle {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #eef1f6;
+  font-size: 12px;
+}
+
+.property-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.property-inline input[type='checkbox'] {
+  width: auto;
+}
+
+.property-row-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.property-button-secondary {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #c9d7f2;
+  border-radius: 6px;
+  background: #fff;
+  color: #1d4fbd;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.property-button-secondary:hover:not(:disabled) {
+  background: #f3f6ff;
+}
+
+.property-button-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.property-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid #d7dce5;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.property-textarea:focus {
+  outline: none;
+  border-color: #2f6adf;
+  box-shadow: 0 0 0 2px rgba(47, 106, 223, 0.2);
+}
+

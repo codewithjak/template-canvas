@@ -3,6 +3,9 @@
  * Maps data to template placeholders, handles loops and conditions
  */
 
+import type { LayoutTableElement, TableCell } from '../model/layoutTable';
+import { isLayoutTable } from '../model/layoutTable';
+
 export type DataRow = Record<string, any>;
 
 export type CanvasElement =
@@ -81,7 +84,27 @@ export type CanvasElement =
       style: any;
       loop?: string;
       condition?: string;
-    };
+    }
+  | LayoutTableElement;
+
+/**
+ * Resolved display string for a layout table cell (preview / PDF snapshot).
+ */
+export function resolveTableCellDisplay(
+  cell: TableCell,
+  data: DataRow,
+  fieldMapping?: Record<string, string>
+): string {
+  if (cell.binding?.path) {
+    const v = getNestedValue(data, cell.binding.path);
+    if (v !== undefined && v !== null) return String(v);
+    if (cell.binding.fallback !== undefined && cell.binding.fallback !== '') {
+      return cell.binding.fallback;
+    }
+  }
+  const raw = cell.content?.value ?? '';
+  return replacePlaceholders(raw, data, fieldMapping);
+}
 
 /**
  * Extract all placeholders from a string
@@ -220,6 +243,20 @@ export function mapTemplateToData(
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => allPlaceholders.add(p));
     }
+    if (isLayoutTable(element)) {
+      if (element.headerRow) {
+        element.headerRow.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => allPlaceholders.add(p));
+        });
+      }
+      element.rows.forEach((row) => {
+        row.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => allPlaceholders.add(p));
+        });
+      });
+    }
   });
   
   // Auto-generate mapping if not provided
@@ -242,6 +279,35 @@ export function mapTemplateToData(
 
     if (element.type === 'image' && element.src) {
       mapped.src = replacePlaceholders(element.src, data, fieldMapping);
+    }
+
+    if (isLayoutTable(element)) {
+      if (element.headerRow) {
+        mapped.headerRow = {
+          ...element.headerRow,
+          cells: element.headerRow.cells.map((cell) =>
+            cell.mergedInto
+              ? cell
+              : {
+                  ...cell,
+                  content: { type: 'text' as const, value: resolveTableCellDisplay(cell, data, fieldMapping) },
+                  binding: undefined,
+                }
+          ),
+        };
+      }
+      mapped.rows = element.rows.map((row) => ({
+        ...row,
+        cells: row.cells.map((cell) =>
+          cell.mergedInto
+            ? cell
+            : {
+                ...cell,
+                content: { type: 'text' as const, value: resolveTableCellDisplay(cell, data, fieldMapping) },
+                binding: undefined,
+              }
+        ),
+      }));
     }
 
     return mapped as CanvasElement;
@@ -277,6 +343,20 @@ export function getAllPlaceholders(elements: CanvasElement[]): string[] {
     }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => placeholders.add(p));
+    }
+    if (isLayoutTable(element)) {
+      if (element.headerRow) {
+        element.headerRow.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => placeholders.add(p));
+        });
+      }
+      element.rows.forEach((row) => {
+        row.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => placeholders.add(p));
+        });
+      });
     }
   });
   

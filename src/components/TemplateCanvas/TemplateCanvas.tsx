@@ -10,9 +10,12 @@ import ParagraphElement from './ParagraphElement';
 import RadioElement from './RadioElement';
 import CheckboxElement from './CheckboxElement';
 import DateElement from './DateElement';
+import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel from './PropertiesPanel';
 import type { DataRow } from '../../services/mappingEngine';
 import { getAllPlaceholders, mapTemplateToData } from '../../services/mappingEngine';
+import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
+import { createDefaultLayoutTable, isLayoutTable, isLegacyCanvasTable } from '../../model/layoutTable';
 import './TemplateCanvas.css';
 
 interface TextElementType {
@@ -120,7 +123,16 @@ interface DateElementType {
   };
 }
 
-type CanvasElement = TextElementType | ImageElementType | LineElementType | BoxElementType | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType;
+type CanvasElement =
+  | TextElementType
+  | ImageElementType
+  | LineElementType
+  | BoxElementType
+  | ParagraphElementType
+  | RadioElementType
+  | CheckboxElementType
+  | DateElementType
+  | LayoutTableModel;
 
 function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
@@ -131,6 +143,18 @@ function TemplateCanvas() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [layoutTableCellSelection, setLayoutTableCellSelection] = useState<{
+    tableId: string;
+    rowIndex: number;
+    colIndex: number;
+  } | null>(null);
+  const [layoutTableRange, setLayoutTableRange] = useState<{
+    tableId: string;
+    r0: number;
+    c0: number;
+    r1: number;
+    c1: number;
+  } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const templatePlaceholders = useMemo(() => getAllPlaceholders(elements), [elements]);
@@ -161,6 +185,10 @@ function TemplateCanvas() {
       },
     };
     setElements([...elements, newElement]);
+  };
+
+  const handleAddTable = () => {
+    setElements([...elements, createDefaultLayoutTable('table')]);
   };
 
   const handleAddImage = () => {
@@ -378,6 +406,11 @@ function TemplateCanvas() {
 
   const handleSelectElement = (id: string) => {
     setSelectedElementId(id);
+    const el = elements.find((e) => e.id === id);
+    if (!isLayoutTable(el)) {
+      setLayoutTableCellSelection(null);
+      setLayoutTableRange(null);
+    }
   };
 
   const handleUpdateElement = (id: string, updates: any) => {
@@ -421,6 +454,23 @@ function TemplateCanvas() {
           if ('format' in updates && 'format' in updatedElement) {
             (updatedElement as any).format = updates.format;
           }
+          if (isLayoutTable(updatedElement)) {
+            if (updates.columns !== undefined) {
+              (updatedElement as LayoutTableModel).columns = updates.columns;
+            }
+            if (updates.headerRow !== undefined) {
+              (updatedElement as LayoutTableModel).headerRow = updates.headerRow;
+            }
+            if (updates.rows !== undefined) {
+              (updatedElement as LayoutTableModel).rows = updates.rows;
+            }
+            if (updates.binding !== undefined) {
+              (updatedElement as LayoutTableModel).binding = updates.binding;
+            }
+            if (updates.size !== undefined) {
+              (updatedElement as LayoutTableModel).size = updates.size;
+            }
+          }
           return updatedElement;
         }
         return element;
@@ -433,6 +483,8 @@ function TemplateCanvas() {
   const handleDeleteElement = (id: string) => {
     setElements((prevElements) => prevElements.filter((element) => element.id !== id));
     setSelectedElementId((prevId) => (prevId === id ? null : prevId));
+    setLayoutTableCellSelection((prev) => (prev?.tableId === id ? null : prev));
+    setLayoutTableRange((prev) => (prev?.tableId === id ? null : prev));
   };
 
   useEffect(() => {
@@ -476,7 +528,7 @@ function TemplateCanvas() {
         const template = JSON.parse(text);
         
         if (template.elements && Array.isArray(template.elements)) {
-          const loaded = template.elements.filter((el: { type?: string }) => el?.type !== 'table');
+          const loaded = template.elements.filter((el: unknown) => !isLegacyCanvasTable(el));
           setElements(loaded);
           setSelectedElementId(null);
         } else {
@@ -650,6 +702,7 @@ function TemplateCanvas() {
           onAddCheckbox={handleAddCheckbox}
           onAddDate={handleAddDate}
           onAddText={handleAddText}
+          onAddTable={handleAddTable}
           onAddImage={handleAddImage}
           onAddLine={handleAddLine}
           onAddBox={handleAddBox}
@@ -716,6 +769,8 @@ function TemplateCanvas() {
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setSelectedElementId(null);
+              setLayoutTableCellSelection(null);
+              setLayoutTableRange(null);
             }
           }}
         >
@@ -772,6 +827,49 @@ function TemplateCanvas() {
                   position={element.position}
                   onUpdate={handleUpdateCheckbox}
                   onElementSelect={() => handleSelectElement(element.id)}
+                />
+              );
+            } else if (element.type === 'table' && isLayoutTable(element)) {
+              return (
+                <LayoutTableElement
+                  key={element.id}
+                  element={element}
+                  isSelected={element.id === selectedElementId}
+                  onTableChromeSelect={() => {
+                    handleSelectElement(element.id);
+                    setLayoutTableCellSelection(null);
+                    setLayoutTableRange((prev) => (prev?.tableId === element.id ? null : prev));
+                  }}
+                  onUpdate={handleUpdateElement}
+                  activeCell={
+                    layoutTableCellSelection?.tableId === element.id
+                      ? {
+                          rowIndex: layoutTableCellSelection.rowIndex,
+                          colIndex: layoutTableCellSelection.colIndex,
+                        }
+                      : null
+                  }
+                  selectionRange={
+                    layoutTableRange?.tableId === element.id
+                      ? {
+                          r0: layoutTableRange.r0,
+                          c0: layoutTableRange.c0,
+                          r1: layoutTableRange.r1,
+                          c1: layoutTableRange.c1,
+                        }
+                      : null
+                  }
+                  onSelectionRangeChange={(tableId, range) => {
+                    if (range) {
+                      setLayoutTableRange({ tableId, ...range });
+                    } else {
+                      setLayoutTableRange((prev) => (prev?.tableId === tableId ? null : prev));
+                    }
+                  }}
+                  onCellSelect={(tableId, rowIndex, colIndex) => {
+                    handleSelectElement(tableId);
+                    setLayoutTableCellSelection({ tableId, rowIndex, colIndex });
+                  }}
                 />
               );
             } else if (element.type === 'image') {
@@ -834,7 +932,12 @@ function TemplateCanvas() {
             return null;
           })}
         </div>
-        <PropertiesPanel selectedElement={selectedElement} onUpdate={handleUpdateElement} />
+        <PropertiesPanel
+          selectedElement={selectedElement}
+          onUpdate={handleUpdateElement}
+          layoutTableActiveCell={layoutTableCellSelection}
+          layoutTableRange={layoutTableRange}
+        />
       </div>
     </DndContext>
   );

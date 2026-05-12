@@ -14,7 +14,7 @@ interface ParsedData {
 interface UploadDataProps {
   templatePlaceholders: string[];
   onClose: () => void;
-  onDataMapped: (dataRows: DataRow[], fieldMapping: Record<string, string>, isBatch: boolean) => void;
+  onDataMapped: (dataRows: DataRow[], fieldMapping: Record<string, string>) => void;
 }
 
 const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, onDataMapped }) => {
@@ -23,7 +23,6 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
   const [error, setError] = useState<string | null>(null);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [selectedRowIndex, setSelectedRowIndex] = useState(0);
-  const [isBatchExport, setIsBatchExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -108,12 +107,9 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
 
   const handleConfirm = () => {
     if (!parsedData) return;
-    if (isBatchExport) {
-      onDataMapped(parsedData.rows, fieldMapping, true);
-    } else {
-      const dataRow = parsedData.rows[selectedRowIndex] || parsedData.rows[0];
-      onDataMapped([dataRow], fieldMapping, false);
-    }
+    // Always enter preview mode with the full dataset.
+    // The canvas renders a preview for the selected record without mutating the template.
+    onDataMapped(parsedData.rows, fieldMapping);
   };
 
   const headerOptions = parsedData?.headers || [];
@@ -218,19 +214,6 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {parsedData && (
-          <div className="batch-export-option">
-            <label>
-              <input
-                type="checkbox"
-                checked={isBatchExport}
-                onChange={(e) => setIsBatchExport(e.target.checked)}
-              />
-              Export all rows as batch PDF (one page per row)
-            </label>
           </div>
         )}
 

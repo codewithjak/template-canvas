@@ -70,9 +70,17 @@ function getNestedValue(obj, path) {
   return v;
 }
 
-function resolveLayoutTableCell(cell, dataRow, fieldMapping) {
+function getCollectionFromKey(root, key) {
+  const v = getNestedValue(root, key);
+  return Array.isArray(v) ? v : null;
+}
+
+function resolveLayoutTableCell(cell, rootRow, fieldMapping, itemRow, defaultScope) {
+  const scope = (cell.binding && cell.binding.scope) || defaultScope || 'root';
+  const ctx = scope === 'item' ? itemRow || {} : rootRow || {};
+
   if (cell.binding && cell.binding.path) {
-    const resolved = getNestedValue(dataRow, cell.binding.path);
+    const resolved = getNestedValue(ctx, cell.binding.path);
     if (resolved !== undefined && resolved !== null) return String(resolved);
     if (cell.binding.fallback != null && String(cell.binding.fallback) !== '') {
       return String(cell.binding.fallback);
@@ -82,7 +90,7 @@ function resolveLayoutTableCell(cell, dataRow, fieldMapping) {
   return raw.replace(/\{\{([^}]+)\}\}/g, (match, placeholder) => {
     const key = placeholder.trim();
     const dataKey = fieldMapping[key] || key;
-    const value = getNestedValue(dataRow, dataKey);
+    const value = getNestedValue(ctx, dataKey);
     return value !== undefined && value !== null ? String(value) : '';
   });
 }
@@ -331,28 +339,56 @@ function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
                   ...cell,
                   content: {
                     type: 'text',
-                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping),
+                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping, null, 'root'),
                   },
                   binding: undefined,
                 }
           ),
         };
       }
-      cloned.rows = cloned.rows.map((row) => ({
-        ...row,
-        cells: (row.cells || []).map((cell) =>
-          cell.mergedInto
-            ? cell
-            : {
-                ...cell,
-                content: {
-                  type: 'text',
-                  value: resolveLayoutTableCell(cell, dataRow, fieldMapping),
-                },
-                binding: undefined,
-              }
-        ),
-      }));
+
+      const tableBinding = cloned.binding || {};
+      const collection =
+        tableBinding.enabled && tableBinding.collectionKey
+          ? getCollectionFromKey(dataRow, tableBinding.collectionKey)
+          : null;
+
+      if (collection && collection.length > 0) {
+        const templateRows = cloned.rows;
+        cloned.rows = collection.flatMap((item) =>
+          templateRows.map((row) => ({
+            ...row,
+            cells: (row.cells || []).map((cell) =>
+              cell.mergedInto
+                ? cell
+                : {
+                    ...cell,
+                    content: {
+                      type: 'text',
+                      value: resolveLayoutTableCell(cell, dataRow, fieldMapping, item, 'item'),
+                    },
+                    binding: undefined,
+                  }
+            ),
+          }))
+        );
+      } else {
+        cloned.rows = cloned.rows.map((row) => ({
+          ...row,
+          cells: (row.cells || []).map((cell) =>
+            cell.mergedInto
+              ? cell
+              : {
+                  ...cell,
+                  content: {
+                    type: 'text',
+                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping, null, 'root'),
+                  },
+                  binding: undefined,
+                }
+          ),
+        }));
+      }
     }
 
     return cloned;

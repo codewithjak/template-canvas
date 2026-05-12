@@ -90,20 +90,32 @@ export type CanvasElement =
 /**
  * Resolved display string for a layout table cell (preview / PDF snapshot).
  */
+function getCollectionFromKey(root: DataRow, key?: string): any[] | null {
+  if (!key) return null;
+  const v = getNestedValue(root, key);
+  return Array.isArray(v) ? v : null;
+}
+
 export function resolveTableCellDisplay(
   cell: TableCell,
-  data: DataRow,
-  fieldMapping?: Record<string, string>
+  root: DataRow,
+  fieldMapping?: Record<string, string>,
+  item?: DataRow,
+  defaultScope: 'root' | 'item' = 'root'
 ): string {
+  const scope = cell.binding?.scope ?? defaultScope;
+  const ctx = scope === 'item' ? (item ?? {}) : root;
+
   if (cell.binding?.path) {
-    const v = getNestedValue(data, cell.binding.path);
+    const v = getNestedValue(ctx, cell.binding.path);
     if (v !== undefined && v !== null) return String(v);
     if (cell.binding.fallback !== undefined && cell.binding.fallback !== '') {
       return cell.binding.fallback;
     }
   }
+
   const raw = cell.content?.value ?? '';
-  return replacePlaceholders(raw, data, fieldMapping);
+  return replacePlaceholders(raw, ctx, fieldMapping);
 }
 
 /**
@@ -282,32 +294,73 @@ export function mapTemplateToData(
     }
 
     if (isLayoutTable(element)) {
+      // header resolves once, in root scope
       if (element.headerRow) {
         mapped.headerRow = {
           ...element.headerRow,
+          id: `${element.headerRow.id}__render`,
           cells: element.headerRow.cells.map((cell) =>
             cell.mergedInto
               ? cell
               : {
                   ...cell,
-                  content: { type: 'text' as const, value: resolveTableCellDisplay(cell, data, fieldMapping) },
+                  id: `${cell.id}__render`,
+                  content: {
+                    type: 'text' as const,
+                    value: resolveTableCellDisplay(cell, data, fieldMapping, undefined, 'root'),
+                  },
                   binding: undefined,
                 }
           ),
         };
       }
-      mapped.rows = element.rows.map((row) => ({
-        ...row,
-        cells: row.cells.map((cell) =>
-          cell.mergedInto
-            ? cell
-            : {
-                ...cell,
-                content: { type: 'text' as const, value: resolveTableCellDisplay(cell, data, fieldMapping) },
-                binding: undefined,
-              }
-        ),
-      }));
+
+      const binding = element.binding;
+      const collection =
+        binding?.enabled && binding.collectionKey ? getCollectionFromKey(data, binding.collectionKey) : null;
+
+      if (collection && collection.length > 0) {
+        // iterate: render-time expansion of template rows for each item
+        const expandedRows = collection.flatMap((item, itemIndex) =>
+          element.rows.map((row, templateRowIndex) => ({
+            ...row,
+            id: `${row.id}__i${itemIndex}__t${templateRowIndex}`,
+            cells: row.cells.map((cell) =>
+              cell.mergedInto
+                ? cell
+                : {
+                    ...cell,
+                    id: `${cell.id}__i${itemIndex}__t${templateRowIndex}`,
+                    content: {
+                      type: 'text' as const,
+                      value: resolveTableCellDisplay(cell, data, fieldMapping, item, 'item'),
+                    },
+                    binding: undefined,
+                  }
+            ),
+          }))
+        );
+        mapped.rows = expandedRows;
+      } else {
+        // non-iterating table snapshot
+        mapped.rows = element.rows.map((row, templateRowIndex) => ({
+          ...row,
+          id: `${row.id}__render_${templateRowIndex}`,
+          cells: row.cells.map((cell) =>
+            cell.mergedInto
+              ? cell
+              : {
+                  ...cell,
+                  id: `${cell.id}__render_${templateRowIndex}`,
+                  content: {
+                    type: 'text' as const,
+                    value: resolveTableCellDisplay(cell, data, fieldMapping, undefined, 'root'),
+                  },
+                  binding: undefined,
+                }
+          ),
+        }));
+      }
     }
 
     return mapped as CanvasElement;

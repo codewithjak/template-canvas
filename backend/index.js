@@ -316,102 +316,142 @@ function renderElement(element, dataRow, fieldMapping) {
   return renderDefault(element);
 }
 
-function renderTemplateHtml(templateElements, dataRow, fieldMapping = {}) {
-  const mappedElements = templateElements.map((element) => {
-    const cloned = JSON.parse(JSON.stringify(element));
+function renderTemplateHtmlMultiRow(templateElements, dataRows, fieldMapping = {}) {
+  // Separate table elements from non-table elements
+  const nonTableElements = templateElements.filter(el => el.type !== 'table');
+  const tableElements = templateElements.filter(
+    el => el.type === 'table' && el.schemaVersion === 2
+  );
 
+  // Render non-table elements as before (absolute positioned, page 1 header/footer area)
+  const staticHtml = nonTableElements.map(el => {
+    const cloned = JSON.parse(JSON.stringify(el));
     if (cloned.type === 'text' || cloned.type === 'paragraph') {
-      cloned.content = replacePlaceholders(cloned.content, dataRow, fieldMapping);
+      // Use first row for static field replacement
+      cloned.content = replacePlaceholders(cloned.content, dataRows[0] || {}, fieldMapping);
     }
+    return renderElement(cloned, dataRows[0] || {}, fieldMapping);
+  }).join('');
 
-    if (cloned.type === 'image') {
-      cloned.src = replacePlaceholders(cloned.src, dataRow, fieldMapping);
-    }
+  // Render each table expanded with ALL data rows
+  const tableHtml = tableElements.map(table => {
+    return renderExpandedTable(table, dataRows, fieldMapping);
+  }).join('');
 
-    if (cloned.type === 'table' && cloned.schemaVersion === 2 && Array.isArray(cloned.rows)) {
-      if (cloned.headerRow && Array.isArray(cloned.headerRow.cells)) {
-        cloned.headerRow = {
-          ...cloned.headerRow,
-          cells: cloned.headerRow.cells.map((cell) =>
-            cell.mergedInto
-              ? cell
-              : {
-                  ...cell,
-                  content: {
-                    type: 'text',
-                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping, null, 'root'),
-                  },
-                  binding: undefined,
-                }
-          ),
-        };
-      }
-
-      const tableBinding = cloned.binding || {};
-      const collection =
-        tableBinding.enabled && tableBinding.collectionKey
-          ? getCollectionFromKey(dataRow, tableBinding.collectionKey)
-          : null;
-
-      if (collection && collection.length > 0) {
-        const templateRows = cloned.rows;
-        cloned.rows = collection.flatMap((item) =>
-          templateRows.map((row) => ({
-            ...row,
-            cells: (row.cells || []).map((cell) =>
-              cell.mergedInto
-                ? cell
-                : {
-                    ...cell,
-                    content: {
-                      type: 'text',
-                      value: resolveLayoutTableCell(cell, dataRow, fieldMapping, item, 'item'),
-                    },
-                    binding: undefined,
-                  }
-            ),
-          }))
-        );
-      } else {
-        cloned.rows = cloned.rows.map((row) => ({
-          ...row,
-          cells: (row.cells || []).map((cell) =>
-            cell.mergedInto
-              ? cell
-              : {
-                  ...cell,
-                  content: {
-                    type: 'text',
-                    value: resolveLayoutTableCell(cell, dataRow, fieldMapping, null, 'root'),
-                  },
-                  binding: undefined,
-                }
-          ),
-        }));
-      }
-    }
-
-    return cloned;
-  });
-
-  const bodyHtml = mappedElements.map((el) => renderElement(el, dataRow, fieldMapping)).join('');
+  // Calculate top offset from non-table elements to push table below them
+  const maxStaticBottom = nonTableElements.reduce((max, el) => {
+    const y = el.position?.y || 0;
+    const h = el.style?.height || 30;
+    return Math.max(max, y + h);
+  }, 0);
 
   return `
   <!DOCTYPE html>
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; position: relative; width: 210mm; min-height: 297mm; }
-        table { border-collapse: collapse; }
-        td { word-break: break-word; }
+        @page { size: A4; margin: 20px; }
+        body { 
+          margin: 0; 
+          padding: 0; 
+          font-family: Arial, sans-serif; 
+          width: 210mm;
+        }
+        .static-layer {
+          position: relative;
+          width: 100%;
+          height: ${maxStaticBottom + 20}px;
+        }
+        .table-layer {
+          width: 100%;
+          padding: 0 20px;
+          box-sizing: border-box;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        td, th { word-break: break-word; }
       </style>
     </head>
     <body>
-      ${bodyHtml}
+      <div class="static-layer">${staticHtml}</div>
+      <div class="table-layer">${tableHtml}</div>
     </body>
   </html>`;
+}
+
+function renderExpandedTable(tableElement, dataRows, fieldMapping) {
+  const cols = tableElement.columns || [];
+  const st = tableElement.style || {};
+  const borderW = st.borderWidth != null ? Number(st.borderWidth) : 1;
+  const borderC = st.borderColor || '#d1d5db';
+  const defaultFontSize = st.fontSize || 13;
+  const defaultFont = st.fontWeight || 'normal';
+  const defaultColor = st.color || '#111827';
+  const defaultFamily = st.fontFamily || 'Arial, sans-serif';
+
+  const colgroup = cols.map(c => `<col style="width:${c.width}px" />`).join('');
+  const tableBorder = borderW > 0
+    ? `border:${borderW}px solid ${escapeHtml(borderC)};border-collapse:collapse;`
+    : 'border-collapse:collapse;';
+  const baseFont = `font-size:${defaultFontSize}px;font-family:${escapeHtml(defaultFamily)};color:${escapeHtml(defaultColor)};font-weight:${defaultFont};`;
+
+  // Render header row once
+  const headerRow = tableElement.headerRow;
+  const thead = headerRow && headerRow.cells
+    ? `<thead><tr>${headerRow.cells.map((cell, idx) => {
+        if (cell.mergedInto) return '';
+        const cs = cell.style || {};
+        const align = cs.textAlign || (cols[idx] && cols[idx].alignment) || 'left';
+        const fs = cs.fontSize != null ? cs.fontSize : defaultFontSize;
+        const fw = cs.fontWeight || 'bold';
+        const bg = cs.backgroundColor
+          ? `background-color:${escapeHtml(cs.backgroundColor)};`
+          : 'background:#f3f4f6;';
+        const rs = cell.span && cell.span.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
+        const clsp = cell.span && cell.span.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
+        const text = escapeHtml(cell.content?.value ?? '');
+        return `<th${rs}${clsp} style="padding:6px 8px;border:1px solid ${escapeHtml(borderC)};text-align:${align};font-size:${fs}px;font-weight:${fw};${bg}">${text}</th>`;
+      }).join('')}</tr></thead>`
+    : '';
+
+  // Expand template rows × all data rows
+  const templateRows = tableElement.rows || [];
+  const allExpandedRows = dataRows.flatMap(dataRow => {
+    return templateRows.map(templateRow => {
+      const tds = (templateRow.cells || []).map((cell, idx) => {
+        if (cell.mergedInto) return '';
+        const cs = cell.style || {};
+        const align = cs.textAlign || (cols[idx] && cols[idx].alignment) || 'left';
+        const fs = cs.fontSize != null ? cs.fontSize : defaultFontSize;
+        const fw = cs.fontWeight || defaultFont;
+        const bg = cs.backgroundColor
+          ? `background-color:${escapeHtml(cs.backgroundColor)};`
+          : '';
+        const rs = cell.span && cell.span.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
+        const clsp = cell.span && cell.span.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
+
+        // Resolve cell value — binding path takes priority over placeholder text
+        let cellValue = '';
+        if (cell.binding && cell.binding.path) {
+          const resolved = getNestedValue(
+            cell.binding.scope === 'item' ? dataRow : dataRow,
+            cell.binding.path
+          );
+          cellValue = resolved !== undefined && resolved !== null
+            ? String(resolved)
+            : (cell.binding.fallback != null ? String(cell.binding.fallback) : '');
+        } else {
+          const raw = cell.content?.value ?? '';
+          cellValue = replacePlaceholders(raw, dataRow, fieldMapping);
+        }
+
+        return `<td${rs}${clsp} style="padding:4px 8px;border:1px solid ${escapeHtml(borderC)};text-align:${align};font-size:${fs}px;font-weight:${fw};${bg}">${escapeHtml(cellValue)}</td>`;
+      }).join('');
+      return `<tr>${tds}</tr>`;
+    });
+  });
+
+  return `<table style="${tableBorder}${baseFont}width:100%;"><colgroup>${colgroup}</colgroup>${thead}<tbody>${allExpandedRows.join('')}</tbody></table>`;
 }
 
 app.post('/parse-data', upload.single('file'), (req, res) => {
@@ -455,7 +495,7 @@ app.post('/generate-pdf', async (req, res) => {
   }
 
   try {
-    const html = renderTemplateHtml(templateElements, dataRow, fieldMapping);
+    const html = renderTemplateHtmlMultiRow(templateElements, dataRow, fieldMapping);
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
@@ -476,6 +516,45 @@ app.post('/generate-pdf', async (req, res) => {
   } catch (error) {
     console.error('PDF generation error:', error);
     res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
+// Replace or add alongside existing endpoint
+app.post('/generate-document', async (req, res) => {
+  const { templateElements, dataRows, fieldMapping = {}, outputFileName } = req.body;
+
+  if (!templateElements || !Array.isArray(templateElements)) {
+    return res.status(400).json({ error: 'templateElements is required.' });
+  }
+
+  // dataRows can be empty array for template-only export
+  const rows = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows : [{}];
+
+  try {
+    const html = renderTemplateHtmlMultiRow(templateElements, rows, fieldMapping);
+
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+    });
+
+    await browser.close();
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.pdf"`,
+    });
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Document generation error:', error);
+    res.status(500).json({ error: 'Failed to generate document' });
   }
 });
 

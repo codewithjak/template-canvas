@@ -18,6 +18,8 @@ import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutT
 import { createDefaultLayoutTable, isLayoutTable, isLegacyCanvasTable } from '../../model/layoutTable';
 import './TemplateCanvas.css';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 interface TextElementType {
   id: string;
   type: 'text';
@@ -138,11 +140,18 @@ function TemplateCanvas() {
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
-  const [batchData, setBatchData] = useState<{ rows: DataRow[]; mapping: Record<string, string> } | null>(null);
+
+  // All bound rows + mapping. previewRowIndex only affects canvas display.
+  // Export always sends ALL rows to backend regardless of preview position.
+  const [boundData, setBoundData] = useState<{
+    rows: DataRow[];
+    mapping: Record<string, string>;
+  } | null>(null);
   const [previewRowIndex, setPreviewRowIndex] = useState(0);
+
   const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+
   const [layoutTableCellSelection, setLayoutTableCellSelection] = useState<{
     tableId: string;
     rowIndex: number;
@@ -155,21 +164,28 @@ function TemplateCanvas() {
     r1: number;
     c1: number;
   } | null>(null);
+
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const templatePlaceholders = useMemo(() => getAllPlaceholders(elements), [elements]);
-  const renderedElements = useMemo(
-    () => (batchData ? mapTemplateToData(elements, batchData.rows[previewRowIndex], batchData.mapping) : elements),
-    [batchData, elements, previewRowIndex]
-  );
+
+  // Canvas preview: substitutes the selected preview row into static elements
+  // (text, paragraph, image, date etc.) so users can verify data mapping.
+  // Tables always render raw placeholders on canvas — full row expansion only
+  // happens inside the exported PDF on the backend.
+  const previewElements = useMemo(() => {
+    if (!boundData || boundData.rows.length === 0) return elements;
+    const currentRow = boundData.rows[previewRowIndex];
+    return mapTemplateToData(elements, currentRow, boundData.mapping);
+  }, [boundData, elements, previewRowIndex]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 8 },
     })
   );
+
+  // ── Add element handlers ──────────────────────────────────────────────────
 
   const handleAddText = () => {
     const newElement: TextElementType = {
@@ -177,34 +193,24 @@ function TemplateCanvas() {
       type: 'text',
       content: 'New Text',
       position: { x: 50, y: 50 },
-      style: {
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        fontFamily: 'Arial, sans-serif',
-      },
+      style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddTable = () => {
-    setElements([...elements, createDefaultLayoutTable('table')]);
+    setElements((prev) => [...prev, createDefaultLayoutTable('table')]);
   };
 
   const handleAddImage = () => {
     const newElement: ImageElementType = {
       id: `image-${Date.now()}`,
       type: 'image',
-      src: '{{image_url}}', // Default placeholder
+      src: '{{image_url}}',
       position: { x: 50, y: 50 },
-      style: {
-        width: 200,
-        height: 200,
-        objectFit: 'contain',
-        opacity: 100,
-      },
+      style: { width: 200, height: 200, objectFit: 'contain', opacity: 100 },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddLine = () => {
@@ -212,16 +218,9 @@ function TemplateCanvas() {
       id: `line-${Date.now()}`,
       type: 'line',
       position: { x: 50, y: 50 },
-      style: {
-        length: 200,
-        thickness: 2,
-        direction: 'horizontal',
-        color: '#000000',
-        style: 'solid',
-        opacity: 100,
-      },
+      style: { length: 200, thickness: 2, direction: 'horizontal', color: '#000000', style: 'solid', opacity: 100 },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddBox = () => {
@@ -231,17 +230,11 @@ function TemplateCanvas() {
       shape: 'box',
       position: { x: 50, y: 50 },
       style: {
-        width: 200,
-        height: 200,
-        borderWidth: 1,
-        borderColor: '#000000',
-        borderStyle: 'solid',
-        backgroundColor: 'transparent',
-        opacity: 100,
-        borderRadius: 0,
+        width: 200, height: 200, borderWidth: 1, borderColor: '#000000',
+        borderStyle: 'solid', backgroundColor: 'transparent', opacity: 100, borderRadius: 0,
       },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddRectangle = () => {
@@ -251,17 +244,11 @@ function TemplateCanvas() {
       shape: 'rectangle',
       position: { x: 50, y: 50 },
       style: {
-        width: 220,
-        height: 140,
-        borderWidth: 1,
-        borderColor: '#007bff',
-        borderStyle: 'solid',
-        backgroundColor: '#e7f1ff',
-        opacity: 100,
-        borderRadius: 0,
+        width: 220, height: 140, borderWidth: 1, borderColor: '#007bff',
+        borderStyle: 'solid', backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0,
       },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddTriangle = () => {
@@ -271,17 +258,11 @@ function TemplateCanvas() {
       shape: 'triangle',
       position: { x: 50, y: 50 },
       style: {
-        width: 140,
-        height: 120,
-        borderWidth: 0,
-        borderColor: '#000000',
-        borderStyle: 'solid',
-        backgroundColor: '#ffb200',
-        opacity: 100,
-        borderRadius: 0,
+        width: 140, height: 120, borderWidth: 0, borderColor: '#000000',
+        borderStyle: 'solid', backgroundColor: '#ffb200', opacity: 100, borderRadius: 0,
       },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddEllipse = () => {
@@ -291,17 +272,11 @@ function TemplateCanvas() {
       shape: 'ellipse',
       position: { x: 50, y: 50 },
       style: {
-        width: 200,
-        height: 120,
-        borderWidth: 1,
-        borderColor: '#2a9d8f',
-        borderStyle: 'solid',
-        backgroundColor: '#d8f3ef',
-        opacity: 100,
-        borderRadius: 9999,
+        width: 200, height: 120, borderWidth: 1, borderColor: '#2a9d8f',
+        borderStyle: 'solid', backgroundColor: '#d8f3ef', opacity: 100, borderRadius: 9999,
       },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddParagraph = () => {
@@ -310,15 +285,9 @@ function TemplateCanvas() {
       type: 'paragraph',
       content: 'Add your text here...',
       position: { x: 50, y: 50 },
-      style: {
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        fontFamily: 'Arial, sans-serif',
-        lineHeight: 24,
-      },
+      style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddRadio = () => {
@@ -330,7 +299,7 @@ function TemplateCanvas() {
       orientation: 'vertical',
       position: { x: 50, y: 50, relativeOffset: 8 },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddCheckbox = () => {
@@ -342,7 +311,7 @@ function TemplateCanvas() {
       orientation: 'vertical',
       position: { x: 50, y: 50, relativeOffset: 8 },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
   const handleAddDate = () => {
@@ -354,53 +323,40 @@ function TemplateCanvas() {
       includeTime: false,
       format: 'MM/DD/YYYY',
       position: { x: 50, y: 50 },
-      style: {
-        fontSize: 14,
-        fontWeight: 'normal',
-        color: '#000000',
-        fontFamily: 'Arial, sans-serif',
-      },
+      style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
     };
-    setElements([...elements, newElement]);
+    setElements((prev) => [...prev, newElement]);
   };
 
+  // ── Update handlers ───────────────────────────────────────────────────────
+
   const handleUpdateImage = (id: string, src: string) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'image' ? { ...element, src } : element
-      )
+    setElements((prev) =>
+      prev.map((el) => (el.id === id && el.type === 'image' ? { ...el, src } : el))
     );
   };
 
   const handleUpdateText = (id: string, content: string) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'text' ? { ...element, content } : element
-      )
+    setElements((prev) =>
+      prev.map((el) => (el.id === id && el.type === 'text' ? { ...el, content } : el))
     );
   };
 
   const handleUpdateParagraph = (id: string, content: string) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'paragraph' ? { ...element, content } : element
-      )
+    setElements((prev) =>
+      prev.map((el) => (el.id === id && el.type === 'paragraph' ? { ...el, content } : el))
     );
   };
 
   const handleUpdateRadio = (id: string, updates: { selected?: string; orientation?: 'horizontal' | 'vertical' }) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'radio' ? { ...element, ...updates } : element
-      )
+    setElements((prev) =>
+      prev.map((el) => (el.id === id && el.type === 'radio' ? { ...el, ...updates } : el))
     );
   };
 
   const handleUpdateCheckbox = (id: string, updates: { checkedValues?: string[]; orientation?: 'horizontal' | 'vertical' }) => {
-    setElements(
-      elements.map((element) =>
-        element.id === id && element.type === 'checkbox' ? { ...element, ...updates } : element
-      )
+    setElements((prev) =>
+      prev.map((el) => (el.id === id && el.type === 'checkbox' ? { ...el, ...updates } : el))
     );
   };
 
@@ -414,66 +370,32 @@ function TemplateCanvas() {
   };
 
   const handleUpdateElement = (id: string, updates: any) => {
-    setElements(
-      elements.map((element) => {
-        if (element.id === id) {
-          const updatedElement = { ...element };
-          if (updates.position) {
-            updatedElement.position = { ...updatedElement.position, ...updates.position };
-          }
-          if (updates.style && 'style' in updatedElement) {
-            (updatedElement as any).style = { ...(updatedElement as any).style, ...updates.style };
-          }
-          if ('content' in updates && 'content' in updatedElement) {
-            (updatedElement as any).content = updates.content;
-          }
-          if ('src' in updates && 'src' in updatedElement) {
-            (updatedElement as any).src = updates.src;
-          }
-          if ('orientation' in updates) {
-            (updatedElement as any).orientation = updates.orientation;
-          }
-          if ('count' in updates) {
-            (updatedElement as any).count = updates.count;
-          }
-          if ('options' in updates) {
-            (updatedElement as any).options = updates.options;
-          }
-          if ('shape' in updates) {
-            (updatedElement as any).shape = updates.shape;
-          }
-          if ('value' in updates && 'value' in updatedElement) {
-            (updatedElement as any).value = updates.value;
-          }
-          if ('time' in updates && 'time' in updatedElement) {
-            (updatedElement as any).time = updates.time;
-          }
-          if ('includeTime' in updates && 'includeTime' in updatedElement) {
-            (updatedElement as any).includeTime = updates.includeTime;
-          }
-          if ('format' in updates && 'format' in updatedElement) {
-            (updatedElement as any).format = updates.format;
-          }
-          if (isLayoutTable(updatedElement)) {
-            if (updates.columns !== undefined) {
-              (updatedElement as LayoutTableModel).columns = updates.columns;
-            }
-            if (updates.headerRow !== undefined) {
-              (updatedElement as LayoutTableModel).headerRow = updates.headerRow;
-            }
-            if (updates.rows !== undefined) {
-              (updatedElement as LayoutTableModel).rows = updates.rows;
-            }
-            if (updates.binding !== undefined) {
-              (updatedElement as LayoutTableModel).binding = updates.binding;
-            }
-            if (updates.size !== undefined) {
-              (updatedElement as LayoutTableModel).size = updates.size;
-            }
-          }
-          return updatedElement;
+    setElements((prev) =>
+      prev.map((element) => {
+        if (element.id !== id) return element;
+        const updated = { ...element };
+        if (updates.position) updated.position = { ...updated.position, ...updates.position };
+        if (updates.style && 'style' in updated) {
+          (updated as any).style = { ...(updated as any).style, ...updates.style };
         }
-        return element;
+        if ('content' in updates && 'content' in updated) (updated as any).content = updates.content;
+        if ('src' in updates && 'src' in updated) (updated as any).src = updates.src;
+        if ('orientation' in updates) (updated as any).orientation = updates.orientation;
+        if ('count' in updates) (updated as any).count = updates.count;
+        if ('options' in updates) (updated as any).options = updates.options;
+        if ('shape' in updates) (updated as any).shape = updates.shape;
+        if ('value' in updates && 'value' in updated) (updated as any).value = updates.value;
+        if ('time' in updates && 'time' in updated) (updated as any).time = updates.time;
+        if ('includeTime' in updates && 'includeTime' in updated) (updated as any).includeTime = updates.includeTime;
+        if ('format' in updates && 'format' in updated) (updated as any).format = updates.format;
+        if (isLayoutTable(updated)) {
+          if (updates.columns !== undefined) (updated as LayoutTableModel).columns = updates.columns;
+          if (updates.headerRow !== undefined) (updated as LayoutTableModel).headerRow = updates.headerRow;
+          if (updates.rows !== undefined) (updated as LayoutTableModel).rows = updates.rows;
+          if (updates.binding !== undefined) (updated as LayoutTableModel).binding = updates.binding;
+          if (updates.size !== undefined) (updated as LayoutTableModel).size = updates.size;
+        }
+        return updated;
       })
     );
   };
@@ -481,8 +403,8 @@ function TemplateCanvas() {
   const selectedElement = elements.find((el) => el.id === selectedElementId) || null;
 
   const handleDeleteElement = (id: string) => {
-    setElements((prevElements) => prevElements.filter((element) => element.id !== id));
-    setSelectedElementId((prevId) => (prevId === id ? null : prevId));
+    setElements((prev) => prev.filter((el) => el.id !== id));
+    setSelectedElementId((prev) => (prev === id ? null : prev));
     setLayoutTableCellSelection((prev) => (prev?.tableId === id ? null : prev));
     setLayoutTableRange((prev) => (prev?.tableId === id ? null : prev));
   };
@@ -495,18 +417,15 @@ function TemplateCanvas() {
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedElementId]);
 
+  // ── Save / Load ───────────────────────────────────────────────────────────
+
   const handleSaveTemplate = () => {
-    const template = {
-      version: '1.0',
-      elements: elements,
-    };
-    const json = JSON.stringify(template, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const template = { version: '1.0', elements };
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -520,50 +439,49 @@ function TemplateCanvas() {
   const handleLoadTemplate = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target?.result as string;
-        const template = JSON.parse(text);
-        
+        const template = JSON.parse(e.target?.result as string);
         if (template.elements && Array.isArray(template.elements)) {
-          const loaded = template.elements.filter((el: unknown) => !isLegacyCanvasTable(el));
-          setElements(loaded);
+          setElements(template.elements.filter((el: unknown) => !isLegacyCanvasTable(el)));
           setSelectedElementId(null);
+          setBoundData(null);
+          setPreviewRowIndex(0);
         } else {
           alert('Invalid template file format');
         }
-      } catch (error) {
-        console.error('Error loading template:', error);
+      } catch {
         alert('Error loading template file. Please check the file format.');
       }
     };
     reader.readAsText(file);
-    
     event.target.value = '';
   };
+
+  // ── Data upload ───────────────────────────────────────────────────────────
 
   const handleOpenUpload = () => setUploadPanelOpen(true);
   const handleCloseUpload = () => setUploadPanelOpen(false);
 
-  const handleUploadMapped = (dataRows: DataRow[], fieldMapping: Record<string, string>, isBatch: boolean) => {
-    if (isBatch) {
-      setBatchData({ rows: dataRows, mapping: fieldMapping });
-      setPreviewRowIndex(0);
-    } else {
-      setBatchData(null);
-      setElements((current) => mapTemplateToData(current, dataRows[0], fieldMapping));
-    }
+  // No more isBatch flag — all uploads are stored as full row set
+  const handleUploadMapped = (dataRows: DataRow[], fieldMapping: Record<string, string>) => {
+    setBoundData({ rows: dataRows, mapping: fieldMapping });
+    setPreviewRowIndex(0);
     setUploadPanelOpen(false);
   };
 
-  const handleClearBatchData = () => {
-    setBatchData(null);
+  const handleClearBoundData = () => {
+    setBoundData(null);
     setPreviewRowIndex(0);
-    setExportProgress(null);
-    setExportStatus(null);
   };
+
+  // Preview row navigation — only affects canvas display, not export
+  const handlePrevRow = () => setPreviewRowIndex((i) => Math.max(0, i - 1));
+  const handleNextRow = () =>
+    setPreviewRowIndex((i) => Math.min((boundData?.rows.length ?? 1) - 1, i + 1));
+
+  // ── Export ────────────────────────────────────────────────────────────────
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -576,122 +494,61 @@ function TemplateCanvas() {
     URL.revokeObjectURL(url);
   };
 
-  const generatePdfForRow = async (row: DataRow, index: number, total: number) => {
-    const outputFileName = `record-${index + 1}.pdf`;
-    setExportStatus(`Printing record ${index + 1} of ${total}`);
-
-    const response = await fetch('http://localhost:3001/generate-pdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        templateElements: elements,
-        dataRow: row,
-        fieldMapping: batchData?.mapping || {},
-        outputFileName,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => null);
-      throw new Error(errorBody?.error || 'Failed to generate PDF');
-    }
-
-    const blob = await response.blob();
-    downloadBlob(blob, outputFileName);
-  };
-
-  const handleExportCurrentRow = async () => {
-    if (!canvasRef.current || elements.length === 0) {
+  // Sends ALL rows to backend — preview row index is irrelevant for export
+  const handleExportDocument = async () => {
+    if (elements.length === 0) {
       alert('No template to export');
       return;
     }
-
     try {
       setIsExporting(true);
-      setExportProgress({ current: 1, total: 1 });
-      setExportStatus('Printing current record...');
+      setExportStatus(
+        boundData && boundData.rows.length > 0
+          ? `Generating document with ${boundData.rows.length} record${boundData.rows.length !== 1 ? 's' : ''}…`
+          : 'Generating document…'
+      );
 
-      const row = batchData ? batchData.rows[previewRowIndex] : null;
-      const dataRow = row || {};
-      const response = await fetch('http://localhost:3001/generate-pdf', {
+      const response = await fetch(`${API_BASE}/generate-document`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateElements: elements,
-          dataRow,
-          fieldMapping: batchData?.mapping || {},
-          outputFileName: `document-${Date.now()}.pdf`,
+          dataRows: boundData?.rows || [],
+          fieldMapping: boundData?.mapping || {},
+          outputFileName: `document-${Date.now()}`,
         }),
       });
 
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => null);
-        throw new Error(errorBody?.error || 'Failed to generate PDF');
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || 'Failed to generate document');
       }
 
       const blob = await response.blob();
-      downloadBlob(blob, batchData ? `record-${previewRowIndex + 1}.pdf` : `template-${Date.now()}.pdf`);
+      downloadBlob(blob, `document-${Date.now()}.pdf`);
     } catch (error) {
-      console.error('Error exporting PDF:', error);
-      alert(error instanceof Error ? error.message : 'Error exporting PDF.');
+      alert(error instanceof Error ? error.message : 'Export failed');
     } finally {
       setIsExporting(false);
-      setExportProgress(null);
       setExportStatus(null);
     }
   };
 
-  const handleExportAllRows = async () => {
-    if (!batchData) {
-      alert('No batch records to export');
-      return;
-    }
-
-    try {
-      setIsExporting(true);
-      setExportProgress({ current: 0, total: batchData.rows.length });
-      setExportStatus('Starting batch export...');
-
-      for (let index = 0; index < batchData.rows.length; index += 1) {
-        setExportProgress({ current: index + 1, total: batchData.rows.length });
-        await generatePdfForRow(batchData.rows[index], index, batchData.rows.length);
-      }
-
-      setExportStatus('Batch export complete. All PDFs downloaded.');
-    } catch (error) {
-      console.error('Error exporting batch PDFs:', error);
-      alert(error instanceof Error ? error.message : 'Batch export failed.');
-    } finally {
-      setIsExporting(false);
-      setExportProgress(null);
-      setTimeout(() => setExportStatus(null), 3000);
-    }
-  };
+  // ── Drag ─────────────────────────────────────────────────────────────────
 
   const handleDragEnd = (event: any) => {
     const { active, delta } = event;
-
     if (!delta) return;
-
-    setElements(
-      elements.map((element) => {
-        if (element.id === active.id) {
-          return {
-            ...element,
-            position: {
-              x: element.position.x + delta.x,
-              y: element.position.y + delta.y,
-            },
-          };
-        }
-        return element;
-      })
+    setElements((prev) =>
+      prev.map((el) =>
+        el.id === active.id
+          ? { ...el, position: { x: el.position.x + delta.x, y: el.position.y + delta.y } }
+          : el
+      )
     );
   };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -713,10 +570,11 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
           onUpload={handleOpenUpload}
-          onExportPDF={handleExportCurrentRow}
+          onExportPDF={handleExportDocument}
           hasSelection={!!selectedElementId}
           hasElements={elements.length > 0}
         />
+
         {uploadPanelOpen && (
           <div className="upload-panel-backdrop">
             <UploadData
@@ -726,44 +584,57 @@ function TemplateCanvas() {
             />
           </div>
         )}
-        {batchData && (
+
+        {/* Data banner with prev/next preview navigation */}
+        {boundData && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
-              Previewing record {previewRowIndex + 1} of {batchData.rows.length}
+              <span>{boundData.rows.length} record{boundData.rows.length !== 1 ? 's' : ''} bound</span>
+              <span className="preview-label">
+                &nbsp;— previewing row {previewRowIndex + 1} of {boundData.rows.length}
+              </span>
             </div>
             <div className="batch-export-actions">
-              <label>
-                Select preview row:
-                <select value={previewRowIndex} onChange={(e) => setPreviewRowIndex(Number(e.target.value))}>
-                  {batchData.rows.map((_, idx) => (
-                    <option key={idx} value={idx}>
-                      Row {idx + 1}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button type="button" className="export-button" onClick={handleExportAllRows} disabled={isExporting}>
-                Export all rows
-              </button>
-              <button type="button" className="clear-button" onClick={handleClearBatchData}>
-                Back to Canvas
+              <div className="preview-nav">
+                <button
+                  type="button"
+                  className="preview-nav-btn"
+                  onClick={handlePrevRow}
+                  disabled={previewRowIndex === 0}
+                  title="Previous record"
+                >
+                  ‹
+                </button>
+                <span className="preview-nav-count">
+                  {previewRowIndex + 1} / {boundData.rows.length}
+                </span>
+                <button
+                  type="button"
+                  className="preview-nav-btn"
+                  onClick={handleNextRow}
+                  disabled={previewRowIndex === boundData.rows.length - 1}
+                  title="Next record"
+                >
+                  ›
+                </button>
+              </div>
+              <button type="button" className="clear-button" onClick={handleClearBoundData}>
+                Clear Data
               </button>
             </div>
           </div>
         )}
+
+        {/* Export overlay */}
         {isExporting && (
           <div className="export-overlay">
             <div className="export-overlay-card">
-              <p>{exportStatus || 'Exporting PDFs...'}</p>
-              {exportProgress && (
-                <p>
-                  {exportProgress.current} / {exportProgress.total}
-                </p>
-              )}
+              <p>{exportStatus || 'Generating document…'}</p>
             </div>
           </div>
         )}
-        <div 
+
+        <div
           ref={canvasRef}
           className="template-canvas"
           onClick={(e) => {
@@ -774,7 +645,7 @@ function TemplateCanvas() {
             }
           }}
         >
-          {renderedElements.map((element) => {
+          {previewElements.map((element) => {
             if (element.type === 'text') {
               return (
                 <TextElement
@@ -786,7 +657,9 @@ function TemplateCanvas() {
                   onUpdate={handleUpdateText}
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
-                  onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+                  onResize={(id, fontSize) =>
+                    handleUpdateElement(id, { style: { ...element.style, fontSize } })
+                  }
                 />
               );
             } else if (element.type === 'paragraph') {
@@ -830,41 +703,36 @@ function TemplateCanvas() {
                 />
               );
             } else if (element.type === 'table' && isLayoutTable(element)) {
+              // Always pull raw template element for tables so placeholders stay
+              // visible on canvas. Preview substitution is for static fields only.
+              const rawTable = elements.find((e) => e.id === element.id);
+              const tableEl = (rawTable && isLayoutTable(rawTable) ? rawTable : element) as LayoutTableModel;
               return (
                 <LayoutTableElement
-                  key={element.id}
-                  element={element}
-                  isSelected={element.id === selectedElementId}
+                  key={tableEl.id}
+                  element={tableEl}
+                  isSelected={tableEl.id === selectedElementId}
                   onTableChromeSelect={() => {
-                    handleSelectElement(element.id);
+                    handleSelectElement(tableEl.id);
                     setLayoutTableCellSelection(null);
-                    setLayoutTableRange((prev) => (prev?.tableId === element.id ? null : prev));
+                    setLayoutTableRange((prev) =>
+                      prev?.tableId === tableEl.id ? null : prev
+                    );
                   }}
                   onUpdate={handleUpdateElement}
                   activeCell={
-                    layoutTableCellSelection?.tableId === element.id
-                      ? {
-                          rowIndex: layoutTableCellSelection.rowIndex,
-                          colIndex: layoutTableCellSelection.colIndex,
-                        }
+                    layoutTableCellSelection?.tableId === tableEl.id
+                      ? { rowIndex: layoutTableCellSelection.rowIndex, colIndex: layoutTableCellSelection.colIndex }
                       : null
                   }
                   selectionRange={
-                    layoutTableRange?.tableId === element.id
-                      ? {
-                          r0: layoutTableRange.r0,
-                          c0: layoutTableRange.c0,
-                          r1: layoutTableRange.r1,
-                          c1: layoutTableRange.c1,
-                        }
+                    layoutTableRange?.tableId === tableEl.id
+                      ? { r0: layoutTableRange.r0, c0: layoutTableRange.c0, r1: layoutTableRange.r1, c1: layoutTableRange.c1 }
                       : null
                   }
                   onSelectionRangeChange={(tableId, range) => {
-                    if (range) {
-                      setLayoutTableRange({ tableId, ...range });
-                    } else {
-                      setLayoutTableRange((prev) => (prev?.tableId === tableId ? null : prev));
-                    }
+                    if (range) setLayoutTableRange({ tableId, ...range });
+                    else setLayoutTableRange((prev) => (prev?.tableId === tableId ? null : prev));
                   }}
                   onCellSelect={(tableId, rowIndex, colIndex) => {
                     handleSelectElement(tableId);
@@ -881,7 +749,9 @@ function TemplateCanvas() {
                   position={element.position}
                   style={element.style}
                   onUpdate={handleUpdateImage}
-                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
+                  onUpdateStyle={(id, styleUpdates) =>
+                    handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })
+                  }
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                 />
@@ -893,8 +763,12 @@ function TemplateCanvas() {
                   id={element.id}
                   position={element.position}
                   style={element.style}
-                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
-                  onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}
+                  onUpdateStyle={(id, styleUpdates) =>
+                    handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })
+                  }
+                  onUpdatePosition={(id, positionUpdates) =>
+                    handleUpdateElement(id, { position: positionUpdates })
+                  }
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                 />
@@ -907,8 +781,12 @@ function TemplateCanvas() {
                   position={element.position}
                   shape={element.shape}
                   style={element.style}
-                  onUpdateStyle={(id, styleUpdates) => handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })}
-                  onUpdatePosition={(id, positionUpdates) => handleUpdateElement(id, { position: positionUpdates })}
+                  onUpdateStyle={(id, styleUpdates) =>
+                    handleUpdateElement(id, { style: { ...element.style, ...styleUpdates } })
+                  }
+                  onUpdatePosition={(id, positionUpdates) =>
+                    handleUpdateElement(id, { position: positionUpdates })
+                  }
                   isSelected={element.id === selectedElementId}
                   onSelect={() => handleSelectElement(element.id)}
                 />
@@ -932,6 +810,7 @@ function TemplateCanvas() {
             return null;
           })}
         </div>
+
         <PropertiesPanel
           selectedElement={selectedElement}
           onUpdate={handleUpdateElement}
@@ -944,4 +823,3 @@ function TemplateCanvas() {
 }
 
 export default TemplateCanvas;
-

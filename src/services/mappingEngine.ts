@@ -1,430 +1,236 @@
 /**
- * Mapping Engine
- * Maps data to template placeholders, handles loops and conditions
+ * mappingEngine.ts
+ * Maps BoundData onto canvas elements to produce preview elements.
+ *
+ * Responsibilities:
+ *   - Replace {{placeholder}} tokens in static elements using metadata + fieldMapping
+ *   - Expand table rows using the bound collection + collectionMapping
+ *   - Leave elements untouched when no data is bound
  */
 
 import type { LayoutTableElement, TableCell } from '../model/layoutTable';
 import { isLayoutTable } from '../model/layoutTable';
+import type { BoundData, DataRow } from '../types/dataSource';
 
-export type DataRow = Record<string, any>;
-
-export interface PlaceholderGroups {
-  staticPlaceholders: string[];
-  tablePlaceholders: string[];
-  allPlaceholders: string[];
-}
+export type { DataRow };
 
 export type CanvasElement =
-  | {
-      id: string;
-      type: 'text';
-      content: string;
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'image';
-      src: string;
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'line';
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'box';
-      shape?: 'box' | 'rectangle' | 'triangle' | 'ellipse';
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'paragraph';
-      content: string;
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'radio';
-      options: number;
-      selected?: string;
-      orientation?: 'horizontal' | 'vertical';
-      position: { x: number; y: number; relativeOffset?: number };
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'checkbox';
-      count?: number;
-      checkedValues?: string[];
-      orientation?: 'horizontal' | 'vertical';
-      position: { x: number; y: number; relativeOffset?: number };
-      loop?: string;
-      condition?: string;
-    }
-  | {
-      id: string;
-      type: 'date';
-      value?: string;
-      time?: string;
-      includeTime?: boolean;
-      format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD Mon YYYY';
-      position: { x: number; y: number };
-      style: any;
-      loop?: string;
-      condition?: string;
-    }
+  | { id: string; type: 'text'; content: string; position: any; style: any }
+  | { id: string; type: 'image'; src: string; position: any; style: any }
+  | { id: string; type: 'line'; position: any; style: any }
+  | { id: string; type: 'box'; shape?: string; position: any; style: any }
+  | { id: string; type: 'paragraph'; content: string; position: any; style: any }
+  | { id: string; type: 'radio'; options: number; selected?: string; orientation?: string; position: any }
+  | { id: string; type: 'checkbox'; count?: number; checkedValues?: string[]; orientation?: string; position: any }
+  | { id: string; type: 'date'; value?: string; time?: string; includeTime?: boolean; format?: string; position: any; style: any }
   | LayoutTableElement;
 
-/**
- * Resolved display string for a layout table cell (preview / PDF snapshot).
- */
-function getCollectionFromKey(root: DataRow, key?: string): any[] | null {
-  if (!key) return null;
-  const v = getNestedValue(root, key);
-  return Array.isArray(v) ? v : null;
-}
+// ── Placeholder utilities ─────────────────────────────────────────────────────
 
-export function resolveTableCellDisplay(
-  cell: TableCell,
-  root: DataRow,
-  fieldMapping?: Record<string, string>,
-  item?: DataRow,
-  defaultScope: 'root' | 'item' = 'root'
-): string {
-  const scope = cell.binding?.scope ?? defaultScope;
-  const ctx = scope === 'item' ? (item ?? {}) : root;
-
-  if (cell.binding?.path) {
-    const v = getNestedValue(ctx, cell.binding.path);
-    if (v !== undefined && v !== null) return String(v);
-    if (cell.binding.fallback !== undefined && cell.binding.fallback !== '') {
-      return cell.binding.fallback;
-    }
-  }
-
-  const raw = cell.content?.value ?? '';
-  return replacePlaceholders(raw, ctx, fieldMapping);
-}
-
-/**
- * Extract all placeholders from a string
- * @param text - Text containing placeholders like {{variable}}
- * @returns Array of placeholder names (without {{}})
- */
 export function extractPlaceholders(text: string): string[] {
-  const placeholders: string[] = [];
-  const regex = /\{\{([^}]+)\}\}/g;
-  let match;
-  
-  while ((match = regex.exec(text)) !== null) {
-    const placeholder = match[1].trim();
-    if (placeholder && !placeholders.includes(placeholder)) {
-      placeholders.push(placeholder);
-    }
+  const out: string[] = [];
+  const re = /\{\{([^}]+)\}\}/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const p = m[1].trim();
+    if (p && !out.includes(p)) out.push(p);
   }
-  
-  return placeholders;
+  return out;
 }
 
-/**
- * Replace placeholders in a string with data values
- * @param text - Text with placeholders
- * @param data - Data object with values
- * @param fieldMapping - Optional mapping of placeholder names to data keys
- * @returns Text with placeholders replaced
- */
 export function replacePlaceholders(
   text: string,
   data: DataRow,
-  fieldMapping?: Record<string, string>
+  fieldMapping: Record<string, string> = {}
 ): string {
-  let result = text;
-  const regex = /\{\{([^}]+)\}\}/g;
-  
-  result = result.replace(regex, (match, placeholder) => {
-    const key = placeholder.trim();
-    
-    // Use field mapping if provided
-    const dataKey = fieldMapping?.[key] || key;
-    
-    // Get value from data (support nested keys like "client.name")
-    const value = getNestedValue(data, dataKey);
-    
-    // Return value or keep placeholder if not found
-    return value !== undefined && value !== null ? String(value) : match;
+  return text.replace(/\{\{([^}]+)\}\}/g, (match, raw) => {
+    const key = raw.trim();
+    const dataKey = fieldMapping[key] || key;
+    const v = getNestedValue(data, dataKey);
+    return v !== undefined && v !== null ? String(v) : match;
   });
-  
-  return result;
 }
 
-/**
- * Get nested value from object using dot notation
- * @param obj - Data object
- * @param path - Dot-separated path (e.g., "client.name")
- * @returns Value or undefined
- */
 function getNestedValue(obj: any, path: string): any {
-  const keys = path.split('.');
-  let value = obj;
-  
-  for (const key of keys) {
-    if (value === null || value === undefined) {
-      return undefined;
-    }
-    value = value[key];
-  }
-  
-  return value;
+  return path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), obj);
 }
 
-/**
- * Auto-map placeholders to data keys
- * Creates mapping based on exact match, case-insensitive match, or fuzzy match
- * @param placeholders - Array of placeholder names
- * @param dataKeys - Array of data object keys
- * @returns Mapping object: { placeholder: dataKey }
- */
-export function autoMapFields(
-  placeholders: string[],
-  dataKeys: string[]
-): Record<string, string> {
-  const mapping: Record<string, string> = {};
+// ── Collection of all placeholders from the template ────────────────────────
 
-  const normalizeMatchKey = (value: string) => {
-    const trimmed = String(value).trim();
-    if (trimmed === '#') return 'serialno';
-    return trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
-  };
-
-  const equivalentKeys = (value: string) => {
-    const normalized = normalizeMatchKey(value);
-    const equivalents: Record<string, string[]> = {
-      serialno: ['#', 'srno', 'sno', 'lineno', 'number'],
-      description: ['desofgoodsservices', 'goodsservices', 'itemdescription', 'desc'],
-      hsn: ['hsnsac', 'hsncode'],
-      quantity: ['qty', 'qnty'],
-      sgst: ['sgsttgst', 'sgstgst', 'tax'],
-      revcharge: ['reversecharge'],
-      placeofsupply: ['supplyplace'],
-    };
-    const set = new Set<string>([normalized]);
-
-    Object.entries(equivalents).forEach(([canonical, aliases]) => {
-      const normalizedAliases = aliases.map(normalizeMatchKey);
-      if (canonical === normalized || normalizedAliases.includes(normalized)) {
-        set.add(canonical);
-        normalizedAliases.forEach((alias) => set.add(alias));
-      }
-    });
-
-    return set;
-  };
-  
-  placeholders.forEach(placeholder => {
-    // Try exact match
-    if (dataKeys.includes(placeholder)) {
-      mapping[placeholder] = placeholder;
-      return;
+export function getAllPlaceholders(elements: CanvasElement[]): string[] {
+  const set = new Set<string>();
+  for (const el of elements) {
+    if (el.type === 'text' || el.type === 'paragraph') {
+      extractPlaceholders((el as any).content || '').forEach(p => set.add(p));
     }
-    
-    // Try case-insensitive match
-    const lowerPlaceholder = placeholder.toLowerCase();
-    const exactMatch = dataKeys.find(key => key.toLowerCase() === lowerPlaceholder);
-    if (exactMatch) {
-      mapping[placeholder] = exactMatch;
-      return;
+    if (el.type === 'image') {
+      extractPlaceholders((el as any).src || '').forEach(p => set.add(p));
     }
-    
-    // Try fuzzy match (ignore special characters)
-    const normalizedPlaceholder = lowerPlaceholder.replace(/[^a-z0-9]/g, '');
-    const fuzzyMatch = dataKeys.find(key => {
-      const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return normalizedKey === normalizedPlaceholder;
-    });
-    
-    if (fuzzyMatch) {
-      mapping[placeholder] = fuzzyMatch;
-      return;
-    }
-
-    // Try domain aliases for common invoice line-item headers.
-    const placeholderKeys = equivalentKeys(placeholder);
-    const aliasMatch = dataKeys.find(key => {
-      const keyVariants = equivalentKeys(key);
-      return Array.from(placeholderKeys).some(candidate => keyVariants.has(candidate));
-    });
-
-    if (aliasMatch) {
-      mapping[placeholder] = aliasMatch;
-    }
-  });
-  
-  return mapping;
-}
-
-/**
- * Map template elements with data
- * Replaces all placeholders in template elements with data values
- * @param elements - Template elements array
- * @param data - Data object with values
- * @param fieldMapping - Optional field mapping (auto-generated if not provided)
- * @returns New array of elements with placeholders replaced
- */
-export function mapTemplateToData(
-  elements: CanvasElement[],
-  data: DataRow,
-  fieldMapping?: Record<string, string>
-): CanvasElement[] {
-  // Extract all placeholders from template
-  const allPlaceholders = new Set<string>();
-  
-  elements.forEach(element => {
-    if (element.type === 'text' && element.content) {
-      extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
-    }
-    if (element.type === 'paragraph' && element.content) {
-      extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
-    }
-    if (element.type === 'image' && element.src) {
-      extractPlaceholders(element.src).forEach(p => allPlaceholders.add(p));
-    }
-    if (isLayoutTable(element)) {
-      if (element.headerRow) {
-        element.headerRow.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => allPlaceholders.add(p));
-        });
-      }
-      element.rows.forEach((row) => {
-        row.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => allPlaceholders.add(p));
-        });
+    if (isLayoutTable(el)) {
+      const t = el as LayoutTableElement;
+      t.headerRow?.cells.forEach(c => {
+        if (!c.mergedInto) extractPlaceholders(c.content?.value ?? '').forEach(p => set.add(p));
       });
+      t.rows.forEach(row =>
+        row.cells.forEach(c => {
+          if (!c.mergedInto) extractPlaceholders(c.content?.value ?? '').forEach(p => set.add(p));
+        })
+      );
     }
-  });
-  
-  // Auto-generate mapping if not provided
-  if (!fieldMapping) {
-    const dataKeys = Object.keys(data);
-    fieldMapping = autoMapFields(Array.from(allPlaceholders), dataKeys);
   }
-  
-  // Map each element - PRESERVE ALL PROPERTIES, only replace placeholders in content
-  return elements.map(element => {
-    const mapped: any = JSON.parse(JSON.stringify(element));
+  return Array.from(set);
+}
 
-    if (element.type === 'text' && element.content) {
-      mapped.content = replacePlaceholders(element.content, data, fieldMapping);
+/** Placeholders from non-table elements only. */
+export function getStaticPlaceholders(elements: CanvasElement[]): string[] {
+  const set = new Set<string>();
+  for (const el of elements) {
+    if (el.type === 'text' || el.type === 'paragraph') {
+      extractPlaceholders((el as any).content || '').forEach(p => set.add(p));
+    }
+    if (el.type === 'image') {
+      extractPlaceholders((el as any).src || '').forEach(p => set.add(p));
+    }
+  }
+  return Array.from(set);
+}
+
+/** Per-table placeholder info for the upload UI. */
+export function getTableInfos(elements: CanvasElement[]) {
+  return elements
+    .filter(el => isLayoutTable(el))
+    .map((el, idx) => {
+      const t = el as LayoutTableElement;
+      const set = new Set<string>();
+      t.rows.forEach(row =>
+        row.cells.forEach(c => {
+          if (!c.mergedInto) extractPlaceholders(c.content?.value ?? '').forEach(p => set.add(p));
+        })
+      );
+      return {
+        id: t.id,
+        label: `Table ${idx + 1}`,
+        placeholders: Array.from(set),
+        currentCollectionKey: t.binding?.collectionKey || '',
+      };
+    });
+}
+
+// ── Cell resolution ───────────────────────────────────────────────────────────
+
+function resolveCell(cell: TableCell, row: DataRow, colMapping: Record<string, string>): string {
+  if (cell.binding?.path) {
+    const colName = colMapping[cell.binding.path] || cell.binding.path;
+    const v = getNestedValue(row, colName);
+    if (v !== undefined && v !== null) return String(v);
+    if (cell.binding.fallback != null) return String(cell.binding.fallback);
+    return '';
+  }
+  return replacePlaceholders(cell.content?.value ?? '', row, colMapping);
+}
+
+// ── Preview element mapping ───────────────────────────────────────────────────
+
+/**
+ * Produce a snapshot of elements for the canvas preview:
+ *   - Static elements: single row (uses metadata + fieldMapping)
+ *   - Tables: show only previewRowIndex so the canvas isn't overwhelming
+ */
+export function mapTemplateForPreview(
+  elements: CanvasElement[],
+  boundData: BoundData,
+  previewRowIndex: number
+): CanvasElement[] {
+  const { source, fieldMapping, tableCollectionBindings, collectionMappings } = boundData;
+
+  return elements.map(el => {
+    const mapped: any = JSON.parse(JSON.stringify(el));
+
+    if (el.type === 'text' || el.type === 'paragraph') {
+      mapped.content = replacePlaceholders(
+        (el as any).content || '',
+        source.metadata,
+        fieldMapping
+      );
+    }
+    if (el.type === 'image') {
+      mapped.src = replacePlaceholders((el as any).src || '', source.metadata, fieldMapping);
     }
 
-    if (element.type === 'paragraph' && element.content) {
-      mapped.content = replacePlaceholders(element.content, data, fieldMapping);
-    }
+    if (isLayoutTable(el)) {
+      const t = el as LayoutTableElement;
+      const collKey = tableCollectionBindings[t.id] || Object.keys(source.collections)[0] || '';
+      const col = source.collections[collKey];
+      if (!col || col.rows.length === 0) return mapped;
 
-    if (element.type === 'image' && element.src) {
-      mapped.src = replacePlaceholders(element.src, data, fieldMapping);
-    }
+      const colMapping = collectionMappings[collKey] || {};
+      const previewRow = col.rows[Math.min(previewRowIndex, col.rows.length - 1)];
 
-    if (isLayoutTable(element)) {
-      // header resolves once, in root scope
-      if (element.headerRow) {
-        mapped.headerRow = {
-          ...element.headerRow,
-          id: `${element.headerRow.id}__render`,
-          cells: element.headerRow.cells.map((cell) =>
-            cell.mergedInto
-              ? cell
-              : {
-                  ...cell,
-                  id: `${cell.id}__render`,
-                  content: {
-                    type: 'text' as const,
-                    value: resolveTableCellDisplay(cell, data, fieldMapping, undefined, 'root'),
-                  },
-                  binding: undefined,
-                }
-          ),
-        };
-      }
-
-      const binding = element.binding;
-      const collection =
-        binding?.enabled && binding.collectionKey ? getCollectionFromKey(data, binding.collectionKey) : null;
-
-      if (collection && collection.length > 0) {
-        // iterate: render-time expansion of template rows for each item
-        const expandedRows = collection.flatMap((item, itemIndex) =>
-          element.rows.map((row, templateRowIndex) => ({
-            ...row,
-            id: `${row.id}__i${itemIndex}__t${templateRowIndex}`,
-            cells: row.cells.map((cell) =>
-              cell.mergedInto
-                ? cell
-                : {
-                    ...cell,
-                    id: `${cell.id}__i${itemIndex}__t${templateRowIndex}`,
-                    content: {
-                      type: 'text' as const,
-                      value: resolveTableCellDisplay(cell, data, fieldMapping, item, 'item'),
-                    },
-                    binding: undefined,
-                  }
-            ),
-          }))
+      // Resolve header once
+      if (mapped.headerRow?.cells) {
+        mapped.headerRow.cells = mapped.headerRow.cells.map((cell: TableCell) =>
+          cell.mergedInto ? cell : {
+            ...cell,
+            content: { type: 'text', value: replacePlaceholders(cell.content?.value ?? '', source.metadata, fieldMapping) },
+            binding: undefined,
+          }
         );
-        mapped.rows = expandedRows;
-      } else {
-        // non-iterating table snapshot
-        mapped.rows = element.rows.map((row, templateRowIndex) => ({
-          ...row,
-          id: `${row.id}__render_${templateRowIndex}`,
-          cells: row.cells.map((cell) =>
-            cell.mergedInto
-              ? cell
-              : {
-                  ...cell,
-                  id: `${cell.id}__render_${templateRowIndex}`,
-                  content: {
-                    type: 'text' as const,
-                    value: resolveTableCellDisplay(cell, data, fieldMapping, undefined, 'root'),
-                  },
-                  binding: undefined,
-                }
-          ),
-        }));
       }
+
+      // Show only the preview row (single expanded row per template row)
+      mapped.rows = t.rows.map((tRow, ti) => ({
+        ...tRow,
+        id: `${tRow.id}__preview${ti}`,
+        cells: tRow.cells.map((cell: TableCell) =>
+          cell.mergedInto ? cell : {
+            ...cell,
+            id: `${cell.id}__preview${ti}`,
+            content: { type: 'text', value: resolveCell(cell, previewRow, colMapping) },
+            binding: undefined,
+          }
+        ),
+      }));
     }
 
     return mapped as CanvasElement;
   });
 }
 
+// ── Legacy compat ─────────────────────────────────────────────────────────────
+
 /**
- * Map template with multiple data rows (for batch processing)
- * @param elements - Template elements
- * @param dataRows - Array of data objects
- * @param fieldMapping - Optional field mapping
- * @returns Array of mapped element arrays (one per data row)
+ * @deprecated Use mapTemplateForPreview with BoundData instead.
+ * Kept for any callers that haven't been migrated yet.
  */
+export function mapTemplateToData(
+  elements: CanvasElement[],
+  data: DataRow,
+  fieldMapping?: Record<string, string>
+): CanvasElement[] {
+  const fakeBound: BoundData = {
+    source: { metadata: data, collections: {} },
+    fieldMapping: fieldMapping || {},
+    tableCollectionBindings: {},
+    collectionMappings: {},
+  };
+  return mapTemplateForPreview(elements, fakeBound, 0);
+}
+
+/** @deprecated Use autoMapStaticFields from dataSourceService instead. */
+export function autoMapFields(
+  placeholders: string[],
+  dataKeys: string[]
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  placeholders.forEach(p => {
+    const lp = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const match = dataKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === lp);
+    if (match) result[p] = match;
+  });
+  return result;
+}
+
+/** @deprecated Use mapTemplateForPreview instead. */
 export function mapTemplateToMultipleData(
   elements: CanvasElement[],
   dataRows: DataRow[],
@@ -434,123 +240,60 @@ export function mapTemplateToMultipleData(
 }
 
 /**
- * Get all unique placeholders from template
- * @param elements - Template elements
- * @returns Array of unique placeholder names
+ * Placeholder groups split by scope (static vs table-bound).
+ * @deprecated Use getStaticPlaceholders + getTableInfos instead.
  */
-export function getAllPlaceholders(elements: CanvasElement[]): string[] {
-  const placeholders = new Set<string>();
-  
-  elements.forEach(element => {
-    if (element.type === 'text' && element.content) {
-      extractPlaceholders(element.content).forEach(p => placeholders.add(p));
-    }
-    if (element.type === 'paragraph' && element.content) {
-      extractPlaceholders(element.content).forEach(p => placeholders.add(p));
-    }
-    if (element.type === 'image' && element.src) {
-      extractPlaceholders(element.src).forEach(p => placeholders.add(p));
-    }
-    if (isLayoutTable(element)) {
-      if (element.headerRow) {
-        element.headerRow.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => placeholders.add(p));
-        });
-      }
-      element.rows.forEach((row) => {
-        row.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => placeholders.add(p));
-        });
-      });
-    }
-  });
-  
-  return Array.from(placeholders);
+export interface PlaceholderGroups {
+  static: string[];
+  tables: Record<string, string[]>; // tableId → placeholders
 }
 
-/**
- * Split placeholders by the data shape they need at render time.
- * Static placeholders use document-level/key-value data. Body table
- * placeholders use row/item data from the selected table collection.
- */
+/** @deprecated Use getStaticPlaceholders + getTableInfos instead. */
 export function getPlaceholdersByScope(elements: CanvasElement[]): PlaceholderGroups {
-  const staticPlaceholders = new Set<string>();
-  const tablePlaceholders = new Set<string>();
+  const staticSet = new Set<string>();
+  const tables: Record<string, string[]> = {};
 
-  elements.forEach(element => {
-    if (element.type === 'text' && element.content) {
-      extractPlaceholders(element.content).forEach(p => staticPlaceholders.add(p));
+  for (const el of elements) {
+    if (el.type === 'text' || el.type === 'paragraph') {
+      extractPlaceholders((el as any).content || '').forEach(p => staticSet.add(p));
     }
-    if (element.type === 'paragraph' && element.content) {
-      extractPlaceholders(element.content).forEach(p => staticPlaceholders.add(p));
+    if (el.type === 'image') {
+      extractPlaceholders((el as any).src || '').forEach(p => staticSet.add(p));
     }
-    if (element.type === 'image' && element.src) {
-      extractPlaceholders(element.src).forEach(p => staticPlaceholders.add(p));
+    if (isLayoutTable(el)) {
+      const t = el as LayoutTableElement;
+      const tSet = new Set<string>();
+      t.rows.forEach(row =>
+        row.cells.forEach(c => {
+          if (!c.mergedInto) extractPlaceholders(c.content?.value ?? '').forEach(p => tSet.add(p));
+        })
+      );
+      tables[t.id] = Array.from(tSet);
     }
-    if (isLayoutTable(element)) {
-      if (element.headerRow) {
-        element.headerRow.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => staticPlaceholders.add(p));
-        });
-      }
-      element.rows.forEach((row) => {
-        row.cells.forEach((cell) => {
-          if (cell.mergedInto) return;
-          extractPlaceholders(cell.content?.value ?? '').forEach((p) => tablePlaceholders.add(p));
-        });
-      });
-    }
-  });
+  }
 
-  return {
-    staticPlaceholders: Array.from(staticPlaceholders),
-    tablePlaceholders: Array.from(tablePlaceholders),
-    allPlaceholders: Array.from(new Set([...staticPlaceholders, ...tablePlaceholders])),
-  };
+  return { static: Array.from(staticSet), tables };
 }
 
-/**
- * Validate that all placeholders have corresponding data
- * @param elements - Template elements
- * @param data - Data object
- * @param fieldMapping - Optional field mapping
- * @returns Object with validation results
- */
+/** @deprecated Validate that all placeholders resolve against the provided data. */
 export function validateMapping(
   elements: CanvasElement[],
   data: DataRow,
   fieldMapping?: Record<string, string>
-): {
-  isValid: boolean;
-  missingFields: string[];
-  mappedFields: string[];
-} {
+): { isValid: boolean; missingFields: string[]; mappedFields: string[] } {
   const placeholders = getAllPlaceholders(elements);
-  const dataKeys = Object.keys(data);
-  
-  // Generate mapping if not provided
-  if (!fieldMapping) {
-    fieldMapping = autoMapFields(placeholders, dataKeys);
-  }
-  
+  const fm = fieldMapping || autoMapFields(placeholders, Object.keys(data));
   const missingFields: string[] = [];
   const mappedFields: string[] = [];
-  
-  placeholders.forEach(placeholder => {
-    const dataKey = fieldMapping?.[placeholder] || placeholder;
+
+  placeholders.forEach(p => {
+    const dataKey = fm[p] || p;
     if (dataKey in data && data[dataKey] !== undefined && data[dataKey] !== null) {
-      mappedFields.push(placeholder);
+      mappedFields.push(p);
     } else {
-      missingFields.push(placeholder);
+      missingFields.push(p);
     }
   });
-  
-  return {
-    isValid: missingFields.length === 0,
-    missingFields,
-    mappedFields,
-  };
+
+  return { isValid: missingFields.length === 0, missingFields, mappedFields };
 }

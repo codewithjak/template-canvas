@@ -1,146 +1,109 @@
+/**
+ * UploadData.tsx
+ * Redesigned upload panel that handles the new ParsedDataSource structure:
+ *   - Section 1: Static field mapping  (template placeholder → metadata key)
+ *   - Section 2: Per-table mapping     (collection picker + column mapping)
+ */
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { autoMapFields } from '../../services/mappingEngine';
-import type { DataRow } from '../../services/mappingEngine';
+import type { ParsedDataSource, BoundData, TableInfo } from '../../types/dataSource';
+import {
+  buildInitialBoundData,
+  autoMapCollectionFields,
+} from '../../services/dataSourceService';
 import './UploadData.css';
 
-interface ParsedData {
-  headers: string[];
-  rows: DataRow[];
-  staticHeaders: string[];
-  staticData: DataRow;
-  tableHeaders: string[];
-  tableRows: DataRow[];
-  collections: Record<string, DataRow[]>;
-  sections?: Array<{
-    id: string;
-    kind: 'keyValue' | 'table';
-    label: string;
-    headers: string[];
-    rowCount: number;
-    rowStart?: number;
-    rowEnd?: number;
-  }>;
-  fileType: 'csv' | 'excel' | 'json';
-  fileName: string;
-}
-
-export interface UploadedDataBinding {
-  rows: DataRow[];
-  staticData: DataRow;
-  tableRows: DataRow[];
-  collections: Record<string, DataRow[]>;
-  mapping: Record<string, string>;
-  tableMapping: Record<string, string>;
-}
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface UploadDataProps {
   staticPlaceholders: string[];
-  tablePlaceholders: string[];
+  tables: TableInfo[];
   onClose: () => void;
-  onDataMapped: (binding: UploadedDataBinding) => void;
+  onDataMapped: (boundData: BoundData) => void;
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function summariseCollections(collections: ParsedDataSource['collections']) {
+  return Object.entries(collections)
+    .map(([k, c]) => `${k} (${c.rows.length} rows)`)
+    .join(', ');
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 const UploadData: React.FC<UploadDataProps> = ({
   staticPlaceholders,
-  tablePlaceholders,
+  tables,
   onClose,
   onDataMapped,
 }) => {
-  const [parsedData, setParsedData] = useState<ParsedData | null>(null);
+  const [source, setSource] = useState<ParsedDataSource | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Mapping state
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
-  const [tableFieldMapping, setTableFieldMapping] = useState<Record<string, string>>({});
-  const [selectedRowIndex, setSelectedRowIndex] = useState(0);
+  const [tableCollectionBindings, setTableCollectionBindings] = useState<Record<string, string>>({});
+  const [collectionMappings, setCollectionMappings] = useState<Record<string, Record<string, string>>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
-  const parseServerFile = useCallback(async (file: File): Promise<ParsedData> => {
-    const formData = new FormData();
-    formData.append('file', file);
+  // ── Initialise mappings when source loads ─────────────────────────────────
 
-    const response = await fetch('http://localhost:3001/parse-data', {
-      method: 'POST',
-      body: formData,
-    });
+  const initMappings = useCallback(
+    (src: ParsedDataSource) => {
+      const initial = buildInitialBoundData(src, staticPlaceholders, tables);
+      setFieldMapping(initial.fieldMapping);
+      setTableCollectionBindings(initial.tableCollectionBindings);
+      setCollectionMappings(initial.collectionMappings);
+    },
+    [staticPlaceholders, tables]
+  );
 
-    if (!response.ok) {
-      const responseData = await response.json().catch(() => null);
-      const message = responseData?.error || 'Unable to parse file on server.';
-      throw new Error(message);
-    }
+  // ── File parsing ──────────────────────────────────────────────────────────
 
-    const data = await response.json();
+  const parseFile = useCallback(
+    async (file: File) => {
+      setError(null);
+      setParsing(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
 
-    return {
-      headers: data.headers || [],
-      rows: data.rows || [],
-      staticHeaders: data.staticHeaders || [],
-      staticData: data.staticData || {},
-      tableHeaders: data.tableHeaders || [],
-      tableRows: data.tableRows || [],
-      collections: data.collections || {},
-      sections: data.sections || [],
-      fileType: data.fileType === 'json' ? 'json' : data.fileType === 'csv' ? 'csv' : 'excel',
-      fileName: data.fileName || file.name,
-    };
-  }, []);
-
-  const initializeFieldMapping = useCallback((data: ParsedData) => {
-    const staticHeaders = data.staticHeaders.length > 0 ? data.staticHeaders : data.headers;
-    const tableHeaders = data.tableHeaders.length > 0 ? data.tableHeaders : data.headers;
-
-    const staticAutoMapping = autoMapFields(staticPlaceholders, staticHeaders);
-    const staticResult: Record<string, string> = {};
-
-    staticPlaceholders.forEach((placeholder) => {
-      staticResult[placeholder] =
-        staticAutoMapping[placeholder] ||
-        staticHeaders.find((header) => header.toLowerCase() === placeholder.toLowerCase()) ||
-        '';
-    });
-
-    const tableAutoMapping = autoMapFields(tablePlaceholders, tableHeaders);
-    const tableResult: Record<string, string> = {};
-
-    tablePlaceholders.forEach((placeholder) => {
-      tableResult[placeholder] =
-        tableAutoMapping[placeholder] ||
-        tableHeaders.find((header) => header.toLowerCase() === placeholder.toLowerCase()) ||
-        '';
-    });
-
-    setFieldMapping(staticResult);
-    setTableFieldMapping(tableResult);
-  }, [staticPlaceholders, tablePlaceholders]);
-
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    setError(null);
-    setParsing(true);
-
-    try {
-      const file = acceptedFiles[0];
-      if (!file) {
-        throw new Error('No file selected.');
+        const res = await fetch(`${API_BASE}/parse-data`, { method: 'POST', body: formData });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.error || 'Unable to parse file.');
+        }
+        const data = await res.json();
+        const src: ParsedDataSource = {
+          metadata: data.metadata || {},
+          collections: data.collections || {},
+          fileName: data.fileName,
+          fileType: data.fileType,
+        };
+        setSource(src);
+        initMappings(src);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Parse failed.');
+      } finally {
+        setParsing(false);
       }
+    },
+    [initMappings]
+  );
 
-      const data = await parseServerFile(file);
-      setParsedData(data);
-      setSelectedRowIndex(0);
-      initializeFieldMapping(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to parse file.');
-    } finally {
-      setParsing(false);
-    }
-  }, [initializeFieldMapping, parseServerFile]);
+  const onDrop = useCallback(
+    (files: File[]) => { if (files[0]) parseFile(files[0]); },
+    [parseFile]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -155,195 +118,208 @@ const UploadData: React.FC<UploadDataProps> = ({
     noClick: true,
   });
 
-  const handleBrowse = () => {
-    fileInputRef.current?.click();
+  // ── Collection binding change ─────────────────────────────────────────────
+
+  const handleCollectionChange = (tableId: string, collKey: string) => {
+    setTableCollectionBindings(prev => ({ ...prev, [tableId]: collKey }));
+
+    // Auto-remap columns for the newly selected collection
+    if (source && collKey) {
+      const tableInfo = tables.find(t => t.id === tableId);
+      const col = source.collections[collKey];
+      if (tableInfo && col) {
+        const autoMapped = autoMapCollectionFields(tableInfo.placeholders, col.headers);
+        setCollectionMappings(prev => ({
+          ...prev,
+          [collKey]: { ...(prev[collKey] || {}), ...autoMapped },
+        }));
+      }
+    }
   };
+
+  // ── Confirm ───────────────────────────────────────────────────────────────
 
   const handleConfirm = () => {
-    if (!parsedData) return;
-    const rows = parsedData.rows.length > 0
-      ? parsedData.rows
-      : Object.keys(parsedData.staticData).length > 0
-        ? [{ ...parsedData.staticData, ...parsedData.collections }]
-        : [];
-
-    onDataMapped({
-      rows,
-      staticData: parsedData.staticData,
-      tableRows: parsedData.tableRows,
-      collections: parsedData.collections,
-      mapping: fieldMapping,
-      tableMapping: tableFieldMapping,
-    });
+    if (!source) return;
+    onDataMapped({ source, fieldMapping, tableCollectionBindings, collectionMappings });
   };
 
-  const staticHeaderOptions = parsedData?.staticHeaders?.length
-    ? parsedData.staticHeaders
-    : parsedData?.headers || [];
-  const tableHeaderOptions = parsedData?.tableHeaders?.length
-    ? parsedData.tableHeaders
-    : parsedData?.headers || [];
-  const totalPlaceholders = staticPlaceholders.length + tablePlaceholders.length;
+  const canConfirm =
+    !!source &&
+    (staticPlaceholders.length === 0 || Object.values(fieldMapping).some(v => v)) ||
+    (tables.length === 0 && !!source);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const metadataKeys = source ? Object.keys(source.metadata) : [];
+  const collectionKeys = source ? Object.keys(source.collections) : [];
 
   return (
     <div className="upload-panel">
       <div className="upload-panel-card">
+
+        {/* Header */}
         <div className="upload-panel-header">
           <div>
-            <h2>Upload File</h2>
-            <p>Upload a CSV, Excel, or JSON file and map fields to your template placeholders.</p>
+            <h2>Upload Data</h2>
+            <p>Upload CSV, Excel, or JSON — map metadata fields and table columns to your template.</p>
           </div>
-          <button className="upload-close" type="button" onClick={onClose} aria-label="Close upload dialog">
-            ✕
-          </button>
+          <button className="upload-close" type="button" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        <div {...getRootProps()} className={`upload-dropzone ${isDragActive ? 'active' : ''} ${parsing ? 'parsing' : ''}`}>
+        {/* Dropzone */}
+        <div
+          {...getRootProps()}
+          className={`upload-dropzone ${isDragActive ? 'active' : ''} ${parsing ? 'parsing' : ''}`}
+        >
           <input {...getInputProps()} ref={fileInputRef} />
           <div className="upload-content">
             <div className="upload-icon">📁</div>
             <h3>Drop a file here</h3>
-            <p>or browse for a CSV, Excel, or JSON file.</p>
-            <button type="button" className="upload-browse-btn" onClick={handleBrowse}>
-              Upload File
+            <p>CSV, Excel (.xlsx / .xls), or JSON</p>
+            <button type="button" className="upload-browse-btn" onClick={() => fileInputRef.current?.click()}>
+              Browse file
             </button>
           </div>
           {parsing && (
             <div className="upload-progress">
               <div className="upload-spinner" />
-              <p>Parsing file…</p>
+              <p>Parsing…</p>
             </div>
           )}
         </div>
 
         {error && <div className="upload-error">{error}</div>}
 
-        {parsedData && (
+        {/* File summary */}
+        {source && (
           <div className="upload-summary">
             <div className="upload-summary-row">
+              <div><p className="upload-summary-label">File</p><strong>{source.fileName}</strong></div>
               <div>
-                <p className="upload-summary-label">File</p>
-                <strong>{parsedData.fileName}</strong>
+                <p className="upload-summary-label">Metadata fields</p>
+                <strong>{metadataKeys.length}</strong>
               </div>
               <div>
-                <p className="upload-summary-label">Type</p>
-                <strong>{parsedData.fileType.toUpperCase()}</strong>
+                <p className="upload-summary-label">Collections</p>
+                <strong>{collectionKeys.length === 0 ? 'none' : summariseCollections(source.collections)}</strong>
               </div>
-              <div>
-                <p className="upload-summary-label">Records</p>
-                <strong>{parsedData.rows.length || (Object.keys(parsedData.staticData).length > 0 ? 1 : 0)}</strong>
-              </div>
-              <div>
-                <p className="upload-summary-label">Table rows</p>
-                <strong>{parsedData.tableRows.length}</strong>
-              </div>
-            </div>
-            <div className="upload-summary-row">
-              {parsedData.staticHeaders.length > 0 && (
-                <div>
-                  <p className="upload-summary-label">Static fields</p>
-                  <strong>{parsedData.staticHeaders.join(', ')}</strong>
-                </div>
-              )}
-              {parsedData.tableHeaders.length > 0 && (
-                <div>
-                  <p className="upload-summary-label">Table columns</p>
-                  <strong>{parsedData.tableHeaders.join(', ')}</strong>
-                </div>
-              )}
-              {parsedData.rows.length > 1 && (
-                <div>
-                  <p className="upload-summary-label">Selected row</p>
-                  <select value={selectedRowIndex} onChange={(e) => setSelectedRowIndex(Number(e.target.value))}>
-                    {parsedData.rows.map((_, idx) => (
-                      <option key={idx} value={idx}>
-                        Row {idx + 1}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
           </div>
         )}
 
-        {parsedData && (
+        {/* ── Section 1: Static field mapping ───────────────────────────── */}
+        {source && staticPlaceholders.length > 0 && (
           <div className="mapping-panel">
             <div className="mapping-panel-header">
-              <h3>Map placeholders</h3>
-              <p>Document fields and repeating table columns are mapped separately.</p>
+              <h3>Static field mapping</h3>
+              <p>Map each template placeholder to a metadata field from your file.</p>
             </div>
-            {totalPlaceholders === 0 ? (
-              <div className="mapping-empty">
-                No placeholders were detected in the current template.
-              </div>
-            ) : (
-              <>
-                {staticPlaceholders.length > 0 && (
-                  <div className="mapping-section">
-                    <div className="mapping-section-title">Document fields</div>
-                    <div className="mapping-grid">
-                      {staticPlaceholders.map((placeholder) => (
-                        <label key={placeholder} className="mapping-row">
-                          <span>{placeholder}</span>
-                          <select
-                            value={fieldMapping[placeholder] ?? ''}
-                            onChange={(e) => setFieldMapping((prev) => ({ ...prev, [placeholder]: e.target.value }))}
-                          >
-                            <option value="">Use placeholder name</option>
-                            {staticHeaderOptions.map((header) => (
-                              <option key={header} value={header}>
-                                {header}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {tablePlaceholders.length > 0 && (
-                  <div className="mapping-section">
-                    <div className="mapping-section-title">Table columns</div>
-                    <div className="mapping-grid">
-                      {tablePlaceholders.map((placeholder) => (
-                        <label key={placeholder} className="mapping-row">
-                          <span>{placeholder}</span>
-                          <select
-                            value={tableFieldMapping[placeholder] ?? ''}
-                            onChange={(e) => setTableFieldMapping((prev) => ({ ...prev, [placeholder]: e.target.value }))}
-                          >
-                            <option value="">Use placeholder name</option>
-                            {tableHeaderOptions.map((header) => (
-                              <option key={header} value={header}>
-                                {header}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
+            <div className="mapping-grid">
+              {staticPlaceholders.map(ph => (
+                <label key={ph} className="mapping-row">
+                  <span title={ph}>{ph}</span>
+                  <select
+                    value={fieldMapping[ph] ?? ''}
+                    onChange={e => setFieldMapping(prev => ({ ...prev, [ph]: e.target.value }))}
+                  >
+                    <option value="">— select —</option>
+                    {metadataKeys.map(k => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
           </div>
         )}
 
+        {/* ── Section 2: Per-table collection + column mapping ──────────── */}
+        {source && tables.length > 0 && (
+          <>
+            {tables.map(table => {
+              const boundCollKey = tableCollectionBindings[table.id] || '';
+              const boundCollection = boundCollKey ? source.collections[boundCollKey] : null;
+              const colHeaders = boundCollection?.headers || [];
+              const colMap = collectionMappings[boundCollKey] || {};
+
+              return (
+                <div key={table.id} className="mapping-panel">
+                  <div className="mapping-panel-header">
+                    <h3>{table.label} — data source</h3>
+                    <p>Choose which collection provides rows for this table, then map columns.</p>
+                  </div>
+
+                  {/* Collection picker */}
+                  <div className="mapping-collection-picker">
+                    <label className="mapping-row">
+                      <span>Collection</span>
+                      <select
+                        value={boundCollKey}
+                        onChange={e => handleCollectionChange(table.id, e.target.value)}
+                      >
+                        <option value="">— none —</option>
+                        {collectionKeys.map(k => (
+                          <option key={k} value={k}>
+                            {k} ({source.collections[k].rows.length} rows)
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {/* Column mapping */}
+                  {boundCollection && table.placeholders.length > 0 && (
+                    <>
+                      <p className="mapping-subheading">Column mapping</p>
+                      <div className="mapping-grid">
+                        {table.placeholders.map(ph => (
+                          <label key={ph} className="mapping-row">
+                            <span title={ph}>{ph}</span>
+                            <select
+                              value={colMap[ph] ?? ''}
+                              onChange={e =>
+                                setCollectionMappings(prev => ({
+                                  ...prev,
+                                  [boundCollKey]: { ...(prev[boundCollKey] || {}), [ph]: e.target.value },
+                                }))
+                              }
+                            >
+                              <option value="">— select column —</option>
+                              {colHeaders.map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {boundCollKey && collectionKeys.length > 0 && !boundCollection && (
+                    <p className="upload-error" style={{ marginTop: 8 }}>
+                      Collection "{boundCollKey}" not found in uploaded file.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Actions */}
         <div className="upload-actions">
-          <button type="button" className="upload-secondary" onClick={onClose}>
-            Cancel
-          </button>
+          <button type="button" className="upload-secondary" onClick={onClose}>Cancel</button>
           <button
             type="button"
             className="upload-confirm"
             onClick={handleConfirm}
-            disabled={!parsedData}
+            disabled={!canConfirm}
           >
             Confirm mapping
           </button>
         </div>
+
       </div>
     </div>
   );

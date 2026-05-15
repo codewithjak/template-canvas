@@ -7,21 +7,51 @@ import './UploadData.css';
 interface ParsedData {
   headers: string[];
   rows: DataRow[];
-  fileType: 'csv' | 'excel';
+  staticHeaders: string[];
+  staticData: DataRow;
+  tableHeaders: string[];
+  tableRows: DataRow[];
+  collections: Record<string, DataRow[]>;
+  sections?: Array<{
+    id: string;
+    kind: 'keyValue' | 'table';
+    label: string;
+    headers: string[];
+    rowCount: number;
+    rowStart?: number;
+    rowEnd?: number;
+  }>;
+  fileType: 'csv' | 'excel' | 'json';
   fileName: string;
 }
 
-interface UploadDataProps {
-  templatePlaceholders: string[];
-  onClose: () => void;
-  onDataMapped: (dataRows: DataRow[], fieldMapping: Record<string, string>) => void;
+export interface UploadedDataBinding {
+  rows: DataRow[];
+  staticData: DataRow;
+  tableRows: DataRow[];
+  collections: Record<string, DataRow[]>;
+  mapping: Record<string, string>;
+  tableMapping: Record<string, string>;
 }
 
-const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, onDataMapped }) => {
+interface UploadDataProps {
+  staticPlaceholders: string[];
+  tablePlaceholders: string[];
+  onClose: () => void;
+  onDataMapped: (binding: UploadedDataBinding) => void;
+}
+
+const UploadData: React.FC<UploadDataProps> = ({
+  staticPlaceholders,
+  tablePlaceholders,
+  onClose,
+  onDataMapped,
+}) => {
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+  const [tableFieldMapping, setTableFieldMapping] = useState<Record<string, string>>({});
   const [selectedRowIndex, setSelectedRowIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,23 +80,46 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
     const data = await response.json();
 
     return {
-      headers: data.headers,
-      rows: data.rows,
-      fileType: data.fileType && String(data.fileType).includes('csv') ? 'csv' : 'excel',
+      headers: data.headers || [],
+      rows: data.rows || [],
+      staticHeaders: data.staticHeaders || [],
+      staticData: data.staticData || {},
+      tableHeaders: data.tableHeaders || [],
+      tableRows: data.tableRows || [],
+      collections: data.collections || {},
+      sections: data.sections || [],
+      fileType: data.fileType === 'json' ? 'json' : data.fileType === 'csv' ? 'csv' : 'excel',
       fileName: data.fileName || file.name,
     };
   }, []);
 
-  const initializeFieldMapping = useCallback((headers: string[]) => {
-    const mapping = autoMapFields(templatePlaceholders, headers);
-    const result: Record<string, string> = {};
+  const initializeFieldMapping = useCallback((data: ParsedData) => {
+    const staticHeaders = data.staticHeaders.length > 0 ? data.staticHeaders : data.headers;
+    const tableHeaders = data.tableHeaders.length > 0 ? data.tableHeaders : data.headers;
 
-    templatePlaceholders.forEach((placeholder) => {
-      result[placeholder] = mapping[placeholder] || headers.find((header) => header.toLowerCase() === placeholder.toLowerCase()) || '';
+    const staticAutoMapping = autoMapFields(staticPlaceholders, staticHeaders);
+    const staticResult: Record<string, string> = {};
+
+    staticPlaceholders.forEach((placeholder) => {
+      staticResult[placeholder] =
+        staticAutoMapping[placeholder] ||
+        staticHeaders.find((header) => header.toLowerCase() === placeholder.toLowerCase()) ||
+        '';
     });
 
-    setFieldMapping(result);
-  }, [templatePlaceholders]);
+    const tableAutoMapping = autoMapFields(tablePlaceholders, tableHeaders);
+    const tableResult: Record<string, string> = {};
+
+    tablePlaceholders.forEach((placeholder) => {
+      tableResult[placeholder] =
+        tableAutoMapping[placeholder] ||
+        tableHeaders.find((header) => header.toLowerCase() === placeholder.toLowerCase()) ||
+        '';
+    });
+
+    setFieldMapping(staticResult);
+    setTableFieldMapping(tableResult);
+  }, [staticPlaceholders, tablePlaceholders]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setError(null);
@@ -81,7 +134,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
       const data = await parseServerFile(file);
       setParsedData(data);
       setSelectedRowIndex(0);
-      initializeFieldMapping(data.headers);
+      initializeFieldMapping(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to parse file.');
     } finally {
@@ -95,6 +148,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
       'text/csv': ['.csv'],
       'application/vnd.ms-excel': ['.xls'],
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/json': ['.json'],
     },
     maxFiles: 1,
     multiple: false,
@@ -107,12 +161,29 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
 
   const handleConfirm = () => {
     if (!parsedData) return;
-    // Always enter preview mode with the full dataset.
-    // The canvas renders a preview for the selected record without mutating the template.
-    onDataMapped(parsedData.rows, fieldMapping);
+    const rows = parsedData.rows.length > 0
+      ? parsedData.rows
+      : Object.keys(parsedData.staticData).length > 0
+        ? [{ ...parsedData.staticData, ...parsedData.collections }]
+        : [];
+
+    onDataMapped({
+      rows,
+      staticData: parsedData.staticData,
+      tableRows: parsedData.tableRows,
+      collections: parsedData.collections,
+      mapping: fieldMapping,
+      tableMapping: tableFieldMapping,
+    });
   };
 
-  const headerOptions = parsedData?.headers || [];
+  const staticHeaderOptions = parsedData?.staticHeaders?.length
+    ? parsedData.staticHeaders
+    : parsedData?.headers || [];
+  const tableHeaderOptions = parsedData?.tableHeaders?.length
+    ? parsedData.tableHeaders
+    : parsedData?.headers || [];
+  const totalPlaceholders = staticPlaceholders.length + tablePlaceholders.length;
 
   return (
     <div className="upload-panel">
@@ -120,7 +191,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
         <div className="upload-panel-header">
           <div>
             <h2>Upload File</h2>
-            <p>Upload a CSV or Excel file and map headers to your template placeholders.</p>
+            <p>Upload a CSV, Excel, or JSON file and map fields to your template placeholders.</p>
           </div>
           <button className="upload-close" type="button" onClick={onClose} aria-label="Close upload dialog">
             ✕
@@ -132,7 +203,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
           <div className="upload-content">
             <div className="upload-icon">📁</div>
             <h3>Drop a file here</h3>
-            <p>or browse for a CSV or Excel file.</p>
+            <p>or browse for a CSV, Excel, or JSON file.</p>
             <button type="button" className="upload-browse-btn" onClick={handleBrowse}>
               Upload File
             </button>
@@ -159,15 +230,27 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
                 <strong>{parsedData.fileType.toUpperCase()}</strong>
               </div>
               <div>
-                <p className="upload-summary-label">Rows</p>
-                <strong>{parsedData.rows.length}</strong>
+                <p className="upload-summary-label">Records</p>
+                <strong>{parsedData.rows.length || (Object.keys(parsedData.staticData).length > 0 ? 1 : 0)}</strong>
+              </div>
+              <div>
+                <p className="upload-summary-label">Table rows</p>
+                <strong>{parsedData.tableRows.length}</strong>
               </div>
             </div>
             <div className="upload-summary-row">
-              <div>
-                <p className="upload-summary-label">Detected headers</p>
-                <strong>{parsedData.headers.join(', ')}</strong>
-              </div>
+              {parsedData.staticHeaders.length > 0 && (
+                <div>
+                  <p className="upload-summary-label">Static fields</p>
+                  <strong>{parsedData.staticHeaders.join(', ')}</strong>
+                </div>
+              )}
+              {parsedData.tableHeaders.length > 0 && (
+                <div>
+                  <p className="upload-summary-label">Table columns</p>
+                  <strong>{parsedData.tableHeaders.join(', ')}</strong>
+                </div>
+              )}
               {parsedData.rows.length > 1 && (
                 <div>
                   <p className="upload-summary-label">Selected row</p>
@@ -188,31 +271,62 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
           <div className="mapping-panel">
             <div className="mapping-panel-header">
               <h3>Map placeholders</h3>
-              <p>Use the dropdowns below to map template fields to data columns.</p>
+              <p>Document fields and repeating table columns are mapped separately.</p>
             </div>
-            {templatePlaceholders.length === 0 ? (
+            {totalPlaceholders === 0 ? (
               <div className="mapping-empty">
                 No placeholders were detected in the current template.
               </div>
             ) : (
-              <div className="mapping-grid">
-                {templatePlaceholders.map((placeholder) => (
-                  <label key={placeholder} className="mapping-row">
-                    <span>{placeholder}</span>
-                    <select
-                      value={fieldMapping[placeholder] ?? ''}
-                      onChange={(e) => setFieldMapping((prev) => ({ ...prev, [placeholder]: e.target.value }))}
-                    >
-                      <option value="">Select column</option>
-                      {headerOptions.map((header) => (
-                        <option key={header} value={header}>
-                          {header}
-                        </option>
+              <>
+                {staticPlaceholders.length > 0 && (
+                  <div className="mapping-section">
+                    <div className="mapping-section-title">Document fields</div>
+                    <div className="mapping-grid">
+                      {staticPlaceholders.map((placeholder) => (
+                        <label key={placeholder} className="mapping-row">
+                          <span>{placeholder}</span>
+                          <select
+                            value={fieldMapping[placeholder] ?? ''}
+                            onChange={(e) => setFieldMapping((prev) => ({ ...prev, [placeholder]: e.target.value }))}
+                          >
+                            <option value="">Use placeholder name</option>
+                            {staticHeaderOptions.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
                       ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
+                    </div>
+                  </div>
+                )}
+
+                {tablePlaceholders.length > 0 && (
+                  <div className="mapping-section">
+                    <div className="mapping-section-title">Table columns</div>
+                    <div className="mapping-grid">
+                      {tablePlaceholders.map((placeholder) => (
+                        <label key={placeholder} className="mapping-row">
+                          <span>{placeholder}</span>
+                          <select
+                            value={tableFieldMapping[placeholder] ?? ''}
+                            onChange={(e) => setTableFieldMapping((prev) => ({ ...prev, [placeholder]: e.target.value }))}
+                          >
+                            <option value="">Use placeholder name</option>
+                            {tableHeaderOptions.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -225,7 +339,7 @@ const UploadData: React.FC<UploadDataProps> = ({ templatePlaceholders, onClose, 
             type="button"
             className="upload-confirm"
             onClick={handleConfirm}
-            disabled={!parsedData || templatePlaceholders.length > 0 && Object.values(fieldMapping).every((value) => !value)}
+            disabled={!parsedData}
           >
             Confirm mapping
           </button>

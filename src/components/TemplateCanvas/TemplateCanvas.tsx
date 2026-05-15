@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import Toolbar from './Toolbar';
-import UploadData from './UploadData';
+import UploadData, { type UploadedDataBinding } from './UploadData';
 import TextElement from './TextElement';
 import ImageElement from './ImageElement';
 import LineElement from './LineElement';
@@ -12,8 +12,7 @@ import CheckboxElement from './CheckboxElement';
 import DateElement from './DateElement';
 import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel from './PropertiesPanel';
-import type { DataRow } from '../../services/mappingEngine';
-import { getAllPlaceholders, mapTemplateToData } from '../../services/mappingEngine';
+import { getPlaceholdersByScope, mapTemplateToData } from '../../services/mappingEngine';
 import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
 import { createDefaultLayoutTable, isLayoutTable, isLegacyCanvasTable } from '../../model/layoutTable';
 import './TemplateCanvas.css';
@@ -143,10 +142,7 @@ function TemplateCanvas() {
 
   // All bound rows + mapping. previewRowIndex only affects canvas display.
   // Export always sends ALL rows to backend regardless of preview position.
-  const [boundData, setBoundData] = useState<{
-    rows: DataRow[];
-    mapping: Record<string, string>;
-  } | null>(null);
+  const [boundData, setBoundData] = useState<UploadedDataBinding | null>(null);
   const [previewRowIndex, setPreviewRowIndex] = useState(0);
 
   const [isExporting, setIsExporting] = useState(false);
@@ -167,7 +163,7 @@ function TemplateCanvas() {
 
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const templatePlaceholders = useMemo(() => getAllPlaceholders(elements), [elements]);
+  const placeholderGroups = useMemo(() => getPlaceholdersByScope(elements), [elements]);
 
   // Canvas preview: substitutes the selected preview row into static elements
   // (text, paragraph, image, date etc.) so users can verify data mapping.
@@ -175,7 +171,7 @@ function TemplateCanvas() {
   // happens inside the exported PDF on the backend.
   const previewElements = useMemo(() => {
     if (!boundData || boundData.rows.length === 0) return elements;
-    const currentRow = boundData.rows[previewRowIndex];
+    const currentRow = boundData.rows[Math.min(previewRowIndex, boundData.rows.length - 1)];
     return mapTemplateToData(elements, currentRow, boundData.mapping);
   }, [boundData, elements, previewRowIndex]);
 
@@ -465,8 +461,8 @@ function TemplateCanvas() {
   const handleCloseUpload = () => setUploadPanelOpen(false);
 
   // No more isBatch flag — all uploads are stored as full row set
-  const handleUploadMapped = (dataRows: DataRow[], fieldMapping: Record<string, string>) => {
-    setBoundData({ rows: dataRows, mapping: fieldMapping });
+  const handleUploadMapped = (binding: UploadedDataBinding) => {
+    setBoundData(binding);
     setPreviewRowIndex(0);
     setUploadPanelOpen(false);
   };
@@ -502,9 +498,11 @@ function TemplateCanvas() {
     }
     try {
       setIsExporting(true);
+      const recordCount = boundData?.rows.length || 0;
+      const tableRowCount = boundData?.tableRows.length || 0;
       setExportStatus(
-        boundData && boundData.rows.length > 0
-          ? `Generating document with ${boundData.rows.length} record${boundData.rows.length !== 1 ? 's' : ''}…`
+        boundData && (recordCount > 0 || tableRowCount > 0)
+          ? `Generating document with ${recordCount || 1} record${(recordCount || 1) !== 1 ? 's' : ''}${tableRowCount > 0 ? ` and ${tableRowCount} table row${tableRowCount !== 1 ? 's' : ''}` : ''}…`
           : 'Generating document…'
       );
 
@@ -514,7 +512,11 @@ function TemplateCanvas() {
         body: JSON.stringify({
           templateElements: elements,
           dataRows: boundData?.rows || [],
+          staticData: boundData?.staticData || {},
+          tableRows: boundData?.tableRows || [],
+          collections: boundData?.collections || {},
           fieldMapping: boundData?.mapping || {},
+          tableFieldMapping: boundData?.tableMapping || {},
           outputFileName: `document-${Date.now()}`,
         }),
       });
@@ -578,7 +580,8 @@ function TemplateCanvas() {
         {uploadPanelOpen && (
           <div className="upload-panel-backdrop">
             <UploadData
-              templatePlaceholders={templatePlaceholders}
+              staticPlaceholders={placeholderGroups.staticPlaceholders}
+              tablePlaceholders={placeholderGroups.tablePlaceholders}
               onClose={handleCloseUpload}
               onDataMapped={handleUploadMapped}
             />
@@ -589,35 +592,42 @@ function TemplateCanvas() {
         {boundData && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
-              <span>{boundData.rows.length} record{boundData.rows.length !== 1 ? 's' : ''} bound</span>
-              <span className="preview-label">
-                &nbsp;— previewing row {previewRowIndex + 1} of {boundData.rows.length}
-              </span>
+              <span>{boundData.rows.length || 1} record{(boundData.rows.length || 1) !== 1 ? 's' : ''} bound</span>
+              {boundData.tableRows.length > 0 && (
+                <span>&nbsp;— {boundData.tableRows.length} table row{boundData.tableRows.length !== 1 ? 's' : ''}</span>
+              )}
+              {boundData.rows.length > 1 && (
+                <span className="preview-label">
+                  &nbsp;— previewing row {previewRowIndex + 1} of {boundData.rows.length}
+                </span>
+              )}
             </div>
             <div className="batch-export-actions">
-              <div className="preview-nav">
-                <button
-                  type="button"
-                  className="preview-nav-btn"
-                  onClick={handlePrevRow}
-                  disabled={previewRowIndex === 0}
-                  title="Previous record"
-                >
-                  ‹
-                </button>
-                <span className="preview-nav-count">
-                  {previewRowIndex + 1} / {boundData.rows.length}
-                </span>
-                <button
-                  type="button"
-                  className="preview-nav-btn"
-                  onClick={handleNextRow}
-                  disabled={previewRowIndex === boundData.rows.length - 1}
-                  title="Next record"
-                >
-                  ›
-                </button>
-              </div>
+              {boundData.rows.length > 1 && (
+                <div className="preview-nav">
+                  <button
+                    type="button"
+                    className="preview-nav-btn"
+                    onClick={handlePrevRow}
+                    disabled={previewRowIndex === 0}
+                    title="Previous record"
+                  >
+                    ‹
+                  </button>
+                  <span className="preview-nav-count">
+                    {previewRowIndex + 1} / {boundData.rows.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="preview-nav-btn"
+                    onClick={handleNextRow}
+                    disabled={previewRowIndex === boundData.rows.length - 1}
+                    title="Next record"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
               <button type="button" className="clear-button" onClick={handleClearBoundData}>
                 Clear Data
               </button>

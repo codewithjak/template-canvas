@@ -187,6 +187,21 @@
   margin-top: 18px;
 }
 
+.mapping-section + .mapping-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.mapping-section-title {
+  margin-top: 18px;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .mapping-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -8,6 +8,12 @@ import { isLayoutTable } from '../model/layoutTable';
 
 export type DataRow = Record<string, any>;
 
+export interface PlaceholderGroups {
+  staticPlaceholders: string[];
+  tablePlaceholders: string[];
+  allPlaceholders: string[];
+}
+
 export type CanvasElement =
   | {
       id: string;
@@ -201,6 +207,36 @@ export function autoMapFields(
   dataKeys: string[]
 ): Record<string, string> {
   const mapping: Record<string, string> = {};
+
+  const normalizeMatchKey = (value: string) => {
+    const trimmed = String(value).trim();
+    if (trimmed === '#') return 'serialno';
+    return trimmed.toLowerCase().replace(/[^a-z0-9]/g, '');
+  };
+
+  const equivalentKeys = (value: string) => {
+    const normalized = normalizeMatchKey(value);
+    const equivalents: Record<string, string[]> = {
+      serialno: ['#', 'srno', 'sno', 'lineno', 'number'],
+      description: ['desofgoodsservices', 'goodsservices', 'itemdescription', 'desc'],
+      hsn: ['hsnsac', 'hsncode'],
+      quantity: ['qty', 'qnty'],
+      sgst: ['sgsttgst', 'sgstgst', 'tax'],
+      revcharge: ['reversecharge'],
+      placeofsupply: ['supplyplace'],
+    };
+    const set = new Set<string>([normalized]);
+
+    Object.entries(equivalents).forEach(([canonical, aliases]) => {
+      const normalizedAliases = aliases.map(normalizeMatchKey);
+      if (canonical === normalized || normalizedAliases.includes(normalized)) {
+        set.add(canonical);
+        normalizedAliases.forEach((alias) => set.add(alias));
+      }
+    });
+
+    return set;
+  };
   
   placeholders.forEach(placeholder => {
     // Try exact match
@@ -226,6 +262,18 @@ export function autoMapFields(
     
     if (fuzzyMatch) {
       mapping[placeholder] = fuzzyMatch;
+      return;
+    }
+
+    // Try domain aliases for common invoice line-item headers.
+    const placeholderKeys = equivalentKeys(placeholder);
+    const aliasMatch = dataKeys.find(key => {
+      const keyVariants = equivalentKeys(key);
+      return Array.from(placeholderKeys).some(candidate => keyVariants.has(candidate));
+    });
+
+    if (aliasMatch) {
+      mapping[placeholder] = aliasMatch;
     }
   });
   
@@ -250,6 +298,9 @@ export function mapTemplateToData(
   
   elements.forEach(element => {
     if (element.type === 'text' && element.content) {
+      extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
+    }
+    if (element.type === 'paragraph' && element.content) {
       extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
     }
     if (element.type === 'image' && element.src) {
@@ -394,6 +445,9 @@ export function getAllPlaceholders(elements: CanvasElement[]): string[] {
     if (element.type === 'text' && element.content) {
       extractPlaceholders(element.content).forEach(p => placeholders.add(p));
     }
+    if (element.type === 'paragraph' && element.content) {
+      extractPlaceholders(element.content).forEach(p => placeholders.add(p));
+    }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => placeholders.add(p));
     }
@@ -414,6 +468,48 @@ export function getAllPlaceholders(elements: CanvasElement[]): string[] {
   });
   
   return Array.from(placeholders);
+}
+
+/**
+ * Split placeholders by the data shape they need at render time.
+ * Static placeholders use document-level/key-value data. Body table
+ * placeholders use row/item data from the selected table collection.
+ */
+export function getPlaceholdersByScope(elements: CanvasElement[]): PlaceholderGroups {
+  const staticPlaceholders = new Set<string>();
+  const tablePlaceholders = new Set<string>();
+
+  elements.forEach(element => {
+    if (element.type === 'text' && element.content) {
+      extractPlaceholders(element.content).forEach(p => staticPlaceholders.add(p));
+    }
+    if (element.type === 'paragraph' && element.content) {
+      extractPlaceholders(element.content).forEach(p => staticPlaceholders.add(p));
+    }
+    if (element.type === 'image' && element.src) {
+      extractPlaceholders(element.src).forEach(p => staticPlaceholders.add(p));
+    }
+    if (isLayoutTable(element)) {
+      if (element.headerRow) {
+        element.headerRow.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => staticPlaceholders.add(p));
+        });
+      }
+      element.rows.forEach((row) => {
+        row.cells.forEach((cell) => {
+          if (cell.mergedInto) return;
+          extractPlaceholders(cell.content?.value ?? '').forEach((p) => tablePlaceholders.add(p));
+        });
+      });
+    }
+  });
+
+  return {
+    staticPlaceholders: Array.from(staticPlaceholders),
+    tablePlaceholders: Array.from(tablePlaceholders),
+    allPlaceholders: Array.from(new Set([...staticPlaceholders, ...tablePlaceholders])),
+  };
 }
 
 /**

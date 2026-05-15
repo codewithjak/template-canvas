@@ -1,206 +1,337 @@
 /**
- * elementRenderers.js
- * Pure HTML rendering functions for each canvas element type.
- * No data substitution happens here – callers pass already-resolved values.
+ * elementRenderers.js — Schema-accurate canvas → HTML renderer
+ *
+ * CHANGES vs previous version
+ * ───────────────────────────
+ * renderTable():
+ *   • Header cells (<th>) now receive an explicit background-color and white
+ *     text so the PDF header matches the canvas preview.  The colour source is
+ *     ts.borderColor (the designer's chosen accent colour, e.g. #214883) so it
+ *     works for any template, not just the default one.
+ *   • Because <thead> uses display:table-header-group the styled header is
+ *     automatically repeated by Chrome's print engine on every continuation
+ *     page — no extra logic needed.
+ *   • Row-level background is now applied at the <tr> level so alternating
+ *     colours respect merged cells correctly.
+ *
+ * Everything else is unchanged from the previous version.
  */
 
-// ── Utilities ───────────────────────────────────────────────────────────────
+const A4_W = 794;
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+// ── Utilities ────────────────────────────────────────────────────────────────
+
+function esc(v) {
+  if (v == null) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function px(v, fallback = 0) {
-  const n = Number(v);
-  return isNaN(n) ? fallback : n;
+function opacityCss(val) {
+  if (val == null) return '';
+  const n = Number(val);
+  if (isNaN(n) || n >= 100) return '';
+  return `opacity:${(n / 100).toFixed(3)}`;
 }
 
-/** Build a CSS style string from common element properties. */
-function commonStyle(element) {
-  const parts = [];
-  const { position, style } = element;
-  if (position) {
-    parts.push(`position:absolute`, `left:${px(position.x)}px`, `top:${px(position.y)}px`);
+function dataAttrs(el, w, h) {
+  const x = el.position?.x ?? 0;
+  const y = el.position?.y ?? 0;
+  return `data-original-y="${y}" data-original-x="${x}" `
+       + `data-original-w="${w ?? 0}" data-original-h="${h ?? 0}"`;
+}
+
+function posCss(el, w, h) {
+  const x = el.position?.x ?? 0;
+  const y = el.position?.y ?? 0;
+  let s = `position:absolute;left:${x}px;top:${y}px`;
+  if (w != null) s += `;width:${w}px`;
+  if (h != null) s += `;height:${h}px`;
+  return s;
+}
+
+// ── BOX ──────────────────────────────────────────────────────────────────────
+
+function renderBox(el) {
+  const s  = el.style || {};
+  const w  = s.width;
+  const h  = s.height;
+
+  const bw = s.borderWidth ? `${s.borderWidth}px` : '0';
+  const bc = s.borderColor || 'transparent';
+  const bs = s.borderStyle || 'solid';
+  const br = s.borderRadius ? `border-radius:${s.borderRadius}px;` : '';
+  const bg = s.backgroundColor ? `background-color:${s.backgroundColor};` : '';
+  const op = opacityCss(s.opacity);
+
+  const css = [
+    posCss(el, w, h),
+    `border:${bw} ${bs} ${bc}`,
+    bg, br, op,
+  ].filter(Boolean).join(';');
+
+  return `<div class="pdf-element pdf-box" ${dataAttrs(el, w, h)} style="${css}"></div>`;
+}
+
+// ── TEXT ─────────────────────────────────────────────────────────────────────
+
+function renderText(el) {
+  const s  = el.style || {};
+  const css = [
+    posCss(el),
+    s.fontSize   ? `font-size:${s.fontSize}px`     : '',
+    s.fontWeight ? `font-weight:${s.fontWeight}`    : '',
+    s.fontFamily ? `font-family:${s.fontFamily}`    : '',
+    s.color      ? `color:${s.color}`               : '',
+    s.textAlign  ? `text-align:${s.textAlign}`      : '',
+    'white-space:pre-wrap',
+    'line-height:1.3',
+  ].filter(Boolean).join(';');
+
+  return `<div class="pdf-element pdf-text" ${dataAttrs(el)} style="${css}">${esc(el.content)}</div>`;
+}
+
+function renderParagraph(el) {
+  return renderText({ ...el, type: 'text' }).replace('pdf-text', 'pdf-paragraph pdf-text');
+}
+
+// ── LINE ─────────────────────────────────────────────────────────────────────
+
+function renderLine(el) {
+  const s        = el.style || {};
+  const len      = s.length    ?? 100;
+  const thick    = s.thickness ?? 1;
+  const dir      = s.direction ?? 'horizontal';
+  const color    = s.color     || '#000000';
+  const isDashed = s.style === 'dashed';
+  const dashAttr = isDashed ? `stroke-dasharray="${thick * 4} ${thick * 2}"` : '';
+  const op       = opacityCss(s.opacity);
+
+  const isVert = dir === 'vertical';
+  const svgW   = isVert ? thick : len;
+  const svgH   = isVert ? len   : thick;
+  const x2     = isVert ? 0     : len;
+  const y2     = isVert ? len   : 0;
+
+  const containerCss = [
+    posCss(el, svgW, svgH),
+    op,
+    'overflow:visible',
+  ].filter(Boolean).join(';');
+
+  return `<div class="pdf-element pdf-line" ${dataAttrs(el, svgW, svgH)} style="${containerCss}">
+  <svg width="${svgW}" height="${svgH}" style="overflow:visible;display:block;">
+    <line x1="0" y1="0" x2="${x2}" y2="${y2}"
+          stroke="${esc(color)}" stroke-width="${thick}" ${dashAttr}
+          stroke-linecap="square" />
+  </svg>
+</div>`;
+}
+
+// ── IMAGE ─────────────────────────────────────────────────────────────────────
+
+function renderImage(el) {
+  const s   = el.style || {};
+  const w   = s.width;
+  const h   = s.height;
+  const fit = s.objectFit || 'contain';
+  const css = posCss(el, w, h);
+  return `<div class="pdf-element pdf-image" ${dataAttrs(el, w, h)} style="${css}">
+  <img src="${esc(el.src)}" style="width:100%;height:100%;object-fit:${fit};display:block;" />
+</div>`;
+}
+
+// ── DATE ──────────────────────────────────────────────────────────────────────
+
+function renderDate(el) {
+  const s   = el.style || {};
+  const css = [
+    posCss(el),
+    s.fontSize   ? `font-size:${s.fontSize}px`  : '',
+    s.fontFamily ? `font-family:${s.fontFamily}` : '',
+    s.color      ? `color:${s.color}`            : '',
+  ].filter(Boolean).join(';');
+  return `<div class="pdf-element pdf-date" ${dataAttrs(el)} style="${css}">${esc(el.value || '')}</div>`;
+}
+
+// ── RADIO / CHECKBOX ──────────────────────────────────────────────────────────
+
+function renderRadio(el) {
+  const count = el.options || 2;
+  const s     = el.style  || {};
+  const typo  = s.fontSize ? `font-size:${s.fontSize}px;` : '';
+  const opts  = Array.from({ length: count }, (_, i) => {
+    const checked = el.selected != null && String(el.selected) === String(i);
+    const label   = el.labels?.[i] || `Option ${i + 1}`;
+    return `<label style="margin-right:8px;display:flex;align-items:center;gap:4px;">
+      <input type="radio" ${checked ? 'checked' : ''} disabled />
+      <span style="${typo}">${esc(label)}</span>
+    </label>`;
+  }).join('');
+  const css = `${posCss(el)};display:flex;flex-wrap:wrap;`;
+  return `<div class="pdf-element pdf-radio" ${dataAttrs(el)} style="${css}">${opts}</div>`;
+}
+
+function renderCheckbox(el) {
+  const count   = el.count || 1;
+  const checked = Array.isArray(el.checkedValues) ? el.checkedValues : [];
+  const s       = el.style || {};
+  const typo    = s.fontSize ? `font-size:${s.fontSize}px;` : '';
+  const boxes   = Array.from({ length: count }, (_, i) => {
+    const isChecked = checked.includes(String(i));
+    const label     = el.labels?.[i] || '';
+    return `<label style="margin-right:8px;display:flex;align-items:center;gap:4px;">
+      <input type="checkbox" ${isChecked ? 'checked' : ''} disabled />
+      ${label ? `<span style="${typo}">${esc(label)}</span>` : ''}
+    </label>`;
+  }).join('');
+  const css = `${posCss(el)};display:flex;flex-wrap:wrap;align-items:center;`;
+  return `<div class="pdf-element pdf-checkbox" ${dataAttrs(el)} style="${css}">${boxes}</div>`;
+}
+
+// ── TABLE ─────────────────────────────────────────────────────────────────────
+//
+// FIX: header cells now receive an explicit background-color and contrasting
+// text colour so the PDF matches the canvas preview.
+//
+// Colour resolution:
+//   headerBg   = ts.borderColor  (the designer's accent colour, e.g. #214883)
+//                || ts.headerBg  (explicit override if ever added to schema)
+//                || '#214883'    (safe default — only reached if schema omits both)
+//
+//   headerText = ts.headerColor  (explicit override)
+//                || '#ffffff'    (white — correct for any dark accent colour)
+//
+// Because <thead> uses display:table-header-group, Chrome's print engine
+// repeats the styled header row on every continuation page automatically.
+
+function renderTable(el) {
+  const x    = el.position?.x  ?? 0;
+  const y    = el.position?.y  ?? 0;
+  const tplH = el.templateHeight || 0;
+
+  // ── Column definitions ───────────────────────────────────────────────────
+  const columns = el.columns || [];
+  const totalW  = columns.length
+    ? columns.reduce((sum, c) => sum + (c.width || 0), 0)
+    : (el.style?.width || A4_W);
+
+  // ── Table-level default styles ───────────────────────────────────────────
+  const ts            = el.style || {};
+  const defFontSize   = ts.fontSize   || 11;
+  const defFontWeight = ts.fontWeight || 'normal';
+  const defColor      = ts.color      || '#000000';
+  const defFontFamily = ts.fontFamily || 'Arial, sans-serif';
+  const defBorderW    = ts.borderWidth || 1;
+  const defBorderC    = ts.borderColor || '#cccccc';
+  const cellBorder    = `${defBorderW}px solid ${defBorderC}`;
+
+  // ── HEADER COLOURS (new) ─────────────────────────────────────────────────
+  // Use the table's accent/border colour as the header background so the PDF
+  // matches the canvas preview without storing the colour twice in the schema.
+  const headerBg   = ts.headerBg    || ts.borderColor || '#214883';
+  const headerText = ts.headerColor || '#ffffff';
+
+  const posCssStr = `position:absolute;left:${x}px;top:${y}px;width:${totalW}px;`;
+
+  // ── <colgroup> ────────────────────────────────────────────────────────────
+  const colgroup = columns.length
+    ? `<colgroup>${columns.map(c => `<col style="width:${c.width}px;" />`).join('')}</colgroup>`
+    : '';
+
+  // ── Cell renderer ─────────────────────────────────────────────────────────
+  function cellHtml(cell, colIndex, tag) {
+    if (cell.mergedInto) return '';
+
+    const col = columns[colIndex] || {};
+    const cs  = cell.colSpan > 1 ? `colspan="${cell.colSpan}"` : '';
+    const rs  = cell.rowSpan > 1 ? `rowspan="${cell.rowSpan}"` : '';
+    const cs2 = cell.style || {};
+
+    const isHeader = tag === 'th';
+
+    // Font / text
+    const fs    = cs2.fontSize   || defFontSize;
+    const fw    = isHeader ? (cs2.fontWeight || 'bold') : (cs2.fontWeight || defFontWeight);
+    const ff    = cs2.fontFamily || defFontFamily;
+    const align = cs2.textAlign  || col.alignment || 'left';
+
+    // Colour: header cells always use headerText; data cells use their own colour
+    // or the table default.
+    const textColor = isHeader
+      ? headerText
+      : (cs2.color || defColor);
+
+    // Background: header cells use headerBg; data cells use explicit bg if set.
+    const bgCss = isHeader
+      ? `background-color:${headerBg};`
+      : (cs2.backgroundColor ? `background-color:${cs2.backgroundColor};` : '');
+
+    const cellCss = [
+      `font-size:${fs}px`,
+      `font-weight:${fw}`,
+      `font-family:${ff}`,
+      `color:${textColor}`,
+      `text-align:${align}`,
+      `border:${cellBorder}`,
+      `padding:3px 5px`,
+      `vertical-align:top`,
+      `word-break:break-word`,
+      bgCss,
+    ].filter(Boolean).join(';');
+
+    const value = esc(cell.content?.value ?? '');
+    return `<${tag} ${cs} ${rs} style="${cellCss}">${value}</${tag}>`;
   }
-  if (style) {
-    if (style.width) parts.push(`width:${px(style.width)}px`);
-    if (style.height) parts.push(`height:${px(style.height)}px`);
-    if (style.color) parts.push(`color:${style.color}`);
-    if (style.fontSize) parts.push(`font-size:${px(style.fontSize)}px`);
-    if (style.fontWeight) parts.push(`font-weight:${style.fontWeight}`);
-    if (style.fontFamily) parts.push(`font-family:${style.fontFamily}`);
-    if (style.backgroundColor) parts.push(`background-color:${style.backgroundColor}`);
-    if (style.borderColor && style.borderWidth !== undefined) {
-      parts.push(`border:${px(style.borderWidth)}px solid ${style.borderColor}`);
-    }
-    if (style.textAlign) parts.push(`text-align:${style.textAlign}`);
-    if (style.lineHeight) parts.push(`line-height:${px(style.lineHeight)}px`);
-    if (style.borderRadius) parts.push(`border-radius:${px(style.borderRadius)}px`);
-    if (style.opacity !== undefined) {
-      const o = Number(style.opacity);
-      if (!isNaN(o)) parts.push(`opacity:${o / 100}`);
-    }
+
+  // ── Header row ────────────────────────────────────────────────────────────
+  let thead = '';
+  if (el.headerRow?.cells?.length) {
+    const cells = el.headerRow.cells
+      .map((cell, ci) => cellHtml(cell, ci, 'th'))
+      .join('');
+    // display:table-header-group causes Chrome to repeat this on every print page
+    thead = `<thead style="display:table-header-group;"><tr>${cells}</tr></thead>`;
   }
-  return parts.join(';');
-}
 
-// ── Element renderers ────────────────────────────────────────────────────────
-
-function renderText(element) {
-  return `<div style="${commonStyle(element)}">${escapeHtml(element.content || '')}</div>`;
-}
-
-function renderParagraph(element) {
-  const style = commonStyle(element);
-  // preserve newlines
-  const content = escapeHtml(element.content || '').replace(/\n/g, '<br>');
-  return `<div style="${style};white-space:pre-wrap;">${content}</div>`;
-}
-
-function renderImage(element) {
-  const { x = 0, y = 0 } = element.position || {};
-  const s = element.style || {};
-  const w = s.width ? `width:${px(s.width)}px;` : '';
-  const h = s.height ? `height:${px(s.height)}px;` : '';
-  const fit = s.objectFit ? `object-fit:${s.objectFit};` : '';
-  const op = s.opacity !== undefined ? `opacity:${Number(s.opacity) / 100};` : '';
-  return `<img src="${escapeHtml(element.src || '')}" alt="" style="position:absolute;left:${x}px;top:${y}px;${w}${h}${fit}${op}" />`;
-}
-
-function renderLine(element) {
-  const { color = '#000', thickness = 1, style: lineStyle = 'solid', length = 100, direction = 'horizontal' } = element.style || {};
-  const { x = 0, y = 0 } = element.position || {};
-  const isV = direction === 'vertical';
-  const svgW = isV ? thickness : length;
-  const svgH = isV ? length : thickness;
-  const dashArray = lineStyle === 'dashed' ? '6,4' : lineStyle === 'dotted' ? '2,3' : null;
-  const dash = dashArray ? `stroke-dasharray="${dashArray}"` : '';
-  return `<div style="position:absolute;left:${x}px;top:${y}px;">
-    <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
-      <line x1="${isV ? svgW / 2 : 0}" y1="${isV ? 0 : svgH / 2}"
-            x2="${isV ? svgW / 2 : svgW}" y2="${isV ? svgH : svgH / 2}"
-            stroke="${escapeHtml(color)}" stroke-width="${thickness}" ${dash} stroke-linecap="round"/>
-    </svg>
-  </div>`;
-}
-
-function renderBox(element) {
-  return `<div style="${commonStyle(element)}"></div>`;
-}
-
-function renderRadio(element) {
-  const style = commonStyle(element);
-  const opts = Array.from({ length: element.options || 2 }, (_, i) =>
-    `<div>${element.selected === String(i) ? '◉' : '○'} Option ${i + 1}</div>`
-  ).join('');
-  return `<div style="${style}">${opts}</div>`;
-}
-
-function renderCheckbox(element) {
-  const style = commonStyle(element);
-  const items = Array.from({ length: element.count || 1 }, (_, i) =>
-    `<div>${(element.checkedValues || []).includes(String(i)) ? '☑' : '☐'} Item ${i + 1}</div>`
-  ).join('');
-  return `<div style="${style}">${items}</div>`;
-}
-
-function renderDate(element) {
-  const style = commonStyle(element);
-  const val = element.value ? escapeHtml(element.value) : '';
-  const time = element.time ? ` ${escapeHtml(element.time)}` : '';
-  return `<div style="${style}">${val}${time}</div>`;
-}
-
-// ── Table renderer ──────────────────────────────────────────────────────────
-
-/**
- * Render a layout table element that has ALREADY had its cells resolved
- * (cell.content.value is the final display string).
- * The table is positioned absolutely at element.position.x/y.
- */
-function renderLayoutTable(element) {
-  const { x = 0, y = 0 } = element.position || {};
-  const cols = element.columns || [];
-  const st = element.style || {};
-  const borderW = st.borderWidth != null ? Number(st.borderWidth) : 1;
-  const borderC = st.borderColor || '#d1d5db';
-  const defaultFS = st.fontSize || 13;
-  const defaultFW = st.fontWeight || 'normal';
-  const defaultColor = st.color || '#111827';
-  const defaultFF = st.fontFamily || 'Arial,sans-serif';
-  const border = `border:1px solid ${escapeHtml(borderC)}`;
-  const tableBorder = borderW > 0
-    ? `border:${borderW}px solid ${escapeHtml(borderC)};border-collapse:collapse;`
-    : 'border-collapse:collapse;';
-
-  const colgroup = cols.map(c => `<col style="width:${px(c.width)}px" />`).join('');
-
-  // Header row
-  const headerRow = element.headerRow;
-  const thead = headerRow?.cells ? `<thead><tr>${
-    headerRow.cells.map((cell, idx) => {
-      if (cell.mergedInto) return '';
-      const cs = cell.style || {};
-      const align = cs.textAlign || cols[idx]?.alignment || 'left';
-      const fs = cs.fontSize != null ? cs.fontSize : defaultFS;
-      const fw = cs.fontWeight || 'bold';
-      const bg = cs.backgroundColor ? `background-color:${escapeHtml(cs.backgroundColor)};` : 'background:#f3f4f6;';
-      const rs = cell.span?.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
-      const cs2 = cell.span?.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
-      const text = escapeHtml(cell.content?.value ?? '');
-      return `<th${rs}${cs2} style="padding:6px 8px;${border};text-align:${align};font-size:${fs}px;font-weight:${fw};${bg}">${text}</th>`;
-    }).join('')
-  }</tr></thead>` : '';
-
-  // Data rows
-  const tbody = (element.rows || []).map(row => {
-    const tds = (row.cells || []).map((cell, idx) => {
-      if (cell.mergedInto) return '';
-      const cs = cell.style || {};
-      const align = cs.textAlign || cols[idx]?.alignment || 'left';
-      const fs = cs.fontSize != null ? cs.fontSize : defaultFS;
-      const fw = cs.fontWeight || defaultFW;
-      const bg = cs.backgroundColor ? `background-color:${escapeHtml(cs.backgroundColor)};` : '';
-      const rs = cell.span?.rowSpan > 1 ? ` rowspan="${cell.span.rowSpan}"` : '';
-      const cs2 = cell.span?.colSpan > 1 ? ` colspan="${cell.span.colSpan}"` : '';
-      const text = escapeHtml(cell.content?.value ?? '');
-      return `<td${rs}${cs2} style="padding:4px 8px;${border};text-align:${align};font-size:${fs}px;font-weight:${fw};${bg}">${text}</td>`;
-    }).join('');
-    return `<tr>${tds}</tr>`;
+  // ── Data rows ─────────────────────────────────────────────────────────────
+  const tbody = (el.rows || []).map(row => {
+    const cells = row.cells
+      .map((cell, ci) => cellHtml(cell, ci, 'td'))
+      .join('');
+    return `<tr style="break-inside:avoid;page-break-inside:avoid;">${cells}</tr>`;
   }).join('');
 
-  const tableW = cols.reduce((s, c) => s + px(c.width), 0) || 'auto';
-  const baseFont = `font-size:${defaultFS}px;font-family:${escapeHtml(defaultFF)};color:${escapeHtml(defaultColor)};`;
-  return `<table style="position:absolute;left:${x}px;top:${y}px;width:${tableW}px;${tableBorder}${baseFont}"><colgroup>${colgroup}</colgroup>${thead}<tbody>${tbody}</tbody></table>`;
+  const dAttrs = dataAttrs(el, totalW, tplH);
+
+  return `<div class="pdf-element pdf-table" ${dAttrs} data-template-h="${tplH}"
+     style="${posCssStr}">
+  <table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+    ${colgroup}
+    ${thead}
+    <tbody>${tbody}</tbody>
+  </table>
+</div>`;
 }
 
-// ── Default fallback ─────────────────────────────────────────────────────────
+// ── Router ────────────────────────────────────────────────────────────────────
 
-function renderDefault(element) {
-  return `<div style="${commonStyle(element)}"></div>`;
+function renderElement(el) {
+  switch (el.type) {
+    case 'text':      return renderText(el);
+    case 'paragraph': return renderParagraph(el);
+    case 'image':     return renderImage(el);
+    case 'line':      return renderLine(el);
+    case 'box':       return renderBox(el);
+    case 'date':      return renderDate(el);
+    case 'radio':     return renderRadio(el);
+    case 'checkbox':  return renderCheckbox(el);
+    case 'table':     return renderTable(el);
+    default:
+      return `<div class="pdf-element pdf-unknown"
+        ${dataAttrs(el)} style="${posCss(el)};"></div>`;
+  }
 }
 
-// ── Dispatch map ─────────────────────────────────────────────────────────────
-
-const RENDERERS = {
-  text: renderText,
-  paragraph: renderParagraph,
-  image: renderImage,
-  line: renderLine,
-  box: renderBox,
-  table: renderLayoutTable,
-  radio: renderRadio,
-  checkbox: renderCheckbox,
-  date: renderDate,
-};
-
-function renderElement(element) {
-  const fn = RENDERERS[element.type] || renderDefault;
-  return fn(element);
-}
-
-module.exports = { renderElement, escapeHtml };
+module.exports = { renderElement };

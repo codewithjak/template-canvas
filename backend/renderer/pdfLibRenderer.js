@@ -1,128 +1,191 @@
 /**
  * pdfLibRenderer.js
  *
- * Main PDF generation orchestrator using pdf-lib.
- * Replaces both pdfRenderer.js (Puppeteer/HTML) and pdfKitRenderer.js.
+ * Positioning: cumulative offset chain
+ * ─────────────────────────────────────
+ * All elements are sorted by canvas Y (top to bottom).
+ * A cumulativeOffset starts at 0 and increases each time a table expands.
  *
- * Pipeline:
- *   1. Resolve all placeholders and expand table rows (same logic as before)
- *   2. Preload all images as bytes
- *   3. Sort elements by canvas Y position (top → bottom)
- *   4. Draw each element in order using pdf-lib, advancing the PageManager
- *   5. Tables handle their own pagination internally (drawTable)
- *   6. Static elements below a table are drawn after the table finishes,
- *      at the PageManager's current Y — no manual repositioning needed
+ * For EVERY element (static or table):
+ *   correctedY = element.canvasY + cumulativeOffset
  *
- * Coordinate system:
- *   - Canvas: px, top-left origin, Y increases downward
- *   - PDF:    pt, bottom-left origin, Y increases upward
- *   - Scale:  595.28 / 794 ≈ 0.7497 (applied via px() from coordinateUtils)
+ * After drawing a table:
+ *   expansion       = (actualRows - templateRows) × ROW_H_PX
+ *   cumulativeOffset += expansion
  *
- * Element draw order:
- *   Elements are sorted by their canvas Y position so they render top-to-bottom.
- *   Boxes and lines are drawn before text/images at the same Y (z-order).
+ * This means every element below an expanded table is pushed down by exactly
+ * the amount the table grew — preserving all canvas spatial relationships
+ * regardless of position (header, middle, between tables, footer).
  *
- * Key design decision — "absolute vs flow":
- *   Canvas elements have absolute x,y positions. In PDF we honour x exactly
- *   (scaled to pt). For y we use the RELATIVE position within the template:
- *     - The first element at canvas y=0 starts at the top of the first page.
- *     - Subsequent elements are placed at: their canvas y offset from the
- *       previous table's bottom (or page top for page 1).
- *   This means if element A is at canvas y=300 and a table above it ends at
- *   PDF y=200pt, element A is drawn at PDF y=200pt — not at 300*SCALE.
- *   The canvas y is used ONLY to determine ORDER, not absolute PDF position.
- *
- *   Exception: elements ABOVE all tables keep their absolute scaled position
- *   so the header area of the template (logo, company name, etc.) renders
- *   exactly where designed.
+ * Scale: SCALE = 595.28 / 794 ≈ 0.7497
+ * Canvas page: 794 × 1123 px
+ * PDF page:    595.28 × 841.89 pt
  */
 
-const { PDFDocument, rgb } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const https = require('https');
 const http  = require('http');
 
-const { PageManager }                    = require('./pageManager');
-const { FontCache }                      = require('./fontLoader');
-const { px, parseColor, SCALE }          = require('./coordinateUtils');
-const { drawBox, drawLine, drawText, drawImage, drawTable } = require('./elementDrawers');
+// ── Constants ──────────────────────────────────────────────────────────────────
 
-// ── Placeholder helpers (identical to pdfRenderer.js) ────────────────────────
+const CANVAS_W  = 794;
+const CANVAS_PH = 1123;
+const PDF_W     = 595.28;
+const PDF_H     = 841.89;
+const SCALE     = PDF_W / CANVAS_W;  // ≈ 0.7497
 
-function getNestedValue(obj, path) {
-  if (!path) return undefined;
-  return path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), obj);
+const HDR_H_PX  = 32;
+const ROW_H_PX  = 26;
+
+// ── Colour ─────────────────────────────────────────────────────────────────────
+
+function toColor(str) {
+  if (!str || typeof str !== 'string') return rgb(0, 0, 0);
+  const s = str.trim();
+  if (s.startsWith('#')) {
+    let h = s.slice(1);
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (h.length === 6) {
+      const r = parseInt(h.slice(0,2),16)/255;
+      const g = parseInt(h.slice(2,4),16)/255;
+      const b = parseInt(h.slice(4,6),16)/255;
+      if (!isNaN(r+g+b)) return rgb(r,g,b);
+    }
+  }
+  const m = s.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (m) return rgb(+m[1]/255, +m[2]/255, +m[3]/255);
+  if (s === 'white' || s === 'transparent') return rgb(1,1,1);
+  return rgb(0,0,0);
 }
 
-function replacePlaceholders(text, data, fieldMapping = {}) {
+// ── Coordinate conversion ──────────────────────────────────────────────────────
+
+/**
+ * Convert a corrected canvas Y (px, top-down, after offset applied) to
+ * PDF coordinates: { pageIndex, pdfY } where pdfY is the TOP edge of the
+ * element in pdf-lib bottom-up coords on that page.
+ */
+function canvasToPdf(correctedCanvasY) {
+  const pageIndex = Math.floor(correctedCanvasY / CANVAS_PH);
+  const localY    = correctedCanvasY - pageIndex * CANVAS_PH;
+  const pdfY      = PDF_H - localY * SCALE;
+  return { pageIndex, pdfY };
+}
+
+// ── Page pool ──────────────────────────────────────────────────────────────────
+
+function getPage(pdfDoc, pages, idx) {
+  while (pages.length <= idx) pages.push(pdfDoc.addPage([PDF_W, PDF_H]));
+  return pages[idx];
+}
+
+// ── Fonts ──────────────────────────────────────────────────────────────────────
+
+async function embedFonts(pdfDoc) {
+  return {
+    normal : await pdfDoc.embedFont(StandardFonts.Helvetica),
+    bold   : await pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  };
+}
+
+// ── Text ───────────────────────────────────────────────────────────────────────
+
+function wrapText(text, font, fsPt, maxWPt) {
+  const lines = [];
+  for (const para of String(text || '').split('\n')) {
+    if (!para) { lines.push(''); continue; }
+    const words = para.split(' ');
+    let line = '';
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      let width = 0;
+      try { width = font.widthOfTextAtSize(test, fsPt); } catch(e) {}
+      if (width > maxWPt && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+  }
+  return lines.length ? lines : [''];
+}
+
+function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
+  const lh    = lhPt || fsPt * 1.3;
+  const lines = wrapText(text, font, fsPt, maxWPt);
+  let   y     = topY;
+  for (const line of lines) {
+    if (!line && lines.length > 1) { y -= lh; continue; }
+    try { page.drawText(line, { x, y: y - fsPt * 0.8, size: fsPt, font, color }); }
+    catch(e) {}
+    y -= lh;
+  }
+}
+
+// ── Placeholder resolution ─────────────────────────────────────────────────────
+
+function getNested(obj, path) {
+  return path.split('.').reduce((v, k) => v == null ? undefined : v[k], obj);
+}
+
+function replacePH(text, data, fm = {}) {
   if (typeof text !== 'string') return text;
   return text.replace(/\{\{([^}]+)\}\}/g, (_, raw) => {
-    const key     = raw.trim();
-    const dataKey = fieldMapping[key] || key;
-    const v       = getNestedValue(data, dataKey);
-    return v !== undefined && v !== null ? String(v) : '';
+    const v = getNested(data, fm[raw.trim()] || raw.trim());
+    return v != null ? String(v) : '';
   });
 }
 
-function resolveCellValue(cell, row, colMap) {
+function resolveCellVal(cell, row, colMap) {
   if (cell.binding?.path) {
-    const col = colMap[cell.binding.path] || cell.binding.path;
-    const v   = getNestedValue(row, col);
-    if (v !== undefined && v !== null) return String(v);
-    if (cell.binding.fallback != null) return String(cell.binding.fallback);
-    return '';
+    const v = getNested(row, colMap[cell.binding.path] || cell.binding.path);
+    if (v != null) return String(v);
+    return cell.binding.fallback != null ? String(cell.binding.fallback) : '';
   }
-  return replacePlaceholders(cell.content?.value ?? '', row, colMap);
+  return replacePH(cell.content?.value ?? '', row, colMap);
 }
 
-function resolveStaticElement(element, staticData, fieldMapping) {
-  const el = JSON.parse(JSON.stringify(element));
-  if (el.type === 'text' || el.type === 'paragraph') {
-    el.content = replacePlaceholders(el.content || '', staticData, fieldMapping);
-  }
-  if (el.type === 'image') {
-    el.src = replacePlaceholders(el.src || '', staticData, fieldMapping);
-  }
-  if (el.type === 'date') {
-    el.value = replacePlaceholders(el.value || '', staticData, fieldMapping);
-  }
-  return el;
+function resolveStatic(el, data, fm) {
+  const e = JSON.parse(JSON.stringify(el));
+  if (e.type === 'text' || e.type === 'paragraph') e.content = replacePH(e.content || '', data, fm);
+  if (e.type === 'image') e.src   = replacePH(e.src   || '', data, fm);
+  if (e.type === 'date')  e.value = replacePH(e.value || '', data, fm);
+  return e;
 }
 
-function resolveTable(tableEl, collRows, staticData, fieldMapping, colMap) {
+function resolveTableEl(tableEl, collRows, data, fm, colMap) {
   const el = JSON.parse(JSON.stringify(tableEl));
 
+  // Store template row count BEFORE expansion
+  el._templateRowCount = (el.rows || []).length;
+
   if (el.headerRow?.cells) {
-    el.headerRow.cells = el.headerRow.cells.map(cell => {
-      if (cell.mergedInto) return cell;
-      return {
+    el.headerRow.cells = el.headerRow.cells.map(cell =>
+      cell.mergedInto ? cell : {
         ...cell,
-        content : { type: 'text', value: replacePlaceholders(cell.content?.value ?? '', staticData, fieldMapping) },
+        content : { type: 'text', value: replacePH(cell.content?.value ?? '', data, fm) },
         binding : undefined,
-      };
-    });
+      }
+    );
   }
 
-  const templateRows = el.rows || [];
+  const tmplRows = el.rows || [];
   el.rows = collRows.flatMap((row, ri) =>
-    templateRows.map((tRow, ti) => ({
+    tmplRows.map((tRow, ti) => ({
       ...tRow,
       id   : `${tRow.id}__r${ri}t${ti}`,
-      cells: tRow.cells.map(cell => {
-        if (cell.mergedInto) return cell;
-        return {
+      cells: tRow.cells.map(cell =>
+        cell.mergedInto ? cell : {
           ...cell,
           id     : `${cell.id}__r${ri}t${ti}`,
-          content: { type: 'text', value: resolveCellValue(cell, row, colMap) },
+          content: { type: 'text', value: resolveCellVal(cell, row, colMap) },
           binding: undefined,
-        };
-      }),
+        }
+      ),
     }))
   );
-
   return el;
 }
 
-// ── Image preloading ──────────────────────────────────────────────────────────
+// ── Image preload ──────────────────────────────────────────────────────────────
 
 function fetchBytes(url) {
   return new Promise((resolve, reject) => {
@@ -140,43 +203,205 @@ async function preloadImages(elements) {
   for (const el of elements) {
     if (el.type !== 'image' || !el.src) continue;
     try {
-      if (el.src.startsWith('data:')) {
-        const base64 = el.src.split(',')[1] || '';
-        el._imgBytes = Buffer.from(base64, 'base64');
-      } else if (el.src.startsWith('http://') || el.src.startsWith('https://')) {
+      if (el.src.startsWith('data:'))
+        el._imgBytes = Buffer.from(el.src.split(',')[1] || '', 'base64');
+      else if (el.src.startsWith('http'))
         el._imgBytes = await fetchBytes(el.src);
+    } catch(e) { el._imgBytes = null; }
+  }
+}
+
+// ── Table row drawing ──────────────────────────────────────────────────────────
+
+function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader) {
+  const rowHpt     = rowHpx * SCALE;
+  const rowBotYpdf = rowTopYpdf - rowHpt;
+  const headerBg   = toColor(ts.headerBg || ts.borderColor || '#214883');
+  const headerText = toColor(ts.headerColor || '#ffffff');
+  const borderC    = toColor(ts.borderColor || '#cccccc');
+  const borderW    = Math.max(0.5, (ts.borderWidth || 1) * SCALE);
+  const totalWpx   = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+
+  let curXpx = tableXpx;
+  for (let ci = 0; ci < cells.length; ci++) {
+    const cell = cells[ci];
+    if (cell.mergedInto) { curXpx += columns[ci]?.width || 0; continue; }
+
+    const colWpx = columns[ci]?.width || (totalWpx / cells.length);
+    const cxPt   = curXpx * SCALE;
+    const cWpt   = colWpx * SCALE;
+    const cs2    = cell.style || {};
+    const fsPt   = (cs2.fontSize || ts.fontSize || 11) * SCALE;
+    const bold   = isHeader || cs2.fontWeight === 'bold';
+    const font   = bold ? fonts.bold : fonts.normal;
+    const tColor = isHeader ? headerText : toColor(cs2.color || ts.color || '#000000');
+    const bgCol  = isHeader ? headerBg  : (cs2.backgroundColor ? toColor(cs2.backgroundColor) : null);
+
+    if (bgCol)
+      page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt, color: bgCol });
+    page.drawRectangle({
+      x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt,
+      borderColor: borderC, borderWidth: borderW,
+    });
+
+    const padPt = 3 * SCALE;
+    drawTextAt(page, cell.content?.value || '', font, fsPt,
+      cxPt + padPt, rowTopYpdf - padPt, cWpt - padPt * 2, tColor, fsPt * 1.2);
+
+    curXpx += colWpx;
+  }
+}
+
+/**
+ * Draw a full table starting at correctedCanvasY.
+ * Returns the expansion in canvas px (actualRows - templateRows) × ROW_H_PX
+ * so the caller can add it to cumulativeOffset.
+ */
+function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
+  const columns  = el.columns || [];
+  const tableXpx = el.position?.x || 0;
+  const ts       = el.style    || {};
+  const hasHdr   = !!(el.headerRow?.cells?.length);
+
+  // Convert corrected canvas Y to PDF starting position
+  let curPageIdx  = Math.floor(correctedCanvasY / CANVAS_PH);
+  let curLocalYpx = correctedCanvasY - curPageIdx * CANVAS_PH;
+  let curTopYpdf  = PDF_H - curLocalYpx * SCALE;
+
+  // Draw header on first page
+  if (hasHdr) {
+    const page = getPage(pdfDoc, pages, curPageIdx);
+    drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, HDR_H_PX, ts, fonts, true);
+    curLocalYpx += HDR_H_PX;
+    curTopYpdf  -= HDR_H_PX * SCALE;
+  }
+
+  // Draw data rows — paginate when needed
+  for (const row of (el.rows || [])) {
+    const rowHpt       = ROW_H_PX * SCALE;
+    const bottomMargin = 20 * SCALE;
+
+    if (curTopYpdf - rowHpt < bottomMargin) {
+      // Move to next page
+      curPageIdx  += 1;
+      curLocalYpx  = 0;
+      curTopYpdf   = PDF_H;
+
+      // Repeat header on continuation page
+      if (hasHdr) {
+        const newPage = getPage(pdfDoc, pages, curPageIdx);
+        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, HDR_H_PX, ts, fonts, true);
+        curLocalYpx += HDR_H_PX;
+        curTopYpdf  -= HDR_H_PX * SCALE;
       }
-    } catch (err) {
-      console.warn('[pdfLibRenderer] image preload failed:', err.message);
-      el._imgBytes = null;
+    }
+
+    const page = getPage(pdfDoc, pages, curPageIdx);
+    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, ROW_H_PX, ts, fonts, false);
+
+    curLocalYpx += ROW_H_PX;
+    curTopYpdf  -= ROW_H_PX * SCALE;
+  }
+
+  // Compute expansion: how much did this table grow beyond its template size?
+  const templateRows = el._templateRowCount || 1;
+  const actualRows   = el.rows?.length       || 0;
+  const expansion    = (actualRows - templateRows) * ROW_H_PX;
+
+  return expansion;
+}
+
+// ── Single static element drawing ─────────────────────────────────────────────
+
+async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
+  const { pageIndex, pdfY } = canvasToPdf(correctedCanvasY);
+  const page = getPage(pdfDoc, pages, pageIndex);
+  const xPt  = (el.position?.x || 0) * SCALE;
+  const s    = el.style || {};
+
+  switch (el.type) {
+    case 'box': {
+      const wPt = (s.width  || 0) * SCALE;
+      const hPt = (s.height || 0) * SCALE;
+      const bw  = Math.max(0, (s.borderWidth || 0) * SCALE);
+      if (s.backgroundColor && s.backgroundColor !== 'transparent')
+        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+          color: toColor(s.backgroundColor) });
+      if (bw > 0)
+        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+          borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw });
+      break;
+    }
+
+    case 'line': {
+      const lenPt   = (s.length    || 100) * SCALE;
+      const thickPt = Math.max(0.5, (s.thickness || 1) * SCALE);
+      const col     = toColor(s.color || '#000000');
+      const dash    = s.style === 'dashed' ? [thickPt * 3, thickPt * 2] : undefined;
+      if ((s.direction || 'horizontal') === 'vertical')
+        page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt, y: pdfY - lenPt },
+          thickness: thickPt, color: col, dashArray: dash });
+      else
+        page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt + lenPt, y: pdfY },
+          thickness: thickPt, color: col, dashArray: dash });
+      break;
+    }
+
+    case 'text':
+    case 'paragraph':
+    case 'date': {
+      const text  = el.content || el.value || '';
+      const fsPt  = (s.fontSize || 12) * SCALE;
+      const bold  = s.fontWeight === 'bold' || s.fontWeight === '700' || Number(s.fontWeight) >= 700;
+      const font  = bold ? fonts.bold : fonts.normal;
+      const maxW  = (s.width || (CANVAS_W - (el.position?.x || 0))) * SCALE;
+      const lhPt  = s.lineHeight ? s.lineHeight * SCALE : fsPt * 1.3;
+      drawTextAt(page, text, font, fsPt, xPt, pdfY, maxW, toColor(s.color || '#000000'), lhPt);
+      break;
+    }
+
+    case 'image': {
+      if (!el._imgBytes) break;
+      const wPt = (s.width  || 100) * SCALE;
+      const hPt = (s.height || 100) * SCALE;
+      try {
+        let emb;
+        const b = el._imgBytes;
+        if (b[0] === 0xFF && b[1] === 0xD8) emb = await pdfDoc.embedJpg(b);
+        else emb = await pdfDoc.embedPng(b);
+        page.drawImage(emb, { x: xPt, y: pdfY - hPt, width: wPt, height: hPt });
+      } catch(e) { console.warn('[pdf] image embed failed:', e.message); }
+      break;
+    }
+
+    case 'radio':
+    case 'checkbox': {
+      const fsPt  = 9 * SCALE;
+      const items = el.type === 'radio'
+        ? Array.from({ length: el.options || 2 }, (_, i) => ({
+            label: `Option ${i+1}`,
+            checked: String(el.selected) === String(i),
+          }))
+        : Array.from({ length: el.count || 1 }, (_, i) => ({
+            label: el.labels?.[i] || '',
+            checked: (el.checkedValues || []).includes(String(i)),
+          }));
+      let cy = pdfY;
+      for (const item of items) {
+        const mark = item.checked
+          ? (el.type === 'radio' ? '(*)' : '[x]')
+          : (el.type === 'radio' ? '( )' : '[ ]');
+        drawTextAt(page, `${mark} ${item.label}`, fonts.normal, fsPt,
+          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4);
+        cy -= fsPt * 1.4;
+      }
+      break;
     }
   }
 }
 
-// ── Element sort order ────────────────────────────────────────────────────────
+// ── Main generator ─────────────────────────────────────────────────────────────
 
-const TYPE_Z = { box: 0, line: 1, image: 2, text: 3, paragraph: 3, date: 3, table: 4, radio: 3, checkbox: 3 };
-
-function elementSortKey(el) {
-  const y = el.position?.y ?? 0;
-  const z = TYPE_Z[el.type] ?? 3;
-  return y * 10 + z;
-}
-
-// ── Main generator ────────────────────────────────────────────────────────────
-
-/**
- * Generate a PDF buffer from canvas elements + data.
- *
- * @param {object} opts
- * @param {object[]} opts.templateElements
- * @param {object}   opts.staticData
- * @param {object}   opts.collections         normalised { key: { rows, headers } }
- * @param {object}   opts.fieldMapping
- * @param {object}   opts.tableCollectionBindings
- * @param {object}   opts.collectionMappings
- * @returns {Promise<Buffer>}
- */
 async function generatePdfBuffer({
   templateElements        = [],
   staticData              = {},
@@ -187,200 +412,58 @@ async function generatePdfBuffer({
 }) {
   // ── 1. Resolve all elements ────────────────────────────────────────────────
   const resolved = [];
-
-  for (const element of templateElements) {
-    if (element.type === 'table' && element.schemaVersion === 2) {
-      const collKey = (tableCollectionBindings[element.id])
-        || element.binding?.collectionKey
+  for (const el of templateElements) {
+    if (el.type === 'table' && el.schemaVersion === 2) {
+      const collKey  = tableCollectionBindings[el.id]
+        || el.binding?.collectionKey
         || Object.keys(collections)[0]
         || '';
-
-      const collData   = collections[collKey] || {};
-      const rows       = Array.isArray(collData) ? collData : (collData.rows || []);
-      const colMapping = collectionMappings[collKey] || {};
-
-      resolved.push(resolveTable(element, rows, staticData, fieldMapping, colMapping));
+      const collData = collections[collKey] || {};
+      const rows     = Array.isArray(collData) ? collData : (collData.rows || []);
+      resolved.push(resolveTableEl(el, rows, staticData, fieldMapping, collectionMappings[collKey] || {}));
     } else {
-      resolved.push(resolveStaticElement(element, staticData, fieldMapping));
+      resolved.push(resolveStatic(el, staticData, fieldMapping));
     }
   }
 
   // ── 2. Preload images ──────────────────────────────────────────────────────
   await preloadImages(resolved);
 
-  // ── 3. Sort elements top → bottom (by canvas Y), then by z-type ───────────
-  const sorted = [...resolved].sort((a, b) => elementSortKey(a) - elementSortKey(b));
+  // ── 3. Sort ALL elements by canvas Y, top to bottom ───────────────────────
+  const sorted = [...resolved].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
 
-  // ── 4. Create PDF document ─────────────────────────────────────────────────
+  // ── 4. Create PDF ──────────────────────────────────────────────────────────
   const pdfDoc = await PDFDocument.create();
+  const fonts  = await embedFonts(pdfDoc);
+  const pages  = [];
+  getPage(pdfDoc, pages, 0);
 
-  // Register fontkit for custom font support (pdf-lib requires this)
-  try {
-    const fontkit = require('@pdf-lib/fontkit');
-    pdfDoc.registerFontkit(fontkit);
-  } catch (e) {
-    // fontkit optional — standard fonts still work without it
-  }
-
-  const fontCache = new FontCache(pdfDoc);
-  const manager   = new PageManager(pdfDoc);
-
-  // Pre-embed the fonts we'll need
-  const fontNormal = await fontCache.get('Arial', false);
-  const fontBold   = await fontCache.get('Arial', true);
-  const fonts      = { normal: fontNormal, bold: fontBold };
-
-  // ── 5. Draw each element ───────────────────────────────────────────────────
+  // ── 5. Walk elements top to bottom, maintaining cumulativeOffset ───────────
   //
-  // Strategy:
-  //   - Elements are split into two groups relative to the first table:
-  //       HEADER: elements whose canvas y < first table's canvas y
-  //       BODY:   tables and elements whose canvas y >= first table's canvas y
-  //   - HEADER elements are drawn at their exact scaled absolute positions
-  //     on page 1 (they stay fixed regardless of table expansion).
-  //   - BODY elements flow: each table draws itself (with pagination),
-  //     then elements between/after tables are drawn at the current
-  //     PageManager y position.
+  // cumulativeOffset accumulates the total expansion of all tables drawn so far.
+  // Every element (static or table) is drawn at:
+  //   correctedY = element.canvasY + cumulativeOffset
   //
-  //   This means the header (logo, company name, date, invoice number, etc.)
-  //   always renders exactly where it is on the canvas, while the table and
-  //   footer flow naturally below it.
+  // After drawing a table:
+  //   cumulativeOffset += (actualRows - templateRows) × ROW_H_PX
 
-  const firstTableY = sorted.find(e => e.type === 'table')?.position?.y ?? Infinity;
+  let cumulativeOffset = 0;
 
-  // Group elements
-  const headerEls = sorted.filter(e => e.type !== 'table' && (e.position?.y ?? 0) < firstTableY);
-  const bodyEls   = sorted.filter(e => e.type === 'table' || (e.position?.y ?? 0) >= firstTableY);
+  for (const el of sorted) {
+    const canvasY     = el.position?.y || 0;
+    const correctedY  = canvasY + cumulativeOffset;
 
-  // ── Draw header elements (absolute positions) ──────────────────────────────
-  for (const el of headerEls) {
-    const x = px(el.position?.x || 0);
-    // Convert canvas y (top-down) to PDF y (bottom-up):
-    // PDF y of element top = pageHeight - marginTop - canvasY * SCALE
-    // But we must respect the PageManager's page, so use page 1 coords.
-    const canvasY = el.position?.y || 0;
-    const pdfY    = manager.pageHeight - manager.marginTop - canvasY * SCALE;
-
-    await drawSingleElement(el, manager.page, pdfDoc, x, pdfY, fonts, manager);
-  }
-
-  // Set PageManager y to just below the last header element
-  // so body elements start from there
-  if (headerEls.length > 0) {
-    const lastHeaderEl = headerEls[headerEls.length - 1];
-    const lastCanvasY  = (lastHeaderEl.position?.y || 0) + getElementHeightPx(lastHeaderEl);
-    manager.y          = manager.pageHeight - manager.marginTop - lastCanvasY * SCALE;
-  }
-
-  // ── Draw body elements (flow layout) ──────────────────────────────────────
-  for (const el of bodyEls) {
     if (el.type === 'table') {
-      // Table manages its own pages and advances the manager internally
-      drawTable(pdfDoc, el, manager, fonts);
+      const expansion = drawTable(el, correctedY, pdfDoc, pages, fonts);
+      cumulativeOffset += expansion;
     } else {
-      // Static element: draw at current manager.y
-      const x    = px(el.position?.x || 0);
-      const hPt  = getElementHeightPt(el, fonts, fontNormal);
-
-      if (!manager.fits(hPt)) manager.newPage();
-
-      await drawSingleElement(el, manager.page, pdfDoc, x, manager.y, fonts, manager);
-      manager.advance(hPt);
+      await drawElement(pdfDoc, pages, el, correctedY, fonts);
     }
   }
 
   // ── 6. Serialize ──────────────────────────────────────────────────────────
-  const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
-}
-
-// ── Draw a single non-table element ──────────────────────────────────────────
-
-async function drawSingleElement(el, page, pdfDoc, x, y, fonts, manager) {
-  const s    = el.style || {};
-  const SCALE_LOCAL = 595.28 / 794;
-
-  switch (el.type) {
-    case 'box': {
-      const wPt = px(s.width  || 0);
-      const hPt = px(s.height || 0);
-      drawBox(page, el, x, y, wPt, hPt);
-      break;
-    }
-
-    case 'line': {
-      drawLine(page, el, x, y);
-      break;
-    }
-
-    case 'text':
-    case 'paragraph':
-    case 'date': {
-      const text     = el.content || el.value || '';
-      const fsPx     = s.fontSize || 12;
-      const fsPt     = fsPx * SCALE_LOCAL;
-      const bold     = s.fontWeight === 'bold' || s.fontWeight === '700';
-      const font     = bold ? fonts.bold : fonts.normal;
-      const maxWPt   = px(s.width || (794 - (el.position?.x || 0)));
-      const lhPt     = s.lineHeight ? s.lineHeight * SCALE_LOCAL : fsPt * 1.3;
-      drawText(page, text, font, fsPt, x, y, maxWPt, s.color || '#000000', lhPt);
-      break;
-    }
-
-    case 'image': {
-      const wPt = px(s.width  || 100);
-      const hPt = px(s.height || 100);
-      await drawImage(page, pdfDoc, el, x, y, wPt, hPt);
-      break;
-    }
-
-    case 'radio':
-    case 'checkbox': {
-      // Render as simple text representation
-      const font  = fonts.normal;
-      const fsPt  = 10 * SCALE_LOCAL;
-      const items = el.type === 'radio'
-        ? Array.from({ length: el.options || 2 }, (_, i) => {
-            const checked = String(el.selected) === String(i);
-            return `${checked ? '●' : '○'} Option ${i + 1}`;
-          })
-        : Array.from({ length: el.count || 1 }, (_, i) => {
-            const checked = (el.checkedValues || []).includes(String(i));
-            return `${checked ? '☑' : '☐'} ${el.labels?.[i] || ''}`;
-          });
-
-      let curY = y;
-      for (const item of items) {
-        drawText(page, item, font, fsPt, x, curY, px(200), '#000000', fsPt * 1.4);
-        curY -= fsPt * 1.4;
-      }
-      break;
-    }
-
-    default:
-      break;
-  }
-}
-
-// ── Height estimation helpers ─────────────────────────────────────────────────
-
-function getElementHeightPx(el) {
-  if (el.type === 'box' || el.type === 'image') return el.style?.height || 0;
-  if (el.type === 'line') {
-    const s = el.style || {};
-    return s.direction === 'vertical' ? (s.length || 0) : (s.thickness || 1);
-  }
-  // For text elements, estimate based on font size and line height
-  const fs = el.style?.fontSize || 12;
-  const lh = el.style?.lineHeight || fs * 1.3;
-  // Count newlines
-  const text = el.content || el.value || '';
-  const lines = text.split('\n').length;
-  return lines * lh + 4;  // +4px padding
-}
-
-function getElementHeightPt(el, fonts, font) {
-  return getElementHeightPx(el) * (595.28 / 794);
+  const bytes = await pdfDoc.save();
+  return Buffer.from(bytes);
 }
 
 module.exports = { generatePdfBuffer };

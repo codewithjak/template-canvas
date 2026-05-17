@@ -1,8 +1,11 @@
 /**
  * UploadData.tsx
- * Redesigned upload panel that handles the new ParsedDataSource structure:
- *   - Section 1: Static field mapping  (template placeholder → metadata key)
- *   - Section 2: Per-table mapping     (collection picker + column mapping)
+ *
+ * Changes from previous version:
+ *   - Static field mapping now has a fallback text input per placeholder.
+ *     When the dropdown is "— select —", the user can type a hardcoded value.
+ *     On confirm, fallback values are injected into source.metadata so the
+ *     existing replacePlaceholders logic picks them up without any changes.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -48,6 +51,10 @@ const UploadData: React.FC<UploadDataProps> = ({
   const [tableCollectionBindings, setTableCollectionBindings] = useState<Record<string, string>>({});
   const [collectionMappings, setCollectionMappings] = useState<Record<string, Record<string, string>>>({});
 
+  // Fallback values: placeholder → hardcoded string typed by user
+  // Used when the dropdown for that placeholder is left at "— select —"
+  const [staticFallbacks, setStaticFallbacks] = useState<Record<string, string>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -63,6 +70,8 @@ const UploadData: React.FC<UploadDataProps> = ({
       setFieldMapping(initial.fieldMapping);
       setTableCollectionBindings(initial.tableCollectionBindings);
       setCollectionMappings(initial.collectionMappings);
+      // Reset fallbacks when a new file is loaded
+      setStaticFallbacks({});
     },
     [staticPlaceholders, tables]
   );
@@ -84,10 +93,10 @@ const UploadData: React.FC<UploadDataProps> = ({
         }
         const data = await res.json();
         const src: ParsedDataSource = {
-          metadata: data.metadata || {},
-          collections: data.collections || {},
-          fileName: data.fileName,
-          fileType: data.fileType,
+          metadata    : data.metadata    || {},
+          collections : data.collections || {},
+          fileName    : data.fileName,
+          fileType    : data.fileType,
         };
         setSource(src);
         initMappings(src);
@@ -108,14 +117,14 @@ const UploadData: React.FC<UploadDataProps> = ({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'text/csv': ['.csv'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/json': ['.json'],
+      'text/csv'                                                              : ['.csv'],
+      'application/vnd.ms-excel'                                             : ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'   : ['.xlsx'],
+      'application/json'                                                     : ['.json'],
     },
-    maxFiles: 1,
-    multiple: false,
-    noClick: true,
+    maxFiles : 1,
+    multiple : false,
+    noClick  : true,
   });
 
   // ── Collection binding change ─────────────────────────────────────────────
@@ -123,7 +132,6 @@ const UploadData: React.FC<UploadDataProps> = ({
   const handleCollectionChange = (tableId: string, collKey: string) => {
     setTableCollectionBindings(prev => ({ ...prev, [tableId]: collKey }));
 
-    // Auto-remap columns for the newly selected collection
     if (source && collKey) {
       const tableInfo = tables.find(t => t.id === tableId);
       const col = source.collections[collKey];
@@ -141,17 +149,43 @@ const UploadData: React.FC<UploadDataProps> = ({
 
   const handleConfirm = () => {
     if (!source) return;
-    onDataMapped({ source, fieldMapping, tableCollectionBindings, collectionMappings });
+
+    // Inject fallback values into a copy of metadata so replacePlaceholders
+    // can resolve them without any changes to the mapping engine.
+    // Priority: dropdown selection > fallback text > unresolved (left as placeholder)
+    const enrichedMetadata = { ...source.metadata };
+    for (const ph of staticPlaceholders) {
+      const mappedKey = fieldMapping[ph];
+      if (!mappedKey && staticFallbacks[ph] !== undefined && staticFallbacks[ph] !== '') {
+        // Store the fallback directly under the placeholder key so the engine
+        // finds it via: dataKey = fieldMapping[key] || key → key → metadata[key]
+        enrichedMetadata[ph] = staticFallbacks[ph];
+      }
+    }
+
+    const enrichedSource: ParsedDataSource = { ...source, metadata: enrichedMetadata };
+
+    onDataMapped({
+      source                 : enrichedSource,
+      fieldMapping,
+      tableCollectionBindings,
+      collectionMappings,
+    });
   };
 
-  const canConfirm =
-    !!source &&
-    (staticPlaceholders.length === 0 || Object.values(fieldMapping).some(v => v)) ||
-    (tables.length === 0 && !!source);
+  // Can confirm if: file uploaded AND at least one placeholder is resolved
+  // (either via dropdown or fallback text) OR there are no static placeholders.
+  const canConfirm = !!source && (
+    staticPlaceholders.length === 0 ||
+    staticPlaceholders.some(ph =>
+      fieldMapping[ph] ||
+      (staticFallbacks[ph] !== undefined && staticFallbacks[ph] !== '')
+    )
+  ) || (tables.length === 0 && !!source);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const metadataKeys = source ? Object.keys(source.metadata) : [];
+  const metadataKeys  = source ? Object.keys(source.metadata)    : [];
   const collectionKeys = source ? Object.keys(source.collections) : [];
 
   return (
@@ -213,23 +247,59 @@ const UploadData: React.FC<UploadDataProps> = ({
           <div className="mapping-panel">
             <div className="mapping-panel-header">
               <h3>Static field mapping</h3>
-              <p>Map each template placeholder to a metadata field from your file.</p>
+              <p>
+                Map each placeholder to a field from your file, or type a value directly
+                if the field isn't in the file.
+              </p>
             </div>
             <div className="mapping-grid">
-              {staticPlaceholders.map(ph => (
-                <label key={ph} className="mapping-row">
-                  <span title={ph}>{ph}</span>
-                  <select
-                    value={fieldMapping[ph] ?? ''}
-                    onChange={e => setFieldMapping(prev => ({ ...prev, [ph]: e.target.value }))}
-                  >
-                    <option value="">— select —</option>
-                    {metadataKeys.map(k => (
-                      <option key={k} value={k}>{k}</option>
-                    ))}
-                  </select>
-                </label>
-              ))}
+              {staticPlaceholders.map(ph => {
+                const isMapped   = !!fieldMapping[ph];
+                const fallback   = staticFallbacks[ph] ?? '';
+
+                return (
+                  <div key={ph} className="mapping-row-group">
+                    {/* Placeholder label */}
+                    <span className="mapping-placeholder-label" title={ph}>{ph}</span>
+
+                    {/* Dropdown — map to metadata field */}
+                    <select
+                      className="mapping-select"
+                      value={fieldMapping[ph] ?? ''}
+                      onChange={e => {
+                        setFieldMapping(prev => ({ ...prev, [ph]: e.target.value }));
+                        // Clear fallback when a mapping is selected
+                        if (e.target.value) {
+                          setStaticFallbacks(prev => ({ ...prev, [ph]: '' }));
+                        }
+                      }}
+                    >
+                      <option value="">— select —</option>
+                      {metadataKeys.map(k => (
+                        <option key={k} value={k}>{k}</option>
+                      ))}
+                    </select>
+
+                    {/* Fallback input — shown when no mapping selected */}
+                    {!isMapped && (
+                      <input
+                        type="text"
+                        className="mapping-fallback-input"
+                        placeholder="or type a value…"
+                        value={fallback}
+                        onChange={e =>
+                          setStaticFallbacks(prev => ({ ...prev, [ph]: e.target.value }))
+                        }
+                      />
+                    )}
+
+                    {/* Status indicator */}
+                    <span className={`mapping-status ${isMapped ? 'mapping-status--mapped' : fallback ? 'mapping-status--fallback' : 'mapping-status--empty'}`}>
+                      {isMapped ? '✓ file' : fallback ? '✓ manual' : '—'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -238,10 +308,10 @@ const UploadData: React.FC<UploadDataProps> = ({
         {source && tables.length > 0 && (
           <>
             {tables.map(table => {
-              const boundCollKey = tableCollectionBindings[table.id] || '';
+              const boundCollKey   = tableCollectionBindings[table.id] || '';
               const boundCollection = boundCollKey ? source.collections[boundCollKey] : null;
-              const colHeaders = boundCollection?.headers || [];
-              const colMap = collectionMappings[boundCollKey] || {};
+              const colHeaders      = boundCollection?.headers || [];
+              const colMap          = collectionMappings[boundCollKey] || {};
 
               return (
                 <div key={table.id} className="mapping-panel">

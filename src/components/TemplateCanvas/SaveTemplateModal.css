@@ -1,0 +1,92 @@
+/* SaveTemplateModal.css */
+
+.stm-backdrop {
+  position       : fixed;
+  inset          : 0;
+  background     : rgba(15, 23, 42, 0.45);
+  z-index        : 3000;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+}
+
+.stm-card {
+  background     : #ffffff;
+  border-radius  : 14px;
+  padding        : 28px 28px 24px;
+  width          : min(420px, calc(100vw - 32px));
+  box-shadow     : 0 24px 64px rgba(15, 23, 42, 0.18);
+}
+
+.stm-title {
+  font-size      : 18px;
+  font-weight    : 700;
+  color          : #0f172a;
+  margin         : 0 0 4px;
+}
+
+.stm-subtitle {
+  font-size      : 13px;
+  color          : #64748b;
+  margin         : 0 0 20px;
+}
+
+.stm-input {
+  width          : 100%;
+  height         : 42px;
+  border         : 1px solid #cbd5e1;
+  border-radius  : 8px;
+  padding        : 0 12px;
+  font-size      : 14px;
+  color          : #0f172a;
+  outline        : none;
+  box-sizing     : border-box;
+  transition     : border-color 0.15s, box-shadow 0.15s;
+}
+
+.stm-input:focus {
+  border-color  : #6366f1;
+  box-shadow    : 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.stm-actions {
+  display        : flex;
+  justify-content: flex-end;
+  gap            : 10px;
+  margin-top     : 20px;
+}
+
+.stm-btn {
+  height         : 38px;
+  padding        : 0 18px;
+  border-radius  : 8px;
+  font-size      : 13px;
+  font-weight    : 600;
+  cursor         : pointer;
+  border         : 1px solid transparent;
+  transition     : all 0.15s;
+}
+
+.stm-btn--cancel {
+  background    : #f1f5f9;
+  border-color  : #cbd5e1;
+  color         : #475569;
+}
+
+.stm-btn--cancel:hover {
+  background    : #e2e8f0;
+}
+
+.stm-btn--save {
+  background    : #6366f1;
+  color         : #ffffff;
+}
+
+.stm-btn--save:hover:not(:disabled) {
+  background    : #4f46e5;
+}
+
+.stm-btn--save:disabled {
+  opacity       : 0.5;
+  cursor        : not-allowed;
+}

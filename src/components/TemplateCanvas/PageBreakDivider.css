@@ -1,0 +1,188 @@
+/* PageBreakDivider.css */
+
+.page-break-divider {
+  display        : flex;
+  align-items    : center;
+  gap            : 16px;
+  padding        : 12px 0;
+  cursor         : pointer;
+  user-select    : none;
+  transition     : opacity 0.15s;
+}
+
+.page-break-divider:hover .page-break-badge {
+  background    : #e0e7ff;
+  border-color  : #a5b4fc;
+  color         : #3730a3;
+}
+
+/* ── Lines ── */
+
+.page-break-line {
+  flex           : 1;
+  height         : 1px;
+  background     : #cbd5e1;
+  transition     : background 0.15s;
+}
+
+.page-break-divider--selected .page-break-line {
+  background    : #6366f1;
+}
+
+/* ── Centre ── */
+
+.page-break-centre {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  gap            : 0;
+}
+
+/* ── Badge ── */
+
+.page-break-badge {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  padding        : 5px 14px;
+  border-radius  : 999px;
+  border         : 1px solid #cbd5e1;
+  background     : #f8fafc;
+  color          : #475569;
+  font-size      : 12px;
+  font-weight    : 600;
+  white-space    : nowrap;
+  transition     : all 0.15s;
+}
+
+.page-break-divider--selected .page-break-badge {
+  background    : #eef2ff;
+  border-color  : #6366f1;
+  color         : #4338ca;
+}
+
+.page-break-icon {
+  font-size     : 14px;
+}
+
+.page-break-chevron {
+  font-size     : 9px;
+  opacity       : 0.6;
+}
+
+/* ── Settings panel ── */
+
+.page-break-settings {
+  margin-top     : 10px;
+  padding        : 16px;
+  background     : #ffffff;
+  border         : 1px solid #e2e8f0;
+  border-radius  : 10px;
+  box-shadow     : 0 4px 16px rgba(15, 23, 42, 0.08);
+  display        : flex;
+  flex-direction : column;
+  gap            : 14px;
+  min-width      : 320px;
+  z-index        : 100;
+}
+
+/* ── Field ── */
+
+.page-break-field {
+  display        : flex;
+  flex-direction : column;
+  gap            : 6px;
+  cursor         : default;
+}
+
+.page-break-field--toggle {
+  flex-direction : row;
+  align-items    : flex-start;
+  justify-content: space-between;
+  gap            : 16px;
+}
+
+.page-break-field-label {
+  font-size      : 12px;
+  font-weight    : 600;
+  color          : #374151;
+  display        : flex;
+  flex-direction : column;
+  gap            : 2px;
+}
+
+.page-break-hint {
+  font-size      : 11px;
+  font-weight    : 400;
+  color          : #9ca3af;
+  line-height    : 1.4;
+}
+
+.page-break-input {
+  height         : 34px;
+  border         : 1px solid #d1d5db;
+  border-radius  : 6px;
+  padding        : 0 10px;
+  font-size      : 13px;
+  color          : #111827;
+  outline        : none;
+  transition     : border-color 0.15s;
+}
+
+.page-break-input:focus {
+  border-color  : #6366f1;
+  box-shadow    : 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* ── Toggle switch ── */
+
+.toggle-switch {
+  width          : 40px;
+  height         : 22px;
+  border-radius  : 999px;
+  background     : #d1d5db;
+  position       : relative;
+  cursor         : pointer;
+  flex-shrink    : 0;
+  transition     : background 0.2s;
+}
+
+.toggle-switch--on {
+  background    : #6366f1;
+}
+
+.toggle-knob {
+  position      : absolute;
+  top           : 2px;
+  left          : 2px;
+  width         : 18px;
+  height        : 18px;
+  border-radius : 50%;
+  background    : #ffffff;
+  box-shadow    : 0 1px 4px rgba(0,0,0,0.2);
+  transition    : transform 0.2s;
+}
+
+.toggle-switch--on .toggle-knob {
+  transform     : translateX(18px);
+}
+
+/* ── Delete button ── */
+
+.page-break-delete-btn {
+  align-self     : flex-start;
+  padding        : 6px 12px;
+  border-radius  : 6px;
+  border         : 1px solid #fca5a5;
+  background     : #fee2e2;
+  color          : #991b1b;
+  font-size      : 12px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : all 0.15s;
+}
+
+.page-break-delete-btn:hover {
+  background    : #fecaca;
+  border-color  : #f87171;
+}

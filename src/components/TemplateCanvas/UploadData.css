@@ -274,3 +274,104 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Additions for static field fallback input ───────────────────────────────
+   Add these rules to the bottom of your existing UploadData.css
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Replaces .mapping-row label for static fields — now a block group */
+.mapping-row-group {
+  display        : grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items    : center;
+  gap            : 8px;
+  padding        : 6px 0;
+  border-bottom  : 1px solid #f1f5f9;
+}
+
+.mapping-row-group:last-child {
+  border-bottom  : none;
+}
+
+/* Placeholder name */
+.mapping-placeholder-label {
+  font-size      : 13px;
+  font-weight    : 600;
+  color          : #344054;
+  overflow       : hidden;
+  text-overflow  : ellipsis;
+  white-space    : nowrap;
+}
+
+/* Shared select style (same as existing .mapping-row select) */
+.mapping-select {
+  width          : 100%;
+  padding        : 6px 8px;
+  border         : 1px solid #d0d5dd;
+  border-radius  : 6px;
+  font-size      : 13px;
+  background     : #ffffff;
+  color          : #101828;
+  cursor         : pointer;
+}
+
+.mapping-select:focus {
+  outline        : none;
+  border-color   : #6366f1;
+  box-shadow     : 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+/* Fallback text input */
+.mapping-fallback-input {
+  width          : 100%;
+  padding        : 6px 8px;
+  border         : 1px dashed #a5b4fc;
+  border-radius  : 6px;
+  font-size      : 13px;
+  background     : #fafafe;
+  color          : #101828;
+  grid-column    : 2;   /* sits in the same column as the select */
+  transition     : border-color 0.15s, box-shadow 0.15s;
+}
+
+.mapping-fallback-input:focus {
+  outline        : none;
+  border-color   : #6366f1;
+  border-style   : solid;
+  box-shadow     : 0 0 0 3px rgba(99,102,241,0.1);
+  background     : #fff;
+}
+
+.mapping-fallback-input::placeholder {
+  color          : #a0aec0;
+  font-style     : italic;
+}
+
+/* Status badge */
+.mapping-status {
+  font-size      : 11px;
+  font-weight    : 600;
+  padding        : 2px 7px;
+  border-radius  : 999px;
+  white-space    : nowrap;
+  grid-column    : 3;
+}
+
+.mapping-status--mapped {
+  background     : #dcfce7;
+  color          : #166534;
+  border         : 1px solid #86efac;
+}
+
+.mapping-status--fallback {
+  background     : #eff6ff;
+  color          : #1d4ed8;
+  border         : 1px solid #93c5fd;
+}
+
+.mapping-status--empty {
+  background     : #f8fafc;
+  color          : #94a3b8;
+  border         : 1px solid #e2e8f0;
+}
+

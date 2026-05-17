@@ -1,93 +1,200 @@
+/* TemplateCanvas.css — multi-page canvas */
+
+/* ── Container ───────────────────────────────────────────────────────────────*/
+
 .template-canvas-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 24px 320px 24px 340px;
-  min-height: 100vh;
+  display         : flex;
+  justify-content : center;
+  align-items     : flex-start;
+  padding         : 72px 320px 48px 340px; /* top: clear toolbar height */
+  min-height      : 100vh;
   background-color: #eef1f6;
-  box-sizing: border-box;
+  box-sizing      : border-box;
 }
 
+/* ── Pages wrapper ───────────────────────────────────────────────────────────*/
+
+.canvas-pages-wrapper {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  gap            : 0;
+  width          : 794px;
+}
+
+/* ── Single page block ───────────────────────────────────────────────────────*/
+
+.canvas-page-block {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  width          : 100%;
+}
+
+/* ── Page label ──────────────────────────────────────────────────────────────*/
+
+.canvas-page-label {
+  align-self     : flex-start;
+  font-size      : 11px;
+  font-weight    : 600;
+  color          : #94a3b8;
+  letter-spacing : 0.6px;
+  text-transform : uppercase;
+  margin-bottom  : 6px;
+  padding-left   : 2px;
+}
+
+/* ── Canvas page ─────────────────────────────────────────────────────────────*/
+
 .template-canvas {
-  width: 210mm;
-  height: 297mm;
-  background-color: white;
-  border: 1px solid #d7dce5;
-  padding: 20mm;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-  border-radius: 6px;
-  position: relative;
-  overflow: visible;
+  width          : 794px;
+  height         : 1123px;
+  background     : #ffffff;
+  border         : 1px solid #d7dce5;
+  box-shadow     : 0 10px 30px rgba(15, 23, 42, 0.12);
+  border-radius  : 6px;
+  position       : relative;
+  overflow       : visible;
+  transition     : box-shadow 0.15s, border-color 0.15s;
+  flex-shrink    : 0;
+}
+
+.template-canvas--active {
+  border-color   : #a5b4fc;
+  box-shadow     : 0 10px 30px rgba(15, 23, 42, 0.12),
+                   0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
 .template-canvas.export-mode {
-  border: none;
-  box-shadow: none;
+  border         : none;
+  box-shadow     : none;
 }
 
+/* ── Batch export controls ───────────────────────────────────────────────────*/
+
 .batch-export-controls {
-  width: 100%;
-  max-width: 960px;
-  margin: 16px auto;
-  padding: 12px 16px;
-  border: 1px solid #d7dce5;
-  border-radius: 8px;
-  background: #ffffff;
-  display: flex;
-  flex-wrap: wrap;
+  position       : fixed;
+  top            : 56px;
+  left           : 50%;
+  transform      : translateX(-50%);
+  z-index        : 900;
+  width          : min(760px, calc(100vw - 48px));
+  padding        : 10px 16px;
+  border         : 1px solid #d7dce5;
+  border-radius  : 8px;
+  background     : #ffffff;
+  box-shadow     : 0 2px 12px rgba(15, 23, 42, 0.08);
+  display        : flex;
+  flex-wrap      : wrap;
   justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  align-items    : center;
+  gap            : 12px;
 }
 
 .batch-export-summary {
-  font-size: 14px;
-  color: #344054;
+  font-size      : 13px;
+  color          : #344054;
+}
+
+.preview-label {
+  color          : #6366f1;
+  font-weight    : 500;
 }
 
 .batch-export-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display        : flex;
+  align-items    : center;
+  gap            : 10px;
 }
 
-.batch-export-actions select,
-.batch-export-actions button {
-  height: 38px;
-  border-radius: 6px;
-  border: 1px solid #d7dce5;
-  background: #f8fafc;
-  padding: 0 12px;
-  color: #101828;
+.preview-nav {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
 }
 
-.batch-export-actions button.clear-button {
-  cursor: pointer;
-  background: #6b7280;
-  color: #ffffff;
-  border: none;
+.preview-nav-btn {
+  width          : 28px;
+  height         : 28px;
+  border-radius  : 6px;
+  border         : 1px solid #d7dce5;
+  background     : #f8fafc;
+  color          : #374151;
+  font-size      : 16px;
+  cursor         : pointer;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  transition     : all 0.15s;
 }
+
+.preview-nav-btn:hover:not(:disabled) {
+  background     : #e0e7ff;
+  border-color   : #a5b4fc;
+}
+
+.preview-nav-btn:disabled {
+  opacity        : 0.4;
+  cursor         : not-allowed;
+}
+
+.preview-nav-count {
+  font-size      : 12px;
+  font-weight    : 600;
+  color          : #374151;
+  min-width      : 40px;
+  text-align     : center;
+}
+
+.clear-button {
+  height         : 30px;
+  padding        : 0 12px;
+  border-radius  : 6px;
+  border         : none;
+  background     : #6b7280;
+  color          : #ffffff;
+  font-size      : 12px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : background 0.15s;
+}
+
+.clear-button:hover {
+  background     : #4b5563;
+}
+
+/* ── Export overlay ──────────────────────────────────────────────────────────*/
 
 .export-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.5);
-  z-index: 2000;
-  display: flex;
+  position       : fixed;
+  inset          : 0;
+  background     : rgba(15, 23, 42, 0.5);
+  z-index        : 2000;
+  display        : flex;
   justify-content: center;
-  align-items: center;
+  align-items    : center;
 }
 
 .export-overlay-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  width: min(420px, calc(100% - 32px));
-  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
-  text-align: center;
-  color: #0f172a;
+  background     : #ffffff;
+  border-radius  : 12px;
+  padding        : 28px 32px;
+  width          : min(380px, calc(100% - 32px));
+  box-shadow     : 0 20px 60px rgba(15, 23, 42, 0.18);
+  text-align     : center;
+  color          : #0f172a;
+  font-size      : 14px;
+  font-weight    : 500;
 }
 
-.export-overlay-card p {
-  margin: 8px 0;
+/* ── Upload panel backdrop ───────────────────────────────────────────────────*/
+
+.upload-panel-backdrop {
+  position       : fixed;
+  inset          : 0;
+  background     : rgba(15, 23, 42, 0.4);
+  z-index        : 1500;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
 }

@@ -92,15 +92,35 @@ async function embedFonts(pdfDoc) {
 
 function wrapText(text, font, fsPt, maxWPt) {
   const lines = [];
+
+  function breakWord(word) {
+    let chunk = '';
+    for (const ch of word) {
+      const test = chunk + ch;
+      let w = 0;
+      try { w = font.widthOfTextAtSize(test, fsPt); } catch(e) {}
+      if (w > maxWPt && chunk) { lines.push(chunk); chunk = ch; }
+      else chunk = test;
+    }
+    if (chunk) lines.push(chunk);
+  }
+
   for (const para of String(text || '').split('\n')) {
     if (!para) { lines.push(''); continue; }
     const words = para.split(' ');
     let line = '';
     for (const w of words) {
+      let wordW = 0;
+      try { wordW = font.widthOfTextAtSize(w, fsPt); } catch(e) {}
+      if (wordW > maxWPt) {
+        if (line) { lines.push(line); line = ''; }
+        breakWord(w);
+        continue;
+      }
       const test = line ? line + ' ' + w : w;
-      let width = 0;
-      try { width = font.widthOfTextAtSize(test, fsPt); } catch(e) {}
-      if (width > maxWPt && line) { lines.push(line); line = w; }
+      let testW = 0;
+      try { testW = font.widthOfTextAtSize(test, fsPt); } catch(e) {}
+      if (testW > maxWPt && line) { lines.push(line); line = w; }
       else line = test;
     }
     if (line) lines.push(line);
@@ -213,6 +233,39 @@ async function preloadImages(elements) {
 
 // ── Table row drawing ──────────────────────────────────────────────────────────
 
+/**
+ * Draw text inside a table cell with width AND height clipping.
+ * Wraps text to fit width, clips lines that exceed cell height,
+ * truncates last visible line with ellipsis if content was clipped.
+ */
+/**
+ * Measure how tall a cell's text will be in PDF points.
+ * Used to compute dynamic row height before drawing.
+ */
+function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
+  if (!text) return fsPt * 1.3 + padPt * 2;
+  const lh    = lhPt || fsPt * 1.3;
+  const lines = wrapText(text, font, fsPt, maxWPt);
+  return lines.length * lh + padPt * 2;
+}
+
+/**
+ * Draw text inside a table cell — no clipping, no truncation.
+ * The row height has already been computed to fit all content.
+ */
+function drawCellText(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
+  if (!text) return;
+  const lh    = lhPt || fsPt * 1.3;
+  const lines = wrapText(text, font, fsPt, maxWPt);
+  let   y     = topY;
+  for (const line of lines) {
+    if (!line && lines.length > 1) { y -= lh; continue; }
+    try { page.drawText(line, { x, y: y - fsPt * 0.8, size: fsPt, font, color }); }
+    catch(e) {}
+    y -= lh;
+  }
+}
+
 function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader) {
   const rowHpt     = rowHpx * SCALE;
   const rowBotYpdf = rowTopYpdf - rowHpt;
@@ -244,12 +297,45 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
       borderColor: borderC, borderWidth: borderW,
     });
 
-    const padPt = 3 * SCALE;
-    drawTextAt(page, cell.content?.value || '', font, fsPt,
-      cxPt + padPt, rowTopYpdf - padPt, cWpt - padPt * 2, tColor, fsPt * 1.2);
+    const padPt   = 3 * SCALE;
+    const textWPt = cWpt - padPt * 2;
+    drawCellText(page, cell.content?.value || '', font, fsPt,
+      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2);
 
     curXpx += colWpx;
   }
+}
+
+/**
+ * Measure the actual height a row needs in canvas px.
+ * Takes the maximum height across all cells in the row.
+ */
+function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
+  const padPx   = 3;   // padding in canvas px (we measure in px, convert later)
+  const defFsPx = ts.fontSize || 11;
+  let   maxH    = isHeader ? HDR_H_PX : ROW_H_PX;  // minimum = design height
+
+  for (let ci = 0; ci < cells.length; ci++) {
+    const cell = cells[ci];
+    if (cell.mergedInto) continue;
+
+    const colWpx  = columns[ci]?.width || (totalWpx / cells.length);
+    const cs2     = cell.style || {};
+    const fsPx    = cs2.fontSize || defFsPx;
+    const fsPt    = fsPx * SCALE;
+    const bold    = isHeader || cs2.fontWeight === 'bold';
+    const font    = bold ? fonts.bold : fonts.normal;
+    const maxWPt  = (colWpx - padPx * 2) * SCALE;
+    const lhPt    = fsPt * 1.2;
+    const padPt   = padPx * SCALE;
+
+    const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt);
+    // Convert pt back to px for comparison
+    const cellHPx = cellHPt / SCALE;
+    if (cellHPx > maxH) maxH = cellHPx;
+  }
+
+  return maxH;
 }
 
 /**
@@ -268,17 +354,27 @@ function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
   let curLocalYpx = correctedCanvasY - curPageIdx * CANVAS_PH;
   let curTopYpdf  = PDF_H - curLocalYpx * SCALE;
 
-  // Draw header on first page
+  const totalWpx     = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+  let   actualHeightPx = 0;   // track total actual height for expansion calc
+
+  // Measure header height
+  const hdrActualHPx = hasHdr
+    ? measureRowHeight(el.headerRow.cells, columns, ts, fonts, true, totalWpx)
+    : 0;
+  actualHeightPx += hdrActualHPx;
+
+  // Draw header now that we have its measured height
   if (hasHdr) {
     const page = getPage(pdfDoc, pages, curPageIdx);
-    drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, HDR_H_PX, ts, fonts, true);
-    curLocalYpx += HDR_H_PX;
-    curTopYpdf  -= HDR_H_PX * SCALE;
+    drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
+    curLocalYpx += hdrActualHPx;
+    curTopYpdf  -= hdrActualHPx * SCALE;
   }
 
-  // Draw data rows — paginate when needed
+  // Draw data rows — dynamic height per row
   for (const row of (el.rows || [])) {
-    const rowHpt       = ROW_H_PX * SCALE;
+    const rowHpx       = measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
+    const rowHpt       = rowHpx * SCALE;
     const bottomMargin = 20 * SCALE;
 
     if (curTopYpdf - rowHpt < bottomMargin) {
@@ -290,23 +386,25 @@ function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
       // Repeat header on continuation page
       if (hasHdr) {
         const newPage = getPage(pdfDoc, pages, curPageIdx);
-        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, HDR_H_PX, ts, fonts, true);
-        curLocalYpx += HDR_H_PX;
-        curTopYpdf  -= HDR_H_PX * SCALE;
+        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
+        curLocalYpx += hdrActualHPx;
+        curTopYpdf  -= hdrActualHPx * SCALE;
       }
     }
 
     const page = getPage(pdfDoc, pages, curPageIdx);
-    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, ROW_H_PX, ts, fonts, false);
+    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, rowHpx, ts, fonts, false);
 
-    curLocalYpx += ROW_H_PX;
-    curTopYpdf  -= ROW_H_PX * SCALE;
+    curLocalYpx    += rowHpx;
+    curTopYpdf     -= rowHpx * SCALE;
+    actualHeightPx += rowHpx;
   }
 
-  // Compute expansion: how much did this table grow beyond its template size?
-  const templateRows = el._templateRowCount || 1;
-  const actualRows   = el.rows?.length       || 0;
-  const expansion    = (actualRows - templateRows) * ROW_H_PX;
+  // Compute expansion vs template height
+  const templateHdrH  = hasHdr ? HDR_H_PX : 0;
+  const templateRowsH = (el._templateRowCount || 1) * ROW_H_PX;
+  const templateH     = templateHdrH + templateRowsH;
+  const expansion     = actualHeightPx - templateH;
 
   return expansion;
 }

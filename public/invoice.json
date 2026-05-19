@@ -1,0 +1,102 @@
+{
+  "version": "2.0",
+  "meta": {
+    "name": "Invoice",
+    "description": "Detailed multi‑page invoice template",
+    "createdAt": "2026-05-19"
+  },
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Header",
+      "elements": [
+        {
+          "id": "text-header",
+          "type": "text",
+          "content": "INVOICE",
+          "position": { "x": 50, "y": 40 },
+          "style": { "fontSize": 32, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-company",
+          "type": "text",
+          "content": "{{company_name}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-client",
+          "type": "text",
+          "content": "Bill To: {{client_name}}",
+          "position": { "x": 50, "y": 120 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-date",
+          "type": "text",
+          "content": "Date: {{date}}",
+          "position": { "x": 400, "y": 120 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-2",
+      "label": "Items",
+      "elements": [
+        {
+          "id": "table-items",
+          "type": "layout-table",
+          "columns": ["Description", "Qty", "Unit Price", "Amount"],
+          "rows": [
+            ["{{item1_desc}}", "{{item1_qty}}", "{{item1_price}}", "{{item1_total}}"],
+            ["{{item2_desc}}", "{{item2_qty}}", "{{item2_price}}", "{{item2_total}}"]
+          ],
+          "position": { "x": 50, "y": 40 },
+          "style": { "fontSize": 12, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-3",
+      "label": "Summary",
+      "elements": [
+        {
+          "id": "text-subtotal",
+          "type": "text",
+          "content": "Subtotal: {{subtotal}}",
+          "position": { "x": 400, "y": 200 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-tax",
+          "type": "text",
+          "content": "Tax ({{tax_rate}}%): {{tax_amount}}",
+          "position": { "x": 400, "y": 230 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-total",
+          "type": "text",
+          "content": "Total: {{total}}",
+          "position": { "x": 400, "y": 260 },
+          "style": { "fontSize": 16, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-notes",
+          "type": "paragraph",
+          "content": "Notes: {{notes}}",
+          "position": { "x": 50, "y": 340 },
+          "style": { "fontSize": 12, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-terms",
+          "type": "paragraph",
+          "content": "Payment Terms: {{payment_terms}}",
+          "position": { "x": 50, "y": 380 },
+          "style": { "fontSize": 12, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

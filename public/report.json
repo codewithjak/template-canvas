@@ -1,0 +1,169 @@
+{
+  "version": "2.0",
+  "meta": {
+    "name": "Report",
+    "description": "Full multi‑page report template",
+    "createdAt": "2026-05-19"
+  },
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Title Page",
+      "elements": [
+        {
+          "id": "text-title",
+          "type": "text",
+          "content": "{{report_title}}",
+          "position": { "x": 100, "y": 200 },
+          "style": { "fontSize": 36, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-author",
+          "type": "text",
+          "content": "Author: {{author}}",
+          "position": { "x": 100, "y": 260 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-date",
+          "type": "text",
+          "content": "Date: {{date}}",
+          "position": { "x": 100, "y": 280 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-2",
+      "label": "Table of Contents",
+      "elements": [
+        {
+          "id": "text-toc",
+          "type": "text",
+          "content": "Table of Contents",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-toc",
+          "type": "paragraph",
+          "content": "1. Executive Summary\n2. Data Overview\n3. Analysis\n4. Conclusions\n5. Appendix",
+          "position": { "x": 70, "y": 100 },
+          "style": { "fontSize": 14, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-3",
+      "label": "Executive Summary",
+      "elements": [
+        {
+          "id": "text-summary",
+          "type": "text",
+          "content": "Executive Summary",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-summary",
+          "type": "paragraph",
+          "content": "{{summary}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 16, "lineHeight": 24, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-4",
+      "label": "Data Overview",
+      "elements": [
+        {
+          "id": "text-data",
+          "type": "text",
+          "content": "Data Overview",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "table-data",
+          "type": "layout-table",
+          "columns": ["Metric", "Value"],
+          "rows": [
+            ["Records", "{{record_count}}"],
+            ["Period", "{{period}}"],
+            ["Source", "{{data_source}}"]
+          ],
+          "position": { "x": 50, "y": 100 },
+          "style": { "fontSize": 12, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-5",
+      "label": "Analysis",
+      "elements": [
+        {
+          "id": "text-analysis",
+          "type": "text",
+          "content": "Analysis",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-analysis",
+          "type": "paragraph",
+          "content": "{{analysis}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 16, "lineHeight": 24, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "image-chart",
+          "type": "image",
+          "src": "{{chart_url}}",
+          "position": { "x": 50, "y": 250 },
+          "style": { "width": 500, "height": 300, "objectFit": "contain", "opacity": 100 }
+        }
+      ]
+    },
+    {
+      "pageId": "page-6",
+      "label": "Conclusions",
+      "elements": [
+        {
+          "id": "text-conclusions",
+          "type": "text",
+          "content": "Conclusions",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-conclusions",
+          "type": "paragraph",
+          "content": "{{conclusions}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 16, "lineHeight": 24, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-7",
+      "label": "Appendix",
+      "elements": [
+        {
+          "id": "text-appendix",
+          "type": "text",
+          "content": "Appendix",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "paragraph-appendix",
+          "type": "paragraph",
+          "content": "{{appendix_content}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 14, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

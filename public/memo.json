@@ -1,0 +1,84 @@
+{
+  "version": "2.0",
+  "meta": {
+    "name": "Memo",
+    "description": "Extended memo template with recipients, CC, and attachments",
+    "createdAt": "2026-05-19"
+  },
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Header",
+      "elements": [
+        {
+          "id": "text-memo",
+          "type": "text",
+          "content": "MEMO",
+          "position": { "x": 50, "y": 40 },
+          "style": { "fontSize": 28, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-from",
+          "type": "text",
+          "content": "From: {{sender}}",
+          "position": { "x": 50, "y": 90 },
+          "style": { "fontSize": 14, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-to",
+          "type": "text",
+          "content": "To: {{recipient}}",
+          "position": { "x": 50, "y": 110 },
+          "style": { "fontSize": 14, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-cc",
+          "type": "text",
+          "content": "CC: {{cc_list}}",
+          "position": { "x": 50, "y": 130 },
+          "style": { "fontSize": 14, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "text-date",
+          "type": "text",
+          "content": "Date: {{date}}",
+          "position": { "x": 400, "y": 130 },
+          "style": { "fontSize": 14, "color": "#333333", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-2",
+      "label": "Body",
+      "elements": [
+        {
+          "id": "paragraph-body",
+          "type": "paragraph",
+          "content": "{{memo_body}}",
+          "position": { "x": 50, "y": 50 },
+          "style": { "fontSize": 16, "lineHeight": 24, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    },
+    {
+      "pageId": "page-3",
+      "label": "Attachments",
+      "elements": [
+        {
+          "id": "text-attachments",
+          "type": "text",
+          "content": "Attachments",
+          "position": { "x": 50, "y": 40 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "list-attachments",
+          "type": "paragraph",
+          "content": "{{attachment_list}}",
+          "position": { "x": 50, "y": 80 },
+          "style": { "fontSize": 14, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

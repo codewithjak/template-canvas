@@ -1,43 +1,65 @@
 /**
- * pdfLibRenderer.js
+ * pdfLibRenderer.js — Header/Footer Aware PDF Generator
  *
- * Positioning: cumulative offset chain
- * ─────────────────────────────────────
- * All elements are sorted by canvas Y (top to bottom).
- * A cumulativeOffset starts at 0 and increases each time a table expands.
+ * ARCHITECTURE
+ * ────────────
+ * Each canvas page carries an optional header and footer config:
  *
- * For EVERY element (static or table):
- *   correctedY = element.canvasY + cumulativeOffset
+ *   page.header = { enabled, repeatOnOverflow, boundaryY, style }
+ *   page.footer = { enabled, repeatOnOverflow, boundaryY,
+ *                   showPageNumbers, pageNumber: { format, alignment, startFrom } }
  *
- * After drawing a table:
- *   expansion       = (actualRows - templateRows) × ROW_H_PX
- *   cumulativeOffset += expansion
+ * Element classification per canvas page:
+ *   position.y  < header.boundaryY               → HEADER elements
+ *   position.y  >= footer.boundaryY               → FOOTER elements
+ *   everything in between                         → CONTENT elements
  *
- * This means every element below an expanded table is pushed down by exactly
- * the amount the table grew — preserving all canvas spatial relationships
- * regardless of position (header, middle, between tables, footer).
+ * PDF page layout (per canvas page):
+ *   ┌──────────────────────────┐  ← 0
+ *   │  HEADER ZONE             │  ← 0 .. headerH (canvas px → scaled)
+ *   ├──────────────────────────┤  ← headerH
+ *   │                          │
+ *   │  CONTENT                 │  ← content flows here, paginated
+ *   │                          │     within availableH per PDF page
+ *   │                          │
+ *   ├──────────────────────────┤  ← PDF_H - footerH
+ *   │  FOOTER ZONE             │
+ *   └──────────────────────────┘  ← PDF_H
  *
- * Scale: SCALE = 595.28 / 794 ≈ 0.7497
- * Canvas page: 794 × 1123 px
- * PDF page:    595.28 × 841.89 pt
+ * availableH  = CANVAS_PH - headerH - footerH  (in canvas px)
+ *
+ * On overflow PDF pages (when content spills past one page):
+ *   - Header elements are redrawn at their original Y (if repeatOnOverflow)
+ *   - Footer elements are redrawn at their original Y (if repeatOnOverflow)
+ *   - Content Y is remapped: contentLocalY → contentLocalY + headerH
+ *     so it starts below the header on the new page
+ *   - Page numbers are injected into the flagged footer element
+ *
+ * NO element ever lands inside the header or footer reserved zones
+ * on any overflow page.
+ *
+ * Coordinate system
+ * ─────────────────
+ * All internal calculations are in CANVAS PX (794 wide, 1123 per page).
+ * SCALE = 595.28 / 794 ≈ 0.7497 converts canvas px → PDF points.
+ * pdfY (bottom-up)  = PDF_H - canvasLocalY * SCALE
  */
 
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const https = require('https');
 const http  = require('http');
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const CANVAS_W  = 794;
-const CANVAS_PH = 1123;
+const CANVAS_PH = 1123;   // canvas px per "page"
 const PDF_W     = 595.28;
 const PDF_H     = 841.89;
-const SCALE     = PDF_W / CANVAS_W;  // ≈ 0.7497
-
+const SCALE     = PDF_W / CANVAS_W;   // ≈ 0.7497
 const HDR_H_PX  = 32;
 const ROW_H_PX  = 26;
 
-// ── Colour ─────────────────────────────────────────────────────────────────────
+// ── Colour ────────────────────────────────────────────────────────────────────
 
 function toColor(str) {
   if (!str || typeof str !== 'string') return rgb(0, 0, 0);
@@ -54,32 +76,19 @@ function toColor(str) {
   }
   const m = s.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
   if (m) return rgb(+m[1]/255, +m[2]/255, +m[3]/255);
-  if (s === 'white' || s === 'transparent') return rgb(1,1,1);
+  if (s === 'white') return rgb(1,1,1);
+  if (s === 'transparent') return null;
   return rgb(0,0,0);
 }
 
-// ── Coordinate conversion ──────────────────────────────────────────────────────
-
-/**
- * Convert a corrected canvas Y (px, top-down, after offset applied) to
- * PDF coordinates: { pageIndex, pdfY } where pdfY is the TOP edge of the
- * element in pdf-lib bottom-up coords on that page.
- */
-function canvasToPdf(correctedCanvasY) {
-  const pageIndex = Math.floor(correctedCanvasY / CANVAS_PH);
-  const localY    = correctedCanvasY - pageIndex * CANVAS_PH;
-  const pdfY      = PDF_H - localY * SCALE;
-  return { pageIndex, pdfY };
-}
-
-// ── Page pool ──────────────────────────────────────────────────────────────────
+// ── Page pool ─────────────────────────────────────────────────────────────────
 
 function getPage(pdfDoc, pages, idx) {
   while (pages.length <= idx) pages.push(pdfDoc.addPage([PDF_W, PDF_H]));
   return pages[idx];
 }
 
-// ── Fonts ──────────────────────────────────────────────────────────────────────
+// ── Fonts ─────────────────────────────────────────────────────────────────────
 
 async function embedFonts(pdfDoc) {
   return {
@@ -88,11 +97,10 @@ async function embedFonts(pdfDoc) {
   };
 }
 
-// ── Text ───────────────────────────────────────────────────────────────────────
+// ── Text utilities ────────────────────────────────────────────────────────────
 
 function wrapText(text, font, fsPt, maxWPt) {
   const lines = [];
-
   function breakWord(word) {
     let chunk = '';
     for (const ch of word) {
@@ -104,7 +112,6 @@ function wrapText(text, font, fsPt, maxWPt) {
     }
     if (chunk) lines.push(chunk);
   }
-
   for (const para of String(text || '').split('\n')) {
     if (!para) { lines.push(''); continue; }
     const words = para.split(' ');
@@ -128,10 +135,16 @@ function wrapText(text, font, fsPt, maxWPt) {
   return lines.length ? lines : [''];
 }
 
+function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
+  if (!text) return fsPt * 1.3 + padPt * 2;
+  const lh = lhPt || fsPt * 1.3;
+  return wrapText(text, font, fsPt, maxWPt).length * lh + padPt * 2;
+}
+
 function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
   const lh    = lhPt || fsPt * 1.3;
   const lines = wrapText(text, font, fsPt, maxWPt);
-  let   y     = topY;
+  let y = topY;
   for (const line of lines) {
     if (!line && lines.length > 1) { y -= lh; continue; }
     try { page.drawText(line, { x, y: y - fsPt * 0.8, size: fsPt, font, color }); }
@@ -140,7 +153,7 @@ function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
   }
 }
 
-// ── Placeholder resolution ─────────────────────────────────────────────────────
+// ── Placeholder resolution ────────────────────────────────────────────────────
 
 function getNested(obj, path) {
   return path.split('.').reduce((v, k) => v == null ? undefined : v[k], obj);
@@ -173,10 +186,7 @@ function resolveStatic(el, data, fm) {
 
 function resolveTableEl(tableEl, collRows, data, fm, colMap) {
   const el = JSON.parse(JSON.stringify(tableEl));
-
-  // Store template row count BEFORE expansion
   el._templateRowCount = (el.rows || []).length;
-
   if (el.headerRow?.cells) {
     el.headerRow.cells = el.headerRow.cells.map(cell =>
       cell.mergedInto ? cell : {
@@ -186,7 +196,6 @@ function resolveTableEl(tableEl, collRows, data, fm, colMap) {
       }
     );
   }
-
   const tmplRows = el.rows || [];
   el.rows = collRows.flatMap((row, ri) =>
     tmplRows.map((tRow, ti) => ({
@@ -205,7 +214,7 @@ function resolveTableEl(tableEl, collRows, data, fm, colMap) {
   return el;
 }
 
-// ── Image preload ──────────────────────────────────────────────────────────────
+// ── Image preload ─────────────────────────────────────────────────────────────
 
 function fetchBytes(url) {
   return new Promise((resolve, reject) => {
@@ -231,190 +240,46 @@ async function preloadImages(elements) {
   }
 }
 
-// ── Table row drawing ──────────────────────────────────────────────────────────
+// ── Zone drawing helpers ──────────────────────────────────────────────────────
 
 /**
- * Draw text inside a table cell with width AND height clipping.
- * Wraps text to fit width, clips lines that exceed cell height,
- * truncates last visible line with ellipsis if content was clipped.
+ * Draw a zone background + border edge onto a PDF page.
+ * headerH / footerH are in canvas px; we convert to PDF points here.
  */
-/**
- * Measure how tall a cell's text will be in PDF points.
- * Used to compute dynamic row height before drawing.
- */
-function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
-  if (!text) return fsPt * 1.3 + padPt * 2;
-  const lh    = lhPt || fsPt * 1.3;
-  const lines = wrapText(text, font, fsPt, maxWPt);
-  return lines.length * lh + padPt * 2;
-}
+function drawZoneBackground(page, zoneConfig, type, headerHpx, footerHpx) {
+  if (!zoneConfig?.enabled) return;
+  const style = zoneConfig.style || {};
 
-/**
- * Draw text inside a table cell — no clipping, no truncation.
- * The row height has already been computed to fit all content.
- */
-function drawCellText(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
-  if (!text) return;
-  const lh    = lhPt || fsPt * 1.3;
-  const lines = wrapText(text, font, fsPt, maxWPt);
-  let   y     = topY;
-  for (const line of lines) {
-    if (!line && lines.length > 1) { y -= lh; continue; }
-    try { page.drawText(line, { x, y: y - fsPt * 0.8, size: fsPt, font, color }); }
-    catch(e) {}
-    y -= lh;
-  }
-}
+  const bg = style.backgroundColor ? toColor(style.backgroundColor) : null;
+  if (!bg) return;
 
-function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader) {
-  const rowHpt     = rowHpx * SCALE;
-  const rowBotYpdf = rowTopYpdf - rowHpt;
-  const headerBg   = toColor(ts.headerBg || ts.borderColor || '#214883');
-  const headerText = toColor(ts.headerColor || '#ffffff');
-  const borderC    = toColor(ts.borderColor || '#cccccc');
-  const borderW    = Math.max(0.5, (ts.borderWidth || 1) * SCALE);
-  const totalWpx   = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+  const zoneHpx = type === 'header' ? headerHpx : footerHpx;
+  const zoneHpt = zoneHpx * SCALE;
+  const yBottom = type === 'header' ? PDF_H - zoneHpt : 0;
 
-  let curXpx = tableXpx;
-  for (let ci = 0; ci < cells.length; ci++) {
-    const cell = cells[ci];
-    if (cell.mergedInto) { curXpx += columns[ci]?.width || 0; continue; }
+  page.drawRectangle({ x: 0, y: yBottom, width: PDF_W, height: zoneHpt, color: bg });
 
-    const colWpx = columns[ci]?.width || (totalWpx / cells.length);
-    const cxPt   = curXpx * SCALE;
-    const cWpt   = colWpx * SCALE;
-    const cs2    = cell.style || {};
-    const fsPt   = (cs2.fontSize || ts.fontSize || 11) * SCALE;
-    const bold   = isHeader || cs2.fontWeight === 'bold';
-    const font   = bold ? fonts.bold : fonts.normal;
-    const tColor = isHeader ? headerText : toColor(cs2.color || ts.color || '#000000');
-    const bgCol  = isHeader ? headerBg  : (cs2.backgroundColor ? toColor(cs2.backgroundColor) : null);
-
-    if (bgCol)
-      page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt, color: bgCol });
-    page.drawRectangle({
-      x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt,
-      borderColor: borderC, borderWidth: borderW,
-    });
-
-    const padPt   = 3 * SCALE;
-    const textWPt = cWpt - padPt * 2;
-    drawCellText(page, cell.content?.value || '', font, fsPt,
-      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2);
-
-    curXpx += colWpx;
+  // Border line
+  const borderStr = type === 'header' ? style.borderBottom : style.borderTop;
+  if (borderStr) {
+    const parts = borderStr.split(' ');
+    const bwPt  = (parseFloat(parts[0]) || 1) * SCALE;
+    const bCol  = parts[2] ? toColor(parts[2]) : rgb(0.89, 0.91, 0.94);
+    const lineY = type === 'header' ? PDF_H - zoneHpt : zoneHpt;
+    page.drawLine({ start: { x: 0, y: lineY }, end: { x: PDF_W, y: lineY },
+      thickness: bwPt, color: bCol });
   }
 }
 
 /**
- * Measure the actual height a row needs in canvas px.
- * Takes the maximum height across all cells in the row.
+ * Draw one static element at a specific PDF Y position.
+ * localYpx = Y within the current PDF page (top-down, canvas px)
+ * The caller is responsible for supplying the correct localYpx
+ * (accounting for header offset on continuation pages).
  */
-function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
-  const padPx   = 3;   // padding in canvas px (we measure in px, convert later)
-  const defFsPx = ts.fontSize || 11;
-  let   maxH    = isHeader ? HDR_H_PX : ROW_H_PX;  // minimum = design height
-
-  for (let ci = 0; ci < cells.length; ci++) {
-    const cell = cells[ci];
-    if (cell.mergedInto) continue;
-
-    const colWpx  = columns[ci]?.width || (totalWpx / cells.length);
-    const cs2     = cell.style || {};
-    const fsPx    = cs2.fontSize || defFsPx;
-    const fsPt    = fsPx * SCALE;
-    const bold    = isHeader || cs2.fontWeight === 'bold';
-    const font    = bold ? fonts.bold : fonts.normal;
-    const maxWPt  = (colWpx - padPx * 2) * SCALE;
-    const lhPt    = fsPt * 1.2;
-    const padPt   = padPx * SCALE;
-
-    const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt);
-    // Convert pt back to px for comparison
-    const cellHPx = cellHPt / SCALE;
-    if (cellHPx > maxH) maxH = cellHPx;
-  }
-
-  return maxH;
-}
-
-/**
- * Draw a full table starting at correctedCanvasY.
- * Returns the expansion in canvas px (actualRows - templateRows) × ROW_H_PX
- * so the caller can add it to cumulativeOffset.
- */
-function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
-  const columns  = el.columns || [];
-  const tableXpx = el.position?.x || 0;
-  const ts       = el.style    || {};
-  const hasHdr   = !!(el.headerRow?.cells?.length);
-
-  // Convert corrected canvas Y to PDF starting position
-  let curPageIdx  = Math.floor(correctedCanvasY / CANVAS_PH);
-  let curLocalYpx = correctedCanvasY - curPageIdx * CANVAS_PH;
-  let curTopYpdf  = PDF_H - curLocalYpx * SCALE;
-
-  const totalWpx     = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
-  let   actualHeightPx = 0;   // track total actual height for expansion calc
-
-  // Measure header height
-  const hdrActualHPx = hasHdr
-    ? measureRowHeight(el.headerRow.cells, columns, ts, fonts, true, totalWpx)
-    : 0;
-  actualHeightPx += hdrActualHPx;
-
-  // Draw header now that we have its measured height
-  if (hasHdr) {
-    const page = getPage(pdfDoc, pages, curPageIdx);
-    drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
-    curLocalYpx += hdrActualHPx;
-    curTopYpdf  -= hdrActualHPx * SCALE;
-  }
-
-  // Draw data rows — dynamic height per row
-  for (const row of (el.rows || [])) {
-    const rowHpx       = measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
-    const rowHpt       = rowHpx * SCALE;
-    const bottomMargin = 20 * SCALE;
-
-    if (curTopYpdf - rowHpt < bottomMargin) {
-      // Move to next page
-      curPageIdx  += 1;
-      curLocalYpx  = 0;
-      curTopYpdf   = PDF_H;
-
-      // Repeat header on continuation page
-      if (hasHdr) {
-        const newPage = getPage(pdfDoc, pages, curPageIdx);
-        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
-        curLocalYpx += hdrActualHPx;
-        curTopYpdf  -= hdrActualHPx * SCALE;
-      }
-    }
-
-    const page = getPage(pdfDoc, pages, curPageIdx);
-    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, rowHpx, ts, fonts, false);
-
-    curLocalYpx    += rowHpx;
-    curTopYpdf     -= rowHpx * SCALE;
-    actualHeightPx += rowHpx;
-  }
-
-  // Compute expansion vs template height
-  const templateHdrH  = hasHdr ? HDR_H_PX : 0;
-  const templateRowsH = (el._templateRowCount || 1) * ROW_H_PX;
-  const templateH     = templateHdrH + templateRowsH;
-  const expansion     = actualHeightPx - templateH;
-
-  return expansion;
-}
-
-// ── Single static element drawing ─────────────────────────────────────────────
-
-async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
-  const { pageIndex, pdfY } = canvasToPdf(correctedCanvasY);
-  const page = getPage(pdfDoc, pages, pageIndex);
-  const xPt  = (el.position?.x || 0) * SCALE;
+async function drawStaticAt(pdfDoc, page, el, localXpx, localYpx, fonts) {
+  const xPt  = localXpx * SCALE;
+  const yTop = PDF_H - localYpx * SCALE;   // pdfY of TOP edge (bottom-up)
   const s    = el.style || {};
 
   switch (el.type) {
@@ -422,144 +287,446 @@ async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
       const wPt = (s.width  || 0) * SCALE;
       const hPt = (s.height || 0) * SCALE;
       const bw  = Math.max(0, (s.borderWidth || 0) * SCALE);
-      if (s.backgroundColor && s.backgroundColor !== 'transparent')
-        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
-          color: toColor(s.backgroundColor) });
+      const bg  = s.backgroundColor ? toColor(s.backgroundColor) : null;
+      if (bg) page.drawRectangle({ x: xPt, y: yTop - hPt, width: wPt, height: hPt, color: bg });
       if (bw > 0)
-        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+        page.drawRectangle({ x: xPt, y: yTop - hPt, width: wPt, height: hPt,
           borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw });
       break;
     }
-
     case 'line': {
       const lenPt   = (s.length    || 100) * SCALE;
       const thickPt = Math.max(0.5, (s.thickness || 1) * SCALE);
       const col     = toColor(s.color || '#000000');
       const dash    = s.style === 'dashed' ? [thickPt * 3, thickPt * 2] : undefined;
       if ((s.direction || 'horizontal') === 'vertical')
-        page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt, y: pdfY - lenPt },
+        page.drawLine({ start: { x: xPt, y: yTop }, end: { x: xPt, y: yTop - lenPt },
           thickness: thickPt, color: col, dashArray: dash });
       else
-        page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt + lenPt, y: pdfY },
+        page.drawLine({ start: { x: xPt, y: yTop }, end: { x: xPt + lenPt, y: yTop },
           thickness: thickPt, color: col, dashArray: dash });
       break;
     }
-
     case 'text':
     case 'paragraph':
     case 'date': {
-      const text  = el.content || el.value || '';
-      const fsPt  = (s.fontSize || 12) * SCALE;
-      const bold  = s.fontWeight === 'bold' || s.fontWeight === '700' || Number(s.fontWeight) >= 700;
-      const font  = bold ? fonts.bold : fonts.normal;
-      const maxW  = (s.width || (CANVAS_W - (el.position?.x || 0))) * SCALE;
-      const lhPt  = s.lineHeight ? s.lineHeight * SCALE : fsPt * 1.3;
-      drawTextAt(page, text, font, fsPt, xPt, pdfY, maxW, toColor(s.color || '#000000'), lhPt);
+      const text = el.content || el.value || '';
+      const fsPt = (s.fontSize || 12) * SCALE;
+      const bold = s.fontWeight === 'bold' || Number(s.fontWeight) >= 700;
+      const font = bold ? fonts.bold : fonts.normal;
+      const maxW = (s.width || (CANVAS_W - localXpx)) * SCALE;
+      drawTextAt(page, text, font, fsPt, xPt, yTop, maxW, toColor(s.color || '#000000'), fsPt * 1.3);
       break;
     }
-
     case 'image': {
       if (!el._imgBytes) break;
       const wPt = (s.width  || 100) * SCALE;
       const hPt = (s.height || 100) * SCALE;
       try {
-        let emb;
         const b = el._imgBytes;
-        if (b[0] === 0xFF && b[1] === 0xD8) emb = await pdfDoc.embedJpg(b);
-        else emb = await pdfDoc.embedPng(b);
-        page.drawImage(emb, { x: xPt, y: pdfY - hPt, width: wPt, height: hPt });
+        const emb = (b[0] === 0xFF && b[1] === 0xD8)
+          ? await pdfDoc.embedJpg(b) : await pdfDoc.embedPng(b);
+        page.drawImage(emb, { x: xPt, y: yTop - hPt, width: wPt, height: hPt });
       } catch(e) { console.warn('[pdf] image embed failed:', e.message); }
-      break;
-    }
-
-    case 'radio':
-    case 'checkbox': {
-      const fsPt  = 9 * SCALE;
-      const items = el.type === 'radio'
-        ? Array.from({ length: el.options || 2 }, (_, i) => ({
-            label: `Option ${i+1}`,
-            checked: String(el.selected) === String(i),
-          }))
-        : Array.from({ length: el.count || 1 }, (_, i) => ({
-            label: el.labels?.[i] || '',
-            checked: (el.checkedValues || []).includes(String(i)),
-          }));
-      let cy = pdfY;
-      for (const item of items) {
-        const mark = item.checked
-          ? (el.type === 'radio' ? '(*)' : '[x]')
-          : (el.type === 'radio' ? '( )' : '[ ]');
-        drawTextAt(page, `${mark} ${item.label}`, fonts.normal, fsPt,
-          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4);
-        cy -= fsPt * 1.4;
-      }
       break;
     }
   }
 }
 
-// ── Main generator ─────────────────────────────────────────────────────────────
+// ── Row height measurement ────────────────────────────────────────────────────
 
-async function generatePdfBuffer({
-  templateElements        = [],
-  staticData              = {},
-  collections             = {},
-  fieldMapping            = {},
-  tableCollectionBindings = {},
-  collectionMappings      = {},
+function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
+  const padPx  = 3;
+  const defFs  = ts.fontSize || 11;
+  let   maxH   = isHeader ? HDR_H_PX : ROW_H_PX;
+
+  for (let ci = 0; ci < cells.length; ci++) {
+    const cell    = cells[ci];
+    if (cell.mergedInto) continue;
+    const colWpx  = columns[ci]?.width || (totalWpx / cells.length);
+    const cs2     = cell.style || {};
+    const fsPt    = (cs2.fontSize || defFs) * SCALE;
+    const bold    = isHeader || cs2.fontWeight === 'bold';
+    const font    = bold ? fonts.bold : fonts.normal;
+    const maxWPt  = Math.max(1, (colWpx - padPx * 2) * SCALE);
+    const lhPt    = fsPt * 1.2;
+    const padPt   = padPx * SCALE;
+    const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt);
+    const cellHPx = cellHPt / SCALE;
+    if (cellHPx > maxH) maxH = cellHPx;
+  }
+  return maxH;
+}
+
+// ── Table row drawing ─────────────────────────────────────────────────────────
+
+function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader) {
+  const rowHpt     = rowHpx * SCALE;
+  const rowBotYpdf = rowTopYpdf - rowHpt;
+  const headerBg   = toColor(ts.headerBg || '#214883');
+  const headerText = toColor(ts.headerColor || '#ffffff');
+  const borderC    = toColor(ts.borderColor || '#cccccc');
+  const borderW    = Math.max(0.5, (ts.borderWidth || 1) * SCALE);
+  const totalWpx   = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+
+  let curXpx = tableXpx;
+  for (let ci = 0; ci < cells.length; ci++) {
+    const cell    = cells[ci];
+    if (cell.mergedInto) { curXpx += columns[ci]?.width || 0; continue; }
+
+    const colWpx  = columns[ci]?.width || (totalWpx / cells.length);
+    const cxPt    = curXpx * SCALE;
+    const cWpt    = colWpx * SCALE;
+    const cs2     = cell.style || {};
+    const fsPt    = (cs2.fontSize || ts.fontSize || 11) * SCALE;
+    const bold    = isHeader || cs2.fontWeight === 'bold';
+    const font    = bold ? fonts.bold : fonts.normal;
+    const tColor  = isHeader ? headerText : toColor(cs2.color || ts.color || '#000000');
+    const bgCol   = isHeader ? headerBg   : (cs2.backgroundColor ? toColor(cs2.backgroundColor) : null);
+
+    if (bgCol)
+      page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt, color: bgCol });
+    page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt,
+      borderColor: borderC, borderWidth: borderW });
+
+    const padPt   = 3 * SCALE;
+    const textWPt = Math.max(1, cWpt - padPt * 2);
+    const lhPt    = fsPt * 1.2;
+    drawTextAt(page, cell.content?.value || '', font, fsPt,
+      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, lhPt);
+
+    curXpx += colWpx;
+  }
+}
+
+// ── Page number injection ─────────────────────────────────────────────────────
+
+/**
+ * Draw the page number string in the footer zone.
+ * footerElements: resolved footer elements for this canvas page
+ * pageNumberConfig: { format, alignment, startFrom }
+ * currentPdfPage: 0-indexed PDF page number produced so far
+ * totalPdfPages: estimated total (pass null for "X" format, finalise later)
+ */
+function drawPageNumber(page, footerConfig, pdfPageIndex, totalPdfPages, headerHpx, footerHpx) {
+  if (!footerConfig?.showPageNumbers) return;
+  const pnc     = footerConfig.pageNumber;
+  if (!pnc) return;
+
+  const start   = pnc.startFrom ?? 1;
+  const current = pdfPageIndex + start;
+  const total   = totalPdfPages != null ? (totalPdfPages + start - 1) : '?';
+  const fmt     = pnc.format || 'Page X of Y';
+  const text    = fmt === 'Page X of Y' ? `Page ${current} of ${total}`
+                : fmt === 'X / Y'       ? `${current} / ${total}`
+                :                        String(current);
+
+  const align   = pnc.alignment || 'right';
+  const fsPt    = 9 * SCALE;
+
+  // Position: vertically centered in footer zone
+  const footerTopY = footerHpx * SCALE;   // from bottom of page
+  const yPos       = footerTopY / 2 + fsPt / 2;
+
+  let xPos: number;
+  const margin = 12 * SCALE;
+  if (align === 'left')   xPos = margin;
+  else if (align === 'center') xPos = PDF_W / 2 - 30 * SCALE;
+  else                    xPos = PDF_W - margin - 60 * SCALE;
+
+  try {
+    page.drawText(text, { x: xPos, y: yPos, size: fsPt, font: undefined, color: rgb(0.3,0.3,0.3) });
+  } catch(e) {}
+}
+
+// ── Per-canvas-page PDF generator ────────────────────────────────────────────
+
+/**
+ * Generate PDF pages for one canvas page worth of content.
+ *
+ * @param {object} params
+ * @param {any[]}   params.headerElements  — resolved elements in header zone
+ * @param {any[]}   params.contentElements — resolved elements in content zone
+ * @param {any[]}   params.footerElements  — resolved elements in footer zone
+ * @param {number}  params.headerBoundaryY — px; 0 if no header
+ * @param {number}  params.footerBoundaryY — px; CANVAS_PH if no footer
+ * @param {object}  params.headerConfig    — HeaderConfig or null
+ * @param {object}  params.footerConfig    — FooterConfig or null
+ * @param {object}  params.pdfDoc
+ * @param {any[]}   params.pages           — shared page array (appended to)
+ * @param {object}  params.fonts
+ * @param {number}  params.startPdfPageIdx — first PDF page index to write into
+ * @returns {number} number of PDF pages produced
+ */
+async function generateCanvasPagePdf({
+  headerElements,
+  contentElements,
+  footerElements,
+  headerBoundaryY,
+  footerBoundaryY,
+  headerConfig,
+  footerConfig,
+  pdfDoc,
+  pages,
+  fonts,
+  startPdfPageIdx,
 }) {
-  // ── 1. Resolve all elements ────────────────────────────────────────────────
-  const resolved = [];
-  for (const el of templateElements) {
-    if (el.type === 'table' && el.schemaVersion === 2) {
-      const collKey  = tableCollectionBindings[el.id]
-        || el.binding?.collectionKey
-        || Object.keys(collections)[0]
-        || '';
-      const collData = collections[collKey] || {};
-      const rows     = Array.isArray(collData) ? collData : (collData.rows || []);
-      resolved.push(resolveTableEl(el, rows, staticData, fieldMapping, collectionMappings[collKey] || {}));
-    } else {
-      resolved.push(resolveStatic(el, staticData, fieldMapping));
+  const headerHpx   = headerConfig?.enabled  ? headerBoundaryY            : 0;
+  const footerHpx   = footerConfig?.enabled  ? (CANVAS_PH - footerBoundaryY) : 0;
+  const headerHpt   = headerHpx * SCALE;
+  const footerHpt   = footerHpx * SCALE;
+
+  // Available content height per PDF page in canvas px
+  const availHpx    = CANVAS_PH - headerHpx - footerHpx;
+
+  // PDF Y of the content top edge (below header)
+  const contentTopPdfY = PDF_H - headerHpt;
+  // PDF Y of the content bottom edge (above footer)
+  const contentBotPdfY = footerHpt;
+
+  // ── Helper: draw header on a specific PDF page ───────────────────────────
+  async function drawHeader(pdfPageIdx) {
+    if (!headerConfig?.enabled) return;
+    const page = getPage(pdfDoc, pages, pdfPageIdx);
+    drawZoneBackground(page, headerConfig, 'header', headerHpx, footerHpx);
+    for (const el of headerElements) {
+      await drawStaticAt(pdfDoc, page, el, el.position.x, el.position.y, fonts);
     }
   }
 
-  // ── 2. Preload images ──────────────────────────────────────────────────────
-  await preloadImages(resolved);
+  // ── Helper: draw footer on a specific PDF page ───────────────────────────
+  async function drawFooter(pdfPageIdx, localPdfPageNum) {
+    if (!footerConfig?.enabled) return;
+    const page = getPage(pdfDoc, pages, pdfPageIdx);
+    drawZoneBackground(page, footerConfig, 'footer', headerHpx, footerHpx);
+    for (const el of footerElements) {
+      // Footer elements: their Y on canvas is relative to footerBoundaryY
+      // We remap them to sit at the bottom of the PDF page
+      const localY = el.position.y - footerBoundaryY;  // 0 = top of footer zone
+      const pdfLocalY = CANVAS_PH - footerHpx + localY;
+      await drawStaticAt(pdfDoc, page, el, el.position.x, pdfLocalY, fonts);
+    }
+    drawPageNumber(page, footerConfig, localPdfPageNum, null, headerHpx, footerHpx);
+  }
 
-  // ── 3. Sort ALL elements by canvas Y, top to bottom ───────────────────────
-  const sorted = [...resolved].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
+  // ── Draw header + footer on first page of this canvas page ──────────────
+  await drawHeader(startPdfPageIdx);
+  await drawFooter(startPdfPageIdx, 0);
 
-  // ── 4. Create PDF ──────────────────────────────────────────────────────────
+  // ── Sort content elements by Y ────────────────────────────────────────────
+  const sorted = [...contentElements].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
+
+  // Current PDF page tracking
+  let curPdfPageIdx   = startPdfPageIdx;
+  let cumulativeOffset = 0;
+  // usedContentYpx: how many canvas px of content have been placed on curPdfPageIdx
+  let usedContentYpx  = 0;
+
+  // ── Walk all content elements ─────────────────────────────────────────────
+  for (const el of sorted) {
+    // canvasY is relative to the canvas page (0..CANVAS_PH)
+    const canvasY    = (el.position?.y || 0) - headerHpx;  // relative to content zone top
+    const correctedY = canvasY + cumulativeOffset;
+
+    if (el.type === 'table' && el.schemaVersion === 2) {
+      // ── TABLE: draw row by row, paginating within availHpx ───────────────
+      const columns    = el.columns || [];
+      const totalWpx   = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+      const tableXpx   = el.position?.x || 0;
+      const ts         = el.style || {};
+      const hasHdr     = !!(el.headerRow?.cells?.length);
+
+      // Place table at correctedY within content zone
+      let curTableLocalYpx = correctedY;  // within content zone (0 = top)
+
+      // Check if we need to advance to next page before starting table
+      if (curTableLocalYpx >= availHpx) {
+        const overflow = curTableLocalYpx - availHpx;
+        curPdfPageIdx += 1;
+        await drawHeader(curPdfPageIdx);
+        await drawFooter(curPdfPageIdx, curPdfPageIdx - startPdfPageIdx);
+        curTableLocalYpx = overflow;
+        cumulativeOffset -= (correctedY - curTableLocalYpx);
+      }
+
+      let tableActualHpx = 0;
+
+      // Header row
+      const hdrHpx = hasHdr
+        ? measureRowHeight(el.headerRow.cells, columns, ts, fonts, true, totalWpx)
+        : 0;
+
+      if (hasHdr) {
+        const page = getPage(pdfDoc, pages, curPdfPageIdx);
+        const rowTopPdfY = contentTopPdfY - curTableLocalYpx * SCALE;
+        drawTableRow(page, el.headerRow.cells, columns, tableXpx, rowTopPdfY, hdrHpx, ts, fonts, true);
+        curTableLocalYpx += hdrHpx;
+        tableActualHpx   += hdrHpx;
+      }
+
+      // Data rows
+      for (const row of (el.rows || [])) {
+        const rowHpx = measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
+
+        // Need new page?
+        if (curTableLocalYpx + rowHpx > availHpx) {
+          curPdfPageIdx += 1;
+          await drawHeader(curPdfPageIdx);
+          await drawFooter(curPdfPageIdx, curPdfPageIdx - startPdfPageIdx);
+          curTableLocalYpx = hasHdr ? hdrHpx : 0;  // repeat header on new page
+
+          if (hasHdr) {
+            const page = getPage(pdfDoc, pages, curPdfPageIdx);
+            const rowTopPdfY = contentTopPdfY - (hasHdr ? hdrHpx : 0) * SCALE;
+            drawTableRow(page, el.headerRow.cells, columns, tableXpx,
+              contentTopPdfY, hdrHpx, ts, fonts, true);
+            curTableLocalYpx = hdrHpx;
+          }
+        }
+
+        const page      = getPage(pdfDoc, pages, curPdfPageIdx);
+        const rowTopPdfY = contentTopPdfY - curTableLocalYpx * SCALE;
+        drawTableRow(page, row.cells, columns, tableXpx, rowTopPdfY, rowHpx, ts, fonts, false);
+
+        curTableLocalYpx += rowHpx;
+        tableActualHpx   += rowHpx;
+        usedContentYpx    = curTableLocalYpx;
+      }
+
+      // Accumulate expansion
+      const templateHdrH  = hasHdr ? HDR_H_PX : 0;
+      const templateRowsH = (el._templateRowCount || 1) * ROW_H_PX;
+      const expansion     = tableActualHpx - (templateHdrH + templateRowsH);
+      cumulativeOffset   += expansion;
+
+    } else {
+      // ── STATIC ELEMENT ────────────────────────────────────────────────────
+
+      // Determine which PDF page this element falls on
+      let pageRelativeY = correctedY;
+
+      // Advance pages until element fits within availHpx of current page
+      while (pageRelativeY >= availHpx) {
+        pageRelativeY  -= availHpx;
+        curPdfPageIdx  += 1;
+        // Draw header/footer on newly entered page if we haven't yet
+        if (pages.length <= curPdfPageIdx) {
+          await drawHeader(curPdfPageIdx);
+          await drawFooter(curPdfPageIdx, curPdfPageIdx - startPdfPageIdx);
+        }
+      }
+
+      // pageRelativeY is now 0..availHpx — offset by header zone
+      const finalLocalY = pageRelativeY + headerHpx;
+      const page        = getPage(pdfDoc, pages, curPdfPageIdx);
+      await drawStaticAt(pdfDoc, page, el, el.position.x, finalLocalY, fonts);
+    }
+  }
+
+  // Return total PDF pages produced for this canvas page
+  return curPdfPageIdx - startPdfPageIdx + 1;
+}
+
+// ── Main entry point ──────────────────────────────────────────────────────────
+
+/**
+ * Accepts the new multi-page payload shape:
+ * {
+ *   pages: [
+ *     {
+ *       pageId, label, elements,
+ *       header: HeaderConfig,
+ *       footer: FooterConfig,
+ *       staticData, collections, fieldMapping,
+ *       tableCollectionBindings, collectionMappings
+ *     }
+ *   ]
+ * }
+ *
+ * Also accepts the legacy flat shape for backward compat.
+ */
+async function generatePdfBuffer(payload) {
   const pdfDoc = await PDFDocument.create();
   const fonts  = await embedFonts(pdfDoc);
   const pages  = [];
-  getPage(pdfDoc, pages, 0);
 
-  // ── 5. Walk elements top to bottom, maintaining cumulativeOffset ───────────
-  //
-  // cumulativeOffset accumulates the total expansion of all tables drawn so far.
-  // Every element (static or table) is drawn at:
-  //   correctedY = element.canvasY + cumulativeOffset
-  //
-  // After drawing a table:
-  //   cumulativeOffset += (actualRows - templateRows) × ROW_H_PX
+  // Normalise to pages array
+  const canvasPages = Array.isArray(payload.pages)
+    ? payload.pages
+    : [{
+        pageId                  : 'page-1',
+        label                   : 'Page 1',
+        elements                : payload.templateElements || [],
+        header                  : payload.header || null,
+        footer                  : payload.footer || null,
+        staticData              : payload.staticData || {},
+        collections             : payload.collections || {},
+        fieldMapping            : payload.fieldMapping || {},
+        tableCollectionBindings : payload.tableCollectionBindings || {},
+        collectionMappings      : payload.collectionMappings || {},
+      }];
 
-  let cumulativeOffset = 0;
+  let globalPdfPageIdx = 0;
 
-  for (const el of sorted) {
-    const canvasY     = el.position?.y || 0;
-    const correctedY  = canvasY + cumulativeOffset;
+  for (const canvasPage of canvasPages) {
+    const {
+      elements = [],
+      header,
+      footer,
+      staticData              = {},
+      collections             = {},
+      fieldMapping            = {},
+      tableCollectionBindings = {},
+      collectionMappings      = {},
+    } = canvasPage;
 
-    if (el.type === 'table') {
-      const expansion = drawTable(el, correctedY, pdfDoc, pages, fonts);
-      cumulativeOffset += expansion;
-    } else {
-      await drawElement(pdfDoc, pages, el, correctedY, fonts);
+    const headerBoundaryY = header?.enabled ? (header.boundaryY ?? 80)   : 0;
+    const footerBoundaryY = footer?.enabled ? (footer.boundaryY ?? 1043) : CANVAS_PH;
+
+    // ── Resolve elements ────────────────────────────────────────────────────
+    const resolved = [];
+    for (const el of elements) {
+      if (el.type === 'table' && el.schemaVersion === 2) {
+        const collKey  = (tableCollectionBindings[el.id] || el.binding?.collectionKey || '').toLowerCase().trim();
+        const normCols = Object.fromEntries(Object.entries(collections).map(([k,v]) => [k.toLowerCase().trim(), v]));
+        const collData = normCols[collKey] || {};
+        const rows     = Array.isArray(collData) ? collData : (collData.rows || []);
+        resolved.push(resolveTableEl(el, rows, staticData, fieldMapping,
+          (collectionMappings[collKey] || collectionMappings[Object.keys(collectionMappings)[0]] || {})));
+      } else {
+        resolved.push(resolveStatic(el, staticData, fieldMapping));
+      }
     }
+    await preloadImages(resolved);
+
+    // ── Classify elements into zones ────────────────────────────────────────
+    const headerElements  = resolved.filter(el => (el.position?.y || 0) <  headerBoundaryY);
+    const footerElements  = resolved.filter(el => (el.position?.y || 0) >= footerBoundaryY);
+    const contentElements = resolved.filter(el => {
+      const y = el.position?.y || 0;
+      return y >= headerBoundaryY && y < footerBoundaryY;
+    });
+
+    // Ensure first page exists
+    getPage(pdfDoc, pages, globalPdfPageIdx);
+
+    const pagesProduced = await generateCanvasPagePdf({
+      headerElements,
+      contentElements,
+      footerElements,
+      headerBoundaryY,
+      footerBoundaryY,
+      headerConfig : header  || null,
+      footerConfig : footer  || null,
+      pdfDoc,
+      pages,
+      fonts,
+      startPdfPageIdx: globalPdfPageIdx,
+    });
+
+    globalPdfPageIdx += pagesProduced;
   }
 
-  // ── 6. Serialize ──────────────────────────────────────────────────────────
   const bytes = await pdfDoc.save();
   return Buffer.from(bytes);
 }

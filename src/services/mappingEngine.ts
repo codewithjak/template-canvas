@@ -3,22 +3,85 @@
  * Maps data to template placeholders, handles loops and conditions
  */
 
-import type { DataRow } from './dataApi';
+export type DataRow = Record<string, any>;
 
-// Re-export for convenience
-export type { DataRow };
-
-export type CanvasElement = {
-  id: string;
-  type: 'text' | 'table' | 'image' | 'line' | 'box';
-  content?: string;
-  data?: string[][];
-  src?: string;
-  position: { x: number; y: number };
-  style: any;
-  loop?: string; // For loop support: "items"
-  condition?: string; // For condition support: "has_discount"
-}
+export type CanvasElement =
+  | {
+      id: string;
+      type: 'text';
+      content: string;
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'image';
+      src: string;
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'line';
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'box';
+      shape?: 'box' | 'rectangle' | 'triangle' | 'ellipse';
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'paragraph';
+      content: string;
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'radio';
+      options: number;
+      selected?: string;
+      orientation?: 'horizontal' | 'vertical';
+      position: { x: number; y: number; relativeOffset?: number };
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'checkbox';
+      count?: number;
+      checkedValues?: string[];
+      orientation?: 'horizontal' | 'vertical';
+      position: { x: number; y: number; relativeOffset?: number };
+      loop?: string;
+      condition?: string;
+    }
+  | {
+      id: string;
+      type: 'date';
+      value?: string;
+      time?: string;
+      includeTime?: boolean;
+      format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD Mon YYYY';
+      position: { x: number; y: number };
+      style: any;
+      loop?: string;
+      condition?: string;
+    };
 
 /**
  * Extract all placeholders from a string
@@ -154,13 +217,6 @@ export function mapTemplateToData(
     if (element.type === 'text' && element.content) {
       extractPlaceholders(element.content).forEach(p => allPlaceholders.add(p));
     }
-    if (element.type === 'table' && element.data) {
-      element.data.forEach(row => {
-        row.forEach(cell => {
-          extractPlaceholders(cell).forEach(p => allPlaceholders.add(p));
-        });
-      });
-    }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => allPlaceholders.add(p));
     }
@@ -174,37 +230,21 @@ export function mapTemplateToData(
   
   // Map each element - PRESERVE ALL PROPERTIES, only replace placeholders in content
   return elements.map(element => {
-    // Create a complete copy preserving ALL properties
-    // This ensures position, style, id, type, and ALL other properties remain EXACTLY the same
-    const mapped: CanvasElement = JSON.parse(JSON.stringify(element));
-    
-    // ONLY replace placeholders in content fields - nothing else changes
+    const mapped: any = JSON.parse(JSON.stringify(element));
+
     if (element.type === 'text' && element.content) {
-      // Only modify the content string to replace placeholders
-      // All other properties (position, style, id, type, fontSize, color, etc.) remain unchanged
       mapped.content = replacePlaceholders(element.content, data, fieldMapping);
     }
-    
-    // ONLY replace placeholders in table cells - table structure and properties stay the same
-    if (element.type === 'table' && element.data) {
-      // Only modify cell content strings to replace placeholders
-      // All other properties (position, style, id, type, table structure) remain unchanged
-      mapped.data = element.data.map(row =>
-        row.map(cell => replacePlaceholders(cell, data, fieldMapping))
-      );
+
+    if (element.type === 'paragraph' && element.content) {
+      mapped.content = replacePlaceholders(element.content, data, fieldMapping);
     }
-    
-    // ONLY replace placeholders in image src - image properties stay the same
+
     if (element.type === 'image' && element.src) {
-      // Only modify the src string to replace placeholders
-      // All other properties (position, style, id, type, width, height, objectFit, opacity) remain unchanged
       mapped.src = replacePlaceholders(element.src, data, fieldMapping);
     }
-    
-    // For line and box elements - NO CHANGES AT ALL
-    // They are returned exactly as they are (no placeholders in these types)
-    
-    return mapped;
+
+    return mapped as CanvasElement;
   });
 }
 
@@ -234,13 +274,6 @@ export function getAllPlaceholders(elements: CanvasElement[]): string[] {
   elements.forEach(element => {
     if (element.type === 'text' && element.content) {
       extractPlaceholders(element.content).forEach(p => placeholders.add(p));
-    }
-    if (element.type === 'table' && element.data) {
-      element.data.forEach(row => {
-        row.forEach(cell => {
-          extractPlaceholders(cell).forEach(p => placeholders.add(p));
-        });
-      });
     }
     if (element.type === 'image' && element.src) {
       extractPlaceholders(element.src).forEach(p => placeholders.add(p));

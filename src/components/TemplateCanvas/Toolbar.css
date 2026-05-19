@@ -1,79 +1,117 @@
 .toolbar {
   position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
+  right: 0;
+  left: auto;
   display: flex;
-  gap: 20px;
-  padding: 10px 20px;
-  background-color: white;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 16px;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  z-index: 1001;
   align-items: center;
+  max-width: min(100%, 760px);
+  height: 52px;
 }
 
 .toolbar-section {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
 }
 
 .toolbar-section:not(:last-child)::after {
   content: '';
   width: 1px;
-  height: 24px;
-  background-color: #ddd;
-  margin-left: 10px;
+  height: 20px;
+  background-color: #e3e8f0;
+  margin-left: 4px;
 }
 
-.toolbar-button {
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+.toolbar-icon-button {
+  min-width: 44px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  font-size: 14px;
+  transition: all 0.2s ease;
+  font-size: 13px;
   font-weight: 500;
-  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
-.toolbar-button:hover {
-  background-color: #0056b3;
+.toolbar-icon-button:hover:not(:disabled) {
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
-.toolbar-button:active {
-  background-color: #004085;
+.toolbar-icon-button:active:not(:disabled) {
+  background: #c7d2fe;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.2);
+  transform: translateY(0);
 }
 
-.toolbar-button-danger {
-  background-color: #dc3545;
+.toolbar-icon {
+  font-size: 18px;
+  line-height: 1;
 }
 
-.toolbar-button-danger:hover {
-  background-color: #c82333;
+.toolbar-label {
+  display: inline;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
-.toolbar-button-danger:active {
-  background-color: #bd2130;
+.toolbar-icon-button-secondary {
+  background: #ecf0ff;
+  border-color: #c7d2fe;
 }
 
-.toolbar-button-secondary {
-  background-color: #28a745;
+.toolbar-icon-button-secondary:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
 }
 
-.toolbar-button-secondary:hover:not(:disabled) {
-  background-color: #218838;
+.toolbar-icon-button-secondary:active:not(:disabled) {
+  background: #bfdbfe;
 }
 
-.toolbar-button-secondary:active:not(:disabled) {
-  background-color: #1e7e34;
+.toolbar-icon-button-danger {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
 }
 
-.toolbar-button:disabled {
-  background-color: #ccc;
+.toolbar-icon-button-danger:hover:not(:disabled) {
+  background: #fecaca;
+  border-color: #f87171;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15);
+  transform: translateY(-1px);
+}
+
+.toolbar-icon-button-danger:active:not(:disabled) {
+  background: #fba3a3;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.2);
+}
+
+.toolbar-icon-button:disabled {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #94a3b8;
   cursor: not-allowed;
   opacity: 0.6;
 }

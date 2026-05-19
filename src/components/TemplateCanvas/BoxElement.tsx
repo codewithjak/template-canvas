@@ -4,6 +4,7 @@ import './BoxElement.css';
 
 interface BoxElementProps {
   id: string;
+  shape?: 'box' | 'rectangle' | 'triangle' | 'ellipse';
   position: { x: number; y: number };
   style: {
     width: number;
@@ -23,6 +24,7 @@ interface BoxElementProps {
 
 function BoxElement({
   id,
+  shape = 'box',
   position,
   style,
   onUpdateStyle,
@@ -117,12 +119,17 @@ function BoxElement({
         top: `${position.y}px`,
         width: `${style.width}px`,
         height: `${style.height}px`,
-        borderWidth: `${style.borderWidth}px`,
+        borderWidth: shape === 'triangle' ? '0' : `${style.borderWidth}px`,
         borderColor: style.borderColor,
-        borderStyle: style.borderStyle,
-        backgroundColor: style.backgroundColor,
+        borderStyle: shape === 'triangle' ? 'solid' : style.borderStyle,
+        backgroundColor: shape === 'triangle' ? 'transparent' : style.backgroundColor,
         opacity: style.opacity !== undefined ? style.opacity / 100 : 1,
-        borderRadius: style.borderRadius !== undefined ? `${style.borderRadius}px` : '0',
+        borderRadius:
+          shape === 'ellipse'
+            ? '50%'
+            : style.borderRadius !== undefined
+            ? `${style.borderRadius}px`
+            : '0',
         boxSizing: 'border-box',
         ...style_transform,
       }}
@@ -130,6 +137,20 @@ function BoxElement({
       {...listeners}
       {...attributes}
     >
+      {shape === 'triangle' ? (
+        <div
+          style={{
+            width: 0,
+            height: 0,
+            borderLeft: `${style.width / 2}px solid transparent`,
+            borderRight: `${style.width / 2}px solid transparent`,
+            borderBottom: `${style.height}px solid ${style.backgroundColor}`,
+            opacity: style.opacity !== undefined ? style.opacity / 100 : 1,
+            marginLeft: 'auto',
+            marginRight: 'auto',
+          }}
+        />
+      ) : null}
       {isSelected && !isResizing && (
         <>
           {/* Corner handles */}

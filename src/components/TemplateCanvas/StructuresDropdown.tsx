@@ -4,9 +4,12 @@ import './StructuresDropdown.css';
 interface StructuresDropdownProps {
   onAddLine: () => void;
   onAddBox: () => void;
+  onAddRectangle: () => void;
+  onAddTriangle: () => void;
+  onAddEllipse: () => void;
 }
 
-function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
+function StructuresDropdown({ onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse }: StructuresDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,14 +43,31 @@ function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
     setIsOpen(false);
   };
 
+  const handleAddRectangle = () => {
+    onAddRectangle();
+    setIsOpen(false);
+  };
+
+  const handleAddTriangle = () => {
+    onAddTriangle();
+    setIsOpen(false);
+  };
+
+  const handleAddEllipse = () => {
+    onAddEllipse();
+    setIsOpen(false);
+  };
+
   return (
     <div className="structures-dropdown" ref={dropdownRef}>
       <button
-        className="toolbar-button structures-button"
+        className="toolbar-icon-button structures-button"
         onClick={handleToggle}
-        title="Add structural elements"
+        title="Add structural elements (lines and boxes)"
+        aria-label="Add structural elements"
       >
-        Structures {isOpen ? '▲' : '▼'}
+        <span className="toolbar-icon" aria-hidden="true">{isOpen ? '▼' : '✚'}</span>
+        <span className="toolbar-label">Shapes</span>
       </button>
       {isOpen && (
         <div className="structures-menu">
@@ -58,6 +78,18 @@ function StructuresDropdown({ onAddLine, onAddBox }: StructuresDropdownProps) {
           <div className="structures-menu-item" onClick={handleAddBox}>
             <span className="structures-icon">▢</span>
             <span>Add Box</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddRectangle}>
+            <span className="structures-icon">▭</span>
+            <span>Add Rectangle</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddTriangle}>
+            <span className="structures-icon">▲</span>
+            <span>Add Triangle</span>
+          </div>
+          <div className="structures-menu-item" onClick={handleAddEllipse}>
+            <span className="structures-icon">◯</span>
+            <span>Add Ellipse</span>
           </div>
         </div>
       )}

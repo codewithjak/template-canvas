@@ -198,3 +198,22 @@
   align-items    : center;
   justify-content: center;
 }
+
+/* ── Header / Footer zone shading ───────────────────────────────────────────*/
+
+.canvas-zone {
+  position       : absolute;
+  left           : 0;
+  width          : 100%;
+  pointer-events : none;
+  z-index        : 10;
+}
+
+.canvas-zone--header {
+  top            : 0;
+  /* background and border set dynamically via inline style */
+}
+
+.canvas-zone--footer {
+  /* background and border set dynamically via inline style */
+}

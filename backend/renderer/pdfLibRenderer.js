@@ -500,6 +500,30 @@ async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
 
 // ── Main generator ─────────────────────────────────────────────────────────────
 
+// ── Draw header or footer elements on a specific PDF page ───────────────────
+
+async function drawZoneOnPage(zoneElements, pdfDoc, pages, pageIdx, canvasBoundaryY, fonts, pageNumberInfo) {
+  for (const el of zoneElements) {
+    // Position relative to zone boundary — keep exact canvas offset within zone
+    const localY     = el.position?.y || 0;
+    const correctedY = pageIdx * CANVAS_PH + localY;
+
+    // Page number element — replace content with actual page number
+    const elToRaw = el;
+    if (el.type === 'text' && el.pageNumber?.enabled && pageNumberInfo) {
+      const { current, total, format, alignment } = pageNumberInfo;
+      let numText = String(current);
+      if (format === 'Page X of Y') numText = `Page ${current} of ${total}`;
+      else if (format === 'X / Y')   numText = `${current} / ${total}`;
+      const aligned = { ...elToRaw, content: numText };
+      await drawElement(pdfDoc, pages, aligned, correctedY, fonts);
+      continue;
+    }
+
+    await drawElement(pdfDoc, pages, el, correctedY, fonts);
+  }
+}
+
 async function generatePdfBuffer({
   templateElements        = [],
   staticData              = {},
@@ -507,6 +531,9 @@ async function generatePdfBuffer({
   fieldMapping            = {},
   tableCollectionBindings = {},
   collectionMappings      = {},
+  // Per-page header/footer config (from canvas page settings)
+  // Shape: [{ header: HeaderConfig, footer: FooterConfig }, ...]
+  pageConfigs             = [],
 }) {
   // ── 1. Resolve all elements ────────────────────────────────────────────────
   const resolved = [];
@@ -527,39 +554,182 @@ async function generatePdfBuffer({
   // ── 2. Preload images ──────────────────────────────────────────────────────
   await preloadImages(resolved);
 
-  // ── 3. Sort ALL elements by canvas Y, top to bottom ───────────────────────
-  const sorted = [...resolved].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
+  // ── 3. Extract header/footer config from first pageConfig (or defaults) ───
+  // For now, use the first page config — multi-page config support follows
+  const pageCfg      = pageConfigs[0] || {};
+  const headerCfg    = pageCfg.header || null;
+  const footerCfg    = pageCfg.footer || null;
 
-  // ── 4. Create PDF ──────────────────────────────────────────────────────────
+  // enabled = zone is active (elements + background drawn on page 1)
+  // repeatOnOverflow = also drawn on page 2, 3, ...
+  const headerEnabled = !!(headerCfg?.enabled);
+  const footerEnabled = !!(footerCfg?.enabled);
+  const headerRepeats = headerEnabled && !!(headerCfg?.repeatOnOverflow);
+  const footerRepeats = footerEnabled && !!(footerCfg?.repeatOnOverflow);
+
+  // Boundary positions
+  const headerBoundaryY = headerCfg?.boundaryY || 0;
+  const footerBoundaryY = footerCfg?.boundaryY || CANVAS_PH;
+
+  // Classify elements into zones
+  const headerEls  = headerEnabled
+    ? resolved.filter(el => (el.position?.y || 0) < headerBoundaryY)
+    : [];
+  const footerEls  = footerEnabled
+    ? resolved.filter(el => (el.position?.y || 0) >= footerBoundaryY)
+    : [];
+  const contentEls = resolved.filter(el => {
+    const y = el.position?.y || 0;
+    return y >= (headerEnabled ? headerBoundaryY : 0)
+        && y <  (footerEnabled ? footerBoundaryY : CANVAS_PH);
+  });
+
+  // Available content height per PDF page (shrunk by header+footer zones)
+  const headerHpx    = headerEnabled ? headerBoundaryY : 0;
+  const footerHpx    = footerEnabled ? (CANVAS_PH - footerBoundaryY) : 0;
+  const availableHpx = CANVAS_PH - headerHpx - footerHpx;
+
+  // ── 4. Sort content elements by canvas Y ──────────────────────────────────
+  const sorted = [...contentEls].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
+
+  // ── 5. Create PDF ──────────────────────────────────────────────────────────
   const pdfDoc = await PDFDocument.create();
   const fonts  = await embedFonts(pdfDoc);
   const pages  = [];
   getPage(pdfDoc, pages, 0);
 
-  // ── 5. Walk elements top to bottom, maintaining cumulativeOffset ───────────
-  //
-  // cumulativeOffset accumulates the total expansion of all tables drawn so far.
-  // Every element (static or table) is drawn at:
-  //   correctedY = element.canvasY + cumulativeOffset
-  //
-  // After drawing a table:
-  //   cumulativeOffset += (actualRows - templateRows) × ROW_H_PX
+  // ── 6. Walk content elements with cumulative offset ────────────────────────
+  // Content Y is relative to the content zone start (headerBoundaryY).
+  // Elements are offset so they start drawing from headerBoundaryY on each page.
 
   let cumulativeOffset = 0;
+  const pagesUsed = new Set([0]);
 
   for (const el of sorted) {
-    const canvasY     = el.position?.y || 0;
-    const correctedY  = canvasY + cumulativeOffset;
+    // canvasY relative to content zone top
+    const relativeY  = (el.position?.y || 0) - (headerEnabled ? headerBoundaryY : 0);
+    const correctedY = relativeY + cumulativeOffset;
+
+    // Map correctedY to absolute canvas Y accounting for header space
+    // Each "virtual page" of content height = availableHpx
+    const contentPageIdx = Math.floor(correctedY / availableHpx);
+    const absoluteY      = headerHpx + (correctedY % availableHpx) + contentPageIdx * CANVAS_PH;
 
     if (el.type === 'table') {
-      const expansion = drawTable(el, correctedY, pdfDoc, pages, fonts);
+      const expansion = drawTable(el, absoluteY, pdfDoc, pages, fonts);
       cumulativeOffset += expansion;
+      // Track which PDF pages this table spans
+      const endY       = absoluteY + (el.rows?.length || 0) * ROW_H_PX;
+      const endPageIdx = Math.floor(endY / CANVAS_PH);
+      for (let pi = contentPageIdx; pi <= endPageIdx; pi++) pagesUsed.add(pi);
     } else {
-      await drawElement(pdfDoc, pages, el, correctedY, fonts);
+      await drawElement(pdfDoc, pages, el, absoluteY, fonts);
+      pagesUsed.add(contentPageIdx);
     }
   }
 
-  // ── 6. Serialize ──────────────────────────────────────────────────────────
+  // ── 7. Draw header/footer on every used page ──────────────────────────────
+  const totalPages = pages.length;
+  const footerStartFrom = footerCfg?.pageNumberStartFrom || 1;
+
+  for (let pi = 0; pi < totalPages; pi++) {
+    getPage(pdfDoc, pages, pi);
+
+    // Draw header on page 0 always (if enabled), on page 1+ only if repeatOnOverflow
+    const shouldDrawHeader = headerEnabled && (pi === 0 || headerRepeats);
+    if (shouldDrawHeader) {
+      // Draw header background
+      if (headerCfg.style?.backgroundColor && headerCfg.style.backgroundColor !== 'transparent') {
+        const hHpt = headerBoundaryY * SCALE;
+        const page = getPage(pdfDoc, pages, pi);
+        page.drawRectangle({
+          x: 0,
+          y: PDF_H - hHpt,
+          width : PDF_W,
+          height: hHpt,
+          color : toColor(headerCfg.style.backgroundColor),
+        });
+      }
+
+      // Draw header elements
+      for (const el of headerEls) {
+        const absY = pi * CANVAS_PH + (el.position?.y || 0);
+        await drawElement(pdfDoc, pages, el, absY, fonts);
+      }
+
+      // Draw header bottom border line
+      if ((headerCfg.style?.borderWidth || 0) > 0) {
+        const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + headerBoundaryY);
+        const pg = getPage(pdfDoc, pages, pageIndex);
+        pg.drawLine({
+          start    : { x: 0, y: pdfY },
+          end      : { x: PDF_W, y: pdfY },
+          thickness: headerCfg.style.borderWidth * SCALE,
+          color    : toColor(headerCfg.style.borderColor || '#e2e8f0'),
+        });
+      }
+    }
+
+    // Draw footer on page 0 always (if enabled), on page 1+ only if repeatOnOverflow
+    const shouldDrawFooter = footerEnabled && (pi === 0 || footerRepeats);
+    if (shouldDrawFooter) {
+      // Draw footer background
+      if (footerCfg.style?.backgroundColor && footerCfg.style.backgroundColor !== 'transparent') {
+        const fTopPx = footerBoundaryY;
+        const fHpx   = CANVAS_PH - fTopPx;
+        const page   = getPage(pdfDoc, pages, pi);
+        const { pdfY: fTopPdf } = canvasToPdf(pi * CANVAS_PH + fTopPx);
+        page.drawRectangle({
+          x: 0,
+          y: fTopPdf - fHpx * SCALE,
+          width : PDF_W,
+          height: fHpx * SCALE,
+          color : toColor(footerCfg.style.backgroundColor),
+        });
+      }
+    }
+    if (shouldDrawFooter && footerEls.length > 0) {
+      const pageNumInfo = {
+        current : pi + footerStartFrom,
+        total   : totalPages + footerStartFrom - 1,
+        format  : footerCfg?.pageNumberFormat || 'Page X of Y',
+        alignment: 'right',
+      };
+
+      for (const el of footerEls) {
+        const absY = pi * CANVAS_PH + (el.position?.y || 0);
+        // Check if this is a page number element
+        const pnInfo = (el.type === 'text' && el.pageNumber?.enabled)
+          ? { ...pageNumInfo, alignment: el.pageNumber?.alignment || 'right' }
+          : null;
+
+        if (pnInfo) {
+          const { current, total, format } = pnInfo;
+          let numText = String(current);
+          if (format === 'Page X of Y') numText = `Page ${current} of ${total}`;
+          else if (format === 'X / Y')   numText = `${current} / ${total}`;
+          const elWithNum = { ...el, content: numText };
+          await drawElement(pdfDoc, pages, elWithNum, absY, fonts);
+        } else {
+          await drawElement(pdfDoc, pages, el, absY, fonts);
+        }
+      }
+
+      // Draw footer border line if configured
+      if (footerCfg.style?.borderWidth > 0) {
+        const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + footerBoundaryY);
+        const pg = getPage(pdfDoc, pages, pageIndex);
+        pg.drawLine({
+          start: { x: 0, y: pdfY },
+          end  : { x: PDF_W, y: pdfY },
+          thickness   : footerCfg.style.borderWidth * SCALE,
+          color       : toColor(footerCfg.style.borderColor || '#e2e8f0'),
+        });
+      }
+    }
+  }
+
+  // ── 8. Serialize ──────────────────────────────────────────────────────────
   const bytes = await pdfDoc.save();
   return Buffer.from(bytes);
 }

@@ -171,10 +171,6 @@ function TemplateCanvas() {
     setPages(prev => updatePageElements(prev, activePageId, els => [...els, el]));
   }, [activePageId]);
 
-  const addElToPage = useCallback(<T extends CanvasElement>(el: T, pageId: string) => {
-    setPages(prev => updatePageElements(prev, pageId, els => [...els, el]));
-  }, []);
-
   // ── Add / delete pages ────────────────────────────────────────────────────
 
   const handleAddPage = () => {
@@ -183,6 +179,53 @@ function TemplateCanvas() {
     setActivePageId(newPage.pageId);
     setSelectedPageBreakId(newPage.pageId);
   };
+
+  const handleAddPageNumber = useCallback((atY?: number, targetPageId?: string) => {
+    const pageId     = targetPageId ?? activePageId;
+    const targetPage = pages.find(p => p.pageId === pageId);
+    const footer     = targetPage?.footer;
+  
+    const footerEnabled = footer?.enabled ?? false;
+    const boundaryY     = footer?.boundaryY ?? 1043;
+  
+    const elementY = atY != null
+      ? atY
+      : footerEnabled ? boundaryY + 16 : 1060;
+  
+    const fmt       = (footer as any)?.pageNumberFormat    ?? 'Page X of Y';
+    const alignment = (footer as any)?.pageNumberAlignment ?? 'right';
+    const startFrom = (footer as any)?.pageNumberStartFrom ?? 1;
+  
+    const previewContent =
+      fmt === 'X / Y' ? `${startFrom} / N` :
+      fmt === 'X'     ? String(startFrom)   :
+      `Page ${startFrom} of N`;
+  
+    const el: TextElementType = {
+      id        : `pagenum-${Date.now()}`,
+      type      : 'text',
+      content   : previewContent,
+      position  : { x: 600, y: elementY },
+      style     : {
+        fontSize  : 10,
+        fontWeight: 'normal',
+        color     : '#64748b',
+        fontFamily: 'Arial, sans-serif',
+      },
+      pageNumber: {
+        enabled  : true,
+        format   : fmt,
+        alignment,
+        startFrom,
+      },
+    };
+  
+    setPages(prev => updatePageElements(prev, pageId, els => [...els, el]));
+    setActivePageId(pageId);
+    setTimeout(() => setSelectedElementId(el.id), 0);
+  }, [pages, activePageId]);
+
+  // ── Add / delete pages ────────────────────────────────────────────────────
 
   const handleDeletePage = (pageId: string) => {
     if (pages.length <= 1) return;
@@ -279,50 +322,6 @@ function TemplateCanvas() {
     style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
   });
 
-  const handleAddPageNumber = useCallback((atY?: number, targetPageId?: string) => {
-    const pageId     = targetPageId ?? activePageId;
-    const targetPage = pages.find(p => p.pageId === pageId);
-    const footer     = targetPage?.footer;
-  
-    const footerEnabled = footer?.enabled ?? false;
-    const boundaryY     = footer?.boundaryY ?? 1043;
-  
-    const elementY = atY != null
-      ? atY
-      : footerEnabled ? boundaryY + 16 : 1060;
-  
-    const fmt       = (footer as any)?.pageNumberFormat    ?? 'Page X of Y';
-    const alignment = (footer as any)?.pageNumberAlignment ?? 'right';
-    const startFrom = (footer as any)?.pageNumberStartFrom ?? 1;
-  
-    const previewContent =
-      fmt === 'X / Y' ? `${startFrom} / N` :
-      fmt === 'X'     ? String(startFrom)   :
-      `Page ${startFrom} of N`;
-  
-    const el: TextElementType = {
-      id        : `pagenum-${Date.now()}`,
-      type      : 'text',
-      content   : previewContent,
-      position  : { x: 600, y: elementY },
-      style     : {
-        fontSize  : 10,
-        fontWeight: 'normal',
-        color     : '#64748b',
-        fontFamily: 'Arial, sans-serif',
-      },
-      pageNumber: {
-        enabled  : true,
-        format   : fmt,
-        alignment,
-        startFrom,
-      },
-    };
-  
-    addElToPage(el as unknown as CanvasElement, pageId);
-    setActivePageId(pageId);
-    setTimeout(() => setSelectedElementId(el.id), 0);
-  }, [pages, activePageId, addElToPage]);
   // ── Element update ────────────────────────────────────────────────────────
 
   const handleUpdateElement = useCallback((id: string, updates: any) => {
@@ -689,7 +688,6 @@ function TemplateCanvas() {
           onAddRectangle={handleAddRectangle}
           onAddTriangle={handleAddTriangle}
           onAddEllipse={handleAddEllipse}
-          onAddPageNumber={handleAddPageNumber}   // ← new
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}

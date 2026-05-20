@@ -356,3 +356,69 @@
   color          : #64748b;
   margin-top     : 8px;
 }
+
+.bl-add-pagenum {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  width          : 100%;
+  padding        : 8px 12px;
+  margin-top     : 4px;
+  margin-bottom  : 4px;
+  background     : #eff6ff;
+  color          : #2563eb;
+  border         : 1.5px solid #bfdbfe;
+  border-radius  : 6px;
+  font-size      : 12px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : background 0.15s, border-color 0.15s;
+}
+ 
+.bl-add-pagenum:hover {
+  background   : #dbeafe;
+  border-color : #93c5fd;
+}
+ 
+.bl-add-pagenum:active {
+  background : #bfdbfe;
+}
+
+/* Add these to BoundaryLine.css */
+
+.bl-add-pagenum {
+  display      : flex;
+  align-items  : center;
+  gap          : 6px;
+  width        : 100%;
+  padding      : 8px 12px;
+  margin-top   : 4px;
+  margin-bottom: 4px;
+  background   : #eff6ff;
+  color        : #2563eb;
+  border       : 1.5px solid #bfdbfe;
+  border-radius: 6px;
+  font-size    : 12px;
+  font-weight  : 600;
+  cursor       : pointer;
+  transition   : background 0.15s, border-color 0.15s;
+}
+.bl-add-pagenum:hover  { background: #dbeafe; border-color: #93c5fd; }
+.bl-add-pagenum:active { background: #bfdbfe; }
+
+.bl-section-hint {
+  font-size  : 10px;
+  font-weight: 400;
+  color      : #94a3b8;
+  margin-left: 4px;
+}
+
+.bl-hint--muted {
+  font-size  : 11px;
+  color      : #94a3b8;
+  margin-top : 8px;
+  line-height: 1.5;
+}
+.bl-hint--muted strong {
+  color: #64748b;
+}

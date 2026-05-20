@@ -1,5 +1,7 @@
 import './PropertiesPanel.css';
 import type { LayoutTableElement, TableCell } from '../../model/layoutTable';
+import PageNumberProperties from './PageNumberProperties';
+import type { FooterConfig } from '../../types/canvas';
 import {
   applyHeaderMerge,
   applyRectMerge,
@@ -132,6 +134,7 @@ interface PropertiesPanelProps {
   onUpdate: (id: string, updates: Partial<CanvasElement>) => void;
   layoutTableActiveCell: { tableId: string; rowIndex: number; colIndex: number } | null;
   layoutTableRange: { tableId: string; r0: number; c0: number; r1: number; c1: number } | null;
+  activePageFooter?: FooterConfig | null; 
 }
 
 function PropertiesPanel({
@@ -139,6 +142,7 @@ function PropertiesPanel({
   onUpdate,
   layoutTableActiveCell,
   layoutTableRange,
+  activePageFooter, 
 }: PropertiesPanelProps) {
   if (!selectedElement) {
     return (
@@ -411,6 +415,10 @@ function PropertiesPanel({
       });
     }
   };
+
+  const isInFooterZone = selectedElement?.type === 'text'
+  && activePageFooter?.enabled
+  && (selectedElement.position?.y ?? 0) >= (activePageFooter?.boundaryY ?? Infinity);
 
   return (
     <div className="properties-panel">
@@ -1154,6 +1162,16 @@ function PropertiesPanel({
               />
             </div>
           </div>
+        )}
+
+        {/* Page number properties — only for text elements in footer zone */}
+        {selectedElement.type === 'text' && isInFooterZone && (
+          <PageNumberProperties
+            config={(selectedElement as any).pageNumber}
+            onChange={pnConfig =>
+              onUpdate(selectedElement.id, { pageNumber: pnConfig } as any)
+            }
+          />
         )}
 
         {isLayoutTable(selectedElement) && (

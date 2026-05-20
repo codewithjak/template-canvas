@@ -25,6 +25,7 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import Toolbar           from './Toolbar';
 import UploadData        from './UploadData';
 import PageBreakDivider  from './PageBreakDivider';
+import BoundaryLine     from './BoundaryLine';
 import SaveTemplateModal from './SaveTemplateModal';
 import TextElement       from './TextElement';
 import ImageElement      from './ImageElement';
@@ -38,11 +39,12 @@ import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel   from './PropertiesPanel';
 
 import type { BoundData }   from '../../types/dataSource';
-import type { CanvasPage, CanvasElement, TemplateMeta }  from '../../types/canvas';
+import type { CanvasPage, CanvasElement, TemplateMeta, HeaderConfig, FooterConfig }  from '../../types/canvas';
 import {
   createPage,
   createTemplateDocument,
   migrateV1,
+  ensurePageDefaults,
 } from '../../types/canvas';
 import {
   getStaticPlaceholders,
@@ -96,6 +98,7 @@ function TemplateCanvas() {
   const [selectedElementId,    setSelectedElementId]    = useState<string | null>(null);
   const [activePageId,         setActivePageId]         = useState<string>('page-1');
   const [selectedPageBreakId,  setSelectedPageBreakId]  = useState<string | null>(null);
+  const [selectedBoundary,     setSelectedBoundary]        = useState<{ pageId: string; type: 'header' | 'footer' } | null>(null);
 
   const [layoutTableCellSelection, setLayoutTableCellSelection] = useState<{
     tableId: string; rowIndex: number; colIndex: number;
@@ -169,6 +172,23 @@ function TemplateCanvas() {
 
   const handleUpdatePage = (pageId: string, updates: Partial<CanvasPage>) => {
     setPages(prev => prev.map(p => p.pageId === pageId ? { ...p, ...updates } : p));
+  };
+
+  const handleUpdatePageHeader = (pageId: string, header: HeaderConfig) => {
+    setPages(prev => prev.map(p => p.pageId === pageId ? { ...p, header } : p));
+  };
+
+  const handleUpdatePageFooter = (pageId: string, footer: FooterConfig) => {
+    setPages(prev => prev.map(p => p.pageId === pageId ? { ...p, footer } : p));
+  };
+
+  const handleDeleteBoundary = (pageId: string, type: 'header' | 'footer') => {
+    setPages(prev => prev.map(p => {
+      if (p.pageId !== pageId) return p;
+      if (type === 'header') return { ...p, header: { ...p.header, enabled: false } };
+      return { ...p, footer: { ...p.footer, enabled: false } };
+    }));
+    setSelectedBoundary(null);
   };
 
   // ── Element add handlers ──────────────────────────────────────────────────
@@ -298,6 +318,7 @@ function TemplateCanvas() {
   const clearAllSelections = () => {
     setSelectedElementId(null);
     setSelectedPageBreakId(null);
+    setSelectedBoundary(null);
     setLayoutTableCellSelection(null);
     setLayoutTableRange(null);
   };
@@ -360,10 +381,12 @@ function TemplateCanvas() {
         }
 
         // Strip legacy canvas tables from all pages
-        const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) => ({
-          ...p,
-          elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
-        }));
+        const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) =>
+          ensurePageDefaults({
+            ...p,
+            elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
+          })
+        );
 
         setPages(cleanPages);
         setTemplateMeta(doc.meta || {});
@@ -415,20 +438,22 @@ function TemplateCanvas() {
           : 'Generating document…'
       );
 
-      // Build payload — send pages array so backend can handle multi-page
+      // Build payload — send pages array to backend
       const payload = {
         pages: pages.map(p => ({
           pageId          : p.pageId,
           label           : p.label,
           repeatHeader    : p.repeatHeader,
           headerElementIds: p.headerElementIds,
+          header          : p.header,
+          footer          : p.footer,
           ...buildExportPayload(
             p.elements,
             boundData || {
-              source              : { metadata: {}, collections: {} },
-              fieldMapping        : {},
+              source               : { metadata: {}, collections: {} },
+              fieldMapping         : {},
               tableCollectionBindings: {},
-              collectionMappings  : {},
+              collectionMappings   : {},
             },
             `document-${Date.now()}`,
           ),
@@ -692,6 +717,61 @@ function TemplateCanvas() {
                 }}
               >
                 {renderElements(page.elements, page.pageId)}
+
+                {/* ── Header boundary line ── */}
+                <BoundaryLine
+                  type="header"
+                  config={page.header}
+                  isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'header'}
+                  canvasH={1123}
+                  onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'header' }); setActivePageId(page.pageId); }}
+                  onDeselect={() => setSelectedBoundary(null)}
+                  onChange={h => handleUpdatePageHeader(page.pageId, h as any)}
+                  onDelete={() => handleDeleteBoundary(page.pageId, 'header')}
+                />
+
+                {/* ── Footer boundary line ── */}
+                <BoundaryLine
+                  type="footer"
+                  config={page.footer}
+                  isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'footer'}
+                  canvasH={1123}
+                  onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'footer' }); setActivePageId(page.pageId); }}
+                  onDeselect={() => setSelectedBoundary(null)}
+                  onChange={f => handleUpdatePageFooter(page.pageId, f as any)}
+                  onDelete={() => handleDeleteBoundary(page.pageId, 'footer')}
+                />
+
+                {/* ── Zone shading ── */}
+                {page.header.enabled && (
+                  <div
+                    className="canvas-zone canvas-zone--header"
+                    style={{
+                      height         : page.header.boundaryY,
+                      backgroundColor: page.header.style.backgroundColor !== 'transparent'
+                        ? page.header.style.backgroundColor
+                        : 'rgba(99,102,241,0.04)',
+                      borderBottom   : page.header.style.borderWidth > 0
+                        ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
+                        : undefined,
+                    }}
+                  />
+                )}
+                {page.footer.enabled && (
+                  <div
+                    className="canvas-zone canvas-zone--footer"
+                    style={{
+                      top            : page.footer.boundaryY,
+                      height         : 1123 - page.footer.boundaryY,
+                      backgroundColor: page.footer.style.backgroundColor !== 'transparent'
+                        ? page.footer.style.backgroundColor
+                        : 'rgba(99,102,241,0.04)',
+                      borderTop      : page.footer.style.borderWidth > 0
+                        ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`
+                        : undefined,
+                    }}
+                  />
+                )}
               </div>
 
               {/* Page break divider — shown between pages, not after the last */}
@@ -726,6 +806,7 @@ function TemplateCanvas() {
           onUpdate={handleUpdateElement}
           layoutTableActiveCell={layoutTableCellSelection}
           layoutTableRange={layoutTableRange}
+          activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
         />
 
       </div>

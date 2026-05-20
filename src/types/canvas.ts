@@ -11,6 +11,13 @@ export interface TextElementType {
   id: string; type: 'text'; content: string;
   position: { x: number; y: number };
   style: { fontSize: number; fontWeight: string; color: string; fontFamily: string };
+  // Page number config — only applies to text elements inside footer zone
+  pageNumber?: {
+    enabled         : boolean;
+    format          : 'Page X of Y' | 'X / Y' | 'X';
+    alignment       : 'left' | 'center' | 'right';
+    startFrom       : number;
+  };
 }
 
 export interface ImageElementType {
@@ -56,19 +63,61 @@ export interface DateElementType {
 export type CanvasElement =
   | TextElementType | ImageElementType | LineElementType | BoxElementType
   | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType
-  | import('../model/layoutTable').LayoutTableElement;  // model lives at src/model/layoutTable.ts
+  | import('../model/layoutTable').LayoutTableElement;
+
+// ── Header / Footer config ────────────────────────────────────────────────────
+
+export interface ZoneStyle {
+  backgroundColor : string;
+  borderColor     : string;
+  borderWidth     : number;   // top border for footer, bottom border for header
+}
+
+export interface HeaderConfig {
+  enabled          : boolean;
+  repeatOnOverflow : boolean;   // repeat on every PDF overflow page from this canvas page
+  boundaryY        : number;    // px from top of canvas — line position
+  style            : ZoneStyle;
+}
+
+export interface FooterConfig {
+  enabled          : boolean;
+  repeatOnOverflow : boolean;
+  boundaryY        : number;    // px from top of canvas — line position
+  style            : ZoneStyle;
+}
+
+export function defaultHeader(): HeaderConfig {
+  return {
+    enabled         : false,
+    repeatOnOverflow: false,
+    boundaryY       : 80,
+    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1 },
+  };
+}
+
+export function defaultFooter(): FooterConfig {
+  return {
+    enabled         : false,
+    repeatOnOverflow: false,
+    boundaryY       : 1043,   // 1123 - 80
+    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1 },
+  };
+}
 
 // ── Canvas page ───────────────────────────────────────────────────────────────
 
 export interface CanvasPage {
   pageId           : string;
   label            : string;
-  repeatHeader     : boolean;
-  headerElementIds : string[];
+  repeatHeader     : boolean;       // legacy — kept for backward compat
+  headerElementIds : string[];      // legacy — kept for backward compat
   elements         : CanvasElement[];
+  header           : HeaderConfig;
+  footer           : FooterConfig;
 }
 
-// ── Template document (the saved JSON shape) ──────────────────────────────────
+// ── Template document ─────────────────────────────────────────────────────────
 
 export interface TemplateMeta {
   templateId : string;
@@ -81,7 +130,7 @@ export interface TemplateDocument {
   version : '2.0';
   meta    : TemplateMeta;
   pages   : CanvasPage[];
-  ai      : null | Record<string, unknown>;  // reserved for future AI enrichment
+  ai      : null | Record<string, unknown>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,14 +142,16 @@ export function createPage(overrides?: Partial<CanvasPage>): CanvasPage {
     repeatHeader     : false,
     headerElementIds : [],
     elements         : [],
+    header           : defaultHeader(),
+    footer           : defaultFooter(),
     ...overrides,
   };
 }
 
 export function createTemplateDocument(
-  pages: CanvasPage[],
-  name  = 'Untitled Template',
-  existing?: Partial<TemplateMeta>,
+  pages    : CanvasPage[],
+  name      = 'Untitled Template',
+  existing ?: Partial<TemplateMeta>,
 ): TemplateDocument {
   const now = new Date().toISOString();
   return {
@@ -118,10 +169,45 @@ export function createTemplateDocument(
 
 /**
  * Migrate a v1.0 flat template to v2.0 pages format.
- * Called automatically when loading an old JSON file.
  */
 export function migrateV1(json: any): TemplateDocument {
   const elements: CanvasElement[] = Array.isArray(json.elements) ? json.elements : [];
   const page = createPage({ pageId: 'page-1', label: 'Page 1', elements });
   return createTemplateDocument([page], 'Imported Template');
+}
+
+/**
+ * Ensure a loaded page has header/footer fields (for templates saved
+ * before header/footer was introduced).
+ */
+export function ensurePageDefaults(page: any): CanvasPage {
+  return {
+    ...page,
+    header: page.header ?? defaultHeader(),
+    footer: page.footer ?? defaultFooter(),
+  };
+}
+
+// ── Zone helpers ──────────────────────────────────────────────────────────────
+
+/** Elements whose Y is above the header boundary — in the header zone. */
+export function getHeaderElements(page: CanvasPage): CanvasElement[] {
+  if (!page.header.enabled) return [];
+  return page.elements.filter(el => (el.position?.y ?? 0) < page.header.boundaryY);
+}
+
+/** Elements whose Y is at or below the footer boundary — in the footer zone. */
+export function getFooterElements(page: CanvasPage): CanvasElement[] {
+  if (!page.footer.enabled) return [];
+  return page.elements.filter(el => (el.position?.y ?? 0) >= page.footer.boundaryY);
+}
+
+/** Elements in the content zone — between header and footer boundaries. */
+export function getContentElements(page: CanvasPage): CanvasElement[] {
+  const topBound    = page.header.enabled ? page.header.boundaryY : 0;
+  const bottomBound = page.footer.enabled ? page.footer.boundaryY : 1123;
+  return page.elements.filter(el => {
+    const y = el.position?.y ?? 0;
+    return y >= topBound && y < bottomBound;
+  });
 }

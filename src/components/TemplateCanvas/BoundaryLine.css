@@ -1,0 +1,233 @@
+/* BoundaryLine.css */
+
+.boundary-line {
+  position       : absolute;
+  left           : 0;
+  width          : 100%;
+  z-index        : 50;
+  pointer-events : none;
+}
+
+/* ── Track (the draggable line) ── */
+
+.boundary-line__track {
+  display        : flex;
+  align-items    : center;
+  gap            : 8px;
+  cursor         : ns-resize;
+  pointer-events : all;
+  user-select    : none;
+}
+
+.boundary-line__dash {
+  flex           : 1;
+  height         : 1px;
+  background     : repeating-linear-gradient(
+    to right,
+    #cbd5e1 0px, #cbd5e1 6px,
+    transparent 6px, transparent 12px
+  );
+  transition     : background 0.15s;
+}
+
+/* Enabled = more visible line */
+.boundary-line--enabled .boundary-line__dash {
+  background     : repeating-linear-gradient(
+    to right,
+    #6366f1 0px, #6366f1 6px,
+    transparent 6px, transparent 12px
+  );
+}
+
+/* Selected = solid highlight */
+.boundary-line--selected .boundary-line__dash {
+  background     : #6366f1;
+}
+
+/* ── Pill badge ── */
+
+.boundary-line__pill {
+  display        : flex;
+  align-items    : center;
+  gap            : 5px;
+  padding        : 3px 10px;
+  border-radius  : 999px;
+  border         : 1px solid #cbd5e1;
+  background     : #f8fafc;
+  color          : #64748b;
+  font-size      : 11px;
+  font-weight    : 600;
+  white-space    : nowrap;
+  transition     : all 0.15s;
+  pointer-events : all;
+}
+
+.boundary-line--enabled .boundary-line__pill {
+  border-color   : #a5b4fc;
+  background     : #eef2ff;
+  color          : #4338ca;
+}
+
+.boundary-line--selected .boundary-line__pill {
+  border-color   : #6366f1;
+  background     : #eef2ff;
+  color          : #3730a3;
+}
+
+.boundary-line__track:hover .boundary-line__pill {
+  border-color   : #6366f1;
+  color          : #4338ca;
+}
+
+.boundary-line__chevron {
+  font-size      : 8px;
+  opacity        : 0.6;
+}
+
+/* ── Settings panel ── */
+
+.boundary-line__panel {
+  position       : absolute;
+  left           : 50%;
+  transform      : translateX(-50%);
+  z-index        : 200;
+  width          : 300px;
+  background     : #ffffff;
+  border         : 1px solid #e2e8f0;
+  border-radius  : 10px;
+  box-shadow     : 0 8px 24px rgba(15,23,42,0.12);
+  padding        : 14px;
+  display        : flex;
+  flex-direction : column;
+  gap            : 12px;
+  pointer-events : all;
+}
+
+.boundary-line__panel--header {
+  top            : 4px;
+}
+
+.boundary-line__panel--footer {
+  bottom         : 4px;
+  top            : auto;
+}
+
+/* ── Fields ── */
+
+.bl-field {
+  display        : flex;
+  flex-direction : column;
+  gap            : 4px;
+}
+
+.bl-field--toggle {
+  flex-direction : row;
+  align-items    : flex-start;
+  justify-content: space-between;
+  gap            : 12px;
+}
+
+.bl-label {
+  font-size      : 12px;
+  font-weight    : 600;
+  color          : #374151;
+  display        : flex;
+  flex-direction : column;
+  gap            : 2px;
+}
+
+.bl-hint {
+  font-size      : 11px;
+  font-weight    : 400;
+  color          : #9ca3af;
+  line-height    : 1.4;
+}
+
+.bl-input {
+  height         : 32px;
+  border         : 1px solid #d1d5db;
+  border-radius  : 6px;
+  padding        : 0 8px;
+  font-size      : 13px;
+  color          : #111827;
+  outline        : none;
+}
+
+.bl-input:focus {
+  border-color   : #6366f1;
+  box-shadow     : 0 0 0 2px rgba(99,102,241,0.1);
+}
+
+.bl-color {
+  width          : 100%;
+  height         : 32px;
+  border         : 1px solid #d1d5db;
+  border-radius  : 6px;
+  cursor         : pointer;
+  padding        : 0;
+}
+
+/* ── Toggle ── */
+
+.bl-toggle {
+  width          : 38px;
+  height         : 20px;
+  border-radius  : 999px;
+  background     : #d1d5db;
+  position       : relative;
+  cursor         : pointer;
+  flex-shrink    : 0;
+  transition     : background 0.2s;
+}
+
+.bl-toggle--on {
+  background     : #6366f1;
+}
+
+.bl-toggle__knob {
+  position       : absolute;
+  top            : 2px;
+  left           : 2px;
+  width          : 16px;
+  height         : 16px;
+  border-radius  : 50%;
+  background     : #fff;
+  box-shadow     : 0 1px 3px rgba(0,0,0,0.2);
+  transition     : transform 0.2s;
+}
+
+.bl-toggle--on .bl-toggle__knob {
+  transform      : translateX(18px);
+}
+
+/* ── Delete ── */
+
+.bl-delete {
+  align-self     : flex-start;
+  padding        : 5px 10px;
+  border-radius  : 6px;
+  border         : 1px solid #fca5a5;
+  background     : #fee2e2;
+  color          : #991b1b;
+  font-size      : 12px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : all 0.15s;
+}
+
+.bl-delete:hover {
+  background     : #fecaca;
+}
+
+/* ── Zone shading (when enabled) ── */
+
+.boundary-line--header.boundary-line--enabled::before {
+  content        : '';
+  position       : absolute;
+  left           : 0;
+  bottom         : 1px;
+  width          : 100%;
+  height         : 9999px;
+  transform      : translateY(100%);
+  /* nothing — shading handled in TemplateCanvas */
+}

@@ -88,6 +88,11 @@ function normalisePayload(body) {
     const mergedTableBindings       = {};
     const mergedCollectionMappings  = {};
 
+    const pageConfigs = body.pages.map(p => ({
+      header: p.header || null,
+      footer: p.footer || null,
+    }));
+
     body.pages.forEach((page, pageIndex) => {
       const yOffset = pageIndex * CANVAS_PAGE_H;
 
@@ -124,6 +129,7 @@ function normalisePayload(body) {
       tableCollectionBindings : normalizeBindingKeys(mergedTableBindings),
       collectionMappings      : mergedCollectionMappings,
       outputFileName          : body.outputFileName,
+      pageConfigs,
     };
   }
 
@@ -184,6 +190,7 @@ app.post('/generate-document', async (req, res) => {
   }
 
   try {
+    const normalised = normalisePayload(req.body);
     const {
       templateElements,
       staticData,
@@ -192,7 +199,8 @@ app.post('/generate-document', async (req, res) => {
       tableCollectionBindings,
       collectionMappings,
       outputFileName,
-    } = normalisePayload(req.body);
+      pageConfigs,
+    } = normalised;
 
     const pdfBuffer = await generatePdfBuffer({
       templateElements,
@@ -201,6 +209,7 @@ app.post('/generate-document', async (req, res) => {
       fieldMapping,
       tableCollectionBindings,
       collectionMappings,
+      pageConfigs: pageConfigs || [],
     });
 
     res.set({

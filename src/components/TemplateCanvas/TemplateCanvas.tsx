@@ -61,6 +61,30 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Convert a color string (hex or rgb) to rgba with specified opacity. */
+function adjustColorOpacity(color: string, opacity: number): string {
+  // Handle hex colors
+  if (color.startsWith('#')) {
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  // Handle rgb colors
+  if (color.startsWith('rgb')) {
+    const match = color.match(/\d+/g);
+    if (match && match.length >= 3) {
+      return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${opacity})`;
+    }
+  }
+  // If it's already rgba, just return it with adjusted opacity
+  if (color.startsWith('rgba')) {
+    return color.replace(/[\d.]+\s*\)/, `${opacity})`);
+  }
+  return color;
+}
+
 /** Find which page owns a given element id. */
 function findPageOfElement(pages: CanvasPage[], elementId: string): string | null {
   for (const p of pages) {
@@ -749,7 +773,7 @@ function TemplateCanvas() {
                     style={{
                       height         : page.header.boundaryY,
                       backgroundColor: page.header.style.backgroundColor !== 'transparent'
-                        ? page.header.style.backgroundColor
+                        ? adjustColorOpacity(page.header.style.backgroundColor, page.header.style.opacity ?? 1)
                         : 'rgba(99,102,241,0.04)',
                       borderBottom   : page.header.style.borderWidth > 0
                         ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
@@ -764,7 +788,7 @@ function TemplateCanvas() {
                       top            : page.footer.boundaryY,
                       height         : 1123 - page.footer.boundaryY,
                       backgroundColor: page.footer.style.backgroundColor !== 'transparent'
-                        ? page.footer.style.backgroundColor
+                        ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
                         : 'rgba(99,102,241,0.04)',
                       borderTop      : page.footer.style.borderWidth > 0
                         ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`

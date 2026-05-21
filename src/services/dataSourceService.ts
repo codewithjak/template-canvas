@@ -1,167 +1,134 @@
 /**
- * dataSourceService.ts
- * Client-side utilities for working with ParsedDataSource objects:
- *   - auto-mapping placeholders to metadata keys
- *   - auto-mapping table placeholders to collection columns
- *   - building the BoundData object used by TemplateCanvas
+ * src/services/dataSourceService.ts
+ *
+ * All data-source network calls.
+ * Every function works exclusively with CanonicalDocument { fields, collections, source }.
+ * No legacy aliases. No staticData. No metadata.
+ *
+ * Exports
+ * ───────
+ *   parseFile(file)          → CanonicalDocument
+ *   parseJsonData(data)      → CanonicalDocument
+ *   generateDocument(params) → Blob
+ *   downloadDocument(params) → void  (triggers browser download)
  */
 
-import type { ParsedDataSource, BoundData, TableInfo, DataRow } from '../types/dataSource';
+import type { CanonicalDocument, FieldMapping, CollectionMappings, TableCollectionBindings } from '../types/dataSource';
 
-// ── String normalisation ──────────────────────────────────────────────────────
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
-function normalize(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Score similarity between two normalised strings.
- * Returns a number 0–1 (1 = exact match).
- */
-function similarity(a: string, b: string): number {
-  if (a === b) return 1;
-  if (a.includes(b) || b.includes(a)) return 0.8;
-  // simple character overlap coefficient
-  const setA = new Set(a.split(''));
-  const setB = new Set(b.split(''));
-  const intersection = [...setA].filter(c => setB.has(c)).length;
-  return intersection / Math.max(setA.size, setB.size);
-}
-
-/**
- * Find the best matching key from candidates for a given placeholder.
- * Returns the matched key or '' if nothing is close enough.
- */
-function bestMatch(placeholder: string, candidates: string[], threshold = 0.6): string {
-  const normP = normalize(placeholder);
-  let bestKey = '';
-  let bestScore = threshold - 0.001;
-
-  for (const c of candidates) {
-    const score = similarity(normP, normalize(c));
-    if (score > bestScore) {
-      bestScore = score;
-      bestKey = c;
-    }
+async function expectJson(res: Response, context: string): Promise<Record<string, unknown>> {
+  if (!res.ok) {
+    let msg = `${context} failed (${res.status})`;
+    try {
+      const b = await res.json() as { error?: string };
+      if (b.error) msg = b.error;
+    } catch { /* ignore */ }
+    throw new Error(msg);
   }
-  return bestKey;
+  return res.json() as Promise<Record<string, unknown>>;
 }
 
-// ── Auto-mapping ──────────────────────────────────────────────────────────────
-
 /**
- * Auto-map static template placeholders to metadata keys.
- * @param placeholders  - from non-table elements, e.g. ["company_name", "invoice_no"]
- * @param metadataKeys  - keys available in the parsed metadata
+ * Read { fields, collections, source } from the server response.
+ * Throws immediately if the shape is wrong so callers find out at parse time.
  */
-export function autoMapStaticFields(
-  placeholders: string[],
-  metadataKeys: string[]
-): Record<string, string> {
-  const mapping: Record<string, string> = {};
-  for (const p of placeholders) {
-    mapping[p] = bestMatch(p, metadataKeys) || '';
+function toCanonicalDocument(raw: Record<string, unknown>): CanonicalDocument {
+  if (!raw.fields || typeof raw.fields !== 'object' || Array.isArray(raw.fields)) {
+    throw new Error('Server response is missing "fields". Ensure the server is running v2.');
   }
-  return mapping;
-}
-
-/**
- * Auto-map table cell placeholders to collection column names.
- * @param placeholders   - e.g. ["serial_no", "description", "quantity"]
- * @param columnNames    - actual column headers in the collection
- */
-export function autoMapCollectionFields(
-  placeholders: string[],
-  columnNames: string[]
-): Record<string, string> {
-  const mapping: Record<string, string> = {};
-  for (const p of placeholders) {
-    mapping[p] = bestMatch(p, columnNames, 0.5) || '';
+  if (!raw.collections || typeof raw.collections !== 'object' || Array.isArray(raw.collections)) {
+    throw new Error('Server response is missing "collections".');
   }
-  return mapping;
-}
-
-/**
- * Build the initial BoundData from a ParsedDataSource + template info.
- * All mappings are auto-computed; the user can then refine them in the UI.
- */
-export function buildInitialBoundData(
-  source: ParsedDataSource,
-  staticPlaceholders: string[],
-  tables: TableInfo[]
-): BoundData {
-  const metadataKeys = Object.keys(source.metadata);
-  const collectionKeys = Object.keys(source.collections);
-
-  // Static field mapping
-  const fieldMapping = autoMapStaticFields(staticPlaceholders, metadataKeys);
-
-  // For each table, pick the best collection and map its columns
-  const tableCollectionBindings: Record<string, string> = {};
-  const collectionMappings: Record<string, Record<string, string>> = {};
-
-  tables.forEach((table, idx) => {
-    // Use the table's existing binding key if valid, otherwise pick by index
-    const preferred = table.currentCollectionKey && source.collections[table.currentCollectionKey]
-      ? table.currentCollectionKey
-      : collectionKeys[idx] || collectionKeys[0] || '';
-
-    tableCollectionBindings[table.id] = preferred;
-
-    if (preferred && source.collections[preferred]) {
-      // Only compute if not already mapped (multiple tables can share a collection)
-      if (!collectionMappings[preferred]) {
-        collectionMappings[preferred] = autoMapCollectionFields(
-          table.placeholders,
-          source.collections[preferred].headers
-        );
-      }
-    }
-  });
-
-  return { source, fieldMapping, tableCollectionBindings, collectionMappings };
-}
-
-/**
- * Build the export payload from BoundData.
- * Converts { headers, rows } collection shape to plain rows[] for the backend.
- */
-export function buildExportPayload(
-  templateElements: unknown[],
-  boundData: BoundData,
-  outputFileName?: string
-) {
-  const flatCollections: Record<string, DataRow[]> = {};
-  for (const [key, col] of Object.entries(boundData.source.collections)) {
-    flatCollections[key] = col.rows;
-  }
-
   return {
-    templateElements,
-    staticData: boundData.source.metadata,
-    collections: flatCollections,
-    fieldMapping: boundData.fieldMapping,
-    tableCollectionBindings: boundData.tableCollectionBindings,
-    collectionMappings: boundData.collectionMappings,
-    outputFileName,
+    fields:      raw.fields      as Record<string, string>,
+    collections: raw.collections as CanonicalDocument['collections'],
+    source:      raw.source      as CanonicalDocument['source'],
   };
 }
 
-/**
- * Get the row count for the collection bound to a table.
- */
-export function getTableRowCount(boundData: BoundData, tableId: string): number {
-  const collKey = boundData.tableCollectionBindings[tableId];
-  return collKey ? (boundData.source.collections[collKey]?.rows.length ?? 0) : 0;
+// ─────────────────────────────────────────────────────────────────────────────
+// File upload  (Excel / CSV / JSON file)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function parseFile(file: File): Promise<CanonicalDocument> {
+  const form = new FormData();
+  form.append('file', file);
+  const res  = await fetch(`${API_BASE}/parse-data`, { method: 'POST', body: form });
+  const body = await expectJson(res, 'parseFile');
+  return toCanonicalDocument(body);
 }
 
-/**
- * Total bound records = max rows across all bound collections.
- * Used for the preview navigation badge.
- */
-export function maxBoundRows(boundData: BoundData): number {
-  return Object.values(boundData.source.collections).reduce(
-    (m, c) => Math.max(m, c.rows.length),
-    0
-  );
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON / API data
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function parseJsonData(data: unknown): Promise<CanonicalDocument> {
+  const res = await fetch(`${API_BASE}/parse-json`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ data }),
+  });
+  const body = await expectJson(res, 'parseJsonData');
+  return toCanonicalDocument(body);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF generation
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PageExportData {
+  pageId:                   string;
+  label?:                   string;
+  templateElements:         unknown[];
+  header?:                  object | null;
+  footer?:                  object | null;
+  fieldMapping?:            FieldMapping;
+  tableCollectionBindings?: TableCollectionBindings;
+  collectionMappings?:      CollectionMappings;
+}
+
+export interface GenerateDocumentParams {
+  pages:           PageExportData[];
+  ir:              CanonicalDocument;
+  outputFileName?: string;
+}
+
+export async function generateDocument(params: GenerateDocumentParams): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/generate-document`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      pages:          params.pages,
+      ir:             params.ir,
+      outputFileName: params.outputFileName ?? 'document',
+    }),
+  });
+
+  if (!res.ok) {
+    let msg = `generateDocument failed (${res.status})`;
+    try {
+      const b = await res.json() as { error?: string };
+      if (b.error) msg = b.error;
+    } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+
+  return res.blob();
+}
+
+export async function downloadDocument(params: GenerateDocumentParams): Promise<void> {
+  const blob   = await generateDocument(params);
+  const url    = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href     = url;
+  anchor.download = `${params.outputFileName ?? 'document'}.pdf`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
 }

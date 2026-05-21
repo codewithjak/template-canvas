@@ -1,64 +1,109 @@
 /**
- * types/dataSource.ts
- * Shared types for the generic data source architecture.
- * These flow through: parser → upload UI → canvas state → export payload.
+ * src/types/dataSource.ts
+ *
+ * Single source of truth for all data-source types.
+ * Mirrors the backend CanonicalDocument IR exactly.
+ * No legacy aliases. No ParsedDataSource. No BoundData.
  */
 
-export type DataRow = Record<string, string>;
-
-/** A named collection of rows (e.g. invoice line items). */
-export interface DataCollection {
-  headers: string[];
-  rows: DataRow[];
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Core IR  (mirrors backend/types/canonicalDocument.js)
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Normalized output from any data source parser.
- * This is what /parse-data (and /parse-json) return.
+ * One named collection of tabular rows.
+ * `columns` is the ordered header list.
+ * Every row object has those same keys with string values.
  */
-export interface ParsedDataSource {
-  /** Flat key→value metadata (from KV sections, scalar JSON fields, etc.) */
-  metadata: Record<string, string>;
-  /**
-   * Named collections of row data.
-   * Key = collection name (e.g. "items", "lines", "collection_2").
-   */
-  collections: Record<string, DataCollection>;
+export interface Collection {
+  columns: string[];
+  rows:    Record<string, string>[];
+}
+
+export type DataSourceType = 'excel' | 'csv' | 'json' | 'api';
+
+export interface DataSourceMeta {
+  type:      DataSourceType;
   fileName?: string;
-  fileType?: string;
+  sheets?:   string[];   // Excel only
+  warnings?: string[];   // non-fatal parse warnings — surface in the UI
 }
 
 /**
- * Everything the canvas needs to render previews and drive exports.
+ * The one IR type that every backend parser returns and every
+ * frontend consumer reads.
+ *
+ *   fields      — flat key→value scalars, all strings, dot-notation keys
+ *   collections — named tabular datasets
+ *   source      — provenance / debug info
  */
-export interface BoundData {
-  source: ParsedDataSource;
-  /** template static placeholder → metadata key */
-  fieldMapping: Record<string, string>;
-  /** tableElementId → collectionKey */
-  tableCollectionBindings: Record<string, string>;
-  /** collectionKey → { templatePlaceholder → collectionColumnName } */
-  collectionMappings: Record<string, Record<string, string>>;
+export interface CanonicalDocument {
+  fields:      Record<string, string>;
+  collections: Record<string, Collection>;
+  source?:     DataSourceMeta;
 }
 
-/**
- * JSON body sent to POST /generate-document.
- */
-export interface ExportPayload {
-  templateElements: unknown[];
-  staticData: Record<string, string>;
-  /** collectionKey → rows (plain array, not the { headers, rows } shape) */
-  collections: Record<string, DataRow[]>;
-  fieldMapping: Record<string, string>;
-  tableCollectionBindings: Record<string, string>;
-  collectionMappings: Record<string, Record<string, string>>;
-  outputFileName?: string;
+// ─────────────────────────────────────────────────────────────────────────────
+// Component / hook state
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DataSourceStatus = 'idle' | 'parsing' | 'ready' | 'error';
+
+export interface DataSourceState {
+  status:    DataSourceStatus;
+  ir:        CanonicalDocument | null;
+  error?:    string;
+  fileName?: string;
 }
 
-/** Per-table info surfaced to the UploadData UI. */
+// ─────────────────────────────────────────────────────────────────────────────
+// Binding / validation
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface MissingField {
+  placeholder: string;  // token in template:  {{company_name}}
+  resolvedKey: string;  // key that was looked up: company.name
+}
+
+export interface MissingCollection {
+  elementId:     string;
+  collectionKey: string;
+}
+
+export interface BindingValidationResult {
+  valid:               boolean;
+  missingFields:       MissingField[];
+  missingCollections:  MissingCollection[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mapping alias types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** template placeholder → ir.fields key */
+export type FieldMapping = Record<string, string>;
+
+/** collectionKey → { cell-binding-path → collection-row-key } */
+export type CollectionMappings = Record<string, Record<string, string>>;
+
+/** tableElementId → collectionKey in ir.collections */
+export type TableCollectionBindings = Record<string, string>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Upload-UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Per-table info surfaced to the UploadData mapping UI. */
 export interface TableInfo {
-  id: string;
-  label: string;               // e.g. "Table 1"
-  placeholders: string[];      // {{…}} tokens found in the table's cells
+  id:                   string;
+  label:                string;    // "Table 1"
+  placeholders:         string[];  // {{…}} tokens found in that table's cells
   currentCollectionKey: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Convenience
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A single collection row — every value is a string. */
+export type DataRow = Record<string, string>;

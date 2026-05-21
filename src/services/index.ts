@@ -1,18 +1,31 @@
 /**
- * Service exports
- * Central export point for mapping services
+ * src/services/index.ts
+ * Central export point for all service modules.
+ * Aligned with the CanonicalDocument IR — no legacy exports.
  */
 
 export {
-  mapTemplateToData,
-  mapTemplateToMultipleData,
+  // Core resolvers
+  resolve,
   replacePlaceholders,
-  extractPlaceholders,
-  autoMapFields,
-  getAllPlaceholders,
-  getPlaceholdersByScope,
-  validateMapping,
-  type DataRow,
-  type PlaceholderGroups,
-  type CanvasElement,
+  resolveCellValue,
+  resolveElement,
+  resolveAllElements,
+
+  // Placeholder extraction
+  getStaticPlaceholders,
+  getTableInfos,
+
+  // Auto-mapping helpers
+  autoMapStaticFields,
+  autoMapCollectionFields,
+  buildInitialMappings,
+
+  // Canvas preview
+  mapTemplateForPreview,
+
+  // Validation
+  validateBindings,
 } from './mappingEngine';
+
+export type { DataRow } from '../types/dataSource';

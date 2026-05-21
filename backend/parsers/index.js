@@ -1,157 +1,115 @@
 /**
- * parsers/index.js
+ * backend/parsers/index.js
  *
- * Single entry-point that routes any incoming data source to the correct
- * format-specific parser and always returns the same normalized shape:
+ * Routes any incoming data source to the correct parser.
+ * Always returns a validated CanonicalDocument. Nothing else.
  *
- *   {
- *     metadata:    Record<string, string>
- *     collections: Record<string, { headers: string[], rows: object[] }>
- *   }
- *
- * CHANGES FROM PREVIOUS VERSION
- * ─────────────────────────────
- * 1. normalizeOutput() validates and repairs every parser's return value so
- *    downstream callers (pdfRenderer, mappingEngine) can trust the shape.
- *    Previously a parser returning { metadata: null } or omitting "headers"
- *    would cause silent NaN / undefined values that showed up only in the PDF.
- *
- * 2. Collection key normalization: all keys are lowercased and trimmed so
- *    "Items", "items", " items " all resolve to "items".  This closes the
- *    silent mismatch between tableCollectionBindings keys (set by the UI)
- *    and parser output keys (set by the file's sheet name / JSON key).
- *
- * 3. Row value coercion: every cell value is cast to string so
- *    replacePlaceholders / resolveCellValue never receives undefined or
- *    numeric values that would print as "[object Object]".
- *
- * 4. Explicit error messages: instead of silently falling through to a
- *    generic throw, each failed fallback logs a reason so engineers can
- *    identify which parser rejected which input.
+ * Exports
+ * ───────
+ *   parseDataSource(input, mimeType, opts?) → CanonicalDocument
+ *   validateBindings(templateElements, ir, fieldMapping?) → { valid, missingFields, missingCollections }
  */
 
-const { parseSheet }                  = require('./sheetParser');
-const { parseJsonBuffer, parseJson }  = require('./jsonParser');
+'use strict';
 
-// ── Schema normalization ─────────────────────────────────────────────────────
+const { parseSheet }                 = require('./sheetParser');
+const { parseJsonBuffer, parseJson } = require('./jsonParser');
 
-/**
- * Guarantees the output of every parser conforms to the contract:
- *
- *   {
- *     metadata:    Record<string, string>          — flat key/value map
- *     collections: Record<string,                  — one entry per table
- *       { headers: string[], rows: object[] }
- *     >
- *   }
- *
- * Fixes common parser mistakes in-place:
- *   • metadata  null/undefined → {}
- *   • collection values        → {headers:[], rows:[]}
- *   • collection keys          → lowercased + trimmed
- *   • row cell values          → coerced to string
- */
-function normalizeOutput(raw) {
-  if (!raw || typeof raw !== 'object') {
-    throw new Error('Parser returned a non-object result.');
-  }
-
-  // ── metadata ──
-  const metadata = (raw.metadata && typeof raw.metadata === 'object')
-    ? raw.metadata
-    : {};
-
-  // Coerce all metadata values to string
-  for (const [k, v] of Object.entries(metadata)) {
-    metadata[k] = v != null ? String(v) : '';
-  }
-
-  // ── collections ──
-  const rawCollections = (raw.collections && typeof raw.collections === 'object')
-    ? raw.collections
-    : {};
-
-  const collections = {};
-  for (const [rawKey, col] of Object.entries(rawCollections)) {
-    const key = rawKey.trim().toLowerCase();
-
-    const headers = Array.isArray(col?.headers)
-      ? col.headers.map(h => (h != null ? String(h) : ''))
-      : [];
-
-    const rows = Array.isArray(col?.rows)
-      ? col.rows.map(row => {
-          if (!row || typeof row !== 'object') return {};
-          const normalized = {};
-          for (const [ck, cv] of Object.entries(row)) {
-            normalized[ck] = cv != null ? String(cv) : '';
-          }
-          return normalized;
-        })
-      : [];
-
-    collections[key] = { headers, rows };
-  }
-
-  return { metadata, collections };
+function isExcelOrCsv(mimeType) {
+  const t = mimeType.toLowerCase();
+  return (
+    t.includes('spreadsheetml') ||
+    t.includes('ms-excel')      ||
+    t.includes('excel')         ||
+    t.includes('csv')           ||
+    t.includes('text/plain')
+  );
 }
 
-// ── Router ───────────────────────────────────────────────────────────────────
+function isJson(mimeType) {
+  return mimeType.toLowerCase().includes('json');
+}
 
 /**
  * @param {Buffer|string|object} input
- * @param {string} mimeType  — MIME type hint (e.g. "text/csv", "application/json")
- * @returns {{ metadata: Record<string,string>, collections: Record<string,{headers:string[], rows:object[]}> }}
+ * @param {string} mimeType
+ * @param {{ fileName?: string }} [opts]
+ * @returns {CanonicalDocument}
  */
-function parseDataSource(input, mimeType = '') {
-  const type = mimeType.toLowerCase();
-
-  // ── Excel / CSV ────────────────────────────────────────────────────────────
-  if (
-    type.includes('spreadsheetml') ||  // .xlsx
-    type.includes('ms-excel')       ||  // .xls
-    type.includes('excel')          ||
-    type.includes('csv')            ||
-    type.includes('text/plain')         // plain-text CSVs
-  ) {
-    const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
-    return normalizeOutput(parseSheet(buf));
+function parseDataSource(input, mimeType = '', opts = {}) {
+  if (isExcelOrCsv(mimeType)) {
+    return parseSheet(Buffer.isBuffer(input) ? input : Buffer.from(input), opts);
   }
 
-  // ── JSON ───────────────────────────────────────────────────────────────────
-  if (type.includes('json')) {
-    if (Buffer.isBuffer(input) || typeof input === 'string') {
-      return normalizeOutput(parseJsonBuffer(input));
-    }
-    return normalizeOutput(parseJson(input));
+  if (isJson(mimeType)) {
+    if (Buffer.isBuffer(input) || typeof input === 'string') return parseJsonBuffer(input, opts);
+    return parseJson(input, opts);
   }
 
-  // ── Pre-parsed JS object / API response ───────────────────────────────────
   if (input !== null && typeof input === 'object' && !Buffer.isBuffer(input)) {
-    return normalizeOutput(parseJson(input));
+    return parseJson(input, opts);
   }
 
-  // ── Fallback: try Excel for any binary buffer ──────────────────────────────
   if (Buffer.isBuffer(input)) {
-    try {
-      return normalizeOutput(parseSheet(input));
-    } catch (e) {
+    try { return parseSheet(input, opts); } catch (e) {
       console.warn('[parseDataSource] Excel fallback failed:', e.message);
     }
   }
 
-  // ── Fallback: try JSON for any string ─────────────────────────────────────
   if (typeof input === 'string') {
-    try {
-      return normalizeOutput(parseJsonBuffer(input));
-    } catch (e) {
+    try { return parseJsonBuffer(input, opts); } catch (e) {
       console.warn('[parseDataSource] JSON fallback failed:', e.message);
     }
   }
 
   throw new Error(
-    `Cannot parse data source: unrecognised input type "${typeof input}" with MIME "${mimeType}".`
+    `Cannot parse data source: unrecognised type "${typeof input}" with MIME "${mimeType}".`
   );
 }
 
-module.exports = { parseDataSource };
+/**
+ * Validate all {{placeholder}} tokens and table collection keys against the IR.
+ * Call before PDF generation to surface missing bindings explicitly.
+ *
+ * @param {object[]} templateElements
+ * @param {CanonicalDocument} ir
+ * @param {Record<string,string>} [fieldMapping]
+ * @returns {{ valid: boolean, missingFields: object[], missingCollections: object[] }}
+ */
+function validateBindings(templateElements, ir, fieldMapping = {}) {
+  const missingFields      = [];
+  const missingCollections = [];
+  const placeholderRe      = /\{\{([^}]+)\}\}/g;
+
+  for (const el of templateElements) {
+    const textContent = el.content || el.src || el.value || '';
+    if (typeof textContent === 'string') {
+      let match;
+      while ((match = placeholderRe.exec(textContent)) !== null) {
+        const key       = match[1].trim();
+        const mappedKey = fieldMapping[key] || key;
+        const found     = mappedKey in ir.fields ||
+          mappedKey.split('.').reduce(
+            (o, k) => (o != null && typeof o === 'object' ? o[k] : undefined),
+            ir.fields
+          ) != null;
+        if (!found) missingFields.push({ placeholder: key, resolvedKey: mappedKey });
+      }
+    }
+
+    if (el.type === 'table') {
+      const collKey = (el.binding?.collectionKey || '').trim().toLowerCase();
+      if (collKey && !(collKey in ir.collections)) {
+        missingCollections.push({ elementId: el.id, collectionKey: collKey });
+      }
+    }
+  }
+
+  return {
+    valid: missingFields.length === 0 && missingCollections.length === 0,
+    missingFields,
+    missingCollections,
+  };
+}
+
+module.exports = { parseDataSource, validateBindings };

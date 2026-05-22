@@ -166,7 +166,10 @@ function LayoutTableElement({
     if (!match) return false;
     const variableName = match[1].trim();
     if (variableName.length === 0) return false;
-    const validVariableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    // Each dot-separated segment must be a valid identifier.
+    // Allows: {{name}}, {{client.name}}, {{invoice.line.total}}
+    // Rejects: {{.name}}, {{client.}}, {{client..name}}, {{123abc}}
+    const validVariableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/;
     return validVariableRegex.test(variableName);
   };
 
@@ -267,6 +270,11 @@ function LayoutTableElement({
                         <span
                           key={index}
                           className={`placeholder-text ${part.isValid === false ? 'placeholder-invalid' : ''}`}
+                          title={
+                            part.isValid === false
+                              ? 'Invalid placeholder syntax. Use {{variable_name}} or {{parent.field_name}}'
+                              : `Placeholder: ${part.text}`
+                          }
                         >
                           {part.text}
                         </span>
@@ -339,7 +347,7 @@ function LayoutTableElement({
                                   }`}
                                   title={
                                     part.isValid === false
-                                      ? 'Invalid placeholder syntax. Use {{variable_name}}'
+                                      ? 'Invalid placeholder syntax. Use {{variable_name}} or {{parent.field_name}}'
                                       : `Placeholder: ${part.text}`
                                   }
                                 >

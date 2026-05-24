@@ -98,6 +98,16 @@ export interface GenerateDocumentParams {
   outputFileName?: string;
 }
 
+export interface BulkDocumentOptions {
+  driverCollectionKey: string;
+  fileNameTemplate?:   string;
+  zipFileName?:        string;
+}
+
+export interface GenerateBulkDocumentsParams extends GenerateDocumentParams {
+  bulk: BulkDocumentOptions;
+}
+
 export async function generateDocument(params: GenerateDocumentParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-document`, {
     method:  'POST',
@@ -111,6 +121,30 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
 
   if (!res.ok) {
     let msg = `generateDocument failed (${res.status})`;
+    try {
+      const b = await res.json() as { error?: string };
+      if (b.error) msg = b.error;
+    } catch { /* ignore */ }
+    throw new Error(msg);
+  }
+
+  return res.blob();
+}
+
+export async function generateBulkDocuments(params: GenerateBulkDocumentsParams): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/generate-bulk-documents`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      pages:          params.pages,
+      ir:             params.ir,
+      outputFileName: params.outputFileName ?? 'documents',
+      bulk:           params.bulk,
+    }),
+  });
+
+  if (!res.ok) {
+    let msg = `generateBulkDocuments failed (${res.status})`;
     try {
       const b = await res.json() as { error?: string };
       if (b.error) msg = b.error;

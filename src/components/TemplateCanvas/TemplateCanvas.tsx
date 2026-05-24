@@ -55,8 +55,9 @@ import {
   getTableInfos,
   mapTemplateForPreview,
   validateBindings,
+  autoMapStaticFields,
 } from '../../services/mappingEngine';
-import { generateDocument } from '../../services/dataSourceService';
+import { generateBulkDocuments, generateDocument } from '../../services/dataSourceService';
 import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
 import {
   createDefaultLayoutTable,
@@ -118,6 +119,14 @@ function maxCollectionRows(ir: CanonicalDocument | null): number {
   return Object.values(ir.collections).reduce((m, c) => Math.max(m, c.rows.length), 0);
 }
 
+type ExportMode = 'single' | 'bulk';
+
+function removeEmptyMappings(mapping: FieldMapping): FieldMapping {
+  return Object.fromEntries(
+    Object.entries(mapping).filter(([, value]) => value.trim() !== '')
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,6 +164,10 @@ function TemplateCanvas() {
   const [collectionMappings,      setCollectionMappings]      = useState<CollectionMappings>({});
   const [previewRowIndex,         setPreviewRowIndex]         = useState(0);
   const [uploadPanelOpen,         setUploadPanelOpen]         = useState(false);
+  const [exportMode,              setExportMode]              = useState<ExportMode>('single');
+  const [bulkDriverCollectionKey, setBulkDriverCollectionKey] = useState('');
+  const [bulkFieldMapping,        setBulkFieldMapping]        = useState<FieldMapping>({});
+  const [bulkFileNameTemplate,    setBulkFileNameTemplate]    = useState('document-{{index}}.pdf');
 
   // ── Export state ──────────────────────────────────────────────────────────
 
@@ -185,23 +198,84 @@ function TemplateCanvas() {
   );
 
   const totalRows = useMemo(() => maxCollectionRows(ir), [ir]);
+  const collectionKeys = useMemo(() => ir ? Object.keys(ir.collections) : [], [ir]);
+  const bulkDriverCollection = useMemo(
+    () => ir && bulkDriverCollectionKey ? ir.collections[bulkDriverCollectionKey] : undefined,
+    [ir, bulkDriverCollectionKey],
+  );
+  const bulkTotalRows = bulkDriverCollection?.rows.length ?? 0;
+  const previewTotalRows = exportMode === 'bulk' ? bulkTotalRows : totalRows;
+  const effectiveFieldMapping = useMemo(
+    () => exportMode === 'bulk'
+      ? { ...fieldMapping, ...removeEmptyMappings(bulkFieldMapping) }
+      : fieldMapping,
+    [exportMode, fieldMapping, bulkFieldMapping],
+  );
+  const previewIr = useMemo((): CanonicalDocument | null => {
+    if (!ir || exportMode !== 'bulk' || !bulkDriverCollection || bulkTotalRows === 0) return ir;
+
+    const row = bulkDriverCollection.rows[
+      Math.min(previewRowIndex, bulkDriverCollection.rows.length - 1)
+    ] ?? {};
+
+    return {
+      ...ir,
+      fields: {
+        ...ir.fields,
+        ...row,
+      },
+      collections: {
+        ...ir.collections,
+        [bulkDriverCollectionKey]: {
+          ...bulkDriverCollection,
+          rows: [row],
+        },
+      },
+    };
+  }, [ir, exportMode, bulkDriverCollection, bulkDriverCollectionKey, bulkTotalRows, previewRowIndex]);
 
   // ── Preview pages ─────────────────────────────────────────────────────────
 
   const previewPages = useMemo((): CanvasPage[] => {
-    if (!ir) return pages;
+    if (!previewIr) return pages;
     return pages.map(p => ({
       ...p,
       elements: mapTemplateForPreview(
         p.elements as unknown[],
-        ir,
-        fieldMapping,
+        previewIr,
+        effectiveFieldMapping,
         tableCollectionBindings,
         collectionMappings,
-        previewRowIndex,
+        exportMode === 'bulk' ? 0 : previewRowIndex,
       ) as CanvasElement[],
     }));
-  }, [pages, ir, fieldMapping, tableCollectionBindings, collectionMappings, previewRowIndex]);
+  }, [pages, previewIr, effectiveFieldMapping, tableCollectionBindings, collectionMappings, previewRowIndex, exportMode]);
+
+  useEffect(() => {
+    if (!ir) {
+      setBulkDriverCollectionKey('');
+      setBulkFieldMapping({});
+      return;
+    }
+
+    const keys = Object.keys(ir.collections);
+    setBulkDriverCollectionKey(prev => prev && ir.collections[prev] ? prev : keys[0] ?? '');
+  }, [ir]);
+
+  useEffect(() => {
+    if (!ir || !bulkDriverCollectionKey) {
+      setBulkFieldMapping({});
+      return;
+    }
+
+    const columns = ir.collections[bulkDriverCollectionKey]?.columns ?? [];
+    setBulkFieldMapping(autoMapStaticFields(staticPlaceholders, columns));
+  }, [ir, bulkDriverCollectionKey, staticPlaceholders]);
+
+  useEffect(() => {
+    const maxIndex = Math.max(0, previewTotalRows - 1);
+    setPreviewRowIndex(i => Math.min(i, maxIndex));
+  }, [previewTotalRows]);
 
   // ── Add element to active page ────────────────────────────────────────────
 
@@ -434,6 +508,10 @@ function TemplateCanvas() {
         setTableCollectionBindings({});
         setCollectionMappings({});
         setPreviewRowIndex(0);
+        setExportMode('single');
+        setBulkDriverCollectionKey('');
+        setBulkFieldMapping({});
+        setBulkFileNameTemplate('document-{{index}}.pdf');
         setActivePageId(cleanPages[0]?.pageId || 'page-1');
       } catch {
         alert('Error reading template file.');
@@ -456,6 +534,7 @@ function TemplateCanvas() {
     setTableCollectionBindings(bindings);
     setCollectionMappings(colMaps);
     setPreviewRowIndex(0);
+    setBulkFileNameTemplate('document-{{index}}.pdf');
     setUploadPanelOpen(false);
   };
 
@@ -465,6 +544,10 @@ function TemplateCanvas() {
     setTableCollectionBindings({});
     setCollectionMappings({});
     setPreviewRowIndex(0);
+    setExportMode('single');
+    setBulkDriverCollectionKey('');
+    setBulkFieldMapping({});
+    setBulkFileNameTemplate('document-{{index}}.pdf');
   };
 
   // ── Export ────────────────────────────────────────────────────────────────
@@ -479,10 +562,22 @@ function TemplateCanvas() {
 
   const handleExportDocument = async () => {
     if (allElements.length === 0) { alert('No template to export.'); return; }
+    if (exportMode === 'bulk' && !ir) {
+      alert('Upload data before running a bulk export.');
+      return;
+    }
+    if (exportMode === 'bulk' && (!bulkDriverCollectionKey || bulkTotalRows === 0)) {
+      alert('Choose a collection with rows for bulk export.');
+      return;
+    }
 
     // Warn about missing bindings but don't block
     if (ir) {
-      const validation = validateBindings(allElements as unknown[], ir, fieldMapping);
+      const validation = validateBindings(
+        allElements as unknown[],
+        previewIr ?? ir,
+        exportMode === 'bulk' ? effectiveFieldMapping : fieldMapping,
+      );
       if (!validation.valid) {
         console.warn('[export] missing bindings:', validation);
       }
@@ -491,7 +586,9 @@ function TemplateCanvas() {
     try {
       setIsExporting(true);
       setExportStatus(
-        totalRows > 0
+        exportMode === 'bulk'
+          ? `Generating ${bulkTotalRows} PDF${bulkTotalRows !== 1 ? 's' : ''} into a ZIP…`
+          : totalRows > 0
           ? `Generating document with ${totalRows} record${totalRows !== 1 ? 's' : ''}…`
           : 'Generating document…'
       );
@@ -499,23 +596,39 @@ function TemplateCanvas() {
       // Use an empty IR if no data has been uploaded — the renderer handles it
       const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
       const outputFileName = `document-${Date.now()}`;
+      const exportPages = pages.map(p => ({
+        pageId:                   p.pageId,
+        label:                    p.label,
+        templateElements:         p.elements,
+        header:                   p.header,
+        footer:                   p.footer,
+        fieldMapping:             exportMode === 'bulk' ? effectiveFieldMapping : fieldMapping,
+        tableCollectionBindings,
+        collectionMappings,
+      }));
 
-      const blob = await generateDocument({
-        pages: pages.map(p => ({
-          pageId:                   p.pageId,
-          label:                    p.label,
-          templateElements:         p.elements,
-          header:                   p.header,
-          footer:                   p.footer,
-          fieldMapping,
-          tableCollectionBindings,
-          collectionMappings,
-        })),
-        ir:             exportIr,
-        outputFileName,
-      });
+      if (exportMode === 'bulk') {
+        const blob = await generateBulkDocuments({
+          pages: exportPages,
+          ir: exportIr,
+          outputFileName,
+          bulk: {
+            driverCollectionKey: bulkDriverCollectionKey,
+            fileNameTemplate:   bulkFileNameTemplate,
+            zipFileName:        `${outputFileName}.zip`,
+          },
+        });
 
-      downloadBlob(blob, `${outputFileName}.pdf`);
+        downloadBlob(blob, `${outputFileName}.zip`);
+      } else {
+        const blob = await generateDocument({
+          pages: exportPages,
+          ir:             exportIr,
+          outputFileName,
+        });
+
+        downloadBlob(blob, `${outputFileName}.pdf`);
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed.');
     } finally {
@@ -722,15 +835,63 @@ function TemplateCanvas() {
         {ir && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
-              <span>{totalRows} record{totalRows !== 1 ? 's' : ''} bound</span>
-              {totalRows > 1 && (
+              <span>
+                {exportMode === 'bulk'
+                  ? `${bulkTotalRows} bulk PDF${bulkTotalRows !== 1 ? 's' : ''}`
+                  : `${totalRows} record${totalRows !== 1 ? 's' : ''} bound`}
+              </span>
+              {previewTotalRows > 1 && (
                 <span className="preview-label">
-                  &nbsp;— previewing row {previewRowIndex + 1} of {totalRows}
+                  &nbsp;— previewing row {previewRowIndex + 1} of {previewTotalRows}
                 </span>
               )}
             </div>
             <div className="batch-export-actions">
-              {totalRows > 1 && (
+              <label className="batch-control">
+                <span>Export</span>
+                <select
+                  value={exportMode}
+                  onChange={e => {
+                    setExportMode(e.target.value as ExportMode);
+                    setPreviewRowIndex(0);
+                  }}
+                >
+                  <option value="single">Single PDF</option>
+                  <option value="bulk" disabled={collectionKeys.length === 0}>Bulk PDFs</option>
+                </select>
+              </label>
+
+              {exportMode === 'bulk' && (
+                <>
+                  <label className="batch-control">
+                    <span>Records</span>
+                    <select
+                      value={bulkDriverCollectionKey}
+                      onChange={e => {
+                        setBulkDriverCollectionKey(e.target.value);
+                        setPreviewRowIndex(0);
+                      }}
+                    >
+                      {collectionKeys.map(k => (
+                        <option key={k} value={k}>
+                          {k} ({ir.collections[k].rows.length})
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="batch-control batch-control--wide">
+                    <span>File names</span>
+                    <input
+                      type="text"
+                      value={bulkFileNameTemplate}
+                      onChange={e => setBulkFileNameTemplate(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+
+              {previewTotalRows > 1 && (
                 <div className="preview-nav">
                   <button
                     type="button" className="preview-nav-btn"
@@ -738,12 +899,12 @@ function TemplateCanvas() {
                     disabled={previewRowIndex === 0}
                   >‹</button>
                   <span className="preview-nav-count">
-                    {previewRowIndex + 1} / {totalRows}
+                    {previewRowIndex + 1} / {previewTotalRows}
                   </span>
                   <button
                     type="button" className="preview-nav-btn"
-                    onClick={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
-                    disabled={previewRowIndex === totalRows - 1}
+                    onClick={() => setPreviewRowIndex(i => Math.min(previewTotalRows - 1, i + 1))}
+                    disabled={previewRowIndex === previewTotalRows - 1}
                   >›</button>
                 </div>
               )}
@@ -751,6 +912,27 @@ function TemplateCanvas() {
                 Clear Data
               </button>
             </div>
+
+            {exportMode === 'bulk' && staticPlaceholders.length > 0 && bulkDriverCollection && (
+              <div className="bulk-field-map">
+                {staticPlaceholders.map(ph => (
+                  <label key={ph} className="bulk-field-map-row">
+                    <span title={ph}>{ph}</span>
+                    <select
+                      value={bulkFieldMapping[ph] ?? ''}
+                      onChange={e =>
+                        setBulkFieldMapping(prev => ({ ...prev, [ph]: e.target.value }))
+                      }
+                    >
+                      <option value="">same name</option>
+                      {bulkDriverCollection.columns.map(col => (
+                        <option key={col} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

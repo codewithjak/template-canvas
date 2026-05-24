@@ -104,7 +104,71 @@
 .batch-export-actions {
   display        : flex;
   align-items    : center;
+  flex-wrap      : wrap;
   gap            : 10px;
+}
+
+.batch-control {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  font-size      : 12px;
+  font-weight    : 600;
+  color          : #475569;
+}
+
+.batch-control span {
+  white-space    : nowrap;
+}
+
+.batch-control select,
+.batch-control input,
+.bulk-field-map-row select {
+  height         : 30px;
+  border         : 1px solid #d7dce5;
+  border-radius  : 6px;
+  background     : #ffffff;
+  color          : #1f2937;
+  font-size      : 12px;
+  font-weight    : 500;
+  padding        : 0 8px;
+  outline        : none;
+}
+
+.batch-control input {
+  width          : 170px;
+}
+
+.batch-control--wide {
+  min-width      : 250px;
+}
+
+.bulk-field-map {
+  width          : 100%;
+  display        : grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap            : 8px;
+  max-height     : 116px;
+  overflow-y     : auto;
+  padding-top    : 8px;
+  border-top     : 1px solid #eef2f7;
+}
+
+.bulk-field-map-row {
+  display        : grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items    : center;
+  gap            : 6px;
+}
+
+.bulk-field-map-row span {
+  min-width      : 0;
+  overflow       : hidden;
+  text-overflow  : ellipsis;
+  white-space    : nowrap;
+  color          : #475569;
+  font-size      : 12px;
+  font-weight    : 600;
 }
 
 .preview-nav {

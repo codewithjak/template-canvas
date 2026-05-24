@@ -726,6 +726,20 @@ function PropertiesPanel({
                 }
               />
             </div>
+            <div className="property-group property-inline">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedElement.style.showBorders !== false}
+                  onChange={(e) =>
+                    onUpdate(selectedElement.id, {
+                      style: { ...selectedElement.style, showBorders: e.target.checked },
+                    } as Partial<CanvasElement>)
+                  }
+                />
+                Show Borders
+              </label>
+            </div>
             <div className="property-section-title property-subtitle">Table binding</div>
             <div className="property-group property-inline">
               <label>
@@ -1346,6 +1360,45 @@ function PropertiesPanel({
                     } as Partial<CanvasElement>);
                   }
                 }}
+                className="property-color"
+              />
+            </div>
+            {layoutActiveCell && layoutActiveRC ? (
+              <div className="property-group">
+                <label className="property-label">Text Align</label>
+                <select
+                  value={layoutActiveCell.style?.textAlign ?? 'left'}
+                  onChange={(e) =>
+                    patchLayoutTableCell(selectedElement, layoutActiveRC.rowIndex, layoutActiveRC.colIndex, {
+                      style: { ...layoutActiveCell.style, textAlign: e.target.value as 'left' | 'center' | 'right' },
+                    })
+                  }
+                  className="property-select"
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+            ) : null}
+            <div className="property-group">
+              <label className="property-label">Background Color</label>
+              <input
+                type="color"
+                value={
+                  layoutActiveCell
+                    ? layoutActiveCell.style?.backgroundColor ?? 'transparent'
+                    : 'transparent'
+                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (layoutActiveRC && layoutActiveCell) {
+                    patchLayoutTableCell(selectedElement, layoutActiveRC.rowIndex, layoutActiveRC.colIndex, {
+                      style: { ...layoutActiveCell.style, backgroundColor: v },
+                    });
+                  }
+                }}
+                disabled={!layoutActiveCell}
                 className="property-color"
               />
             </div>

@@ -133,9 +133,11 @@ function LayoutTableElement({
 
   const { position, style: tableStyle, columns, rows } = element;
   const border =
-    tableStyle.borderWidth && tableStyle.borderWidth > 0
-      ? `${tableStyle.borderWidth}px solid ${tableStyle.borderColor ?? '#d1d5db'}`
-      : '1px solid #e5e7eb';
+    tableStyle.showBorders !== false
+      ? tableStyle.borderWidth && tableStyle.borderWidth > 0
+        ? `${tableStyle.borderWidth}px solid ${tableStyle.borderColor ?? '#d1d5db'}`
+        : '1px solid #e5e7eb'
+      : 'none';
 
   const normRange = selectionRange
     ? normalizeRect(selectionRange.r0, selectionRange.c0, selectionRange.r1, selectionRange.c1)
@@ -225,7 +227,7 @@ function LayoutTableElement({
         }}
       />
       <table
-        className="layout-table"
+        className={`layout-table ${tableStyle.showBorders === false ? 'borderless' : ''}`}
         style={{
           fontSize: tableStyle.fontSize,
           fontWeight: tableStyle.fontWeight,

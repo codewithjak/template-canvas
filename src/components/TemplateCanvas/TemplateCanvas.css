@@ -31,6 +31,17 @@
   width          : 100%;
 }
 
+.canvas-page-stage {
+  position       : relative;
+  width          : 794px;
+  height         : 1123px;
+  flex-shrink    : 0;
+}
+
+.canvas-page-stage--with-rulers {
+  margin-top     : 30px;
+}
+
 /* ── Page label ──────────────────────────────────────────────────────────────*/
 
 .canvas-page-label {

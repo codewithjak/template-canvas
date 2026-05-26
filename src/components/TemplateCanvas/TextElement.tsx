@@ -11,6 +11,10 @@ interface TextElementProps {
     fontWeight: string;
     color: string;
     fontFamily: string;
+    width?: number;
+    opacity?: number;
+    rotation?: number;
+    textAlign?: 'left' | 'center' | 'right';
   };
   onUpdate: (id: string, content: string) => void;
   isSelected?: boolean;
@@ -35,10 +39,12 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
     disabled: isEditing,
   });
 
-  const style_transform = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
+  const transformParts = [
+    transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : '',
+    style.rotation ? `rotate(${style.rotation}deg)` : '',
+  ].filter(Boolean);
+  const styleTransform = transformParts.length
+    ? { transform: transformParts.join(' ') }
     : undefined;
 
   useEffect(() => {
@@ -166,7 +172,11 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
         fontWeight: style.fontWeight,
         color: style.color,
         fontFamily: style.fontFamily,
-        ...style_transform,
+        width: style.width ? `${style.width}px` : undefined,
+        textAlign: style.textAlign,
+        whiteSpace: style.width ? 'normal' : undefined,
+        transformOrigin: style.rotation ? 'center center' : undefined,
+        ...styleTransform,
       }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
@@ -189,10 +199,12 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
             fontWeight: style.fontWeight,
             color: style.color,
             fontFamily: style.fontFamily,
+            width: style.width ? `${style.width}px` : undefined,
+            textAlign: style.textAlign,
           }}
         />
       ) : (
-        <span>
+        <span style={{ opacity: style.opacity !== undefined ? style.opacity / 100 : undefined }}>
           {parts.map((part, index) =>
             part.isPlaceholder ? (
               <span

@@ -8,9 +8,18 @@
 // ── Element types ─────────────────────────────────────────────────────────────
 
 export interface TextElementType {
-  id: string; type: 'text'; content: string;
+  id: string; type: 'text'; content: string; role?: 'watermark';
   position: { x: number; y: number };
-  style: { fontSize: number; fontWeight: string; color: string; fontFamily: string };
+  style: {
+    fontSize: number;
+    fontWeight: string;
+    color: string;
+    fontFamily: string;
+    width?: number;
+    opacity?: number;
+    rotation?: number;
+    textAlign?: 'left' | 'center' | 'right';
+  };
   // Page number config — only applies to text elements inside footer zone
   pageNumber?: {
     enabled         : boolean;
@@ -21,7 +30,7 @@ export interface TextElementType {
 }
 
 export interface ImageElementType {
-  id: string; type: 'image'; src: string;
+  id: string; type: 'image'; src: string; role?: 'signature';
   position: { x: number; y: number };
   style: { width: number; height: number; objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'; opacity?: number };
 }

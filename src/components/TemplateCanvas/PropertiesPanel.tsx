@@ -17,6 +17,7 @@ import {
 interface TextElementType {
   id: string;
   type: 'text';
+  role?: 'watermark';
   content: string;
   position: { x: number; y: number };
   style: {
@@ -24,12 +25,17 @@ interface TextElementType {
     fontWeight: string;
     color: string;
     fontFamily: string;
+    width?: number;
+    opacity?: number;
+    rotation?: number;
+    textAlign?: 'left' | 'center' | 'right';
   };
 }
 
 interface ImageElementType {
   id: string;
   type: 'image';
+  role?: 'signature';
   src: string;
   position: { x: number; y: number };
   style: {
@@ -228,6 +234,38 @@ function PropertiesPanel({
     if (selectedElement.type === 'text' || selectedElement.type === 'paragraph') {
       onUpdate(selectedElement.id, {
         style: { ...selectedElement.style, fontFamily: value },
+      } as any);
+    }
+  };
+
+  const handleTextWidthChange = (value: number) => {
+    if (selectedElement.type === 'text') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, width: value },
+      } as any);
+    }
+  };
+
+  const handleTextOpacityChange = (value: number) => {
+    if (selectedElement.type === 'text') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, opacity: value },
+      } as any);
+    }
+  };
+
+  const handleTextRotationChange = (value: number) => {
+    if (selectedElement.type === 'text') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, rotation: value },
+      } as any);
+    }
+  };
+
+  const handleTextAlignChange = (value: 'left' | 'center' | 'right') => {
+    if (selectedElement.type === 'text') {
+      onUpdate(selectedElement.id, {
+        style: { ...selectedElement.style, textAlign: value },
       } as any);
     }
   };
@@ -431,19 +469,29 @@ function PropertiesPanel({
  
   // Show the section if the element is a page-number element OR is in footer zone
   const showPageNumberProperties = isPageNumberElement || isInFooterZone;
+  const panelTypeLabel =
+    selectedElement.type === 'text' && selectedElement.role === 'watermark'
+      ? 'watermark'
+      : selectedElement.type === 'image' && selectedElement.role === 'signature'
+      ? 'signature'
+      : selectedElement.type;
 
   return (
     <div className="properties-panel">
       <div className="properties-panel-header">
         Properties
-        <span className="panel-type-label">{selectedElement.type}</span>
+        <span className="panel-type-label">{panelTypeLabel}</span>
       </div>
       <div className="properties-panel-content">
         {selectedElement.type === 'text' ? (
           <div className="property-section">
-            <div className="property-section-title">Text</div>
+            <div className="property-section-title">
+              {selectedElement.role === 'watermark' ? 'Watermark' : 'Text'}
+            </div>
             <div className="property-group">
-              <label className="property-label">Content</label>
+              <label className="property-label">
+                {selectedElement.role === 'watermark' ? 'Watermark Text' : 'Content'}
+              </label>
               <input
                 type="text"
                 value={selectedElement.content}
@@ -454,15 +502,19 @@ function PropertiesPanel({
           </div>
         ) : selectedElement.type === 'image' ? (
           <div className="property-section">
-            <div className="property-section-title">Image</div>
+            <div className="property-section-title">
+              {selectedElement.role === 'signature' ? 'Digital signature' : 'Image'}
+            </div>
             <div className="property-group">
-              <label className="property-label">Image Source</label>
+              <label className="property-label">
+                {selectedElement.role === 'signature' ? 'Signature Source' : 'Image Source'}
+              </label>
               <input
                 type="text"
                 value={selectedElement.src}
                 onChange={(e) => handleImageSrcChange(e.target.value)}
                 className="property-input"
-                placeholder="Image URL or {{image_url}}"
+                placeholder={selectedElement.role === 'signature' ? 'Image URL or {{digital_signature}}' : 'Image URL or {{image_url}}'}
               />
               <input
                 type="file"
@@ -475,7 +527,7 @@ function PropertiesPanel({
                 className="property-button"
                 onClick={() => document.getElementById('image-file-input')?.click()}
               >
-                Upload Image
+                {selectedElement.role === 'signature' ? 'Upload Signature' : 'Upload Image'}
               </button>
             </div>
             <div className="property-grid-two">
@@ -1135,7 +1187,7 @@ function PropertiesPanel({
                 onChange={(e) => handleFontSizeChange(Number(e.target.value))}
                 className="property-input"
                 min="8"
-                max="72"
+                max="160"
               />
             </div>
 
@@ -1187,6 +1239,61 @@ function PropertiesPanel({
                 className="property-color"
               />
             </div>
+
+            {selectedElement.type === 'text' && (
+              <>
+                <div className="property-grid-two">
+                  <div className="property-group">
+                    <label className="property-label">Width (px)</label>
+                    <input
+                      type="number"
+                      value={selectedElement.style.width ?? 240}
+                      onChange={(e) => handleTextWidthChange(Number(e.target.value))}
+                      className="property-input"
+                      min="50"
+                      max="794"
+                    />
+                  </div>
+                  <div className="property-group">
+                    <label className="property-label">Opacity (%)</label>
+                    <input
+                      type="number"
+                      value={selectedElement.style.opacity ?? 100}
+                      onChange={(e) => handleTextOpacityChange(Number(e.target.value))}
+                      className="property-input"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                </div>
+
+                <div className="property-grid-two">
+                  <div className="property-group">
+                    <label className="property-label">Rotation (deg)</label>
+                    <input
+                      type="number"
+                      value={selectedElement.style.rotation ?? 0}
+                      onChange={(e) => handleTextRotationChange(Number(e.target.value))}
+                      className="property-input"
+                      min="-180"
+                      max="180"
+                    />
+                  </div>
+                  <div className="property-group">
+                    <label className="property-label">Text Align</label>
+                    <select
+                      value={selectedElement.style.textAlign ?? 'left'}
+                      onChange={(e) => handleTextAlignChange(e.target.value as 'left' | 'center' | 'right')}
+                      className="property-select"
+                    >
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1551,4 +1658,3 @@ function PropertiesPanel({
 }
 
 export default PropertiesPanel;
-

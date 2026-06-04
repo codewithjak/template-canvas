@@ -30,6 +30,18 @@ fs.mkdirSync(JOBS_DIR, { recursive: true });
 
 const jobs = new Map();
 
+// Auto-cleanup stale jobs every 5 minutes (TTL: 30 minutes)
+const JOB_TTL_MS = 30 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [jobId, job] of jobs) {
+    if (now - (job.createdAt || 0) > JOB_TTL_MS) {
+      if (job.zipPath) fs.unlink(job.zipPath, () => {});
+      jobs.delete(jobId);
+    }
+  }
+}, 5 * 60 * 1000);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // File name helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +135,7 @@ function normalisePayload(body) {
     collectionMappings:       normalizeCollectionMappings(mergedColMp),
     outputFileName:           body.outputFileName,
     pageConfigs,
+    pageSize:                 body.pageSize || null,
   };
 }
 
@@ -246,6 +259,7 @@ app.post('/generate-document', async (req, res) => {
       collectionMappings,
       outputFileName,
       pageConfigs,
+      pageSize,
     } = normalisePayload(req.body);
 
     // ── Row scoping (single PDF) ─────────────────────────────────────
@@ -266,7 +280,7 @@ app.post('/generate-document', async (req, res) => {
     if (!validation.valid) console.warn('[generate-document] missing bindings:', validation);
 
     const pdfBuffer = await generatePdfBuffer({
-      ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs,
+      ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
     });
 
     res.set({
@@ -298,6 +312,7 @@ app.post('/generate-bulk-documents', async (req, res) => {
       collectionMappings,
       outputFileName,
       pageConfigs,
+      pageSize,
     } = normalisePayload(req.body);
 
     const bulk                = req.body.bulk || {};
@@ -348,7 +363,7 @@ app.post('/generate-bulk-documents', async (req, res) => {
       try {
         const pdfBuffer = await generatePdfBuffer({
           ir: rowIr, templateElements, fieldMapping,
-          tableCollectionBindings, collectionMappings, pageConfigs,
+          tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
         });
 
         const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
@@ -412,7 +427,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const jobId   = uuidv4();
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
 
-  jobs.set(jobId, { status: 'running', current: 0, total, zipPath, zipFileName });
+  jobs.set(jobId, { status: 'running', current: 0, total, zipPath, zipFileName, createdAt: Date.now() });
 
   res.json({ jobId });
 
@@ -439,6 +454,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
             tableCollectionBindings: normalised.tableCollectionBindings,
             collectionMappings:      normalised.collectionMappings,
             pageConfigs:             normalised.pageConfigs,
+            pageSize:                normalised.pageSize,
           });
 
           const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});

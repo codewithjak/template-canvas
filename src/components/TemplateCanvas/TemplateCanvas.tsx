@@ -47,6 +47,9 @@ import LayoutTableElement  from './LayoutTableElement';
 import PropertiesPanel     from './PropertiesPanel';
 import PageRulers, { type PageRulerSelection } from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
+import BarcodeElement from './BarcodeElement';
+import type { BarcodeElementType, PageSizeConfig } from '../../types/canvas';
+import { defaultPageSize, PAGE_SIZE_PRESETS } from '../../types/canvas';
 
 import type {
   CanonicalDocument,
@@ -153,6 +156,9 @@ function getElementRulerSelection(element: CanvasElement | null): PageRulerSelec
   } else if (element.type === 'text' && element.style.width) {
     selection.width  = element.style.width;
     selection.height = element.style.fontSize * 1.3;
+  } else if (element.type === 'barcode') {
+    selection.width  = element.style.width;
+    selection.height = element.style.height;
   } else if (element.type === 'line') {
     selection.width  = element.style.direction === 'horizontal' ? element.style.length : element.style.thickness;
     selection.height = element.style.direction === 'vertical'   ? element.style.length : element.style.thickness;
@@ -189,7 +195,21 @@ function TemplateCanvas() {
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
+  const [pageSize, setPageSize] = useState<PageSizeConfig>(defaultPageSize());
   const [showPageRulers, setShowPageRulers] = useState(false);
+
+  const handlePageSizeChange = useCallback((preset: string) => {
+    const p = PAGE_SIZE_PRESETS[preset];
+    if (p) {
+      setPageSize({
+        preset,
+        canvasWidth:  p.canvasWidth,
+        canvasHeight: p.canvasHeight,
+        pdfWidth:     p.pdfWidth,
+        pdfHeight:    p.pdfHeight,
+      });
+    }
+  }, []);
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
@@ -422,6 +442,7 @@ function TemplateCanvas() {
   const handleAddRadio     = () => addEl({ id: `radio-${Date.now()}`,     type: 'radio',     options: 2, selected: '', orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
   const handleAddCheckbox  = () => addEl({ id: `checkbox-${Date.now()}`,  type: 'checkbox',  count: 1, checkedValues: [], orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
   const handleAddDate      = () => addEl({ id: `date-${Date.now()}`,      type: 'date',      value: '', time: '', includeTime: false, format: 'MM/DD/YYYY', position: { x: 50, y: 50 }, style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
+  const handleAddBarcode   = () => addEl({ id: `barcode-${Date.now()}`,   type: 'barcode',   content: '12345678', position: { x: 50, y: 50 }, style: { width: 200, height: 100 }, barcode: { format: 'code128', showText: true } } as BarcodeElementType);
 
   // ── Element update ────────────────────────────────────────────────────────
 
@@ -445,6 +466,7 @@ function TemplateCanvas() {
         if ('includeTime' in updates) updated.includeTime = updates.includeTime;
         if ('format'      in updates) updated.format      = updates.format;
         if ('pageNumber'  in updates) updated.pageNumber  = updates.pageNumber;
+        if ('barcode'     in updates) updated.barcode     = updates.barcode;
         if (isLayoutTable(updated)) {
           if (updates.columns   !== undefined) updated.columns   = updates.columns;
           if (updates.headerRow !== undefined) updated.headerRow = updates.headerRow;
@@ -692,6 +714,7 @@ function TemplateCanvas() {
           rowIndex:            0,
           driverCollectionKey: undefined,
           relatedCollections:  {},
+          pageSize,
         });
 
         downloadBlob(blob, `${outputFileName}.pdf`);
@@ -709,6 +732,7 @@ function TemplateCanvas() {
         rowIndex:            previewRowIndex,
         driverCollectionKey,
         relatedCollections:  relatedCollectionsConfig,
+        pageSize,
       });
 
       downloadBlob(blob, `${outputFileName}.pdf`);
@@ -880,6 +904,22 @@ function TemplateCanvas() {
         />
       );
 
+      if (element.type === 'barcode') {
+        const barcodeEl = element as BarcodeElementType;
+        return (
+          <BarcodeElement
+            key={barcodeEl.id}
+            id={barcodeEl.id}
+            content={barcodeEl.content}
+            position={barcodeEl.position}
+            style={barcodeEl.style}
+            barcode={barcodeEl.barcode}
+            isSelected={isSelected}
+            onSelect={select}
+          />
+        );
+      }
+
       return null;
     });
 
@@ -914,6 +954,9 @@ function TemplateCanvas() {
           onToggleRulers={() => setShowPageRulers(v => !v)}
           hasSelection={!!selectedElementId}
           hasElements={allElements.length > 0}
+          onAddBarcode={handleAddBarcode}
+          onPageSizeChange={handlePageSizeChange}
+          currentPageSize={pageSize.preset}
         />
 
         {uploadPanelOpen && (
@@ -937,7 +980,6 @@ function TemplateCanvas() {
           </div>
         )}
 
-        {/* ── CHANGE 6: pass rds prop to BulkExportPanel ────────────────── */}
         {bulkPanelOpen && ir && (
           <BulkExportPanel
             ir={ir}
@@ -1034,7 +1076,7 @@ function TemplateCanvas() {
           />
         )}
 
-        <div className="canvas-pages-wrapper">
+        <div className="canvas-pages-wrapper" style={{ width: pageSize.canvasWidth }}>
           {previewPages.map((page, pageIdx) => (
             <div key={page.pageId} className="canvas-page-block">
               <div className="canvas-page-label">
@@ -1048,13 +1090,14 @@ function TemplateCanvas() {
               >
                 {showPageRulers && activePageId === page.pageId && (
                   <PageRulers
-                    width={794} height={1123}
+                    width={pageSize.canvasWidth} height={pageSize.canvasHeight}
                     selection={selectedElementPageId === page.pageId ? selectedRulerSelection : null}
                   />
                 )}
 
                 <div
                   className={`template-canvas ${activePageId === page.pageId ? 'template-canvas--active' : ''}`}
+                  style={{ width: pageSize.canvasWidth, height: pageSize.canvasHeight }}
                   onClick={e => {
                     if (e.target === e.currentTarget) {
                       clearAllSelections();
@@ -1068,7 +1111,7 @@ function TemplateCanvas() {
                     type="header"
                     config={page.header}
                     isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'header'}
-                    canvasH={1123}
+                    canvasH={pageSize.canvasHeight}
                     onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'header' }); setActivePageId(page.pageId); }}
                     onDeselect={() => setSelectedBoundary(null)}
                     onChange={h => handleUpdatePageHeader(page.pageId, h as HeaderConfig)}
@@ -1079,7 +1122,7 @@ function TemplateCanvas() {
                     type="footer"
                     config={page.footer}
                     isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'footer'}
-                    canvasH={1123}
+                    canvasH={pageSize.canvasHeight}
                     onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'footer' }); setActivePageId(page.pageId); }}
                     onDeselect={() => setSelectedBoundary(null)}
                     onChange={f => handleUpdatePageFooter(page.pageId, f as FooterConfig)}
@@ -1107,7 +1150,7 @@ function TemplateCanvas() {
                       className="canvas-zone canvas-zone--footer"
                       style={{
                         top: page.footer.boundaryY,
-                        height: 1123 - page.footer.boundaryY,
+                        height: pageSize.canvasHeight - page.footer.boundaryY,
                         backgroundColor: page.footer.style.backgroundColor !== 'transparent'
                           ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
                           : 'rgba(99,102,241,0.04)',

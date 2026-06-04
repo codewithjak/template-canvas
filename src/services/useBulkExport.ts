@@ -16,7 +16,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { CanonicalDocument } from '../types/dataSource';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+import { API_BASE } from './config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

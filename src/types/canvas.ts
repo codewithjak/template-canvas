@@ -5,6 +5,45 @@
  * No React, no JSX — pure TypeScript interfaces and helpers.
  */
 
+// ── Page size presets ─────────────────────────────────────────────────────────
+
+export interface PageSizePreset {
+  name: string;
+  widthInches: number;
+  heightInches: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  pdfWidth: number;
+  pdfHeight: number;
+}
+
+export const PAGE_SIZE_PRESETS: Record<string, PageSizePreset> = {
+  'a4':       { name: 'A4',         widthInches: 8.27, heightInches: 11.69, canvasWidth: 794,  canvasHeight: 1123, pdfWidth: 595.28, pdfHeight: 841.89 },
+  'letter':   { name: 'US Letter',  widthInches: 8.5,  heightInches: 11,    canvasWidth: 816,  canvasHeight: 1056, pdfWidth: 612,    pdfHeight: 792 },
+  '4x6':      { name: '4×6 Label',  widthInches: 4,    heightInches: 6,     canvasWidth: 384,  canvasHeight: 576,  pdfWidth: 288,    pdfHeight: 432 },
+  '4x4':      { name: '4×4 Label',  widthInches: 4,    heightInches: 4,     canvasWidth: 384,  canvasHeight: 384,  pdfWidth: 288,    pdfHeight: 288 },
+  '3x5':      { name: '3×5 Label',  widthInches: 3,    heightInches: 5,     canvasWidth: 288,  canvasHeight: 480,  pdfWidth: 216,    pdfHeight: 360 },
+};
+
+export interface PageSizeConfig {
+  preset: string;           // key from PAGE_SIZE_PRESETS or 'custom'
+  canvasWidth: number;
+  canvasHeight: number;
+  pdfWidth: number;
+  pdfHeight: number;
+}
+
+export function defaultPageSize(): PageSizeConfig {
+  const a4 = PAGE_SIZE_PRESETS['a4'];
+  return {
+    preset: 'a4',
+    canvasWidth:  a4.canvasWidth,
+    canvasHeight: a4.canvasHeight,
+    pdfWidth:     a4.pdfWidth,
+    pdfHeight:    a4.pdfHeight,
+  };
+}
+
 // ── Element types ─────────────────────────────────────────────────────────────
 
 export interface TextElementType {
@@ -69,9 +108,25 @@ export interface DateElementType {
   style: { fontSize: number; fontWeight: string; color: string; fontFamily: string };
 }
 
+export interface BarcodeElementType {
+  id: string;
+  type: 'barcode';
+  content: string;            // the value to encode
+  position: { x: number; y: number };
+  style: {
+    width: number;
+    height: number;
+  };
+  barcode: {
+    format: 'code128' | 'code39' | 'qrcode' | 'ean13' | 'upca' | 'itf14';
+    showText: boolean;        // show human-readable text below barcode
+  };
+}
+
 export type CanvasElement =
   | TextElementType | ImageElementType | LineElementType | BoxElementType
   | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType
+  | BarcodeElementType
   | import('../model/layoutTable').LayoutTableElement;
 
 // ── Header / Footer config ────────────────────────────────────────────────────
@@ -110,11 +165,12 @@ export function defaultHeader(): HeaderConfig {
   };
 }
 
-export function defaultFooter(): FooterConfig {
+export function defaultFooter(canvasHeight?: number): FooterConfig {
+  const h = canvasHeight ?? 1123;
   return {
     enabled         : false,
     repeatOnOverflow: false,
-    boundaryY       : 1043,   // 1123 - 80
+    boundaryY       : h - 80,
     style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1, opacity: 1 },
   };
 }
@@ -144,6 +200,7 @@ export interface TemplateDocument {
   version : '2.0';
   meta    : TemplateMeta;
   pages   : CanvasPage[];
+  pageSize?: PageSizeConfig;
   ai      : null | Record<string, unknown>;
 }
 
@@ -166,6 +223,7 @@ export function createTemplateDocument(
   pages    : CanvasPage[],
   name      = 'Untitled Template',
   existing ?: Partial<TemplateMeta>,
+  pageSize ?: PageSizeConfig,
 ): TemplateDocument {
   const now = new Date().toISOString();
   return {
@@ -177,6 +235,7 @@ export function createTemplateDocument(
       updatedAt  : now,
     },
     pages,
+    pageSize,
     ai : null,
   };
 }
@@ -217,9 +276,9 @@ export function getFooterElements(page: CanvasPage): CanvasElement[] {
 }
 
 /** Elements in the content zone — between header and footer boundaries. */
-export function getContentElements(page: CanvasPage): CanvasElement[] {
+export function getContentElements(page: CanvasPage, canvasHeight?: number): CanvasElement[] {
   const topBound    = page.header.enabled ? page.header.boundaryY : 0;
-  const bottomBound = page.footer.enabled ? page.footer.boundaryY : 1123;
+  const bottomBound = page.footer.enabled ? page.footer.boundaryY : (canvasHeight ?? 1123);
   return page.elements.filter(el => {
     const y = el.position?.y ?? 0;
     return y >= topBound && y < bottomBound;

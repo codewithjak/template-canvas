@@ -124,6 +124,18 @@ interface DateElementType {
   };
 }
 
+interface BarcodeElementType {
+  id: string;
+  type: 'barcode';
+  content: string;
+  position: { x: number; y: number };
+  style: { width: number; height: number };
+  barcode: {
+    format: 'code128' | 'code39' | 'qrcode' | 'ean13' | 'upca' | 'itf14';
+    showText: boolean;
+  };
+}
+
 type CanvasElement =
   | TextElementType
   | ImageElementType
@@ -133,6 +145,7 @@ type CanvasElement =
   | RadioElementType
   | CheckboxElementType
   | DateElementType
+  | BarcodeElementType
   | LayoutTableElement;
 
 interface PropertiesPanelProps {
@@ -1586,6 +1599,70 @@ function PropertiesPanel({
             </div>
           </div>
         )}
+
+        {selectedElement.type === 'barcode' && (() => {
+          const el = selectedElement as BarcodeElementType;
+          return (
+            <div className="property-section">
+              <div className="property-section-title">Barcode Properties</div>
+              <div className="property-group">
+                <label className="property-label">Value</label>
+                <input
+                  type="text"
+                  value={el.content}
+                  onChange={(e) => onUpdate(el.id, { content: e.target.value })}
+                  className="property-input"
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Format</label>
+                <select
+                  value={el.barcode.format}
+                  onChange={(e) => onUpdate(el.id, { barcode: { ...el.barcode, format: e.target.value as any } })}
+                  className="property-select"
+                >
+                  <option value="code128">Code 128</option>
+                  <option value="code39">Code 39</option>
+                  <option value="qrcode">QR Code</option>
+                  <option value="ean13">EAN-13</option>
+                  <option value="upca">UPC-A</option>
+                  <option value="itf14">ITF-14</option>
+                </select>
+              </div>
+              <div className="property-group">
+                <label className="property-label">Show Text</label>
+                <input
+                  type="checkbox"
+                  checked={el.barcode.showText}
+                  onChange={(e) => onUpdate(el.id, { barcode: { ...el.barcode, showText: e.target.checked } })}
+                  className="property-checkbox"
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Width</label>
+                <input
+                  type="number"
+                  min={20}
+                  max={1000}
+                  value={el.style.width}
+                  onChange={(e) => onUpdate(el.id, { style: { ...el.style, width: Number(e.target.value) } })}
+                  className="property-input"
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Height</label>
+                <input
+                  type="number"
+                  min={20}
+                  max={1000}
+                  value={el.style.height}
+                  onChange={(e) => onUpdate(el.id, { style: { ...el.style, height: Number(e.target.value) } })}
+                  className="property-input"
+                />
+              </div>
+            </div>
+          );
+        })()}
 
         {selectedElement.type === 'date' && (
           <div className="property-section">

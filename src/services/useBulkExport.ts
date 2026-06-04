@@ -31,11 +31,15 @@ export interface BulkProgress {
 
 export interface BulkExportParams {
   ir:                      CanonicalDocument;
-  templateElements:        any[];
-  pageConfigs:             any[];
-  fieldMapping:            Record<string, string>;
-  tableCollectionBindings: Record<string, string>;
-  collectionMappings:      Record<string, Record<string, string>>;
+  pages:                   Array<{
+    pageId?:                 string;
+    templateElements:        any[];
+    header?:                 any;
+    footer?:                 any;
+    fieldMapping:            Record<string, string>;
+    tableCollectionBindings: Record<string, string>;
+    collectionMappings:      Record<string, Record<string, string>>;
+  }>;
   bulk: {
     driverCollectionKey:  string;
     fileNameTemplate:     string;
@@ -43,6 +47,7 @@ export interface BulkExportParams {
     zipFileName:          string;
   };
   totalRows: number;
+  pageSize?: any;
 }
 
 export interface UseBulkExportReturn {
@@ -94,13 +99,10 @@ async function streamingExport(
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
-      ir:                      params.ir,
-      templateElements:        params.templateElements,
-      pageConfigs:             params.pageConfigs,
-      fieldMapping:            params.fieldMapping,
-      tableCollectionBindings: params.tableCollectionBindings,
-      collectionMappings:      params.collectionMappings,
+      ir:       params.ir,
+      pages:    params.pages,
       bulk,
+      pageSize: params.pageSize ?? null,
     }),
     signal,
   });
@@ -151,13 +153,10 @@ async function asyncExport(
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
-      ir:                      params.ir,
-      templateElements:        params.templateElements,
-      pageConfigs:             params.pageConfigs,
-      fieldMapping:            params.fieldMapping,
-      tableCollectionBindings: params.tableCollectionBindings,
-      collectionMappings:      params.collectionMappings,
+      ir:       params.ir,
+      pages:    params.pages,
       bulk,
+      pageSize: params.pageSize ?? null,
     }),
     signal,
   });

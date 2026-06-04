@@ -61,8 +61,9 @@ export function getConfidenceLabel(tier: ConfidenceTier): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type UploadIntent =
-  | 'flat'       // Each row is a separate document — skip relationship detection
-  | 'relational' // Data has related sheets — run detection + review flow
+  | 'flat'       // This is a single complete report — all data renders into one document
+  | 'relational' // Data has related collections — run detection + review flow
+  | 'per-row'    // Each row is a separate document — no relationship detection needed
   | 'unknown';   // Not yet captured (pre-upload state)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,11 +134,11 @@ export interface RuntimeCollection {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type ExecutionMode =
-  | 'single'           // One document
-  | 'flat-bulk'        // N documents, one per row, no relationship scoping
-  | 'relational-bulk'  // N documents, one per driver record, related collections scoped
+  | 'single'           // One document — all data rendered unscoped (flat/report)
+  | 'per-row'          // N documents, one per row, no relationship scoping
+  | 'relational'       // N documents, one per driver record, related collections scoped
   | 'grouped'          // M documents where M < N, one per unique value of groupByColumn
-  | 'merged';          // One document containing all records (full report)
+  | 'merged';          // Reserved for future use
 
 export interface ExecutionPlan {
   mode:          ExecutionMode;
@@ -222,7 +223,20 @@ export function buildRenderContext(
   rds:      RuntimeDataStructure,
   rowIndex: number,
 ): RenderContext {
-  const { driverKey } = rds.executionPlan;
+  const { mode, driverKey } = rds.executionPlan;
+
+  // ── REPORT MODE: return everything unscoped ──────────────────────────────
+  if (mode === 'single') {
+    return {
+      fields: { ...rds.fields },
+      collections: Object.fromEntries(
+        Object.entries(rds.collections).map(([k, c]) => [
+          k,
+          { rows: c.rows, columns: c.columns },
+        ]),
+      ),
+    };
+  }
 
   // Static template — no driver collection
   if (!driverKey || !rds.collections[driverKey]) {

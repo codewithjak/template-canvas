@@ -3,17 +3,25 @@
  *
  * All data-source network calls.
  * Every function works exclusively with CanonicalDocument { fields, collections, source }.
- * No legacy aliases. No staticData. No metadata.
  *
- * Exports
- * ───────
- *   parseFile(file)          → CanonicalDocument
- *   parseJsonData(data)      → CanonicalDocument
- *   generateDocument(params) → Blob
- *   downloadDocument(params) → void  (triggers browser download)
+ * CHANGES FROM PREVIOUS VERSION
+ * ──────────────────────────────
+ * GenerateDocumentParams now accepts three optional row-scoping fields:
+ *   rowIndex            — which driver row to render (default 0)
+ *   driverCollectionKey — which collection drives the loop
+ *   relatedCollections  — FK config so server scopes child collections
+ *
+ * These are passed to POST /generate-document so the server can call
+ * buildRowIr() and produce a single-record scoped IR — fixing the bug
+ * where all rows from every collection were rendered into one PDF.
  */
 
-import type { CanonicalDocument, FieldMapping, CollectionMappings, TableCollectionBindings } from '../types/dataSource';
+import type {
+  CanonicalDocument,
+  FieldMapping,
+  CollectionMappings,
+  TableCollectionBindings,
+} from '../types/dataSource';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
@@ -33,10 +41,6 @@ async function expectJson(res: Response, context: string): Promise<Record<string
   return res.json() as Promise<Record<string, unknown>>;
 }
 
-/**
- * Read { fields, collections, source } from the server response.
- * Throws immediately if the shape is wrong so callers find out at parse time.
- */
 function toCanonicalDocument(raw: Record<string, unknown>): CanonicalDocument {
   if (!raw.fields || typeof raw.fields !== 'object' || Array.isArray(raw.fields)) {
     throw new Error('Server response is missing "fields". Ensure the server is running v2.');
@@ -52,7 +56,7 @@ function toCanonicalDocument(raw: Record<string, unknown>): CanonicalDocument {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// File upload  (Excel / CSV / JSON file)
+// File upload
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function parseFile(file: File): Promise<CanonicalDocument> {
@@ -78,7 +82,7 @@ export async function parseJsonData(data: unknown): Promise<CanonicalDocument> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PDF generation
+// Types
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface PageExportData {
@@ -96,26 +100,52 @@ export interface GenerateDocumentParams {
   pages:           PageExportData[];
   ir:              CanonicalDocument;
   outputFileName?: string;
+  /**
+   * Row-scoping for single PDF export.
+   * The server passes these to buildRowIr() so only the requested record's
+   * data is rendered — related collections are filtered by FK, and driver
+   * row columns are promoted to ir.fields.
+   *
+   * When omitted the server renders without row scoping (static templates).
+   */
+  rowIndex?:            number;
+  driverCollectionKey?: string;
+  relatedCollections?:  Record<string, {
+    filterColumn:   string;   // column in the related collection
+    driverRowField: string;   // field in the driver row to match against
+  }>;
 }
 
 export interface BulkDocumentOptions {
   driverCollectionKey: string;
   fileNameTemplate?:   string;
   zipFileName?:        string;
+  relatedCollections?: Record<string, {
+    filterColumn:   string;
+    driverRowField: string;
+  }>;
 }
 
 export interface GenerateBulkDocumentsParams extends GenerateDocumentParams {
   bulk: BulkDocumentOptions;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF generation — single document
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function generateDocument(params: GenerateDocumentParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-document`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({
-      pages:          params.pages,
-      ir:             params.ir,
-      outputFileName: params.outputFileName ?? 'document',
+      pages:               params.pages,
+      ir:                  params.ir,
+      outputFileName:      params.outputFileName ?? 'document',
+      // Row-scoping fields — forwarded to server buildRowIr()
+      rowIndex:            params.rowIndex ?? 0,
+      driverCollectionKey: params.driverCollectionKey,
+      relatedCollections:  params.relatedCollections ?? {},
     }),
   });
 
@@ -130,6 +160,10 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
 
   return res.blob();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PDF generation — bulk documents
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function generateBulkDocuments(params: GenerateBulkDocumentsParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-bulk-documents`, {
@@ -154,6 +188,10 @@ export async function generateBulkDocuments(params: GenerateBulkDocumentsParams)
 
   return res.blob();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Convenience — download single document directly
+// ─────────────────────────────────────────────────────────────────────────────
 
 export async function downloadDocument(params: GenerateDocumentParams): Promise<void> {
   const blob   = await generateDocument(params);

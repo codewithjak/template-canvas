@@ -1,0 +1,408 @@
+/* RelationshipBuilder.css */
+
+.rb-root {
+  background     : #ffffff;
+}
+
+/* ── Step indicator ─────────────────────────────────────────────────────── */
+
+.rb-steps {
+  display        : flex;
+  align-items    : center;
+  padding        : 14px 20px 10px;
+  background     : #f8fafc;
+  border-bottom  : 0.5px solid #e2e8f0;
+  gap            : 0;
+}
+
+.rb-step {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  flex-shrink    : 0;
+}
+
+.rb-step-dot {
+  width          : 22px;
+  height         : 22px;
+  border-radius  : 50%;
+  border         : 1.5px solid #cbd5e1;
+  background     : #ffffff;
+  color          : #94a3b8;
+  font-size      : 10px;
+  font-weight    : 700;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  flex-shrink    : 0;
+  transition     : all 0.15s;
+}
+
+.rb-step--active .rb-step-dot {
+  border-color   : #214883;
+  background     : #214883;
+  color          : #ffffff;
+}
+
+.rb-step--done .rb-step-dot {
+  border-color   : #22c55e;
+  background     : #dcfce7;
+  color          : #166534;
+  font-size      : 11px;
+}
+
+.rb-step-label {
+  font-size      : 11px;
+  font-weight    : 500;
+  color          : #94a3b8;
+  white-space    : nowrap;
+}
+
+.rb-step--active .rb-step-label { color: #214883; }
+.rb-step--done   .rb-step-label { color: #64748b; }
+
+.rb-step-line {
+  flex           : 1;
+  height         : 1.5px;
+  background     : #e2e8f0;
+  margin         : 0 8px;
+  min-width      : 20px;
+  transition     : background 0.15s;
+}
+.rb-step-line--done { background: #22c55e; }
+
+/* ── Body ───────────────────────────────────────────────────────────────── */
+
+.rb-body {
+  padding        : 0;
+}
+
+.rb-step-content {
+  padding        : 16px 20px 14px;
+}
+
+.rb-step-desc {
+  margin         : 0 0 14px;
+  font-size      : 12.5px;
+  color          : #64748b;
+  line-height    : 1.5;
+}
+
+/* ── Collection cards (Step 1) ──────────────────────────────────────────── */
+
+.rb-coll-cards {
+  display        : flex;
+  align-items    : center;
+  gap            : 0;
+  margin-bottom  : 16px;
+}
+
+.rb-coll-card {
+  flex           : 1;
+  border         : 0.5px solid #e2e8f0;
+  border-radius  : 8px;
+  padding        : 12px 14px;
+  background     : #f8fafc;
+}
+
+.rb-coll-card--driver {
+  border-color   : #93c5fd;
+  background     : #eff8ff;
+}
+
+.rb-coll-card--child {
+  border-color   : #86efac;
+  background     : #f0fdf4;
+}
+
+.rb-coll-card-header {
+  display        : flex;
+  align-items    : center;
+  gap            : 8px;
+  margin-bottom  : 6px;
+}
+
+.rb-coll-role {
+  font-size      : 9.5px;
+  font-weight    : 700;
+  padding        : 1px 6px;
+  border-radius  : 10px;
+  background     : #dbeafe;
+  color          : #1e40af;
+  text-transform : uppercase;
+  letter-spacing : 0.4px;
+}
+
+.rb-coll-role--child {
+  background     : #dcfce7;
+  color          : #166534;
+}
+
+.rb-coll-name {
+  font-size      : 13px;
+  font-weight    : 700;
+  color          : #0f172a;
+}
+
+.rb-coll-stats {
+  font-size      : 11px;
+  color          : #64748b;
+  margin-bottom  : 8px;
+}
+
+.rb-coll-cols {
+  display        : flex;
+  flex-wrap      : wrap;
+  gap            : 4px;
+}
+
+.rb-col-chip {
+  font-family    : 'Menlo', 'Monaco', monospace;
+  font-size      : 10px;
+  padding        : 1px 6px;
+  background     : #ffffff;
+  border         : 0.5px solid #e2e8f0;
+  border-radius  : 3px;
+  color          : #475569;
+}
+
+.rb-col-more {
+  font-size      : 10px;
+  color          : #94a3b8;
+  padding        : 1px 4px;
+  align-self     : center;
+}
+
+.rb-coll-link-arrow {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  padding        : 0 10px;
+  flex-shrink    : 0;
+}
+
+.rb-arrow-line {
+  width          : 30px;
+  height         : 1.5px;
+  background     : #cbd5e1;
+}
+
+.rb-arrow-head {
+  font-size      : 16px;
+  color          : #94a3b8;
+  margin-top     : -2px;
+}
+
+/* ── Column selector (Step 2) ───────────────────────────────────────────── */
+
+.rb-col-selector {
+  display        : flex;
+  align-items    : flex-start;
+  gap            : 10px;
+  margin-bottom  : 16px;
+}
+
+.rb-col-selector-side {
+  flex           : 1;
+  display        : flex;
+  flex-direction : column;
+  gap            : 6px;
+}
+
+.rb-col-label {
+  font-size      : 11px;
+  font-weight    : 600;
+  color          : #475569;
+  text-transform : uppercase;
+  letter-spacing : 0.4px;
+}
+
+.rb-col-select {
+  height         : 32px;
+  width          : 100%;
+  padding        : 0 8px;
+  font-size      : 12.5px;
+  border         : 0.5px solid #cbd5e1;
+  border-radius  : 6px;
+  background     : #ffffff;
+  color          : #0f172a;
+  outline        : none;
+}
+.rb-col-select:focus { border-color: #378ADD; }
+
+.rb-col-sample {
+  display        : flex;
+  flex-wrap      : wrap;
+  gap            : 4px;
+}
+
+.rb-sample-val {
+  font-family    : 'Menlo', 'Monaco', monospace;
+  font-size      : 10.5px;
+  padding        : 1px 5px;
+  background     : #f1f5f9;
+  border-radius  : 3px;
+  color          : #334155;
+}
+
+.rb-col-selector-arrow {
+  align-self     : center;
+  font-size      : 11.5px;
+  font-weight    : 600;
+  color          : #94a3b8;
+  padding-top    : 20px;
+  flex-shrink    : 0;
+  white-space    : nowrap;
+}
+
+/* ── Join preview (Step 3) ──────────────────────────────────────────────── */
+
+.rb-preview-header {
+  display        : flex;
+  align-items    : center;
+  justify-content: space-between;
+  margin-bottom  : 10px;
+  gap            : 10px;
+}
+
+.rb-coverage-badge {
+  font-size      : 11px;
+  font-weight    : 600;
+  padding        : 2px 8px;
+  border-radius  : 20px;
+  flex-shrink    : 0;
+}
+.rb-coverage--good { background: #dcfce7; color: #166534; }
+.rb-coverage--warn { background: #fef3c7; color: #92400e; }
+
+.rb-coverage-warning {
+  margin-bottom  : 10px;
+  padding        : 8px 12px;
+  background     : #fffbeb;
+  border         : 0.5px solid #fde68a;
+  border-radius  : 6px;
+  font-size      : 12px;
+  color          : #92400e;
+}
+
+.rb-join-previews {
+  display        : flex;
+  flex-direction : column;
+  gap            : 8px;
+  margin-bottom  : 14px;
+  max-height     : 260px;
+  overflow-y     : auto;
+}
+
+.rb-join-block {
+  border         : 0.5px solid #e2e8f0;
+  border-radius  : 6px;
+  overflow       : hidden;
+}
+
+.rb-join-driver {
+  display        : flex;
+  align-items    : center;
+  flex-wrap      : wrap;
+  gap            : 8px;
+  padding        : 8px 10px;
+  background     : #eff8ff;
+  border-bottom  : 0.5px solid #e2e8f0;
+}
+
+.rb-join-driver-label {
+  font-size      : 9.5px;
+  font-weight    : 700;
+  text-transform : uppercase;
+  letter-spacing : 0.4px;
+  color          : #1e40af;
+  padding        : 1px 5px;
+  background     : #dbeafe;
+  border-radius  : 3px;
+  flex-shrink    : 0;
+}
+
+.rb-join-field {
+  display        : inline-flex;
+  gap            : 3px;
+  font-size      : 11px;
+}
+
+.rb-join-field-key {
+  color          : #94a3b8;
+  font-family    : 'Menlo', 'Monaco', monospace;
+}
+
+.rb-join-field-val {
+  color          : #334155;
+  font-family    : 'Menlo', 'Monaco', monospace;
+}
+
+.rb-join-arrow-down {
+  padding        : 3px 10px;
+  font-size      : 11px;
+  color          : #64748b;
+  background     : #f8fafc;
+  border-bottom  : 0.5px solid #f1f5f9;
+}
+
+.rb-join-children {
+  background     : #f8fafc;
+}
+
+.rb-join-child-row {
+  display        : flex;
+  flex-wrap      : wrap;
+  gap            : 8px;
+  padding        : 5px 10px;
+  border-bottom  : 0.5px solid #f1f5f9;
+}
+.rb-join-child-row:last-child { border-bottom: none; }
+
+.rb-join-more {
+  padding        : 4px 10px;
+  font-size      : 10.5px;
+  color          : #94a3b8;
+  font-style     : italic;
+}
+
+.rb-join-empty {
+  padding        : 8px 10px;
+  font-size      : 11.5px;
+  color          : #f97316;
+  background     : #fff7ed;
+}
+
+/* ── Nav ────────────────────────────────────────────────────────────────── */
+
+.rb-nav {
+  display        : flex;
+  justify-content: space-between;
+  align-items    : center;
+  padding-top    : 4px;
+}
+
+.rb-btn-secondary {
+  padding        : 6px 12px;
+  font-size      : 12px;
+  font-weight    : 500;
+  border-radius  : 5px;
+  border         : 0.5px solid #cbd5e1;
+  background     : #ffffff;
+  color          : #475569;
+  cursor         : pointer;
+}
+.rb-btn-secondary:hover { background: #f1f5f9; }
+
+.rb-btn-primary {
+  padding        : 6px 14px;
+  font-size      : 12px;
+  font-weight    : 500;
+  border-radius  : 5px;
+  border         : none;
+  background     : #214883;
+  color          : #ffffff;
+  cursor         : pointer;
+}
+.rb-btn-primary:hover:not(:disabled) { background: #1a3a6b; }
+.rb-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }

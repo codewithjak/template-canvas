@@ -1,23 +1,13 @@
-/**
- * backend/server/index.js
- *
- * Endpoints
- * ─────────
- *   POST /parse-data         multipart file upload  → CanonicalDocument JSON
- *   POST /parse-json         { data } body          → CanonicalDocument JSON
- *   POST /validate-bindings  { templateElements, fields, collections, fieldMapping? }
- *   POST /generate-document       { pages[], ir, outputFileName? }
- *   POST /generate-bulk-documents { pages[], ir, bulk } → ZIP of PDFs
- *
- * Every endpoint works exclusively with CanonicalDocument { fields, collections, source }.
- * No metadata aliases. No staticData fallbacks.
- */
-
 'use strict';
 
 const express = require('express');
 const cors    = require('cors');
 const multer  = require('multer');
+const archiver = require('archiver');
+const fs       = require('fs');
+const path     = require('path');
+const os       = require('os');
+const { v4: uuidv4 } = require('uuid');
 
 const { parseDataSource, validateBindings } = require('./parsers/index');
 const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer');
@@ -32,108 +22,17 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ZIP helpers
-//
-// Keeps bulk export dependency-free for the MVP. Files are stored without
-// compression; PDFs are already compressed well enough for this use case.
+// Async job registry
 // ─────────────────────────────────────────────────────────────────────────────
 
-let crcTable = null;
+const JOBS_DIR = path.join(os.tmpdir(), 'bulk-jobs');
+fs.mkdirSync(JOBS_DIR, { recursive: true });
 
-function getCrcTable() {
-  if (crcTable) return crcTable;
-  crcTable = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) {
-      c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-    }
-    crcTable[n] = c >>> 0;
-  }
-  return crcTable;
-}
+const jobs = new Map();
 
-function crc32(buffer) {
-  const table = getCrcTable();
-  let crc = 0xffffffff;
-  for (const byte of buffer) {
-    crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function dosDateTime(date = new Date()) {
-  const year = Math.max(1980, date.getFullYear());
-  const time = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
-  const day  = (date.getDate() || 1);
-  const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | day;
-  return { time, date: dosDate };
-}
-
-function buildZip(entries) {
-  const localParts = [];
-  const centralParts = [];
-  const { time, date } = dosDateTime();
-  let offset = 0;
-
-  for (const entry of entries) {
-    const nameBuf = Buffer.from(entry.name, 'utf8');
-    const data = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data);
-    const crc = crc32(data);
-
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4);
-    local.writeUInt16LE(0x0800, 6);
-    local.writeUInt16LE(0, 8);
-    local.writeUInt16LE(time, 10);
-    local.writeUInt16LE(date, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(data.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBuf.length, 26);
-    local.writeUInt16LE(0, 28);
-
-    localParts.push(local, nameBuf, data);
-
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4);
-    central.writeUInt16LE(20, 6);
-    central.writeUInt16LE(0x0800, 8);
-    central.writeUInt16LE(0, 10);
-    central.writeUInt16LE(time, 12);
-    central.writeUInt16LE(date, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(data.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBuf.length, 28);
-    central.writeUInt16LE(0, 30);
-    central.writeUInt16LE(0, 32);
-    central.writeUInt16LE(0, 34);
-    central.writeUInt16LE(0, 36);
-    central.writeUInt32LE(0, 38);
-    central.writeUInt32LE(offset, 42);
-
-    centralParts.push(central, nameBuf);
-    offset += local.length + nameBuf.length + data.length;
-  }
-
-  const centralOffset = offset;
-  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(0, 4);
-  end.writeUInt16LE(0, 6);
-  end.writeUInt16LE(entries.length, 8);
-  end.writeUInt16LE(entries.length, 10);
-  end.writeUInt32LE(centralSize, 12);
-  end.writeUInt32LE(centralOffset, 16);
-  end.writeUInt16LE(0, 20);
-
-  return Buffer.concat([...localParts, ...centralParts, end]);
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// File name helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function sanitizeFileName(name, fallback) {
   const cleaned = String(name || '')
@@ -141,7 +40,6 @@ function sanitizeFileName(name, fallback) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\.+/, '');
-
   const base = cleaned || fallback;
   return base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
 }
@@ -152,26 +50,18 @@ function sanitizeZipName(name, fallback) {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\.+/, '');
-
   const base = cleaned || fallback;
   return base.toLowerCase().endsWith('.zip') ? base : `${base.replace(/\.pdf$/i, '')}.zip`;
 }
 
 function uniqueFileName(name, used) {
-  if (!used.has(name)) {
-    used.add(name);
-    return name;
-  }
-
-  const dot = name.toLowerCase().endsWith('.pdf') ? name.length - 4 : name.length;
+  if (!used.has(name)) { used.add(name); return name; }
+  const dot  = name.toLowerCase().endsWith('.pdf') ? name.length - 4 : name.length;
   const base = name.slice(0, dot);
-  const ext = name.slice(dot);
+  const ext  = name.slice(dot);
   let i = 2;
   let candidate = `${base}-${i}${ext}`;
-  while (used.has(candidate)) {
-    i += 1;
-    candidate = `${base}-${i}${ext}`;
-  }
+  while (used.has(candidate)) { i += 1; candidate = `${base}-${i}${ext}`; }
   used.add(candidate);
   return candidate;
 }
@@ -193,22 +83,6 @@ const normalizeCollectionMappings = (obj = {}) =>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Payload normaliser
-//
-// Expected request body shape:
-// {
-//   pages: [
-//     {
-//       templateElements: [...],
-//       header: {...} | null,
-//       footer: {...} | null,
-//       fieldMapping: {},
-//       tableCollectionBindings: {},
-//       collectionMappings: {},
-//     }
-//   ],
-//   ir: { fields, collections, source },   ← CanonicalDocument from /parse-data
-//   outputFileName: "invoice"
-// }
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CANVAS_PAGE_H = 1123;
@@ -230,13 +104,11 @@ function normalisePayload(body) {
   }));
 
   (body.pages || []).forEach((page, pageIndex) => {
-    const yOffset = pageIndex * CANVAS_PAGE_H;
-
+    const yOffset  = pageIndex * CANVAS_PAGE_H;
     const elements = (page.templateElements || []).map(el => ({
       ...el,
       position: { ...el.position, y: (el.position?.y || 0) + yOffset },
     }));
-
     mergedEls.push(...elements);
     Object.assign(mergedFm,    page.fieldMapping            || {});
     Object.assign(mergedBind,  page.tableCollectionBindings || {});
@@ -246,12 +118,57 @@ function normalisePayload(body) {
   return {
     templateElements:        mergedEls,
     ir:                      { ...ir, collections: normalizeCollectionKeys(ir.collections) },
-    fieldMapping:            mergedFm,
-    tableCollectionBindings: normalizeBindingKeys(mergedBind),
-    collectionMappings:      normalizeCollectionMappings(mergedColMp),
-    outputFileName:          body.outputFileName,
+    fieldMapping:             mergedFm,
+    tableCollectionBindings:  normalizeBindingKeys(mergedBind),
+    collectionMappings:       normalizeCollectionMappings(mergedColMp),
+    outputFileName:           body.outputFileName,
     pageConfigs,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bulk row IR builder
+// Shared by single-document (with rowIndex), streaming bulk, and async bulk.
+//
+// - Promotes all driver-row columns into ir.fields (case-normalised)
+// - Scopes driver collection to [row]
+// - Filters related collections by FK
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildRowIr(ir, driverCollectionKey, row, rowIndex, relatedCollections) {
+  const driverColl = ir.collections[driverCollectionKey] || { rows: [], columns: [] };
+
+  // Normalise row keys to lowercase so they match classifier's case-insensitive lookup
+  const normRow = Object.fromEntries(
+    Object.entries(row).map(([k, v]) => [k.toLowerCase(), v])
+  );
+
+  const rowFields = {
+    ...ir.fields,
+    ...normRow,
+    __rowIndex:  String(rowIndex),
+    __index:     String(rowIndex + 1),
+    __rowNumber: String(rowIndex + 1),
+  };
+
+  const scopedCollections = {
+    ...ir.collections,
+    [driverCollectionKey]: { ...driverColl, rows: [row] },
+  };
+
+  for (const [collKey, cfg] of Object.entries(relatedCollections || {})) {
+    const coll = ir.collections[collKey];
+    if (!coll) continue;
+    const driverValue = String(row[cfg.driverRowField] ?? row[cfg.driverRowField?.toLowerCase()] ?? '');
+    scopedCollections[collKey] = {
+      ...coll,
+      rows: coll.rows.filter(r =>
+        String(r[cfg.filterColumn] ?? r[cfg.filterColumn?.toLowerCase()] ?? '') === driverValue
+      ),
+    };
+  }
+
+  return { ...ir, fields: rowFields, collections: scopedCollections };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,15 +226,19 @@ app.post('/validate-bindings', (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /generate-document
+//
+// Single PDF export.
+// Accepts optional rowIndex + driverCollectionKey + relatedCollections so it
+// scopes the IR to one driver row — identical logic to bulk row generation.
+// This fixes the bug where single export rendered ALL rows from every collection.
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/generate-document', async (req, res) => {
   if (!Array.isArray(req.body.pages)) {
     return res.status(400).json({ error: '"pages" array is required.' });
   }
-
   try {
-    const {
+    let {
       templateElements,
       ir,
       fieldMapping,
@@ -327,27 +248,32 @@ app.post('/generate-document', async (req, res) => {
       pageConfigs,
     } = normalisePayload(req.body);
 
-    // Binding validation — logs warnings, never blocks generation
-    const validation = validateBindings(templateElements, ir, fieldMapping);
-    if (!validation.valid) {
-      console.warn('[generate-document] missing bindings:', validation);
+    // ── Row scoping (single PDF) ─────────────────────────────────────
+    // If the caller provides driverCollectionKey, scope the IR to the
+    // requested row exactly as bulk does.  Falls back gracefully when
+    // no driver is provided (static templates with no relational data).
+    const driverCollectionKey = String(req.body.driverCollectionKey || '').trim().toLowerCase();
+    if (driverCollectionKey && ir.collections[driverCollectionKey]?.rows?.length) {
+      const rowIndex       = Math.max(0, parseInt(req.body.rowIndex ?? '0', 10));
+      const rows           = ir.collections[driverCollectionKey].rows;
+      const row            = rows[Math.min(rowIndex, rows.length - 1)];
+      const relatedCollections = req.body.relatedCollections || {};
+      ir = buildRowIr(ir, driverCollectionKey, row, rowIndex, relatedCollections);
     }
+    // ────────────────────────────────────────────────────────────────
+
+    const validation = validateBindings(templateElements, ir, fieldMapping);
+    if (!validation.valid) console.warn('[generate-document] missing bindings:', validation);
 
     const pdfBuffer = await generatePdfBuffer({
-      ir,
-      templateElements,
-      fieldMapping,
-      tableCollectionBindings,
-      collectionMappings,
-      pageConfigs,
+      ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs,
     });
 
     res.set({
-      'Content-Type'       : 'application/pdf',
+      'Content-Type':        'application/pdf',
       'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.pdf"`,
     });
     return res.send(pdfBuffer);
-
   } catch (err) {
     console.error('[generate-document]', err);
     return res.status(500).json({ error: err.message || 'Failed to generate document.' });
@@ -355,7 +281,7 @@ app.post('/generate-document', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /generate-bulk-documents
+// POST /generate-bulk-documents  — streaming ZIP  (≤ 300 rows)
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.post('/generate-bulk-documents', async (req, res) => {
@@ -374,102 +300,217 @@ app.post('/generate-bulk-documents', async (req, res) => {
       pageConfigs,
     } = normalisePayload(req.body);
 
-    const bulk = req.body.bulk || {};
+    const bulk                = req.body.bulk || {};
     const driverCollectionKey = String(bulk.driverCollectionKey || '').trim().toLowerCase();
     if (!driverCollectionKey) {
       return res.status(400).json({ error: '"bulk.driverCollectionKey" is required.' });
     }
 
     const driverCollection = ir.collections[driverCollectionKey];
-    if (!driverCollection || !Array.isArray(driverCollection.rows)) {
+    if (!driverCollection?.rows?.length) {
       return res.status(400).json({
-        error: `Bulk collection "${driverCollectionKey}" was not found.`,
+        error: `Bulk collection "${driverCollectionKey}" not found or has no rows.`,
       });
     }
 
-    const rows = driverCollection.rows;
-    if (rows.length === 0) {
-      return res.status(400).json({
-        error: `Bulk collection "${driverCollectionKey}" has no rows.`,
-      });
-    }
+    const rows             = driverCollection.rows;
+    const total            = rows.length;
+    const fileNameTemplate = String(bulk.fileNameTemplate || `${outputFileName || 'document'}-{{__index}}.pdf`);
+    const zipFileName      = sanitizeZipName(bulk.zipFileName || `${outputFileName || 'documents'}.zip`, 'documents.zip');
+    const relatedCollections = bulk.relatedCollections || {};
 
-    const fileNameTemplate = String(
-      bulk.fileNameTemplate || `${outputFileName || 'document'}-{{index}}.pdf`
-    );
-    const zipFileName = sanitizeZipName(
-      bulk.zipFileName || `${outputFileName || 'documents'}.zip`,
-      'documents.zip',
-    );
+    res.set({
+      'Content-Type':        'application/zip',
+      'Content-Disposition': `attachment; filename="${zipFileName}"`,
+      'X-Bulk-Total':        String(total),
+      'Transfer-Encoding':   'chunked',
+    });
 
+    const archive   = archiver('zip', { store: true });
     const usedNames = new Set();
-    const entries = [];
 
-    for (let i = 0; i < rows.length; i += 1) {
-      const row = rows[i] || {};
-      const rowFields = {
-        ...ir.fields,
-        ...row,
-        __rowIndex:  String(i),
-        __index:     String(i + 1),
-        __rowNumber: String(i + 1),
-      };
+    archive.on('error', err => {
+      console.error('[bulk] archiver error:', err);
+      res.destroy();
+    });
 
-      const rowIr = {
-        ...ir,
-        fields: rowFields,
-        collections: {
-          ...ir.collections,
-          [driverCollectionKey]: {
-            ...driverCollection,
-            rows: [row],
-          },
-        },
-      };
+    archive.pipe(res);
+
+    for (let i = 0; i < rows.length; i++) {
+      const row   = rows[i] || {};
+      const rowIr = buildRowIr(ir, driverCollectionKey, row, i, relatedCollections);
 
       if (i === 0) {
         const validation = validateBindings(templateElements, rowIr, fieldMapping);
-        if (!validation.valid) {
-          console.warn('[generate-bulk-documents] missing bindings on first row:', validation);
-        }
+        if (!validation.valid) console.warn('[bulk] missing bindings on first row:', validation);
       }
 
-      const pdfBuffer = await generatePdfBuffer({
-        ir: rowIr,
-        templateElements,
-        fieldMapping,
-        tableCollectionBindings,
-        collectionMappings,
-        pageConfigs,
-      });
+      try {
+        const pdfBuffer = await generatePdfBuffer({
+          ir: rowIr, templateElements, fieldMapping,
+          tableCollectionBindings, collectionMappings, pageConfigs,
+        });
 
-      const filenameFields = {
-        ...rowFields,
-        rowIndex:  String(i),
-        index:     String(i + 1),
-        rowNumber: String(i + 1),
-      };
-      const resolvedName = replacePlaceholders(fileNameTemplate, filenameFields, {});
-      const safeName = uniqueFileName(
-        sanitizeFileName(resolvedName, `document-${i + 1}.pdf`),
-        usedNames,
-      );
+        const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
+        const safeName     = uniqueFileName(
+          sanitizeFileName(resolvedName, `document-${i + 1}.pdf`),
+          usedNames,
+        );
 
-      entries.push({ name: safeName, data: pdfBuffer });
+        archive.append(pdfBuffer, { name: safeName });
+      } catch (rowErr) {
+        console.error(`[bulk] row ${i} failed:`, rowErr.message);
+      }
     }
 
-    const zipBuffer = buildZip(entries);
-
-    res.set({
-      'Content-Type'       : 'application/zip',
-      'Content-Disposition': `attachment; filename="${zipFileName}"`,
-    });
-    return res.send(zipBuffer);
+    await archive.finalize();
 
   } catch (err) {
     console.error('[generate-bulk-documents]', err);
-    return res.status(500).json({ error: err.message || 'Failed to generate bulk documents.' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: err.message || 'Failed to generate bulk documents.' });
+    }
+    res.destroy();
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /generate-bulk-documents/async  — background job  (> 300 rows)
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/generate-bulk-documents/async', async (req, res) => {
+  if (!Array.isArray(req.body.pages)) {
+    return res.status(400).json({ error: '"pages" array is required.' });
+  }
+
+  let normalised;
+  try {
+    normalised = normalisePayload(req.body);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const bulk                = req.body.bulk || {};
+  const driverCollectionKey = String(bulk.driverCollectionKey || '').trim().toLowerCase();
+  if (!driverCollectionKey) {
+    return res.status(400).json({ error: '"bulk.driverCollectionKey" is required.' });
+  }
+
+  const driverCollection = normalised.ir.collections[driverCollectionKey];
+  if (!driverCollection?.rows?.length) {
+    return res.status(400).json({
+      error: `Bulk collection "${driverCollectionKey}" not found or has no rows.`,
+    });
+  }
+
+  const rows             = driverCollection.rows;
+  const total            = rows.length;
+  const fileNameTemplate = String(bulk.fileNameTemplate || `document-{{__index}}.pdf`);
+  const zipFileName      = sanitizeZipName(bulk.zipFileName || 'documents.zip', 'documents.zip');
+  const relatedCollections = bulk.relatedCollections || {};
+
+  const jobId   = uuidv4();
+  const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
+
+  jobs.set(jobId, { status: 'running', current: 0, total, zipPath, zipFileName });
+
+  res.json({ jobId });
+
+  ;(async () => {
+    const job = jobs.get(jobId);
+    try {
+      const output    = fs.createWriteStream(zipPath);
+      const archive   = archiver('zip', { store: true });
+      const usedNames = new Set();
+
+      archive.pipe(output);
+
+      for (let i = 0; i < rows.length; i++) {
+        if (job.status === 'cancelled') break;
+
+        const row   = rows[i] || {};
+        const rowIr = buildRowIr(normalised.ir, driverCollectionKey, row, i, relatedCollections);
+
+        try {
+          const pdfBuffer = await generatePdfBuffer({
+            ir:                      rowIr,
+            templateElements:        normalised.templateElements,
+            fieldMapping:            normalised.fieldMapping,
+            tableCollectionBindings: normalised.tableCollectionBindings,
+            collectionMappings:      normalised.collectionMappings,
+            pageConfigs:             normalised.pageConfigs,
+          });
+
+          const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
+          const safeName     = uniqueFileName(
+            sanitizeFileName(resolvedName, `document-${i + 1}.pdf`),
+            usedNames,
+          );
+
+          archive.append(pdfBuffer, { name: safeName });
+          job.current = i + 1;
+        } catch (rowErr) {
+          console.error(`[bulk-async] row ${i} failed:`, rowErr.message);
+        }
+      }
+
+      await archive.finalize();
+
+      await new Promise((resolve, reject) => {
+        output.on('close', resolve);
+        output.on('error', reject);
+      });
+
+      job.status = 'done';
+    } catch (err) {
+      console.error('[bulk-async] job failed:', err);
+      job.status  = 'error';
+      job.message = err.message;
+    }
+  })();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /bulk-jobs/:jobId/status
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get('/bulk-jobs/:jobId/status', (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  const { status, current, total, message } = job;
+  res.json({ status, current, total, ...(message ? { message } : {}) });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /bulk-jobs/:jobId/download
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.get('/bulk-jobs/:jobId/download', (req, res) => {
+  const job = jobs.get(req.params.jobId);
+  if (!job)                  return res.status(404).json({ error: 'Job not found' });
+  if (job.status !== 'done') return res.status(409).json({ error: 'Job not complete', status: job.status });
+
+  res.set({
+    'Content-Type':        'application/zip',
+    'Content-Disposition': `attachment; filename="${job.zipFileName}"`,
+  });
+
+  const stream = fs.createReadStream(job.zipPath);
+  stream.pipe(res);
+
+  stream.on('close', () => {
+    fs.unlink(job.zipPath, () => {});
+    jobs.delete(req.params.jobId);
+  });
+
+  stream.on('error', err => {
+    console.error('[bulk-download]', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Start
+// ─────────────────────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

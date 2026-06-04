@@ -1,0 +1,294 @@
+/* DataStructureViewer.css */
+
+/* ── Shell ───────────────────────────────────────────────────────────────── */
+
+.dsv-root {
+  display        : flex;
+  flex-direction : column;
+  width          : min(720px, calc(100vw - 48px));
+  max-height     : calc(100vh - 80px);
+  background     : var(--color-background-primary, #ffffff);
+  border-radius  : 12px;
+  box-shadow     : 0 20px 60px rgba(15, 23, 42, 0.18);
+  overflow       : hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+
+.dsv-header {
+  padding        : 20px 24px 16px;
+  border-bottom  : 1px solid var(--color-border-tertiary, #e2e8f0);
+}
+
+.dsv-header h3 {
+  margin         : 0 0 4px;
+  font-size      : 15px;
+  font-weight    : 600;
+  color          : var(--color-text-primary, #0f172a);
+}
+
+.dsv-description {
+  margin         : 0;
+  font-size      : 13px;
+  color          : var(--color-text-secondary, #64748b);
+  line-height    : 1.45;
+}
+
+/* ── Relationship summary bar ────────────────────────────────────────────── */
+
+.dsv-rel-bar {
+  display        : flex;
+  flex-wrap      : wrap;
+  align-items    : center;
+  gap            : 16px;
+  padding        : 10px 24px;
+  background     : var(--color-background-secondary, #f8fafc);
+  border-bottom  : 1px solid var(--color-border-tertiary, #e2e8f0);
+}
+
+.dsv-rel-item {
+  display        : flex;
+  align-items    : center;
+  gap            : 6px;
+  font-size      : 12px;
+}
+
+.dsv-rel-dot {
+  width          : 8px;
+  height         : 8px;
+  border-radius  : 50%;
+  flex-shrink    : 0;
+}
+
+.dsv-dot-driver  { background: #3b82f6; }
+.dsv-dot-related { background: #22c55e; }
+
+.dsv-rel-name {
+  font-weight    : 600;
+  color          : var(--color-text-primary, #0f172a);
+}
+
+.dsv-rel-meta {
+  color          : var(--color-text-secondary, #64748b);
+}
+
+.dsv-rel-none {
+  font-size      : 12px;
+  color          : var(--color-text-tertiary, #94a3b8);
+  font-style     : italic;
+}
+
+.dsv-code {
+  font-family    : var(--font-mono, 'Menlo', monospace);
+  font-size      : 11px;
+  background     : #f1f5f9;
+  padding        : 1px 4px;
+  border-radius  : 3px;
+  color          : #0369a1;
+}
+
+/* ── Record navigator ────────────────────────────────────────────────────── */
+
+.dsv-nav-bar {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  gap            : 10px;
+  padding        : 8px 24px;
+  border-bottom  : 1px solid var(--color-border-tertiary, #e2e8f0);
+  background     : var(--color-background-primary, #ffffff);
+}
+
+.dsv-nav-btn {
+  width          : 28px;
+  height         : 28px;
+  border         : 1px solid var(--color-border-secondary, #cbd5e1);
+  border-radius  : 6px;
+  background     : var(--color-background-primary, #ffffff);
+  color          : var(--color-text-primary, #0f172a);
+  font-size      : 16px;
+  cursor         : pointer;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  transition     : all 0.12s;
+  line-height    : 1;
+}
+
+.dsv-nav-btn:hover:not(:disabled) {
+  background     : #eff6ff;
+  border-color   : #93c5fd;
+}
+
+.dsv-nav-btn:disabled {
+  opacity        : 0.35;
+  cursor         : not-allowed;
+}
+
+.dsv-nav-label {
+  font-size      : 12px;
+  font-weight    : 600;
+  color          : var(--color-text-primary, #374151);
+  min-width      : 160px;
+  text-align     : center;
+  font-family    : var(--font-sans, system-ui, sans-serif);
+}
+
+.dsv-nav-coll {
+  font-weight    : 400;
+  color          : var(--color-text-secondary, #64748b);
+}
+
+/* ── Tree container ──────────────────────────────────────────────────────── */
+
+.dsv-tree {
+  flex           : 1;
+  overflow-y     : auto;
+  padding        : 14px 20px;
+  background     : var(--color-background-primary, #fafafa);
+  font-family    : var(--font-mono, 'Menlo', 'Monaco', 'Cascadia Code', monospace);
+  font-size      : 12.5px;
+  line-height    : 1.55;
+}
+
+.dsv-empty {
+  color          : var(--color-text-tertiary, #94a3b8);
+  font-size      : 13px;
+  font-family    : var(--font-sans, system-ui, sans-serif);
+  padding        : 20px 0;
+  text-align     : center;
+}
+
+/* ── Tree nodes ──────────────────────────────────────────────────────────── */
+
+.dsv-node {
+  /* wrapper — no direct styles needed */
+}
+
+.dsv-row {
+  display        : flex;
+  align-items    : baseline;
+  gap            : 2px;
+  padding        : 1px 4px;
+  border-radius  : 3px;
+  cursor         : pointer;
+  user-select    : none;
+  transition     : background 0.08s;
+  outline        : none;
+}
+
+.dsv-row:hover,
+.dsv-row:focus-visible {
+  background     : rgba(99, 102, 241, 0.06);
+}
+
+.dsv-leaf {
+  display        : flex;
+  align-items    : baseline;
+  gap            : 2px;
+  padding        : 1px 4px;
+}
+
+.dsv-toggle {
+  width          : 14px;
+  text-align     : center;
+  font-size      : 11px;
+  font-weight    : 600;
+  color          : var(--color-text-tertiary, #94a3b8);
+  flex-shrink    : 0;
+  font-family    : var(--font-sans, system-ui, sans-serif);
+  user-select    : none;
+}
+
+.dsv-key {
+  color          : #185FA5;
+}
+
+.dsv-colon {
+  color          : var(--color-text-tertiary, #94a3b8);
+  margin-right   : 2px;
+}
+
+.dsv-punct {
+  color          : var(--color-text-secondary, #64748b);
+}
+
+/* ── Value type colours ──────────────────────────────────────────────────── */
+
+.dsv-str  { color: #3B6D11; }
+.dsv-num  { color: #BA7517; }
+.dsv-bool { color: #6B21A8; }
+.dsv-null { color: #991B1B; }
+
+.dsv-preview {
+  color          : var(--color-text-tertiary, #94a3b8);
+  font-size      : 11.5px;
+  max-width      : 420px;
+  overflow       : hidden;
+  text-overflow  : ellipsis;
+  white-space    : nowrap;
+}
+
+/* ── Tree children ───────────────────────────────────────────────────────── */
+
+.dsv-children {
+  padding-left   : 20px;
+  border-left    : 1px solid var(--color-border-tertiary, #e2e8f0);
+  margin-left    : 7px;
+}
+
+.dsv-close {
+  padding        : 1px 4px;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+
+.dsv-footer {
+  display        : flex;
+  align-items    : center;
+  justify-content: space-between;
+  gap            : 12px;
+  padding        : 14px 24px;
+  border-top     : 1px solid var(--color-border-tertiary, #e2e8f0);
+  background     : var(--color-background-primary, #ffffff);
+}
+
+.dsv-footer-hint {
+  margin         : 0;
+  font-size      : 12px;
+  color          : var(--color-text-tertiary, #94a3b8);
+  text-align     : center;
+  flex           : 1;
+}
+
+.dsv-btn {
+  height         : 34px;
+  padding        : 0 16px;
+  border-radius  : 7px;
+  font-size      : 13px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : all 0.12s;
+  white-space    : nowrap;
+  flex-shrink    : 0;
+}
+
+.dsv-btn-back {
+  background     : var(--color-background-secondary, #f1f5f9);
+  color          : var(--color-text-secondary, #475569);
+  border         : 1px solid var(--color-border-secondary, #cbd5e1);
+}
+
+.dsv-btn-back:hover {
+  background     : #e2e8f0;
+}
+
+.dsv-btn-confirm {
+  background     : #4f46e5;
+  color          : #ffffff;
+  border         : none;
+}
+
+.dsv-btn-confirm:hover {
+  background     : #4338ca;
+}

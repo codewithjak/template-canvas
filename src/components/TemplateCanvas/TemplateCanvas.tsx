@@ -2,34 +2,51 @@
  * TemplateCanvas.tsx
  * Multi-page canvas — rewritten against CanonicalDocument IR.
  *
- * Data state is now:
- *   ir                      CanonicalDocument | null
- *   fieldMapping            FieldMapping
- *   tableCollectionBindings TableCollectionBindings
- *   collectionMappings      CollectionMappings
+ * CHANGES FROM PREVIOUS VERSION
+ * ──────────────────────────────
+ * 1. RuntimeDataStructure integrated — rds state added alongside ir.
+ *    handleDataConfirm accepts optional 5th param rds? from UploadData v3.
+ *    Falls back to toRuntimeDataStructure() adapter when not provided.
  *
- * No BoundData. No ParsedDataSource. No metadata. No buildExportPayload.
+ * 2. handleExportDocument uses buildRenderContext() when rds is available.
+ *    Scoping happens client-side; server receives a pre-scoped IR at rowIndex 0.
+ *    Fallback to original rowIndex + driverCollectionKey + relatedCollections
+ *    params when rds is not yet available.
+ *
+ * 3. handleClearData clears rds alongside ir.
+ *
+ * 4. BulkExportPanel receives rds prop (optional, backward-compatible).
+ *
+ * 5. handleExportDocument now scopes single PDF to previewRowIndex via
+ *    driverCollectionKey + relatedCollections — fixes the bug where all
+ *    collection rows were rendered into one document. (unchanged from prev)
+ *
+ * 6. detectRelationships + buildRelatedCollectionsConfig imported directly
+ *    so driver detection is available without going through DataStructureViewer.
+ *    (unchanged from prev)
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 
-import Toolbar           from './Toolbar';
-import UploadData        from './UploadData';
-import PageBreakDivider  from './PageBreakDivider';
-import BoundaryLine      from './BoundaryLine';
-import SaveTemplateModal from './SaveTemplateModal';
-import TextElement       from './TextElement';
-import ImageElement      from './ImageElement';
-import LineElement       from './LineElement';
-import BoxElement        from './BoxElement';
-import ParagraphElement  from './ParagraphElement';
-import RadioElement      from './RadioElement';
-import CheckboxElement   from './CheckboxElement';
-import DateElement       from './DateElement';
-import LayoutTableElement from './LayoutTableElement';
-import PropertiesPanel   from './PropertiesPanel';
+import Toolbar             from './Toolbar';
+import UploadData          from './UploadData';
+import DataStructureViewer from './DataStructureViewer';
+import PageBreakDivider    from './PageBreakDivider';
+import BoundaryLine        from './BoundaryLine';
+import SaveTemplateModal   from './SaveTemplateModal';
+import TextElement         from './TextElement';
+import ImageElement        from './ImageElement';
+import LineElement         from './LineElement';
+import BoxElement          from './BoxElement';
+import ParagraphElement    from './ParagraphElement';
+import RadioElement        from './RadioElement';
+import CheckboxElement     from './CheckboxElement';
+import DateElement         from './DateElement';
+import LayoutTableElement  from './LayoutTableElement';
+import PropertiesPanel     from './PropertiesPanel';
 import PageRulers, { type PageRulerSelection } from './PageRulers';
+import { BulkExportPanel } from './BulkExportPanel';
 
 import type {
   CanonicalDocument,
@@ -57,9 +74,21 @@ import {
   getTableInfos,
   mapTemplateForPreview,
   validateBindings,
-  autoMapStaticFields,
 } from '../../services/mappingEngine';
-import { generateBulkDocuments, generateDocument } from '../../services/dataSourceService';
+import { generateDocument } from '../../services/dataSourceService';
+import {
+  detectRelationships,
+  buildRelatedCollectionsConfig,
+} from '../../utils/relationshipDetector';
+
+// ── NEW: RuntimeDataStructure imports ────────────────────────────────────────
+import type { RuntimeDataStructure } from '../../types/runtimeDataStructure';
+import {
+  buildRenderContext,
+  toRuntimeDataStructure,
+} from '../../types/runtimeDataStructure';
+// ────────────────────────────────────────────────────────────────────────────
+
 import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
 import {
   createDefaultLayoutTable,
@@ -117,45 +146,30 @@ function pageNumberPreviewLabel(el: TextElementType): string {
 
 function getElementRulerSelection(element: CanvasElement | null): PageRulerSelection | null {
   if (!element) return null;
-
-  const selection: PageRulerSelection = {
-    x: element.position.x,
-    y: element.position.y,
-  };
-
+  const selection: PageRulerSelection = { x: element.position.x, y: element.position.y };
   if (element.type === 'image' || element.type === 'box') {
-    selection.width = element.style.width;
+    selection.width  = element.style.width;
     selection.height = element.style.height;
   } else if (element.type === 'text' && element.style.width) {
-    selection.width = element.style.width;
+    selection.width  = element.style.width;
     selection.height = element.style.fontSize * 1.3;
   } else if (element.type === 'line') {
-    selection.width = element.style.direction === 'horizontal'
-      ? element.style.length
-      : element.style.thickness;
-    selection.height = element.style.direction === 'vertical'
-      ? element.style.length
-      : element.style.thickness;
+    selection.width  = element.style.direction === 'horizontal' ? element.style.length : element.style.thickness;
+    selection.height = element.style.direction === 'vertical'   ? element.style.length : element.style.thickness;
   } else if (isLayoutTable(element)) {
-    selection.width = element.size?.width ?? element.columns.reduce((sum, col) => (
-      col.hidden ? sum : sum + col.width
-    ), 0);
+    selection.width  = element.size?.width  ?? element.columns.reduce((s, c) => c.hidden ? s : s + c.width, 0);
     selection.height = element.size?.height ?? (
       (element.headerRow ? 32 : 0) +
-      element.rows.reduce((sum, row) => sum + (row.height ?? 32), 0)
+      element.rows.reduce((s, r) => s + (r.height ?? 32), 0)
     );
   }
-
   return selection;
 }
 
-/** Total preview rows = max rows across all bound collections. */
 function maxCollectionRows(ir: CanonicalDocument | null): number {
   if (!ir) return 0;
   return Object.values(ir.collections).reduce((m, c) => Math.max(m, c.rows.length), 0);
 }
-
-type ExportMode = 'single' | 'bulk';
 
 function removeEmptyMappings(mapping: FieldMapping): FieldMapping {
   return Object.fromEntries(
@@ -179,10 +193,10 @@ function TemplateCanvas() {
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
-  const [selectedElementId,   setSelectedElementId]   = useState<string | null>(null);
-  const [activePageId,        setActivePageId]         = useState<string>('page-1');
-  const [selectedPageBreakId, setSelectedPageBreakId]  = useState<string | null>(null);
-  const [selectedBoundary,    setSelectedBoundary]     = useState<{
+  const [selectedElementId,    setSelectedElementId]   = useState<string | null>(null);
+  const [activePageId,         setActivePageId]         = useState<string>('page-1');
+  const [selectedPageBreakId,  setSelectedPageBreakId]  = useState<string | null>(null);
+  const [selectedBoundary,     setSelectedBoundary]     = useState<{
     pageId: string; type: 'header' | 'footer';
   } | null>(null);
 
@@ -196,17 +210,22 @@ function TemplateCanvas() {
   // ── Data / IR state ───────────────────────────────────────────────────────
 
   const [ir,                      setIr]                      = useState<CanonicalDocument | null>(null);
+  // ── NEW: RuntimeDataStructure state ──────────────────────────────────────
+  const [rds,                     setRds]                     = useState<RuntimeDataStructure | null>(null);
+  // ─────────────────────────────────────────────────────────────────────────
   const [fieldMapping,            setFieldMapping]            = useState<FieldMapping>({});
   const [tableCollectionBindings, setTableCollectionBindings] = useState<TableCollectionBindings>({});
   const [collectionMappings,      setCollectionMappings]      = useState<CollectionMappings>({});
   const [previewRowIndex,         setPreviewRowIndex]         = useState(0);
   const [uploadPanelOpen,         setUploadPanelOpen]         = useState(false);
-  const [exportMode,              setExportMode]              = useState<ExportMode>('single');
-  const [bulkDriverCollectionKey, setBulkDriverCollectionKey] = useState('');
-  const [bulkFieldMapping,        setBulkFieldMapping]        = useState<FieldMapping>({});
-  const [bulkFileNameTemplate,    setBulkFileNameTemplate]    = useState('document-{{index}}.pdf');
+  const [showDataStructureViewer, setShowDataStructureViewer] = useState(false);
 
-  // ── Export state ──────────────────────────────────────────────────────────
+  // ── Bulk export state ─────────────────────────────────────────────────────
+
+  const [bulkPanelOpen,     setBulkPanelOpen]     = useState(false);
+  const [savedGlobalFields, setSavedGlobalFields] = useState<Record<string, string>>({});
+
+  // ── Single export state ───────────────────────────────────────────────────
 
   const [isExporting,  setIsExporting]  = useState(false);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
@@ -235,84 +254,59 @@ function TemplateCanvas() {
   );
 
   const totalRows = useMemo(() => maxCollectionRows(ir), [ir]);
-  const collectionKeys = useMemo(() => ir ? Object.keys(ir.collections) : [], [ir]);
-  const bulkDriverCollection = useMemo(
-    () => ir && bulkDriverCollectionKey ? ir.collections[bulkDriverCollectionKey] : undefined,
-    [ir, bulkDriverCollectionKey],
-  );
-  const bulkTotalRows = bulkDriverCollection?.rows.length ?? 0;
-  const previewTotalRows = exportMode === 'bulk' ? bulkTotalRows : totalRows;
-  const effectiveFieldMapping = useMemo(
-    () => exportMode === 'bulk'
-      ? { ...fieldMapping, ...removeEmptyMappings(bulkFieldMapping) }
-      : fieldMapping,
-    [exportMode, fieldMapping, bulkFieldMapping],
-  );
-  const previewIr = useMemo((): CanonicalDocument | null => {
-    if (!ir || exportMode !== 'bulk' || !bulkDriverCollection || bulkTotalRows === 0) return ir;
 
-    const row = bulkDriverCollection.rows[
-      Math.min(previewRowIndex, bulkDriverCollection.rows.length - 1)
-    ] ?? {};
+  // ── Relationship detection (memoised, used by single export + bulk) ───────
+  // NOTE: This is now a fallback only. When UploadData v3 is used,
+  // relationships are detected once during upload and stored in rds.
+  // This memo is only needed for backward compat (loaded templates, etc.)
 
-    return {
-      ...ir,
-      fields: {
-        ...ir.fields,
-        ...row,
-      },
-      collections: {
-        ...ir.collections,
-        [bulkDriverCollectionKey]: {
-          ...bulkDriverCollection,
-          rows: [row],
-        },
-      },
-    };
-  }, [ir, exportMode, bulkDriverCollection, bulkDriverCollectionKey, bulkTotalRows, previewRowIndex]);
+  const relationships = useMemo(
+    () => (ir ? detectRelationships(ir) : {}),
+    [ir],
+  );
+
+  const driverCollectionKey = useMemo((): string | undefined => {
+    // Prefer rds.executionPlan.driverKey when available — already computed
+    // during upload, no need to re-run detection.
+    if (rds?.executionPlan.driverKey) return rds.executionPlan.driverKey;
+
+    if (!ir) return undefined;
+    const withRelated = Object.entries(relationships).find(
+      ([, rel]) => rel.relatedCollections.length > 0
+    );
+    if (withRelated) return withRelated[0];
+    const keys = Object.keys(ir.collections);
+    return keys.length > 0 ? keys[0] : undefined;
+  }, [rds, ir, relationships]);
+
+  const relatedCollectionsConfig = useMemo(
+    () => driverCollectionKey
+      ? buildRelatedCollectionsConfig(driverCollectionKey, relationships)
+      : {},
+    [driverCollectionKey, relationships],
+  );
 
   // ── Preview pages ─────────────────────────────────────────────────────────
 
   const previewPages = useMemo((): CanvasPage[] => {
-    if (!previewIr) return pages;
+    if (!ir) return pages;
     return pages.map(p => ({
       ...p,
       elements: mapTemplateForPreview(
         p.elements as unknown[],
-        previewIr,
-        effectiveFieldMapping,
+        ir,
+        fieldMapping,
         tableCollectionBindings,
         collectionMappings,
-        exportMode === 'bulk' ? 0 : previewRowIndex,
+        previewRowIndex,
       ) as CanvasElement[],
     }));
-  }, [pages, previewIr, effectiveFieldMapping, tableCollectionBindings, collectionMappings, previewRowIndex, exportMode]);
+  }, [pages, ir, fieldMapping, tableCollectionBindings, collectionMappings, previewRowIndex]);
 
   useEffect(() => {
-    if (!ir) {
-      setBulkDriverCollectionKey('');
-      setBulkFieldMapping({});
-      return;
-    }
-
-    const keys = Object.keys(ir.collections);
-    setBulkDriverCollectionKey(prev => prev && ir.collections[prev] ? prev : keys[0] ?? '');
-  }, [ir]);
-
-  useEffect(() => {
-    if (!ir || !bulkDriverCollectionKey) {
-      setBulkFieldMapping({});
-      return;
-    }
-
-    const columns = ir.collections[bulkDriverCollectionKey]?.columns ?? [];
-    setBulkFieldMapping(autoMapStaticFields(staticPlaceholders, columns));
-  }, [ir, bulkDriverCollectionKey, staticPlaceholders]);
-
-  useEffect(() => {
-    const maxIndex = Math.max(0, previewTotalRows - 1);
+    const maxIndex = Math.max(0, totalRows - 1);
     setPreviewRowIndex(i => Math.min(i, maxIndex));
-  }, [previewTotalRows]);
+  }, [totalRows]);
 
   // ── Add element to active page ────────────────────────────────────────────
 
@@ -334,10 +328,8 @@ function TemplateCanvas() {
     setPages(prev => prev.filter(p => p.pageId !== pageId));
     setSelectedPageBreakId(null);
     setActivePageId(prev => prev === pageId ? pages[0].pageId : prev);
-    if (selectedElementId) {
-      if (findPageOfElement(pages, selectedElementId) === pageId) {
-        setSelectedElementId(null);
-      }
+    if (selectedElementId && findPageOfElement(pages, selectedElementId) === pageId) {
+      setSelectedElementId(null);
     }
   };
 
@@ -398,49 +390,32 @@ function TemplateCanvas() {
 
   // ── Element add handlers ──────────────────────────────────────────────────
 
-  const handleAddText      = () => addEl({ id: `text-${Date.now()}`,      type: 'text',      content: 'New Text',          position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
+  const handleAddText      = () => addEl({ id: `text-${Date.now()}`,      type: 'text',      content: 'New Text',           position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
   const handleAddParagraph = () => addEl({ id: `paragraph-${Date.now()}`, type: 'paragraph', content: 'Add your text here…', position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 } });
   const handleAddTable     = () => addEl(createDefaultLayoutTable('table'));
-  const handleAddImage     = () => addEl({ id: `image-${Date.now()}`,     type: 'image',     src: '{{image_url}}',          position: { x: 50, y: 50 }, style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 } });
+  const handleAddImage     = () => addEl({ id: `image-${Date.now()}`,     type: 'image',     src: '{{image_url}}',           position: { x: 50, y: 50 }, style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 } });
   const handleAddWatermark = () => {
     const el: TextElementType = {
-      id:       `watermark-${Date.now()}`,
-      type:     'text',
-      role:     'watermark',
-      content:  'CONFIDENTIAL',
-      position: { x: 88, y: 515 },
-      style: {
-        fontSize:   72,
-        fontWeight: 'bold',
-        color:      '#94a3b8',
-        fontFamily: 'Arial, sans-serif',
-        width:      620,
-        opacity:    22,
-        rotation:   -30,
-        textAlign:  'center',
-      },
+      id: `watermark-${Date.now()}`, type: 'text', role: 'watermark',
+      content: 'CONFIDENTIAL', position: { x: 88, y: 515 },
+      style: { fontSize: 72, fontWeight: 'bold', color: '#94a3b8', fontFamily: 'Arial, sans-serif', width: 620, opacity: 22, rotation: -30, textAlign: 'center' },
     };
     addEl(el);
-    setSelectedPageBreakId(null);
-    setSelectedBoundary(null);
+    setSelectedPageBreakId(null); setSelectedBoundary(null);
     setTimeout(() => setSelectedElementId(el.id), 0);
   };
   const handleAddSignature = () => {
     const el: ImageElementType = {
-      id:       `signature-${Date.now()}`,
-      type:     'image',
-      role:     'signature',
-      src:      '{{digital_signature}}',
-      position: { x: 500, y: 890 },
-      style:    { width: 220, height: 90, objectFit: 'contain' as const, opacity: 100 },
+      id: `signature-${Date.now()}`, type: 'image', role: 'signature',
+      src: '{{digital_signature}}', position: { x: 500, y: 890 },
+      style: { width: 220, height: 90, objectFit: 'contain' as const, opacity: 100 },
     };
     addEl(el);
-    setSelectedPageBreakId(null);
-    setSelectedBoundary(null);
+    setSelectedPageBreakId(null); setSelectedBoundary(null);
     setTimeout(() => setSelectedElementId(el.id), 0);
   };
-  const handleAddLine      = () => addEl({ id: `line-${Date.now()}`,      type: 'line',      position: { x: 50, y: 50 },   style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 } });
-  const handleAddBox       = () => addEl({ id: `box-${Date.now()}`,       type: 'box',       shape: 'box',  position: { x: 50, y: 50 }, style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 } });
+  const handleAddLine      = () => addEl({ id: `line-${Date.now()}`,      type: 'line',      position: { x: 50, y: 50 }, style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 } });
+  const handleAddBox       = () => addEl({ id: `box-${Date.now()}`,       type: 'box',       shape: 'box',       position: { x: 50, y: 50 }, style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 } });
   const handleAddRectangle = () => addEl({ id: `rectangle-${Date.now()}`, type: 'box',       shape: 'rectangle', position: { x: 50, y: 50 }, style: { width: 220, height: 140, borderWidth: 1, borderColor: '#007bff', borderStyle: 'solid' as const, backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0 } });
   const handleAddTriangle  = () => addEl({ id: `triangle-${Date.now()}`,  type: 'box',       shape: 'triangle',  position: { x: 50, y: 50 }, style: { width: 140, height: 120, borderWidth: 0, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: '#ffb200', opacity: 100, borderRadius: 0 } });
   const handleAddEllipse   = () => addEl({ id: `ellipse-${Date.now()}`,   type: 'box',       shape: 'ellipse',   position: { x: 50, y: 50 }, style: { width: 200, height: 120, borderWidth: 1, borderColor: '#2a9d8f', borderStyle: 'solid' as const, backgroundColor: '#d8f3ef', opacity: 100, borderRadius: 9999 } });
@@ -461,15 +436,15 @@ function TemplateCanvas() {
         if (updates.style && 'style' in updated) updated.style = { ...updated.style, ...updates.style };
         if ('content'     in updates && 'content'    in updated) updated.content     = updates.content;
         if ('src'         in updates && 'src'        in updated) updated.src         = updates.src;
-        if ('orientation' in updates) updated.orientation  = updates.orientation;
-        if ('count'       in updates) updated.count        = updates.count;
-        if ('options'     in updates) updated.options      = updates.options;
-        if ('shape'       in updates) updated.shape        = updates.shape;
+        if ('orientation' in updates) updated.orientation = updates.orientation;
+        if ('count'       in updates) updated.count       = updates.count;
+        if ('options'     in updates) updated.options     = updates.options;
+        if ('shape'       in updates) updated.shape       = updates.shape;
         if ('value'       in updates && 'value'  in updated) updated.value  = updates.value;
         if ('time'        in updates && 'time'   in updated) updated.time   = updates.time;
-        if ('includeTime' in updates) updated.includeTime  = updates.includeTime;
-        if ('format'      in updates) updated.format       = updates.format;
-        if ('pageNumber'  in updates) updated.pageNumber   = updates.pageNumber;
+        if ('includeTime' in updates) updated.includeTime = updates.includeTime;
+        if ('format'      in updates) updated.format      = updates.format;
+        if ('pageNumber'  in updates) updated.pageNumber  = updates.pageNumber;
         if (isLayoutTable(updated)) {
           if (updates.columns   !== undefined) updated.columns   = updates.columns;
           if (updates.headerRow !== undefined) updated.headerRow = updates.headerRow;
@@ -505,7 +480,7 @@ function TemplateCanvas() {
     const pageId = findPageOfElement(pages, id);
     if (!pageId) return;
     setPages(prev => updatePageElements(prev, pageId, els => els.filter(e => e.id !== id)));
-    if (selectedElementId === id)               setSelectedElementId(null);
+    if (selectedElementId === id)                 setSelectedElementId(null);
     if (layoutTableCellSelection?.tableId === id) setLayoutTableCellSelection(null);
     if (layoutTableRange?.tableId         === id) setLayoutTableRange(null);
   };
@@ -533,13 +508,16 @@ function TemplateCanvas() {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const doSave = (name: string) => {
-    const doc  = createTemplateDocument(pages, name, templateMeta);
+    const doc = createTemplateDocument(pages, name, templateMeta);
+    const docWithGlobal = {
+      ...doc,
+      meta: { ...doc.meta, globalFields: savedGlobalFields },
+    };
     setTemplateMeta(doc.meta);
-    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(docWithGlobal, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
+    a.href = url; a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
   };
@@ -575,17 +553,16 @@ function TemplateCanvas() {
         );
         setPages(cleanPages);
         setTemplateMeta(doc.meta || {});
+        setSavedGlobalFields(doc.meta?.globalFields ?? {});
         setSelectedElementId(null);
         setSelectedPageBreakId(null);
         setIr(null);
+        setRds(null); // ── NEW: clear rds on template load
         setFieldMapping({});
         setTableCollectionBindings({});
         setCollectionMappings({});
         setPreviewRowIndex(0);
-        setExportMode('single');
-        setBulkDriverCollectionKey('');
-        setBulkFieldMapping({});
-        setBulkFileNameTemplate('document-{{index}}.pdf');
+        setBulkPanelOpen(false);
         setActivePageId(cleanPages[0]?.pageId || 'page-1');
       } catch {
         alert('Error reading template file.');
@@ -596,113 +573,146 @@ function TemplateCanvas() {
   };
 
   // ── Data upload confirm ───────────────────────────────────────────────────
+  //
+  // ── CHANGE 3: Accept optional 5th param rds? from UploadData v3.
+  //    Falls back to toRuntimeDataStructure() adapter when not provided
+  //    so all existing behaviour is preserved.
 
   const handleDataConfirm = (
-    doc:      CanonicalDocument,
-    fm:       FieldMapping,
-    bindings: TableCollectionBindings,
-    colMaps:  CollectionMappings,
+    doc:          CanonicalDocument,
+    fm:           FieldMapping,
+    bindings:     TableCollectionBindings,
+    colMaps:      CollectionMappings,
+    incomingRds?: RuntimeDataStructure,
   ) => {
     setIr(doc);
     setFieldMapping(fm);
     setTableCollectionBindings(bindings);
     setCollectionMappings(colMaps);
     setPreviewRowIndex(0);
-    setBulkFileNameTemplate('document-{{index}}.pdf');
     setUploadPanelOpen(false);
+
+    if (incomingRds) {
+      // UploadData v3 — full RDS with relationship approvals already applied
+      setRds(incomingRds);
+    } else {
+      // Fallback: build RDS from scratch using the migration adapter.
+      // Detect driver key the same way BulkExportPanel does.
+      const rels        = detectRelationships(doc);
+      const withRelated = Object.entries(rels).find(
+        ([, rel]) => rel.relatedCollections.length > 0,
+      );
+      const driverKey = withRelated?.[0] ?? Object.keys(doc.collections)[0];
+      setRds(toRuntimeDataStructure(doc, 'unknown', 'relational-bulk', driverKey));
+    }
   };
+
+  // ── CHANGE 4: Clear rds alongside ir ─────────────────────────────────────
 
   const handleClearData = () => {
     setIr(null);
+    setRds(null); // ── NEW
     setFieldMapping({});
     setTableCollectionBindings({});
     setCollectionMappings({});
     setPreviewRowIndex(0);
-    setExportMode('single');
-    setBulkDriverCollectionKey('');
-    setBulkFieldMapping({});
-    setBulkFileNameTemplate('document-{{index}}.pdf');
+    setBulkPanelOpen(false);
+    setShowDataStructureViewer(false);
   };
 
-  // ── Export ────────────────────────────────────────────────────────────────
+  // ── Single export ─────────────────────────────────────────────────────────
+  //
+  // ── CHANGE 5: When rds is available, use buildRenderContext() to scope
+  //    the IR client-side. The server receives a pre-scoped IR at rowIndex 0
+  //    and needs no relationship params. This is the correct implementation
+  //    of the renderer-isolation guarantee.
+  //
+  //    Fallback path (no rds): unchanged from previous version — passes
+  //    rowIndex + driverCollectionKey + relatedCollections to the server.
 
   const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a   = document.createElement('a');
-    a.href    = url; a.download = filename;
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click();
     document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
   const handleExportDocument = async () => {
     if (allElements.length === 0) { alert('No template to export.'); return; }
-    if (exportMode === 'bulk' && !ir) {
-      alert('Upload data before running a bulk export.');
-      return;
-    }
-    if (exportMode === 'bulk' && (!bulkDriverCollectionKey || bulkTotalRows === 0)) {
-      alert('Choose a collection with rows for bulk export.');
-      return;
-    }
 
-    // Warn about missing bindings but don't block
+    const cleanFieldMapping = removeEmptyMappings(fieldMapping);
+
     if (ir) {
-      const validation = validateBindings(
-        allElements as unknown[],
-        previewIr ?? ir,
-        exportMode === 'bulk' ? effectiveFieldMapping : fieldMapping,
-      );
-      if (!validation.valid) {
-        console.warn('[export] missing bindings:', validation);
-      }
+      const validation = validateBindings(allElements as unknown[], ir, cleanFieldMapping);
+      if (!validation.valid) console.warn('[export] missing bindings:', validation);
     }
 
     try {
       setIsExporting(true);
       setExportStatus(
-        exportMode === 'bulk'
-          ? `Generating ${bulkTotalRows} PDF${bulkTotalRows !== 1 ? 's' : ''} into a ZIP…`
-          : totalRows > 0
-          ? `Generating document with ${totalRows} record${totalRows !== 1 ? 's' : ''}…`
+        totalRows > 0
+          ? `Generating document — record ${previewRowIndex + 1} of ${totalRows}…`
           : 'Generating document…'
       );
 
-      // Use an empty IR if no data has been uploaded — the renderer handles it
-      const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
       const outputFileName = `document-${Date.now()}`;
+
       const exportPages = pages.map(p => ({
-        pageId:                   p.pageId,
-        label:                    p.label,
-        templateElements:         p.elements,
-        header:                   p.header,
-        footer:                   p.footer,
-        fieldMapping:             exportMode === 'bulk' ? effectiveFieldMapping : fieldMapping,
+        pageId:                  p.pageId,
+        label:                   p.label,
+        templateElements:        p.elements,
+        header:                  p.header,
+        footer:                  p.footer,
+        fieldMapping:            cleanFieldMapping,
         tableCollectionBindings,
         collectionMappings,
       }));
 
-      if (exportMode === 'bulk') {
-        const blob = await generateBulkDocuments({
-          pages: exportPages,
-          ir: exportIr,
-          outputFileName,
-          bulk: {
-            driverCollectionKey: bulkDriverCollectionKey,
-            fileNameTemplate:   bulkFileNameTemplate,
-            zipFileName:        `${outputFileName}.zip`,
-          },
-        });
+      // ── NEW: RDS path — scope client-side, send pre-scoped IR ────────────
+      if (rds) {
+        const ctx = buildRenderContext(rds, previewRowIndex);
 
-        downloadBlob(blob, `${outputFileName}.zip`);
-      } else {
+        // Re-wrap RenderContext as CanonicalDocument for the existing endpoint
+        const scopedIr: CanonicalDocument = {
+          fields: ctx.fields,
+          collections: Object.fromEntries(
+            Object.entries(ctx.collections).map(([k, c]) => [
+              k,
+              { rows: c.rows as Record<string, string>[], columns: c.columns },
+            ]),
+          ),
+        };
+
         const blob = await generateDocument({
-          pages: exportPages,
-          ir:             exportIr,
+          pages:               exportPages,
+          ir:                  scopedIr,
           outputFileName,
+          // rowIndex 0 — IR is already scoped to the requested record
+          rowIndex:            0,
+          driverCollectionKey: undefined,
+          relatedCollections:  {},
         });
 
         downloadBlob(blob, `${outputFileName}.pdf`);
+        return;
       }
+      // ── END NEW ───────────────────────────────────────────────────────────
+
+      // Fallback: no rds — original row-scoping via server params
+      const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
+
+      const blob = await generateDocument({
+        pages:               exportPages,
+        ir:                  exportIr,
+        outputFileName,
+        rowIndex:            previewRowIndex,
+        driverCollectionKey,
+        relatedCollections:  relatedCollectionsConfig,
+      });
+
+      downloadBlob(blob, `${outputFileName}.pdf`);
+
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed.');
     } finally {
@@ -727,7 +737,7 @@ function TemplateCanvas() {
     ));
   };
 
-  // ── Selected element (from original pages, not preview) ───────────────────
+  // ── Selected element ──────────────────────────────────────────────────────
 
   const selectedElement = useMemo(() => {
     if (!selectedElementId) return null;
@@ -879,7 +889,6 @@ function TemplateCanvas() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
 
-        {/* Toolbar */}
         <Toolbar
           onAddParagraph={handleAddParagraph}
           onAddRadio={handleAddRadio}
@@ -907,7 +916,6 @@ function TemplateCanvas() {
           hasElements={allElements.length > 0}
         />
 
-        {/* Upload panel */}
         {uploadPanelOpen && (
           <div className="upload-panel-backdrop">
             <UploadData
@@ -919,67 +927,44 @@ function TemplateCanvas() {
           </div>
         )}
 
-        {/* Data banner */}
+        {showDataStructureViewer && ir && (
+          <div className="upload-panel-backdrop">
+            <DataStructureViewer
+              ir={ir}
+              onClose={() => setShowDataStructureViewer(false)}
+              onConfirm={() => setShowDataStructureViewer(false)}
+            />
+          </div>
+        )}
+
+        {/* ── CHANGE 6: pass rds prop to BulkExportPanel ────────────────── */}
+        {bulkPanelOpen && ir && (
+          <BulkExportPanel
+            ir={ir}
+            rds={rds ?? undefined}
+            pages={pages as any}
+            fieldMapping={fieldMapping}
+            tableCollectionBindings={tableCollectionBindings}
+            collectionMappings={collectionMappings}
+            savedGlobalFields={savedGlobalFields}
+            onClose={() => setBulkPanelOpen(false)}
+            onGlobalFieldsSave={fields => setSavedGlobalFields(fields)}
+          />
+        )}
+
         {ir && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
-              <span>
-                {exportMode === 'bulk'
-                  ? `${bulkTotalRows} bulk PDF${bulkTotalRows !== 1 ? 's' : ''}`
-                  : `${totalRows} record${totalRows !== 1 ? 's' : ''} bound`}
-              </span>
-              {previewTotalRows > 1 && (
+              <span>{totalRows} record{totalRows !== 1 ? 's' : ''} bound</span>
+              {totalRows > 1 && (
                 <span className="preview-label">
-                  &nbsp;— previewing row {previewRowIndex + 1} of {previewTotalRows}
+                  &nbsp;— previewing record {previewRowIndex + 1} of {totalRows}
                 </span>
               )}
             </div>
+
             <div className="batch-export-actions">
-              <label className="batch-control">
-                <span>Export</span>
-                <select
-                  value={exportMode}
-                  onChange={e => {
-                    setExportMode(e.target.value as ExportMode);
-                    setPreviewRowIndex(0);
-                  }}
-                >
-                  <option value="single">Single PDF</option>
-                  <option value="bulk" disabled={collectionKeys.length === 0}>Bulk PDFs</option>
-                </select>
-              </label>
-
-              {exportMode === 'bulk' && (
-                <>
-                  <label className="batch-control">
-                    <span>Records</span>
-                    <select
-                      value={bulkDriverCollectionKey}
-                      onChange={e => {
-                        setBulkDriverCollectionKey(e.target.value);
-                        setPreviewRowIndex(0);
-                      }}
-                    >
-                      {collectionKeys.map(k => (
-                        <option key={k} value={k}>
-                          {k} ({ir.collections[k].rows.length})
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="batch-control batch-control--wide">
-                    <span>File names</span>
-                    <input
-                      type="text"
-                      value={bulkFileNameTemplate}
-                      onChange={e => setBulkFileNameTemplate(e.target.value)}
-                    />
-                  </label>
-                </>
-              )}
-
-              {previewTotalRows > 1 && (
+              {totalRows > 1 && (
                 <div className="preview-nav">
                   <button
                     type="button" className="preview-nav-btn"
@@ -987,44 +972,52 @@ function TemplateCanvas() {
                     disabled={previewRowIndex === 0}
                   >‹</button>
                   <span className="preview-nav-count">
-                    {previewRowIndex + 1} / {previewTotalRows}
+                    {previewRowIndex + 1} / {totalRows}
                   </span>
                   <button
                     type="button" className="preview-nav-btn"
-                    onClick={() => setPreviewRowIndex(i => Math.min(previewTotalRows - 1, i + 1))}
-                    disabled={previewRowIndex === previewTotalRows - 1}
+                    onClick={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
+                    disabled={previewRowIndex === totalRows - 1}
                   >›</button>
                 </div>
               )}
+
+              <button
+                type="button"
+                className="batch-control-btn"
+                onClick={() => setShowDataStructureViewer(true)}
+                title="Inspect data relationships"
+              >
+                View structure
+              </button>
+
+              <button
+                type="button"
+                className="batch-control-btn batch-control-btn--primary"
+                onClick={handleExportDocument}
+                disabled={isExporting || allElements.length === 0}
+                title={`Export PDF for record ${previewRowIndex + 1}`}
+              >
+                Export PDF
+              </button>
+
+              <button
+                type="button"
+                className="batch-control-btn batch-control-btn--bulk"
+                onClick={() => setBulkPanelOpen(true)}
+                disabled={isExporting}
+                title="Generate one PDF per row"
+              >
+                Bulk Export ↗
+              </button>
+
               <button type="button" className="clear-button" onClick={handleClearData}>
                 Clear Data
               </button>
             </div>
-
-            {exportMode === 'bulk' && staticPlaceholders.length > 0 && bulkDriverCollection && (
-              <div className="bulk-field-map">
-                {staticPlaceholders.map(ph => (
-                  <label key={ph} className="bulk-field-map-row">
-                    <span title={ph}>{ph}</span>
-                    <select
-                      value={bulkFieldMapping[ph] ?? ''}
-                      onChange={e =>
-                        setBulkFieldMapping(prev => ({ ...prev, [ph]: e.target.value }))
-                      }
-                    >
-                      <option value="">same name</option>
-                      {bulkDriverCollection.columns.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
-        {/* Export overlay */}
         {isExporting && (
           <div className="export-overlay">
             <div className="export-overlay-card">
@@ -1033,7 +1026,6 @@ function TemplateCanvas() {
           </div>
         )}
 
-        {/* Save modal */}
         {showSaveModal && (
           <SaveTemplateModal
             initialName={templateMeta.name || ''}
@@ -1042,11 +1034,9 @@ function TemplateCanvas() {
           />
         )}
 
-        {/* Canvas pages */}
         <div className="canvas-pages-wrapper">
           {previewPages.map((page, pageIdx) => (
             <div key={page.pageId} className="canvas-page-block">
-
               <div className="canvas-page-label">
                 {page.label || `Page ${pageIdx + 1}`}
               </div>
@@ -1058,13 +1048,8 @@ function TemplateCanvas() {
               >
                 {showPageRulers && activePageId === page.pageId && (
                   <PageRulers
-                    width={794}
-                    height={1123}
-                    selection={
-                      selectedElementPageId === page.pageId
-                        ? selectedRulerSelection
-                        : null
-                    }
+                    width={794} height={1123}
+                    selection={selectedElementPageId === page.pageId ? selectedRulerSelection : null}
                   />
                 )}
 
@@ -1079,7 +1064,6 @@ function TemplateCanvas() {
                 >
                   {renderElements(page.elements, page.pageId)}
 
-                  {/* Header boundary */}
                   <BoundaryLine
                     type="header"
                     config={page.header}
@@ -1091,7 +1075,6 @@ function TemplateCanvas() {
                     onDelete={() => handleDeleteBoundary(page.pageId, 'header')}
                   />
 
-                  {/* Footer boundary */}
                   <BoundaryLine
                     type="footer"
                     config={page.footer}
@@ -1104,33 +1087,31 @@ function TemplateCanvas() {
                     onAddPageNumber={atY => handleAddPageNumber(atY, page.pageId)}
                   />
 
-                  {/* Header zone shading */}
                   {page.header.enabled && (
                     <div
                       className="canvas-zone canvas-zone--header"
                       style={{
-                        height:          page.header.boundaryY,
+                        height: page.header.boundaryY,
                         backgroundColor: page.header.style.backgroundColor !== 'transparent'
                           ? adjustColorOpacity(page.header.style.backgroundColor, page.header.style.opacity ?? 1)
                           : 'rgba(99,102,241,0.04)',
-                        borderBottom:    page.header.style.borderWidth > 0
+                        borderBottom: page.header.style.borderWidth > 0
                           ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
                           : undefined,
                       }}
                     />
                   )}
 
-                  {/* Footer zone shading */}
                   {page.footer.enabled && (
                     <div
                       className="canvas-zone canvas-zone--footer"
                       style={{
-                        top:             page.footer.boundaryY,
-                        height:          1123 - page.footer.boundaryY,
+                        top: page.footer.boundaryY,
+                        height: 1123 - page.footer.boundaryY,
                         backgroundColor: page.footer.style.backgroundColor !== 'transparent'
                           ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
                           : 'rgba(99,102,241,0.04)',
-                        borderTop:       page.footer.style.borderWidth > 0
+                        borderTop: page.footer.style.borderWidth > 0
                           ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`
                           : undefined,
                       }}
@@ -1164,7 +1145,6 @@ function TemplateCanvas() {
           ))}
         </div>
 
-        {/* Properties panel */}
         <PropertiesPanel
           selectedElement={selectedElement as any}
           onUpdate={handleUpdateElement}

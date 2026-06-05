@@ -116,7 +116,8 @@ function normalisePayload(body) {
   }));
 
   (body.pages || []).forEach((page, pageIndex) => {
-    const yOffset  = pageIndex * CANVAS_PAGE_H;
+    const canvasPageH = body.pageSize?.canvasHeight || CANVAS_PAGE_H;
+    const yOffset  = pageIndex * canvasPageH;
     const elements = (page.templateElements || []).map(el => ({
       ...el,
       position: { ...el.position, y: (el.position?.y || 0) + yOffset },

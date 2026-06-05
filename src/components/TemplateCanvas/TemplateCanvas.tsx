@@ -442,7 +442,7 @@ function TemplateCanvas() {
   const handleAddRadio     = () => addEl({ id: `radio-${Date.now()}`,     type: 'radio',     options: 2, selected: '', orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
   const handleAddCheckbox  = () => addEl({ id: `checkbox-${Date.now()}`,  type: 'checkbox',  count: 1, checkedValues: [], orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
   const handleAddDate      = () => addEl({ id: `date-${Date.now()}`,      type: 'date',      value: '', time: '', includeTime: false, format: 'MM/DD/YYYY', position: { x: 50, y: 50 }, style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
-  const handleAddBarcode   = () => addEl({ id: `barcode-${Date.now()}`,   type: 'barcode',   content: '12345678', position: { x: 50, y: 50 }, style: { width: 200, height: 100 }, barcode: { format: 'code128', showText: true } } as BarcodeElementType);
+  const handleAddBarcode   = () => addEl({ id: `barcode-${Date.now()}`,   type: 'barcode',   content: '{{tracking_no}}', position: { x: 50, y: 50 }, style: { width: 200, height: 100 }, barcode: { format: 'code128', showText: true } } as BarcodeElementType);
 
   // ── Element update ────────────────────────────────────────────────────────
 
@@ -530,7 +530,7 @@ function TemplateCanvas() {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const doSave = (name: string) => {
-    const doc = createTemplateDocument(pages, name, templateMeta);
+    const doc = createTemplateDocument(pages, name, templateMeta, pageSize);
     const docWithGlobal = {
       ...doc,
       meta: { ...doc.meta, globalFields: savedGlobalFields },
@@ -575,6 +575,11 @@ function TemplateCanvas() {
         );
         setPages(cleanPages);
         setTemplateMeta(doc.meta || {});
+        if (doc.pageSize) {
+          setPageSize(doc.pageSize);
+        } else {
+          setPageSize(defaultPageSize());
+        }
         setSavedGlobalFields(doc.meta?.globalFields ?? {});
         setSelectedElementId(null);
         setSelectedPageBreakId(null);
@@ -991,6 +996,7 @@ function TemplateCanvas() {
             savedGlobalFields={savedGlobalFields}
             onClose={() => setBulkPanelOpen(false)}
             onGlobalFieldsSave={fields => setSavedGlobalFields(fields)}
+            pageSize={pageSize}
           />
         )}
 
@@ -1200,6 +1206,7 @@ function TemplateCanvas() {
           layoutTableActiveCell={layoutTableCellSelection}
           layoutTableRange={layoutTableRange}
           activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
+          staticPlaceholders={staticPlaceholders}
         />
 
       </div>

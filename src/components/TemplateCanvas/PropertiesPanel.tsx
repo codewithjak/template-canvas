@@ -153,7 +153,8 @@ interface PropertiesPanelProps {
   onUpdate: (id: string, updates: Partial<CanvasElement>) => void;
   layoutTableActiveCell: { tableId: string; rowIndex: number; colIndex: number } | null;
   layoutTableRange: { tableId: string; r0: number; c0: number; r1: number; c1: number } | null;
-  activePageFooter?: FooterConfig | null; 
+  activePageFooter?: FooterConfig | null;
+  staticPlaceholders?: string[];
 }
 
 function PropertiesPanel({
@@ -161,7 +162,8 @@ function PropertiesPanel({
   onUpdate,
   layoutTableActiveCell,
   layoutTableRange,
-  activePageFooter, 
+  activePageFooter,
+  staticPlaceholders = [],
 }: PropertiesPanelProps) {
   if (!selectedElement) {
     return (
@@ -1602,18 +1604,53 @@ function PropertiesPanel({
 
         {selectedElement.type === 'barcode' && (() => {
           const el = selectedElement as BarcodeElementType;
+          // Determine if content is a placeholder or custom
+          const placeholderMatch = el.content.match(/^\{\{(.+?)\}\}$/);
+          const currentField = placeholderMatch ? placeholderMatch[1].trim() : '__custom__';
+          const customValue = placeholderMatch ? '' : el.content;
+
+          // Build list of available fields from template placeholders
+          const availableFields = staticPlaceholders;
+
           return (
             <div className="property-section">
               <div className="property-section-title">Barcode Properties</div>
               <div className="property-group">
-                <label className="property-label">Value</label>
-                <input
-                  type="text"
-                  value={el.content}
-                  onChange={(e) => onUpdate(el.id, { content: e.target.value })}
-                  className="property-input"
-                />
+                <label className="property-label">Data Field</label>
+                <select
+                  value={currentField}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '__custom__') {
+                      onUpdate(el.id, { content: '' });
+                    } else {
+                      onUpdate(el.id, { content: `{{${val}}}` });
+                    }
+                  }}
+                  className="property-select"
+                >
+                  {availableFields.map(field => (
+                    <option key={field} value={field}>{field}</option>
+                  ))}
+                  {/* If current field is not in the list (e.g. barcode's own default), add it */}
+                  {currentField !== '__custom__' && !availableFields.includes(currentField) && (
+                    <option key={currentField} value={currentField}>{currentField}</option>
+                  )}
+                  <option value="__custom__">Custom value…</option>
+                </select>
               </div>
+              {currentField === '__custom__' && (
+                <div className="property-group">
+                  <label className="property-label">Custom Value</label>
+                  <input
+                    type="text"
+                    value={customValue || el.content}
+                    onChange={(e) => onUpdate(el.id, { content: e.target.value })}
+                    className="property-input"
+                    placeholder="Enter barcode value…"
+                  />
+                </div>
+              )}
               <div className="property-group">
                 <label className="property-label">Format</label>
                 <select

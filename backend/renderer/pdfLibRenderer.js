@@ -301,6 +301,8 @@ function resolveStatic(el, irFields, fm) {
     e.src     = replacePlaceholders(e.src     || '', irFields, fm);
   if (e.type === 'date')
     e.value   = replacePlaceholders(e.value   || '', irFields, fm);
+  if (e.type === 'barcode')
+    e.content = replacePlaceholders(e.content || '', irFields, fm);
   return e;
 }
 

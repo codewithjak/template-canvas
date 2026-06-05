@@ -53,6 +53,7 @@ export interface BulkExportPanelProps {
   savedGlobalFields?:      Record<string, string>;
   onClose:                 () => void;
   onGlobalFieldsSave?:     (fields: Record<string, string>) => void;
+  pageSize?:               { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export function BulkExportPanel({
   savedGlobalFields = {},
   onClose,
   onGlobalFieldsSave,
+  pageSize,
 }: BulkExportPanelProps) {
 
   // ── Relationship detection ────────────────────────────────────────────────
@@ -175,6 +177,7 @@ export function BulkExportPanel({
         zipFileName:          `bulk-export-${new Date().toISOString().slice(0, 10)}.zip`,
       },
       totalRows,
+      pageSize: pageSize ?? undefined,
     });
   }, [
     status, ir, globalFieldValues, pages, fieldMapping,

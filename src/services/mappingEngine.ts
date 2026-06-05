@@ -147,6 +147,9 @@ export function getStaticPlaceholders(elements: unknown[]): string[] {
     if (el.type === 'date') {
       extractPlaceholders(String(el.value ?? '')).forEach(p => set.add(p));
     }
+    if (el.type === 'barcode') {
+      extractPlaceholders(String(el.content ?? '')).forEach(p => set.add(p));
+    }
   }
   return Array.from(set);
 }

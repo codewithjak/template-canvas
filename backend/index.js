@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const { parseDataSource, validateBindings } = require('./parsers/index');
 const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer');
+const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { replacePlaceholders }               = require('./utils/resolver');
 
 const app    = express();
@@ -46,14 +47,14 @@ setInterval(() => {
 // File name helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function sanitizeFileName(name, fallback) {
+function sanitizeFileName(name, fallback, ext = '.pdf') {
   const cleaned = String(name || '')
     .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/^\.+/, '');
   const base = cleaned || fallback;
-  return base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
+  return base.toLowerCase().endsWith(ext) ? base : `${base}${ext}`;
 }
 
 function sanitizeZipName(name, fallback) {
@@ -284,6 +285,19 @@ app.post('/generate-document', async (req, res) => {
       ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
     });
 
+    // ── Format-aware response ─────────────────────────────────────────
+    const format = String(req.body.format || 'pdf').toLowerCase();
+    if (format === 'zpl') {
+      const zplBuffer = await generateZplBuffer({
+        ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
+      });
+      res.set({
+        'Content-Type':        'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.zpl"`,
+      });
+      return res.send(zplBuffer);
+    }
+
     res.set({
       'Content-Type':        'application/pdf',
       'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.pdf"`,
@@ -331,9 +345,12 @@ app.post('/generate-bulk-documents', async (req, res) => {
 
     const rows             = driverCollection.rows;
     const total            = rows.length;
-    const fileNameTemplate = String(bulk.fileNameTemplate || `${outputFileName || 'document'}-{{__index}}.pdf`);
+    const format           = String(req.body.format || req.body.bulk?.format || 'pdf').toLowerCase();
+    const fileExt          = format === 'zpl' ? '.zpl' : '.pdf';
+    const fileNameTemplate = String(bulk.fileNameTemplate || `${outputFileName || 'document'}-{{__index}}${fileExt}`);
     const zipFileName      = sanitizeZipName(bulk.zipFileName || `${outputFileName || 'documents'}.zip`, 'documents.zip');
     const relatedCollections = bulk.relatedCollections || {};
+    const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
     res.set({
       'Content-Type':        'application/zip',
@@ -362,18 +379,18 @@ app.post('/generate-bulk-documents', async (req, res) => {
       }
 
       try {
-        const pdfBuffer = await generatePdfBuffer({
+        const buffer = await generateBuffer({
           ir: rowIr, templateElements, fieldMapping,
           tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
         });
 
         const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
         const safeName     = uniqueFileName(
-          sanitizeFileName(resolvedName, `document-${i + 1}.pdf`),
+          sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt),
           usedNames,
         );
 
-        archive.append(pdfBuffer, { name: safeName });
+        archive.append(buffer, { name: safeName });
       } catch (rowErr) {
         console.error(`[bulk] row ${i} failed:`, rowErr.message);
       }
@@ -421,9 +438,12 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
 
   const rows             = driverCollection.rows;
   const total            = rows.length;
-  const fileNameTemplate = String(bulk.fileNameTemplate || `document-{{__index}}.pdf`);
+  const format           = String(req.body.format || req.body.bulk?.format || 'pdf').toLowerCase();
+  const fileExt          = format === 'zpl' ? '.zpl' : '.pdf';
+  const fileNameTemplate = String(bulk.fileNameTemplate || `document-{{__index}}${fileExt}`);
   const zipFileName      = sanitizeZipName(bulk.zipFileName || 'documents.zip', 'documents.zip');
   const relatedCollections = bulk.relatedCollections || {};
+  const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
   const jobId   = uuidv4();
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
@@ -448,7 +468,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
         const rowIr = buildRowIr(normalised.ir, driverCollectionKey, row, i, relatedCollections);
 
         try {
-          const pdfBuffer = await generatePdfBuffer({
+          const buffer = await generateBuffer({
             ir:                      rowIr,
             templateElements:        normalised.templateElements,
             fieldMapping:            normalised.fieldMapping,
@@ -460,11 +480,11 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
 
           const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
           const safeName     = uniqueFileName(
-            sanitizeFileName(resolvedName, `document-${i + 1}.pdf`),
+            sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt),
             usedNames,
           );
 
-          archive.append(pdfBuffer, { name: safeName });
+          archive.append(buffer, { name: safeName });
           job.current = i + 1;
         } catch (rowErr) {
           console.error(`[bulk-async] row ${i} failed:`, rowErr.message);

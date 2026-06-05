@@ -257,6 +257,130 @@
   flex-shrink    : 0;
 }
 
+/* ── Active menu item ─────────────────────────────────────── */
+.tb-shapes-item--active {
+  background : rgba(35, 85, 244, 0.08);
+  color      : #2355f4;
+  font-weight: 600;
+}
+
+.tb-shapes-item--active .tb-shapes-item__icon {
+  background : rgba(35, 85, 244, 0.12);
+  color      : #2355f4;
+  font-size  : 0.75rem;
+}
+
+/* ── Page size menu ───────────────────────────────────────── */
+.tb-page-size-menu {
+  min-width: 220px;
+}
+
+.tb-page-size-label {
+  display       : flex;
+  align-items   : baseline;
+  gap           : 6px;
+  flex          : 1;
+}
+
+.tb-page-size-dim {
+  font-size    : 0.72rem;
+  font-weight  : 400;
+  color        : #94a3b8;
+  margin-left  : auto;
+}
+
+.tb-menu-divider {
+  height       : 1px;
+  background   : rgba(15, 23, 42, 0.08);
+  margin       : 4px 8px;
+}
+
+/* ── Custom size panel ────────────────────────────────────── */
+.tb-custom-size {
+  padding    : 8px 10px 6px;
+}
+
+.tb-custom-size__row {
+  display     : flex;
+  align-items : center;
+  gap         : 6px;
+}
+
+.tb-custom-size__label {
+  display     : flex;
+  align-items : center;
+  gap         : 4px;
+  font-size   : 0.78rem;
+  font-weight : 600;
+  color       : #475569;
+  flex        : 1;
+}
+
+.tb-custom-size__unit {
+  font-size   : 0.68rem;
+  font-weight : 400;
+  color       : #94a3b8;
+}
+
+.tb-custom-size__input {
+  width          : 100%;
+  padding        : 5px 7px;
+  border         : 1px solid rgba(15, 23, 42, 0.12);
+  border-radius  : 6px;
+  font-size      : 0.82rem;
+  font-weight    : 500;
+  color          : #1e293b;
+  background     : rgba(248, 250, 252, 0.9);
+  outline        : none;
+  transition     : border-color 0.15s ease, box-shadow 0.15s ease;
+  margin-top     : 2px;
+}
+
+.tb-custom-size__input:focus {
+  border-color : #2355f4;
+  box-shadow   : 0 0 0 2px rgba(35, 85, 244, 0.12);
+}
+
+/* Hide spinners in number inputs */
+.tb-custom-size__input::-webkit-inner-spin-button,
+.tb-custom-size__input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.tb-custom-size__input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.tb-custom-size__x {
+  font-size   : 0.85rem;
+  color       : #94a3b8;
+  flex-shrink : 0;
+  padding-top : 14px;
+}
+
+.tb-custom-size__apply {
+  display       : block;
+  width         : 100%;
+  margin-top    : 8px;
+  padding       : 6px 12px;
+  border        : none;
+  border-radius : 7px;
+  background    : #2355f4;
+  color         : #fff;
+  font-size     : 0.8rem;
+  font-weight   : 600;
+  cursor        : pointer;
+  transition    : background 0.15s ease, transform 0.1s ease;
+}
+
+.tb-custom-size__apply:hover {
+  background : #1a44d6;
+}
+
+.tb-custom-size__apply:active {
+  transform  : scale(0.97);
+}
+
 /* ── Tooltip ───────────────────────────────────────────────── */
 .tb-tooltip-wrap {
   position: relative;
@@ -324,8 +448,54 @@
   font-style    : normal;
 }
 
+/* ── Format toggle ─────────────────────────────────────────── */
+.tb-export-group {
+  gap: 6px;
+}
+
+.tb-format-toggle {
+  display      : flex;
+  align-items  : center;
+  border       : 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  overflow     : hidden;
+  height       : 30px;
+}
+
+.tb-format-btn {
+  display      : flex;
+  align-items  : center;
+  justify-content: center;
+  padding      : 0 10px;
+  height       : 100%;
+  border       : none;
+  background   : transparent;
+  color        : #64748b;
+  font-size    : 0.72rem;
+  font-weight  : 600;
+  letter-spacing: 0.03em;
+  cursor       : pointer;
+  transition   : all 0.15s ease;
+}
+
+.tb-format-btn:hover {
+  background : rgba(15, 23, 42, 0.04);
+  color      : #334155;
+}
+
+.tb-format-btn--active {
+  background : #2355f4;
+  color      : #fff;
+}
+
+.tb-format-btn--active:hover {
+  background : #1a44d6;
+  color      : #fff;
+}
+
 /* ── Responsive: collapse export label on narrow screens ── */
 @media (max-width: 700px) {
   .tb-export-label { display: none; }
   .tb-btn--primary  { width: 34px; padding: 0; }
+  .tb-format-toggle { display: none; }
 }

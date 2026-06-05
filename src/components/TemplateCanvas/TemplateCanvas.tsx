@@ -49,7 +49,7 @@ import PageRulers, { type PageRulerSelection } from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
 import BarcodeElement from './BarcodeElement';
 import type { BarcodeElementType, PageSizeConfig } from '../../types/canvas';
-import { defaultPageSize, PAGE_SIZE_PRESETS } from '../../types/canvas';
+import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize } from '../../types/canvas';
 
 import type {
   CanonicalDocument,
@@ -196,6 +196,7 @@ function TemplateCanvas() {
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
   const [pageSize, setPageSize] = useState<PageSizeConfig>(defaultPageSize());
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'zpl'>('pdf');
   const [showPageRulers, setShowPageRulers] = useState(false);
 
   const handlePageSizeChange = useCallback((preset: string) => {
@@ -207,8 +208,18 @@ function TemplateCanvas() {
         canvasHeight: p.canvasHeight,
         pdfWidth:     p.pdfWidth,
         pdfHeight:    p.pdfHeight,
+        widthInches:  p.widthInches,
+        heightInches: p.heightInches,
       });
+      // ZPL is only for label sizes — auto-revert to PDF for document sizes
+      if (preset === 'a4' || preset === 'letter') {
+        setExportFormat('pdf');
+      }
     }
+  }, []);
+
+  const handleCustomPageSize = useCallback((widthInches: number, heightInches: number) => {
+    setPageSize(customPageSize(widthInches, heightInches));
   }, []);
 
   // ── Selection ─────────────────────────────────────────────────────────────
@@ -720,9 +731,10 @@ function TemplateCanvas() {
           driverCollectionKey: undefined,
           relatedCollections:  {},
           pageSize,
+          format: exportFormat,
         });
 
-        downloadBlob(blob, `${outputFileName}.pdf`);
+        downloadBlob(blob, `${outputFileName}.${exportFormat === 'zpl' ? 'zpl' : 'pdf'}`);
         return;
       }
       // ── END NEW ───────────────────────────────────────────────────────────
@@ -738,9 +750,10 @@ function TemplateCanvas() {
         driverCollectionKey,
         relatedCollections:  relatedCollectionsConfig,
         pageSize,
+        format: exportFormat,
       });
 
-      downloadBlob(blob, `${outputFileName}.pdf`);
+      downloadBlob(blob, `${outputFileName}.${exportFormat === 'zpl' ? 'zpl' : 'pdf'}`);
 
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed.');
@@ -961,7 +974,12 @@ function TemplateCanvas() {
           hasElements={allElements.length > 0}
           onAddBarcode={handleAddBarcode}
           onPageSizeChange={handlePageSizeChange}
+          onCustomPageSize={handleCustomPageSize}
           currentPageSize={pageSize.preset}
+          customPageWidth={pageSize.widthInches}
+          customPageHeight={pageSize.heightInches}
+          exportFormat={exportFormat}
+          onExportFormatChange={setExportFormat}
         />
 
         {uploadPanelOpen && (
@@ -997,6 +1015,7 @@ function TemplateCanvas() {
             onClose={() => setBulkPanelOpen(false)}
             onGlobalFieldsSave={fields => setSavedGlobalFields(fields)}
             pageSize={pageSize}
+            exportFormat={exportFormat}
           />
         )}
 

@@ -115,6 +115,7 @@ export interface GenerateDocumentParams {
     driverRowField: string;   // field in the driver row to match against
   }>;
   pageSize?: { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
+  format?: 'pdf' | 'zpl';
 }
 
 export interface BulkDocumentOptions {
@@ -148,6 +149,7 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
       driverCollectionKey: params.driverCollectionKey,
       relatedCollections:  params.relatedCollections ?? {},
       pageSize:            params.pageSize ?? null,
+      format:              params.format ?? 'pdf',
     }),
   });
 

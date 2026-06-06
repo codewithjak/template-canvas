@@ -24,7 +24,7 @@
 
 'use strict';
 
-const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const { PDFDocument, rgb, StandardFonts, degrees } = require('pdf-lib');
 const https = require('https');
 const http  = require('http');
 
@@ -75,6 +75,13 @@ function parseColorWithOpacity(str) {
     opacity: Math.min(1, Math.max(0, +m[4])),
   };
   return { color: toColor(str), opacity: 1 };
+}
+
+function normalizeOpacity(value) {
+  if (value == null || value === '') return 1;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 1;
+  return Math.max(0, Math.min(1, n > 1 ? n / 100 : n));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,10 +165,12 @@ function wrapText(text, font, fsPt, maxWPt) {
   return lines.length ? lines : [''];
 }
 
-function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align = 'left') {
+function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align = 'left', options = {}) {
   const lh    = lhPt || fsPt * 1.3;
   const lines = wrapText(text, font, fsPt, maxWPt);
   let   y     = topY;
+  const opacity = normalizeOpacity(options.opacity);
+  const rotate  = Number(options.rotate || 0);
   
   for (const line of lines) {
     if (!line && lines.length > 1) { y -= lh; continue; }
@@ -175,7 +184,18 @@ function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align 
       drawX = x + maxWPt - lineWidth;
     }
     
-    try { page.drawText(line, { x: drawX, y: y - fsPt * 0.8, size: fsPt, font, color }); } catch (e) {}
+    try {
+      const drawOptions = {
+        x: drawX,
+        y: y - fsPt * 0.8,
+        size: fsPt,
+        font,
+        color,
+        opacity,
+      };
+      if (rotate) drawOptions.rotate = degrees(rotate);
+      page.drawText(line, drawOptions);
+    } catch (e) {}
     y -= lh;
   }
 }
@@ -587,12 +607,13 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
       const wPt = (s.width  || 0) * SCALE;
       const hPt = (s.height || 0) * SCALE;
       const bw  = Math.max(0, (s.borderWidth || 0) * SCALE);
+      const opacity = normalizeOpacity(s.opacity);
       if (s.backgroundColor && s.backgroundColor !== 'transparent')
         page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
-          color: toColor(s.backgroundColor) });
+          color: toColor(s.backgroundColor), opacity });
       if (bw > 0)
         page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
-          borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw });
+          borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw, borderOpacity: opacity });
       break;
     }
 
@@ -601,12 +622,13 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
       const thickPt = Math.max(0.5, (s.thickness || 1) * SCALE);
       const col     = toColor(s.color || '#000000');
       const dash    = s.style === 'dashed' ? [thickPt * 3, thickPt * 2] : undefined;
+      const opacity = normalizeOpacity(s.opacity);
       if ((s.direction || 'horizontal') === 'vertical')
         page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt, y: pdfY - lenPt },
-          thickness: thickPt, color: col, dashArray: dash });
+          thickness: thickPt, color: col, dashArray: dash, opacity });
       else
         page.drawLine({ start: { x: xPt, y: pdfY }, end: { x: xPt + lenPt, y: pdfY },
-          thickness: thickPt, color: col, dashArray: dash });
+          thickness: thickPt, color: col, dashArray: dash, opacity });
       break;
     }
 
@@ -619,7 +641,19 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
       const font = bold ? fonts.bold : fonts.normal;
       const maxW = (s.width || (CANVAS_W - (el.position?.x || 0))) * SCALE;
       const lhPt = s.lineHeight ? s.lineHeight * SCALE : fsPt * 1.3;
-      drawTextAt(page, text, font, fsPt, xPt, pdfY, maxW, toColor(s.color || '#000000'), lhPt);
+      drawTextAt(
+        page,
+        text,
+        font,
+        fsPt,
+        xPt,
+        pdfY,
+        maxW,
+        toColor(s.color || '#000000'),
+        lhPt,
+        s.textAlign || 'left',
+        { opacity: s.opacity, rotate: s.rotation }
+      );
       break;
     }
 
@@ -632,7 +666,13 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
         let emb;
         if (b[0] === 0xFF && b[1] === 0xD8) emb = await pdfDoc.embedJpg(b);
         else emb = await pdfDoc.embedPng(b);
-        page.drawImage(emb, { x: xPt, y: pdfY - hPt, width: wPt, height: hPt });
+        page.drawImage(emb, {
+          x: xPt,
+          y: pdfY - hPt,
+          width: wPt,
+          height: hPt,
+          opacity: normalizeOpacity(s.opacity),
+        });
       } catch (e) { console.warn('[pdf] image embed failed:', e.message); }
       break;
     }

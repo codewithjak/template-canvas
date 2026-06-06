@@ -26,6 +26,19 @@ const Icons = {
       <path d="m1.5 10.5 4-4 3 3 2-2 3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  Watermark: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" opacity=".45"/>
+      <path d="m4 11 8-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity=".65"/>
+      <path d="M4.5 5.5h3M6 4v3M9.5 10.5h2" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round"/>
+    </svg>
+  ),
+  Signature: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 12.5h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity=".55"/>
+      <path d="M3 9.5c1.2-3.8 2.2-5.6 3-5.4 1 .3-.7 5.8.5 6 1 .2 1.8-2.5 2.8-2.3.7.1.5 1.9 1.4 1.9.6 0 1.1-.7 1.6-1.5" stroke="currentColor" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   Paragraph: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M7 2h5M7 5.5h5M2 9h12M2 12.5h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -263,6 +276,8 @@ export interface ToolbarProps {
   onAddText       : () => void;
   onAddTable     ?: () => void;
   onAddImage     ?: () => void;
+  onAddWatermark ?: () => void;
+  onAddSignature ?: () => void;
   onAddLine      ?: () => void;
   onAddBox       ?: () => void;
   onAddRectangle ?: () => void;
@@ -282,7 +297,7 @@ export interface ToolbarProps {
 
 export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
-  onAddText, onAddTable, onAddImage,
+  onAddText, onAddTable, onAddImage, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
   onDelete, onSave, onLoad, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
@@ -299,6 +314,8 @@ export default function Toolbar({
         <IconBtn icon={<Icons.Text />}  label="Text"  shortcut="T" onClick={onAddText} />
         {onAddTable && <IconBtn icon={<Icons.Table />} label="Table" shortcut="G" onClick={onAddTable} />}
         {onAddImage && <IconBtn icon={<Icons.Image />} label="Image" shortcut="I" onClick={onAddImage} />}
+        {onAddWatermark && <IconBtn icon={<Icons.Watermark />} label="Watermark" shortcut="W" onClick={onAddWatermark} />}
+        {onAddSignature && <IconBtn icon={<Icons.Signature />} label="Digital signature" shortcut="S" onClick={onAddSignature} />}
       </div>
 
       {/* ── Form ── */}

@@ -44,6 +44,7 @@ import type {
   HeaderConfig,
   FooterConfig,
   TextElementType,
+  ImageElementType,
 } from '../../types/canvas';
 import {
   createPage,
@@ -125,6 +126,9 @@ function getElementRulerSelection(element: CanvasElement | null): PageRulerSelec
   if (element.type === 'image' || element.type === 'box') {
     selection.width = element.style.width;
     selection.height = element.style.height;
+  } else if (element.type === 'text' && element.style.width) {
+    selection.width = element.style.width;
+    selection.height = element.style.fontSize * 1.3;
   } else if (element.type === 'line') {
     selection.width = element.style.direction === 'horizontal'
       ? element.style.length
@@ -398,6 +402,43 @@ function TemplateCanvas() {
   const handleAddParagraph = () => addEl({ id: `paragraph-${Date.now()}`, type: 'paragraph', content: 'Add your text here…', position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 } });
   const handleAddTable     = () => addEl(createDefaultLayoutTable('table'));
   const handleAddImage     = () => addEl({ id: `image-${Date.now()}`,     type: 'image',     src: '{{image_url}}',          position: { x: 50, y: 50 }, style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 } });
+  const handleAddWatermark = () => {
+    const el: TextElementType = {
+      id:       `watermark-${Date.now()}`,
+      type:     'text',
+      role:     'watermark',
+      content:  'CONFIDENTIAL',
+      position: { x: 88, y: 515 },
+      style: {
+        fontSize:   72,
+        fontWeight: 'bold',
+        color:      '#94a3b8',
+        fontFamily: 'Arial, sans-serif',
+        width:      620,
+        opacity:    22,
+        rotation:   -30,
+        textAlign:  'center',
+      },
+    };
+    addEl(el);
+    setSelectedPageBreakId(null);
+    setSelectedBoundary(null);
+    setTimeout(() => setSelectedElementId(el.id), 0);
+  };
+  const handleAddSignature = () => {
+    const el: ImageElementType = {
+      id:       `signature-${Date.now()}`,
+      type:     'image',
+      role:     'signature',
+      src:      '{{digital_signature}}',
+      position: { x: 500, y: 890 },
+      style:    { width: 220, height: 90, objectFit: 'contain' as const, opacity: 100 },
+    };
+    addEl(el);
+    setSelectedPageBreakId(null);
+    setSelectedBoundary(null);
+    setTimeout(() => setSelectedElementId(el.id), 0);
+  };
   const handleAddLine      = () => addEl({ id: `line-${Date.now()}`,      type: 'line',      position: { x: 50, y: 50 },   style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 } });
   const handleAddBox       = () => addEl({ id: `box-${Date.now()}`,       type: 'box',       shape: 'box',  position: { x: 50, y: 50 }, style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 } });
   const handleAddRectangle = () => addEl({ id: `rectangle-${Date.now()}`, type: 'box',       shape: 'rectangle', position: { x: 50, y: 50 }, style: { width: 220, height: 140, borderWidth: 1, borderColor: '#007bff', borderStyle: 'solid' as const, backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0 } });
@@ -847,6 +888,8 @@ function TemplateCanvas() {
           onAddText={handleAddText}
           onAddTable={handleAddTable}
           onAddImage={handleAddImage}
+          onAddWatermark={handleAddWatermark}
+          onAddSignature={handleAddSignature}
           onAddLine={handleAddLine}
           onAddBox={handleAddBox}
           onAddRectangle={handleAddRectangle}

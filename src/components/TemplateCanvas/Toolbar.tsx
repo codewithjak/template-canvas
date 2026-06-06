@@ -288,27 +288,51 @@ function ShapesMenu({ onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddE
 interface PageSizeMenuProps {
   currentPageSize: string;
   onSelect: (preset: string) => void;
+  onCustomSize?: (widthInches: number, heightInches: number) => void;
+  customWidth?: number;
+  customHeight?: number;
 }
 
-function PageSizeMenu({ currentPageSize, onSelect }: PageSizeMenuProps) {
+function PageSizeMenu({ currentPageSize, onSelect, onCustomSize, customWidth, customHeight }: PageSizeMenuProps) {
   const [open, setOpen] = React.useState(false);
+  const [showCustom, setShowCustom] = React.useState(false);
+  const [cw, setCw] = React.useState(String(customWidth || 4));
+  const [ch, setCh] = React.useState(String(customHeight || 6));
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setShowCustom(false);
+      }
     }
     document.addEventListener('mousedown', onClickOutside);
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  // Sync custom inputs when preset changes to custom externally
+  React.useEffect(() => {
+    if (customWidth) setCw(String(customWidth));
+    if (customHeight) setCh(String(customHeight));
+  }, [customWidth, customHeight]);
+
   const presets = [
-    { key: 'a4',     label: 'A4 (8.27 × 11.69")' },
-    { key: 'letter', label: 'US Letter (8.5 × 11")' },
-    { key: '4x6',    label: '4×6 Label' },
-    { key: '4x4',    label: '4×4 Label' },
-    { key: '3x5',    label: '3×5 Label' },
+    { key: 'a4',     label: 'A4',               dim: '8.27 × 11.69″' },
+    { key: 'letter', label: 'US Letter',         dim: '8.5 × 11″' },
+    { key: '4x6',    label: '4×6 Shipping Label', dim: '4 × 6″' },
+    { key: '4x4',    label: '4×4 Label',         dim: '4 × 4″' },
+    { key: '3x5',    label: '3×5 Label',         dim: '3 × 5″' },
   ];
+
+  const handleApplyCustom = () => {
+    const w = parseFloat(cw);
+    const h = parseFloat(ch);
+    if (!w || !h || w <= 0 || h <= 0 || w > 50 || h > 50) return;
+    onCustomSize?.(w, h);
+    setOpen(false);
+    setShowCustom(false);
+  };
 
   return (
     <div className="tb-shapes-wrap" ref={ref}>
@@ -328,21 +352,76 @@ function PageSizeMenu({ currentPageSize, onSelect }: PageSizeMenuProps) {
       </Tooltip>
 
       {open && (
-        <div className="tb-shapes-menu" role="menu">
+        <div className="tb-shapes-menu tb-page-size-menu" role="menu">
           <div className="tb-shapes-menu__label">Page Size</div>
-          {presets.map(({ key, label }) => (
+          {presets.map(({ key, label, dim }) => (
             <button
               key={key}
               className={`tb-shapes-item ${key === currentPageSize ? 'tb-shapes-item--active' : ''}`}
               role="menuitem"
-              onClick={() => { onSelect(key); setOpen(false); }}
+              onClick={() => { onSelect(key); setOpen(false); setShowCustom(false); }}
             >
               <span className="tb-shapes-item__icon">
                 {key === currentPageSize ? '✓' : ''}
               </span>
-              <span>{label}</span>
+              <span className="tb-page-size-label">
+                <span>{label}</span>
+                <span className="tb-page-size-dim">{dim}</span>
+              </span>
             </button>
           ))}
+
+          {/* Divider */}
+          <div className="tb-menu-divider" />
+
+          {/* Custom entry */}
+          <button
+            className={`tb-shapes-item ${currentPageSize === 'custom' ? 'tb-shapes-item--active' : ''}`}
+            role="menuitem"
+            onClick={() => setShowCustom(v => !v)}
+          >
+            <span className="tb-shapes-item__icon">
+              {currentPageSize === 'custom' ? '✓' : ''}
+            </span>
+            <span>Custom size…</span>
+          </button>
+
+          {showCustom && (
+            <div className="tb-custom-size">
+              <div className="tb-custom-size__row">
+                <label className="tb-custom-size__label">
+                  W<span className="tb-custom-size__unit">(in)</span>
+                  <input
+                    className="tb-custom-size__input"
+                    type="number"
+                    min="0.5"
+                    max="50"
+                    step="0.1"
+                    value={cw}
+                    onChange={e => setCw(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleApplyCustom(); }}
+                  />
+                </label>
+                <span className="tb-custom-size__x">×</span>
+                <label className="tb-custom-size__label">
+                  H<span className="tb-custom-size__unit">(in)</span>
+                  <input
+                    className="tb-custom-size__input"
+                    type="number"
+                    min="0.5"
+                    max="50"
+                    step="0.1"
+                    value={ch}
+                    onChange={e => setCh(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleApplyCustom(); }}
+                  />
+                </label>
+              </div>
+              <button className="tb-custom-size__apply" onClick={handleApplyCustom}>
+                Apply
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -377,7 +456,12 @@ export interface ToolbarProps {
   hasSelection   ?: boolean;
   hasElements    ?: boolean;
   onPageSizeChange?: (preset: string) => void;
+  onCustomPageSize?: (widthInches: number, heightInches: number) => void;
   currentPageSize ?: string;
+  customPageWidth ?: number;
+  customPageHeight?: number;
+  exportFormat?: 'pdf' | 'zpl';
+  onExportFormatChange?: (format: 'pdf' | 'zpl') => void;
 }
 
 export default function Toolbar({
@@ -388,6 +472,8 @@ export default function Toolbar({
   onToggleRulers, showRulers,
   hasSelection, hasElements,
   onPageSizeChange, currentPageSize,
+  onCustomPageSize, customPageWidth, customPageHeight,
+  exportFormat, onExportFormatChange,
 }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const hasShapes = onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse;
@@ -402,6 +488,9 @@ export default function Toolbar({
             <PageSizeMenu
               currentPageSize={currentPageSize || 'a4'}
               onSelect={onPageSizeChange}
+              onCustomSize={onCustomPageSize}
+              customWidth={customPageWidth}
+              customHeight={customPageHeight}
             />
           </div>
           <Divider />
@@ -498,16 +587,30 @@ export default function Toolbar({
       {onExportPDF && (
         <>
           <Divider />
-          <div className="tb-group">
-            <Tooltip label="Export PDF" shortcut="⌘E">
+          <div className="tb-group tb-export-group">
+            {onExportFormatChange && currentPageSize !== 'a4' && currentPageSize !== 'letter' && (
+              <div className="tb-format-toggle">
+                <button
+                  className={`tb-format-btn ${exportFormat === 'pdf' ? 'tb-format-btn--active' : ''}`}
+                  onClick={() => onExportFormatChange('pdf')}
+                  aria-label="PDF format"
+                >PDF</button>
+                <button
+                  className={`tb-format-btn ${exportFormat === 'zpl' ? 'tb-format-btn--active' : ''}`}
+                  onClick={() => onExportFormatChange('zpl')}
+                  aria-label="ZPL format"
+                >ZPL</button>
+              </div>
+            )}
+            <Tooltip label={`Export ${exportFormat?.toUpperCase() || 'PDF'}`} shortcut="⌘E">
               <button
                 className={`tb-btn tb-btn--primary ${!hasElements ? 'tb-btn--disabled' : ''}`}
                 onClick={onExportPDF}
                 disabled={!hasElements}
-                aria-label="Export PDF"
+                aria-label={`Export ${exportFormat?.toUpperCase() || 'PDF'}`}
               >
                 <Icons.Export />
-                <span className="tb-export-label">Export PDF</span>
+                <span className="tb-export-label">Export {exportFormat?.toUpperCase() || 'PDF'}</span>
               </button>
             </Tooltip>
           </div>

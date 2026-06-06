@@ -31,6 +31,24 @@ export interface PageSizeConfig {
   canvasHeight: number;
   pdfWidth: number;
   pdfHeight: number;
+  widthInches?: number;     // original inches (for custom sizes)
+  heightInches?: number;    // original inches (for custom sizes)
+}
+
+/**
+ * Create a PageSizeConfig from arbitrary inch dimensions.
+ * Conversion: 1 inch = 96 CSS px (canvas), 1 inch = 72 pt (PDF).
+ */
+export function customPageSize(widthInches: number, heightInches: number): PageSizeConfig {
+  return {
+    preset:       'custom',
+    canvasWidth:  Math.round(widthInches * 96),
+    canvasHeight: Math.round(heightInches * 96),
+    pdfWidth:     Math.round(widthInches * 72 * 100) / 100,
+    pdfHeight:    Math.round(heightInches * 72 * 100) / 100,
+    widthInches,
+    heightInches,
+  };
 }
 
 export function defaultPageSize(): PageSizeConfig {

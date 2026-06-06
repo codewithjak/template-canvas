@@ -45,9 +45,11 @@ export interface BulkExportParams {
     fileNameTemplate:     string;
     relatedCollections:   Record<string, { filterColumn: string; driverRowField: string }>;
     zipFileName:          string;
+    format?:              'pdf' | 'zpl';
   };
   totalRows: number;
   pageSize?: any;
+  format?: 'pdf' | 'zpl';
 }
 
 export interface UseBulkExportReturn {
@@ -103,6 +105,7 @@ async function streamingExport(
       pages:    params.pages,
       bulk,
       pageSize: params.pageSize ?? null,
+      format:   params.bulk.format || params.format || 'pdf',
     }),
     signal,
   });
@@ -157,6 +160,7 @@ async function asyncExport(
       pages:    params.pages,
       bulk,
       pageSize: params.pageSize ?? null,
+      format:   params.bulk.format || params.format || 'pdf',
     }),
     signal,
   });

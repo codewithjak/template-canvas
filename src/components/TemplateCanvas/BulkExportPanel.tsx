@@ -54,6 +54,7 @@ export interface BulkExportPanelProps {
   onClose:                 () => void;
   onGlobalFieldsSave?:     (fields: Record<string, string>) => void;
   pageSize?:               { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
+  exportFormat?:           'pdf' | 'zpl';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ export function BulkExportPanel({
   onClose,
   onGlobalFieldsSave,
   pageSize,
+  exportFormat = 'pdf',
 }: BulkExportPanelProps) {
 
   // ── Relationship detection ────────────────────────────────────────────────
@@ -116,7 +118,8 @@ export function BulkExportPanel({
   const [driverKey,         setDriverKey]         = useState<string>(autoDriver);
   const [fileNameTemplate,  setFileNameTemplate]  = useState<string>(() => {
     const firstCol = Object.keys(ir.collections[collectionKeys[0]]?.rows[0] ?? {})[0] ?? 'id';
-    return `document-{{${firstCol}}}.pdf`;
+    const ext = exportFormat === 'zpl' ? '.zpl' : '.pdf';
+    return `document-{{${firstCol}}}${ext}`;
   });
   const [globalFieldValues, setGlobalFieldValues] = useState<Record<string, string>>(savedGlobalFields);
   const [previewIndex,      setPreviewIndex]      = useState<number>(0);
@@ -178,6 +181,7 @@ export function BulkExportPanel({
       },
       totalRows,
       pageSize: pageSize ?? undefined,
+      format: exportFormat,
     });
   }, [
     status, ir, globalFieldValues, pages, fieldMapping,
@@ -205,7 +209,7 @@ export function BulkExportPanel({
           <div className="bep-header-left">
             <div>
               <h2 className="bep-title">Bulk Export</h2>
-              <p className="bep-subtitle">Generate one PDF per record</p>
+              <p className="bep-subtitle">Generate one {exportFormat.toUpperCase()} per record</p>
             </div>
           </div>
           <button className="bep-close" onClick={onClose} aria-label="Close">✕</button>
@@ -217,9 +221,9 @@ export function BulkExportPanel({
           <div className="bep-section">
             <div className="bep-section-head">
               <span className="bep-section-label">Driver collection</span>
-              <span className="bep-pill bep-pill-blue">{totalRows} PDFs</span>
+              <span className="bep-pill bep-pill-blue">{totalRows} {exportFormat.toUpperCase()}s</span>
             </div>
-            <p className="bep-section-hint">One PDF will be generated per row in this collection.</p>
+            <p className="bep-section-hint">One {exportFormat.toUpperCase()} will be generated per row in this collection.</p>
             <select
               className="bep-select"
               value={driverKey}
@@ -363,7 +367,7 @@ export function BulkExportPanel({
               )}
               {isDone && (
                 <p className="bep-success">
-                  ✓ {totalRows} PDF{totalRows !== 1 ? 's' : ''} exported — download started.
+                  ✓ {totalRows} {exportFormat.toUpperCase()}{totalRows !== 1 ? 's' : ''} exported — download started.
                 </p>
               )}
               {isError && (
@@ -386,7 +390,7 @@ export function BulkExportPanel({
           >
             {isRunning
               ? `Generating… ${progress?.current ?? 0}/${totalRows}`
-              : `Export ${totalRows} PDF${totalRows !== 1 ? 's' : ''}`}
+              : `Export ${totalRows} ${exportFormat.toUpperCase()}${totalRows !== 1 ? 's' : ''}`}
           </button>
         </div>
 

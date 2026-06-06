@@ -1,58 +1,81 @@
 /**
  * UploadData.tsx
  *
- * Changes from previous version:
- *   - Static field mapping now has a fallback text input per placeholder.
- *     When the dropdown is "— select —", the user can type a hardcoded value.
- *     On confirm, fallback values are injected into source.metadata so the
- *     existing replacePlaceholders logic picks them up without any changes.
+ * Upload UI rewritten against the CanonicalDocument IR.
+ * No ParsedDataSource. No BoundData. No metadata aliases.
+ *
+ * Flow
+ * ────
+ *  1. User drops a file → POST /parse-data → CanonicalDocument
+ *  2. Auto-map static placeholders → ir.fields keys
+ *  3. Auto-map table placeholders  → collection column names
+ *  4. User can refine mappings via dropdowns / fallback inputs
+ *  5. Confirm → onConfirm(ir, fieldMapping, tableCollectionBindings, collectionMappings)
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import type { ParsedDataSource, BoundData, TableInfo } from '../../types/dataSource';
+import type {
+  CanonicalDocument,
+  FieldMapping,
+  TableCollectionBindings,
+  CollectionMappings,
+  TableInfo,
+} from '../../types/dataSource';
 import {
-  buildInitialBoundData,
+  buildInitialMappings,
   autoMapCollectionFields,
-} from '../../services/dataSourceService';
+} from '../../services/mappingEngine';
+import { parseFile } from '../../services/dataSourceService';
 import './UploadData.css';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// ─────────────────────────────────────────────────────────────────────────────
+// Props
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface UploadDataProps {
   staticPlaceholders: string[];
-  tables: TableInfo[];
-  onClose: () => void;
-  onDataMapped: (boundData: BoundData) => void;
+  tables:             TableInfo[];
+  onClose:            () => void;
+  onConfirm: (
+    ir:                      CanonicalDocument,
+    fieldMapping:            FieldMapping,
+    tableCollectionBindings: TableCollectionBindings,
+    collectionMappings:      CollectionMappings,
+  ) => void;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-function summariseCollections(collections: ParsedDataSource['collections']) {
+function summariseCollections(collections: CanonicalDocument['collections']): string {
   return Object.entries(collections)
     .map(([k, c]) => `${k} (${c.rows.length} rows)`)
-    .join(', ');
+    .join(', ') || 'none';
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 const UploadData: React.FC<UploadDataProps> = ({
   staticPlaceholders,
   tables,
   onClose,
-  onDataMapped,
+  onConfirm,
 }) => {
-  const [source, setSource] = useState<ParsedDataSource | null>(null);
+  const [ir,      setIr]      = useState<CanonicalDocument | null>(null);
   const [parsing, setParsing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error,   setError]   = useState<string | null>(null);
 
   // Mapping state
-  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
-  const [tableCollectionBindings, setTableCollectionBindings] = useState<Record<string, string>>({});
-  const [collectionMappings, setCollectionMappings] = useState<Record<string, Record<string, string>>>({});
+  const [fieldMapping,            setFieldMapping]            = useState<FieldMapping>({});
+  const [tableCollectionBindings, setTableCollectionBindings] = useState<TableCollectionBindings>({});
+  const [collectionMappings,      setCollectionMappings]      = useState<CollectionMappings>({});
 
-  // Fallback values: placeholder → hardcoded string typed by user
-  // Used when the dropdown for that placeholder is left at "— select —"
+  // Fallback values: placeholder → hardcoded string typed by the user
+  // Used when the dropdown is left at "— select —"
   const [staticFallbacks, setStaticFallbacks] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,69 +85,49 @@ const UploadData: React.FC<UploadDataProps> = ({
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // ── Initialise mappings when source loads ─────────────────────────────────
+  // ── Init mappings when IR loads ───────────────────────────────────────────
 
-  const initMappings = useCallback(
-    (src: ParsedDataSource) => {
-      const initial = buildInitialBoundData(src, staticPlaceholders, tables);
-      setFieldMapping(initial.fieldMapping);
-      setTableCollectionBindings(initial.tableCollectionBindings);
-      setCollectionMappings(initial.collectionMappings);
-      // Reset fallbacks when a new file is loaded
-      setStaticFallbacks({});
-    },
-    [staticPlaceholders, tables]
-  );
+  const initMappings = useCallback((doc: CanonicalDocument) => {
+    const { fieldMapping, tableCollectionBindings, collectionMappings } =
+      buildInitialMappings(doc, staticPlaceholders, tables);
+    setFieldMapping(fieldMapping);
+    setTableCollectionBindings(tableCollectionBindings);
+    setCollectionMappings(collectionMappings);
+    setStaticFallbacks({});
+  }, [staticPlaceholders, tables]);
 
   // ── File parsing ──────────────────────────────────────────────────────────
 
-  const parseFile = useCallback(
-    async (file: File) => {
-      setError(null);
-      setParsing(true);
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res = await fetch(`${API_BASE}/parse-data`, { method: 'POST', body: formData });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.error || 'Unable to parse file.');
-        }
-        const data = await res.json();
-        const src: ParsedDataSource = {
-          metadata    : data.metadata    || {},
-          collections : data.collections || {},
-          fileName    : data.fileName,
-          fileType    : data.fileType,
-        };
-        setSource(src);
-        initMappings(src);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Parse failed.');
-      } finally {
-        setParsing(false);
-      }
-    },
-    [initMappings]
-  );
+  const handleFile = useCallback(async (file: File) => {
+    setError(null);
+    setParsing(true);
+    try {
+      const doc = await parseFile(file);
+      setIr(doc);
+      initMappings(doc);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Parse failed.');
+    } finally {
+      setParsing(false);
+    }
+  }, [initMappings]);
 
   const onDrop = useCallback(
-    (files: File[]) => { if (files[0]) parseFile(files[0]); },
-    [parseFile]
+    (files: File[]) => { if (files[0]) handleFile(files[0]); },
+    [handleFile],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'text/csv'                                                              : ['.csv'],
-      'application/vnd.ms-excel'                                             : ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'   : ['.xlsx'],
-      'application/json'                                                     : ['.json'],
+      'text/csv':                                                              ['.csv'],
+      'application/vnd.ms-excel':                                             ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':   ['.xlsx'],
+      'application/json':                                                     ['.json'],
     },
-    maxFiles : 1,
-    multiple : false,
-    noClick  : true,
+    maxFiles: 1,
+    multiple: false,
+    noClick:  true,
   });
 
   // ── Collection binding change ─────────────────────────────────────────────
@@ -132,14 +135,14 @@ const UploadData: React.FC<UploadDataProps> = ({
   const handleCollectionChange = (tableId: string, collKey: string) => {
     setTableCollectionBindings(prev => ({ ...prev, [tableId]: collKey }));
 
-    if (source && collKey) {
+    if (ir && collKey) {
       const tableInfo = tables.find(t => t.id === tableId);
-      const col = source.collections[collKey];
+      const col       = ir.collections[collKey];
       if (tableInfo && col) {
-        const autoMapped = autoMapCollectionFields(tableInfo.placeholders, col.headers);
+        const autoMapped = autoMapCollectionFields(tableInfo.placeholders, col.columns);
         setCollectionMappings(prev => ({
           ...prev,
-          [collKey]: { ...(prev[collKey] || {}), ...autoMapped },
+          [collKey]: { ...(prev[collKey] ?? {}), ...autoMapped },
         }));
       }
     }
@@ -148,45 +151,35 @@ const UploadData: React.FC<UploadDataProps> = ({
   // ── Confirm ───────────────────────────────────────────────────────────────
 
   const handleConfirm = () => {
-    if (!source) return;
+    if (!ir) return;
 
-    // Inject fallback values into a copy of metadata so replacePlaceholders
-    // can resolve them without any changes to the mapping engine.
-    // Priority: dropdown selection > fallback text > unresolved (left as placeholder)
-    const enrichedMetadata = { ...source.metadata };
+    // Inject fallback values directly into ir.fields so replacePlaceholders
+    // resolves them without any extra logic: dataKey = fieldMapping[key] || key
+    const enrichedFields = { ...ir.fields };
     for (const ph of staticPlaceholders) {
-      const mappedKey = fieldMapping[ph];
-      if (!mappedKey && staticFallbacks[ph] !== undefined && staticFallbacks[ph] !== '') {
-        // Store the fallback directly under the placeholder key so the engine
-        // finds it via: dataKey = fieldMapping[key] || key → key → metadata[key]
-        enrichedMetadata[ph] = staticFallbacks[ph];
+      if (!fieldMapping[ph] && staticFallbacks[ph]) {
+        enrichedFields[ph] = staticFallbacks[ph];
       }
     }
 
-    const enrichedSource: ParsedDataSource = { ...source, metadata: enrichedMetadata };
-
-    onDataMapped({
-      source                 : enrichedSource,
-      fieldMapping,
-      tableCollectionBindings,
-      collectionMappings,
-    });
+    const enrichedIr: CanonicalDocument = { ...ir, fields: enrichedFields };
+    onConfirm(enrichedIr, fieldMapping, tableCollectionBindings, collectionMappings);
   };
 
-  // Can confirm if: file uploaded AND at least one placeholder is resolved
-  // (either via dropdown or fallback text) OR there are no static placeholders.
-  const canConfirm = !!source && (
+  // ── Derived ───────────────────────────────────────────────────────────────
+
+  const fieldKeys      = ir ? Object.keys(ir.fields)       : [];
+  const collectionKeys = ir ? Object.keys(ir.collections)  : [];
+
+  const canConfirm = !!ir && (
     staticPlaceholders.length === 0 ||
     staticPlaceholders.some(ph =>
-      fieldMapping[ph] ||
-      (staticFallbacks[ph] !== undefined && staticFallbacks[ph] !== '')
-    )
-  ) || (tables.length === 0 && !!source);
+      fieldMapping[ph] || (staticFallbacks[ph] ?? '') !== ''
+    ) ||
+    tables.length === 0
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────
-
-  const metadataKeys  = source ? Object.keys(source.metadata)    : [];
-  const collectionKeys = source ? Object.keys(source.collections) : [];
 
   return (
     <div className="upload-panel">
@@ -196,7 +189,7 @@ const UploadData: React.FC<UploadDataProps> = ({
         <div className="upload-panel-header">
           <div>
             <h2>Upload Data</h2>
-            <p>Upload CSV, Excel, or JSON — map metadata fields and table columns to your template.</p>
+            <p>Upload CSV, Excel, or JSON — map fields and table columns to your template.</p>
           </div>
           <button className="upload-close" type="button" onClick={onClose} aria-label="Close">✕</button>
         </div>
@@ -211,7 +204,11 @@ const UploadData: React.FC<UploadDataProps> = ({
             <div className="upload-icon">📁</div>
             <h3>Drop a file here</h3>
             <p>CSV, Excel (.xlsx / .xls), or JSON</p>
-            <button type="button" className="upload-browse-btn" onClick={() => fileInputRef.current?.click()}>
+            <button
+              type="button"
+              className="upload-browse-btn"
+              onClick={() => fileInputRef.current?.click()}
+            >
               Browse file
             </button>
           </div>
@@ -226,61 +223,67 @@ const UploadData: React.FC<UploadDataProps> = ({
         {error && <div className="upload-error">{error}</div>}
 
         {/* File summary */}
-        {source && (
+        {ir && (
           <div className="upload-summary">
             <div className="upload-summary-row">
-              <div><p className="upload-summary-label">File</p><strong>{source.fileName}</strong></div>
               <div>
-                <p className="upload-summary-label">Metadata fields</p>
-                <strong>{metadataKeys.length}</strong>
+                <p className="upload-summary-label">File</p>
+                <strong>{ir.source?.fileName ?? '—'}</strong>
+              </div>
+              <div>
+                <p className="upload-summary-label">Fields</p>
+                <strong>{fieldKeys.length}</strong>
               </div>
               <div>
                 <p className="upload-summary-label">Collections</p>
-                <strong>{collectionKeys.length === 0 ? 'none' : summariseCollections(source.collections)}</strong>
+                <strong>{summariseCollections(ir.collections)}</strong>
               </div>
             </div>
+            {(ir.source?.warnings?.length ?? 0) > 0 && (
+              <div className="upload-warnings">
+                {ir.source!.warnings!.map((w, i) => (
+                  <p key={i} className="upload-warning">⚠ {w}</p>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* ── Section 1: Static field mapping ───────────────────────────── */}
-        {source && staticPlaceholders.length > 0 && (
+        {ir && staticPlaceholders.length > 0 && (
           <div className="mapping-panel">
             <div className="mapping-panel-header">
               <h3>Static field mapping</h3>
               <p>
-                Map each placeholder to a field from your file, or type a value directly
-                if the field isn't in the file.
+                Map each placeholder to a field from your file, or type a value directly.
               </p>
             </div>
             <div className="mapping-grid">
               {staticPlaceholders.map(ph => {
-                const isMapped   = !!fieldMapping[ph];
-                const fallback   = staticFallbacks[ph] ?? '';
-
+                const isMapped = !!fieldMapping[ph];
+                const fallback = staticFallbacks[ph] ?? '';
                 return (
                   <div key={ph} className="mapping-row-group">
-                    {/* Placeholder label */}
                     <span className="mapping-placeholder-label" title={ph}>{ph}</span>
 
-                    {/* Dropdown — map to metadata field */}
+                    {/* Dropdown — map to ir.fields key */}
                     <select
                       className="mapping-select"
                       value={fieldMapping[ph] ?? ''}
                       onChange={e => {
                         setFieldMapping(prev => ({ ...prev, [ph]: e.target.value }));
-                        // Clear fallback when a mapping is selected
                         if (e.target.value) {
                           setStaticFallbacks(prev => ({ ...prev, [ph]: '' }));
                         }
                       }}
                     >
                       <option value="">— select —</option>
-                      {metadataKeys.map(k => (
+                      {fieldKeys.map(k => (
                         <option key={k} value={k}>{k}</option>
                       ))}
                     </select>
 
-                    {/* Fallback input — shown when no mapping selected */}
+                    {/* Fallback text input — shown when nothing selected */}
                     {!isMapped && (
                       <input
                         type="text"
@@ -293,8 +296,13 @@ const UploadData: React.FC<UploadDataProps> = ({
                       />
                     )}
 
-                    {/* Status indicator */}
-                    <span className={`mapping-status ${isMapped ? 'mapping-status--mapped' : fallback ? 'mapping-status--fallback' : 'mapping-status--empty'}`}>
+                    <span
+                      className={`mapping-status ${
+                        isMapped  ? 'mapping-status--mapped'   :
+                        fallback  ? 'mapping-status--fallback' :
+                                    'mapping-status--empty'
+                      }`}
+                    >
                       {isMapped ? '✓ file' : fallback ? '✓ manual' : '—'}
                     </span>
                   </div>
@@ -305,81 +313,82 @@ const UploadData: React.FC<UploadDataProps> = ({
         )}
 
         {/* ── Section 2: Per-table collection + column mapping ──────────── */}
-        {source && tables.length > 0 && (
-          <>
-            {tables.map(table => {
-              const boundCollKey   = tableCollectionBindings[table.id] || '';
-              const boundCollection = boundCollKey ? source.collections[boundCollKey] : null;
-              const colHeaders      = boundCollection?.headers || [];
-              const colMap          = collectionMappings[boundCollKey] || {};
+        {ir && tables.length > 0 && tables.map(table => {
+          const boundCollKey  = tableCollectionBindings[table.id] ?? '';
+          const boundCol      = boundCollKey ? ir.collections[boundCollKey] : null;
+          const colHeaders    = boundCol?.columns ?? [];
+          const colMap        = collectionMappings[boundCollKey] ?? {};
 
-              return (
-                <div key={table.id} className="mapping-panel">
-                  <div className="mapping-panel-header">
-                    <h3>{table.label} — data source</h3>
-                    <p>Choose which collection provides rows for this table, then map columns.</p>
+          return (
+            <div key={table.id} className="mapping-panel">
+              <div className="mapping-panel-header">
+                <h3>{table.label} — data source</h3>
+                <p>Choose which collection provides rows, then map columns.</p>
+              </div>
+
+              {/* Collection picker */}
+              <div className="mapping-collection-picker">
+                <label className="mapping-row">
+                  <span>Collection</span>
+                  <select
+                    value={boundCollKey}
+                    onChange={e => handleCollectionChange(table.id, e.target.value)}
+                  >
+                    <option value="">— none —</option>
+                    {collectionKeys.map(k => (
+                      <option key={k} value={k}>
+                        {k} ({ir.collections[k].rows.length} rows)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {/* Column mapping */}
+              {boundCol && table.placeholders.length > 0 && (
+                <>
+                  <p className="mapping-subheading">Column mapping</p>
+                  <div className="mapping-grid">
+                    {table.placeholders.map(ph => (
+                      <label key={ph} className="mapping-row">
+                        <span title={ph}>{ph}</span>
+                        <select
+                          value={colMap[ph] ?? ''}
+                          onChange={e =>
+                            setCollectionMappings(prev => ({
+                              ...prev,
+                              [boundCollKey]: {
+                                ...(prev[boundCollKey] ?? {}),
+                                [ph]: e.target.value,
+                              },
+                            }))
+                          }
+                        >
+                          <option value="">— select column —</option>
+                          {colHeaders.map(h => (
+                            <option key={h} value={h}>{h}</option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
                   </div>
+                </>
+              )}
 
-                  {/* Collection picker */}
-                  <div className="mapping-collection-picker">
-                    <label className="mapping-row">
-                      <span>Collection</span>
-                      <select
-                        value={boundCollKey}
-                        onChange={e => handleCollectionChange(table.id, e.target.value)}
-                      >
-                        <option value="">— none —</option>
-                        {collectionKeys.map(k => (
-                          <option key={k} value={k}>
-                            {k} ({source.collections[k].rows.length} rows)
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-
-                  {/* Column mapping */}
-                  {boundCollection && table.placeholders.length > 0 && (
-                    <>
-                      <p className="mapping-subheading">Column mapping</p>
-                      <div className="mapping-grid">
-                        {table.placeholders.map(ph => (
-                          <label key={ph} className="mapping-row">
-                            <span title={ph}>{ph}</span>
-                            <select
-                              value={colMap[ph] ?? ''}
-                              onChange={e =>
-                                setCollectionMappings(prev => ({
-                                  ...prev,
-                                  [boundCollKey]: { ...(prev[boundCollKey] || {}), [ph]: e.target.value },
-                                }))
-                              }
-                            >
-                              <option value="">— select column —</option>
-                              {colHeaders.map(h => (
-                                <option key={h} value={h}>{h}</option>
-                              ))}
-                            </select>
-                          </label>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {boundCollKey && collectionKeys.length > 0 && !boundCollection && (
-                    <p className="upload-error" style={{ marginTop: 8 }}>
-                      Collection "{boundCollKey}" not found in uploaded file.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </>
-        )}
+              {boundCollKey && !boundCol && (
+                <p className="upload-error" style={{ marginTop: 8 }}>
+                  Collection "{boundCollKey}" not found in uploaded file.
+                </p>
+              )}
+            </div>
+          );
+        })}
 
         {/* Actions */}
         <div className="upload-actions">
-          <button type="button" className="upload-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="upload-secondary" onClick={onClose}>
+            Cancel
+          </button>
           <button
             type="button"
             className="upload-confirm"

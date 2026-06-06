@@ -76,11 +76,14 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
   const validatePlaceholder = (placeholder: string): boolean => {
     const match = placeholder.match(/^\{\{([^}]+)\}\}$/);
     if (!match) return false;
-    
+
     const variableName = match[1].trim();
     if (variableName.length === 0) return false;
-    
-    const validVariableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+    // Each dot-separated segment must be a valid identifier.
+    // Allows: {{name}}, {{client.name}}, {{invoice.line.total}}
+    // Rejects: {{.name}}, {{client.}}, {{client..name}}, {{123abc}}
+    const validVariableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/;
     return validVariableRegex.test(variableName);
   };
 
@@ -199,7 +202,7 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
                 }`}
                 title={
                   part.isValid === false
-                    ? 'Invalid placeholder syntax. Use {{variable_name}}'
+                    ? 'Invalid placeholder syntax. Use {{variable_name}} or {{parent.field_name}}'
                     : `Placeholder: ${part.text}`
                 }
               >
@@ -223,4 +226,3 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
 }
 
 export default TextElement;
-

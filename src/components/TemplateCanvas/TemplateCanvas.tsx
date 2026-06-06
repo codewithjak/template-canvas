@@ -1,14 +1,14 @@
 /**
  * TemplateCanvas.tsx
- * Multi-page canvas.
+ * Multi-page canvas — rewritten against CanonicalDocument IR.
  *
- * Changes vs previous version:
- *   - handleAddPageNumber() creates a text element with pageNumber.enabled=true
- *     so it renders the live page number on the canvas (via a preview string)
- *     and exports correctly to PDF.
- *   - The Toolbar receives an onAddPageNumber prop.
- *   - renderElements resolves the page-number preview label for selected
- *     text elements that carry pageNumber.enabled=true.
+ * Data state is now:
+ *   ir                      CanonicalDocument | null
+ *   fieldMapping            FieldMapping
+ *   tableCollectionBindings TableCollectionBindings
+ *   collectionMappings      CollectionMappings
+ *
+ * No BoundData. No ParsedDataSource. No metadata. No buildExportPayload.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -30,8 +30,20 @@ import DateElement       from './DateElement';
 import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel   from './PropertiesPanel';
 
-import type { BoundData }   from '../../types/dataSource';
-import type { CanvasPage, CanvasElement, TemplateMeta, HeaderConfig, FooterConfig, TextElementType }  from '../../types/canvas';
+import type {
+  CanonicalDocument,
+  FieldMapping,
+  TableCollectionBindings,
+  CollectionMappings,
+} from '../../types/dataSource';
+import type {
+  CanvasPage,
+  CanvasElement,
+  TemplateMeta,
+  HeaderConfig,
+  FooterConfig,
+  TextElementType,
+} from '../../types/canvas';
 import {
   createPage,
   createTemplateDocument,
@@ -42,33 +54,34 @@ import {
   getStaticPlaceholders,
   getTableInfos,
   mapTemplateForPreview,
+  validateBindings,
 } from '../../services/mappingEngine';
-import { buildExportPayload, maxBoundRows } from '../../services/dataSourceService';
+import { generateDocument } from '../../services/dataSourceService';
 import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
-import { createDefaultLayoutTable, isLayoutTable, isLegacyCanvasTable } from '../../model/layoutTable';
+import {
+  createDefaultLayoutTable,
+  isLayoutTable,
+  isLegacyCanvasTable,
+} from '../../model/layoutTable';
 
 import './TemplateCanvas.css';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 function adjustColorOpacity(color: string, opacity: number): string {
   if (color.startsWith('#')) {
     const hex = color.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
+    const r   = parseInt(hex.substring(0, 2), 16);
+    const g   = parseInt(hex.substring(2, 4), 16);
+    const b   = parseInt(hex.substring(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   }
+  if (color.startsWith('rgba')) return color.replace(/[\d.]+\s*\)/, `${opacity})`);
   if (color.startsWith('rgb')) {
-    const match = color.match(/\d+/g);
-    if (match && match.length >= 3) {
-      return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${opacity})`;
-    }
-  }
-  if (color.startsWith('rgba')) {
-    return color.replace(/[\d.]+\s*\)/, `${opacity})`);
+    const m = color.match(/\d+/g);
+    if (m && m.length >= 3) return `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${opacity})`;
   }
   return color;
 }
@@ -81,29 +94,33 @@ function findPageOfElement(pages: CanvasPage[], elementId: string): string | nul
 }
 
 function updatePageElements(
-  pages   : CanvasPage[],
-  pageId  : string,
-  updater : (els: CanvasElement[]) => CanvasElement[],
+  pages:   CanvasPage[],
+  pageId:  string,
+  updater: (els: CanvasElement[]) => CanvasElement[],
 ): CanvasPage[] {
   return pages.map(p =>
     p.pageId === pageId ? { ...p, elements: updater(p.elements) } : p
   );
 }
 
-/**
- * Return a human-readable preview label for a page-number text element so
- * the designer can see something meaningful on the canvas instead of a blank.
- */
 function pageNumberPreviewLabel(el: TextElementType): string {
   const pn     = el.pageNumber!;
   const start  = pn.startFrom ?? 1;
-  const format = pn.format ?? 'Page X of Y';
+  const format = pn.format    ?? 'Page X of Y';
   if (format === 'Page X of Y') return `Page ${start} of N`;
   if (format === 'X / Y')       return `${start} / N`;
   return String(start);
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+/** Total preview rows = max rows across all bound collections. */
+function maxCollectionRows(ir: CanonicalDocument | null): number {
+  if (!ir) return 0;
+  return Object.values(ir.collections).reduce((m, c) => Math.max(m, c.rows.length), 0);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────────────────────
 
 function TemplateCanvas() {
 
@@ -112,15 +129,16 @@ function TemplateCanvas() {
   const [pages, setPages] = useState<CanvasPage[]>([
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
-
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
 
-  // ── Selection state ───────────────────────────────────────────────────────
+  // ── Selection ─────────────────────────────────────────────────────────────
 
-  const [selectedElementId,    setSelectedElementId]    = useState<string | null>(null);
-  const [activePageId,         setActivePageId]         = useState<string>('page-1');
-  const [selectedPageBreakId,  setSelectedPageBreakId]  = useState<string | null>(null);
-  const [selectedBoundary,     setSelectedBoundary]     = useState<{ pageId: string; type: 'header' | 'footer' } | null>(null);
+  const [selectedElementId,   setSelectedElementId]   = useState<string | null>(null);
+  const [activePageId,        setActivePageId]         = useState<string>('page-1');
+  const [selectedPageBreakId, setSelectedPageBreakId]  = useState<string | null>(null);
+  const [selectedBoundary,    setSelectedBoundary]     = useState<{
+    pageId: string; type: 'header' | 'footer';
+  } | null>(null);
 
   const [layoutTableCellSelection, setLayoutTableCellSelection] = useState<{
     tableId: string; rowIndex: number; colIndex: number;
@@ -129,13 +147,19 @@ function TemplateCanvas() {
     tableId: string; r0: number; c0: number; r1: number; c1: number;
   } | null>(null);
 
-  // ── Data / export state ───────────────────────────────────────────────────
+  // ── Data / IR state ───────────────────────────────────────────────────────
 
-  const [boundData,       setBoundData]       = useState<BoundData | null>(null);
-  const [previewRowIndex, setPreviewRowIndex] = useState(0);
-  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
-  const [isExporting,     setIsExporting]     = useState(false);
-  const [exportStatus,    setExportStatus]    = useState<string | null>(null);
+  const [ir,                      setIr]                      = useState<CanonicalDocument | null>(null);
+  const [fieldMapping,            setFieldMapping]            = useState<FieldMapping>({});
+  const [tableCollectionBindings, setTableCollectionBindings] = useState<TableCollectionBindings>({});
+  const [collectionMappings,      setCollectionMappings]      = useState<CollectionMappings>({});
+  const [previewRowIndex,         setPreviewRowIndex]         = useState(0);
+  const [uploadPanelOpen,         setUploadPanelOpen]         = useState(false);
+
+  // ── Export state ──────────────────────────────────────────────────────────
+
+  const [isExporting,  setIsExporting]  = useState(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
 
   // ── Save modal ────────────────────────────────────────────────────────────
 
@@ -143,27 +167,41 @@ function TemplateCanvas() {
 
   // ── Sensors ───────────────────────────────────────────────────────────────
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   // ── Derived ───────────────────────────────────────────────────────────────
 
-  const allElements = useMemo(
-    () => pages.flatMap(p => p.elements),
-    [pages],
+  const allElements = useMemo(() => pages.flatMap(p => p.elements), [pages]);
+
+  const staticPlaceholders = useMemo(
+    () => getStaticPlaceholders(allElements as unknown[]),
+    [allElements],
+  );
+  const tableInfos = useMemo(
+    () => getTableInfos(allElements as unknown[]),
+    [allElements],
   );
 
-  const staticPlaceholders = useMemo(() => getStaticPlaceholders(allElements as any), [allElements]);
-  const tableInfos          = useMemo(() => getTableInfos(allElements as any),         [allElements]);
+  const totalRows = useMemo(() => maxCollectionRows(ir), [ir]);
 
   // ── Preview pages ─────────────────────────────────────────────────────────
 
   const previewPages = useMemo((): CanvasPage[] => {
-    if (!boundData) return pages;
+    if (!ir) return pages;
     return pages.map(p => ({
       ...p,
-      elements: mapTemplateForPreview(p.elements as any, boundData, previewRowIndex) as CanvasElement[],
+      elements: mapTemplateForPreview(
+        p.elements as unknown[],
+        ir,
+        fieldMapping,
+        tableCollectionBindings,
+        collectionMappings,
+        previewRowIndex,
+      ) as CanvasElement[],
     }));
-  }, [pages, boundData, previewRowIndex]);
+  }, [pages, ir, fieldMapping, tableCollectionBindings, collectionMappings, previewRowIndex]);
 
   // ── Add element to active page ────────────────────────────────────────────
 
@@ -171,7 +209,7 @@ function TemplateCanvas() {
     setPages(prev => updatePageElements(prev, activePageId, els => [...els, el]));
   }, [activePageId]);
 
-  // ── Add / delete pages ────────────────────────────────────────────────────
+  // ── Page management ───────────────────────────────────────────────────────
 
   const handleAddPage = () => {
     const newPage = createPage({ label: `Page ${pages.length + 1}` });
@@ -180,61 +218,15 @@ function TemplateCanvas() {
     setSelectedPageBreakId(newPage.pageId);
   };
 
-  const handleAddPageNumber = useCallback((atY?: number, targetPageId?: string) => {
-    const pageId     = targetPageId ?? activePageId;
-    const targetPage = pages.find(p => p.pageId === pageId);
-    const footer     = targetPage?.footer;
-  
-    const footerEnabled = footer?.enabled ?? false;
-    const boundaryY     = footer?.boundaryY ?? 1043;
-  
-    const elementY = atY != null
-      ? atY
-      : footerEnabled ? boundaryY + 16 : 1060;
-  
-    const fmt       = (footer as any)?.pageNumberFormat    ?? 'Page X of Y';
-    const alignment = (footer as any)?.pageNumberAlignment ?? 'right';
-    const startFrom = (footer as any)?.pageNumberStartFrom ?? 1;
-  
-    const previewContent =
-      fmt === 'X / Y' ? `${startFrom} / N` :
-      fmt === 'X'     ? String(startFrom)   :
-      `Page ${startFrom} of N`;
-  
-    const el: TextElementType = {
-      id        : `pagenum-${Date.now()}`,
-      type      : 'text',
-      content   : previewContent,
-      position  : { x: 600, y: elementY },
-      style     : {
-        fontSize  : 10,
-        fontWeight: 'normal',
-        color     : '#64748b',
-        fontFamily: 'Arial, sans-serif',
-      },
-      pageNumber: {
-        enabled  : true,
-        format   : fmt,
-        alignment,
-        startFrom,
-      },
-    };
-  
-    setPages(prev => updatePageElements(prev, pageId, els => [...els, el]));
-    setActivePageId(pageId);
-    setTimeout(() => setSelectedElementId(el.id), 0);
-  }, [pages, activePageId]);
-
-  // ── Add / delete pages ────────────────────────────────────────────────────
-
   const handleDeletePage = (pageId: string) => {
     if (pages.length <= 1) return;
     setPages(prev => prev.filter(p => p.pageId !== pageId));
     setSelectedPageBreakId(null);
     setActivePageId(prev => prev === pageId ? pages[0].pageId : prev);
     if (selectedElementId) {
-      const ownerPage = findPageOfElement(pages, selectedElementId);
-      if (ownerPage === pageId) setSelectedElementId(null);
+      if (findPageOfElement(pages, selectedElementId) === pageId) {
+        setSelectedElementId(null);
+      }
     }
   };
 
@@ -259,68 +251,54 @@ function TemplateCanvas() {
     setSelectedBoundary(null);
   };
 
+  // ── Page number element ───────────────────────────────────────────────────
+
+  const handleAddPageNumber = useCallback((atY?: number, targetPageId?: string) => {
+    const pageId     = targetPageId ?? activePageId;
+    const targetPage = pages.find(p => p.pageId === pageId);
+    const footer     = targetPage?.footer;
+
+    const footerEnabled = footer?.enabled ?? false;
+    const boundaryY     = footer?.boundaryY ?? 1043;
+    const elementY      = atY != null ? atY : footerEnabled ? boundaryY + 16 : 1060;
+
+    const fmt       = (footer as any)?.pageNumberFormat    ?? 'Page X of Y';
+    const alignment = (footer as any)?.pageNumberAlignment ?? 'right';
+    const startFrom = (footer as any)?.pageNumberStartFrom ?? 1;
+
+    const previewContent =
+      fmt === 'X / Y' ? `${startFrom} / N` :
+      fmt === 'X'     ? String(startFrom)   :
+      `Page ${startFrom} of N`;
+
+    const el: TextElementType = {
+      id:        `pagenum-${Date.now()}`,
+      type:      'text',
+      content:   previewContent,
+      position:  { x: 600, y: elementY },
+      style:     { fontSize: 10, fontWeight: 'normal', color: '#64748b', fontFamily: 'Arial, sans-serif' },
+      pageNumber: { enabled: true, format: fmt, alignment, startFrom },
+    };
+
+    setPages(prev => updatePageElements(prev, pageId, els => [...els, el]));
+    setActivePageId(pageId);
+    setTimeout(() => setSelectedElementId(el.id), 0);
+  }, [pages, activePageId]);
+
   // ── Element add handlers ──────────────────────────────────────────────────
 
-  const handleAddText = () => addEl({
-    id: `text-${Date.now()}`, type: 'text', content: 'New Text',
-    position: { x: 50, y: 50 },
-    style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
-  });
-
-  const handleAddParagraph = () => addEl({
-    id: `paragraph-${Date.now()}`, type: 'paragraph', content: 'Add your text here…',
-    position: { x: 50, y: 50 },
-    style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 },
-  });
-
-  const handleAddTable = () => addEl(createDefaultLayoutTable('table'));
-
-  const handleAddImage = () => addEl({
-    id: `image-${Date.now()}`, type: 'image', src: '{{image_url}}',
-    position: { x: 50, y: 50 },
-    style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 },
-  });
-
-  const handleAddLine = () => addEl({
-    id: `line-${Date.now()}`, type: 'line', position: { x: 50, y: 50 },
-    style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 },
-  });
-
-  const handleAddBox = () => addEl({
-    id: `box-${Date.now()}`, type: 'box', shape: 'box', position: { x: 50, y: 50 },
-    style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 },
-  });
-
-  const handleAddRectangle = () => addEl({
-    id: `rectangle-${Date.now()}`, type: 'box', shape: 'rectangle', position: { x: 50, y: 50 },
-    style: { width: 220, height: 140, borderWidth: 1, borderColor: '#007bff', borderStyle: 'solid' as const, backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0 },
-  });
-
-  const handleAddTriangle = () => addEl({
-    id: `triangle-${Date.now()}`, type: 'box', shape: 'triangle', position: { x: 50, y: 50 },
-    style: { width: 140, height: 120, borderWidth: 0, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: '#ffb200', opacity: 100, borderRadius: 0 },
-  });
-
-  const handleAddEllipse = () => addEl({
-    id: `ellipse-${Date.now()}`, type: 'box', shape: 'ellipse', position: { x: 50, y: 50 },
-    style: { width: 200, height: 120, borderWidth: 1, borderColor: '#2a9d8f', borderStyle: 'solid' as const, backgroundColor: '#d8f3ef', opacity: 100, borderRadius: 9999 },
-  });
-
-  const handleAddRadio = () => addEl({
-    id: `radio-${Date.now()}`, type: 'radio', options: 2, selected: '', orientation: 'vertical',
-    position: { x: 50, y: 50, relativeOffset: 8 },
-  });
-
-  const handleAddCheckbox = () => addEl({
-    id: `checkbox-${Date.now()}`, type: 'checkbox', count: 1, checkedValues: [], orientation: 'vertical',
-    position: { x: 50, y: 50, relativeOffset: 8 },
-  });
-
-  const handleAddDate = () => addEl({
-    id: `date-${Date.now()}`, type: 'date', value: '', time: '', includeTime: false, format: 'MM/DD/YYYY',
-    position: { x: 50, y: 50 },
-    style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
-  });
+  const handleAddText      = () => addEl({ id: `text-${Date.now()}`,      type: 'text',      content: 'New Text',          position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
+  const handleAddParagraph = () => addEl({ id: `paragraph-${Date.now()}`, type: 'paragraph', content: 'Add your text here…', position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 } });
+  const handleAddTable     = () => addEl(createDefaultLayoutTable('table'));
+  const handleAddImage     = () => addEl({ id: `image-${Date.now()}`,     type: 'image',     src: '{{image_url}}',          position: { x: 50, y: 50 }, style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 } });
+  const handleAddLine      = () => addEl({ id: `line-${Date.now()}`,      type: 'line',      position: { x: 50, y: 50 },   style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 } });
+  const handleAddBox       = () => addEl({ id: `box-${Date.now()}`,       type: 'box',       shape: 'box',  position: { x: 50, y: 50 }, style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 } });
+  const handleAddRectangle = () => addEl({ id: `rectangle-${Date.now()}`, type: 'box',       shape: 'rectangle', position: { x: 50, y: 50 }, style: { width: 220, height: 140, borderWidth: 1, borderColor: '#007bff', borderStyle: 'solid' as const, backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0 } });
+  const handleAddTriangle  = () => addEl({ id: `triangle-${Date.now()}`,  type: 'box',       shape: 'triangle',  position: { x: 50, y: 50 }, style: { width: 140, height: 120, borderWidth: 0, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: '#ffb200', opacity: 100, borderRadius: 0 } });
+  const handleAddEllipse   = () => addEl({ id: `ellipse-${Date.now()}`,   type: 'box',       shape: 'ellipse',   position: { x: 50, y: 50 }, style: { width: 200, height: 120, borderWidth: 1, borderColor: '#2a9d8f', borderStyle: 'solid' as const, backgroundColor: '#d8f3ef', opacity: 100, borderRadius: 9999 } });
+  const handleAddRadio     = () => addEl({ id: `radio-${Date.now()}`,     type: 'radio',     options: 2, selected: '', orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
+  const handleAddCheckbox  = () => addEl({ id: `checkbox-${Date.now()}`,  type: 'checkbox',  count: 1, checkedValues: [], orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
+  const handleAddDate      = () => addEl({ id: `date-${Date.now()}`,      type: 'date',      value: '', time: '', includeTime: false, format: 'MM/DD/YYYY', position: { x: 50, y: 50 }, style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
 
   // ── Element update ────────────────────────────────────────────────────────
 
@@ -333,18 +311,17 @@ function TemplateCanvas() {
         const updated: any = { ...element };
         if (updates.position)  updated.position  = { ...updated.position, ...updates.position };
         if (updates.style && 'style' in updated) updated.style = { ...updated.style, ...updates.style };
-        if ('content'      in updates && 'content'     in updated) updated.content     = updates.content;
-        if ('src'          in updates && 'src'         in updated) updated.src         = updates.src;
-        if ('orientation'  in updates) updated.orientation  = updates.orientation;
-        if ('count'        in updates) updated.count        = updates.count;
-        if ('options'      in updates) updated.options      = updates.options;
-        if ('shape'        in updates) updated.shape        = updates.shape;
-        if ('value'        in updates && 'value'  in updated) updated.value  = updates.value;
-        if ('time'         in updates && 'time'   in updated) updated.time   = updates.time;
-        if ('includeTime'  in updates) updated.includeTime  = updates.includeTime;
-        if ('format'       in updates) updated.format       = updates.format;
-        // Page number config update
-        if ('pageNumber'   in updates) updated.pageNumber   = updates.pageNumber;
+        if ('content'     in updates && 'content'    in updated) updated.content     = updates.content;
+        if ('src'         in updates && 'src'        in updated) updated.src         = updates.src;
+        if ('orientation' in updates) updated.orientation  = updates.orientation;
+        if ('count'       in updates) updated.count        = updates.count;
+        if ('options'     in updates) updated.options      = updates.options;
+        if ('shape'       in updates) updated.shape        = updates.shape;
+        if ('value'       in updates && 'value'  in updated) updated.value  = updates.value;
+        if ('time'        in updates && 'time'   in updated) updated.time   = updates.time;
+        if ('includeTime' in updates) updated.includeTime  = updates.includeTime;
+        if ('format'      in updates) updated.format       = updates.format;
+        if ('pageNumber'  in updates) updated.pageNumber   = updates.pageNumber;
         if (isLayoutTable(updated)) {
           if (updates.columns   !== undefined) updated.columns   = updates.columns;
           if (updates.headerRow !== undefined) updated.headerRow = updates.headerRow;
@@ -380,7 +357,7 @@ function TemplateCanvas() {
     const pageId = findPageOfElement(pages, id);
     if (!pageId) return;
     setPages(prev => updatePageElements(prev, pageId, els => els.filter(e => e.id !== id)));
-    if (selectedElementId === id) setSelectedElementId(null);
+    if (selectedElementId === id)               setSelectedElementId(null);
     if (layoutTableCellSelection?.tableId === id) setLayoutTableCellSelection(null);
     if (layoutTableRange?.tableId         === id) setLayoutTableRange(null);
   };
@@ -408,7 +385,7 @@ function TemplateCanvas() {
   // ── Save ──────────────────────────────────────────────────────────────────
 
   const doSave = (name: string) => {
-    const doc = createTemplateDocument(pages, name, templateMeta);
+    const doc  = createTemplateDocument(pages, name, templateMeta);
     setTemplateMeta(doc.meta);
     const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
@@ -452,7 +429,10 @@ function TemplateCanvas() {
         setTemplateMeta(doc.meta || {});
         setSelectedElementId(null);
         setSelectedPageBreakId(null);
-        setBoundData(null);
+        setIr(null);
+        setFieldMapping({});
+        setTableCollectionBindings({});
+        setCollectionMappings({});
         setPreviewRowIndex(0);
         setActivePageId(cleanPages[0]?.pageId || 'page-1');
       } catch {
@@ -463,14 +443,29 @@ function TemplateCanvas() {
     e.target.value = '';
   };
 
-  // ── Data upload ───────────────────────────────────────────────────────────
+  // ── Data upload confirm ───────────────────────────────────────────────────
 
-  const handleUploadMapped  = (bd: BoundData) => { setBoundData(bd); setPreviewRowIndex(0); setUploadPanelOpen(false); };
-  const handleClearBoundData = () => { setBoundData(null); setPreviewRowIndex(0); };
+  const handleDataConfirm = (
+    doc:      CanonicalDocument,
+    fm:       FieldMapping,
+    bindings: TableCollectionBindings,
+    colMaps:  CollectionMappings,
+  ) => {
+    setIr(doc);
+    setFieldMapping(fm);
+    setTableCollectionBindings(bindings);
+    setCollectionMappings(colMaps);
+    setPreviewRowIndex(0);
+    setUploadPanelOpen(false);
+  };
 
-  const totalRows     = boundData ? maxBoundRows(boundData) : 0;
-  const handlePrevRow = () => setPreviewRowIndex(i => Math.max(0, i - 1));
-  const handleNextRow = () => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1));
+  const handleClearData = () => {
+    setIr(null);
+    setFieldMapping({});
+    setTableCollectionBindings({});
+    setCollectionMappings({});
+    setPreviewRowIndex(0);
+  };
 
   // ── Export ────────────────────────────────────────────────────────────────
 
@@ -484,46 +479,43 @@ function TemplateCanvas() {
 
   const handleExportDocument = async () => {
     if (allElements.length === 0) { alert('No template to export.'); return; }
+
+    // Warn about missing bindings but don't block
+    if (ir) {
+      const validation = validateBindings(allElements as unknown[], ir, fieldMapping);
+      if (!validation.valid) {
+        console.warn('[export] missing bindings:', validation);
+      }
+    }
+
     try {
       setIsExporting(true);
-      const rowCount = boundData ? maxBoundRows(boundData) : 0;
       setExportStatus(
-        rowCount > 0
-          ? `Generating document with ${rowCount} record${rowCount !== 1 ? 's' : ''}…`
+        totalRows > 0
+          ? `Generating document with ${totalRows} record${totalRows !== 1 ? 's' : ''}…`
           : 'Generating document…'
       );
-      const payload = {
+
+      // Use an empty IR if no data has been uploaded — the renderer handles it
+      const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
+      const outputFileName = `document-${Date.now()}`;
+
+      const blob = await generateDocument({
         pages: pages.map(p => ({
-          pageId          : p.pageId,
-          label           : p.label,
-          repeatHeader    : p.repeatHeader,
-          headerElementIds: p.headerElementIds,
-          header          : p.header,
-          footer          : p.footer,
-          ...buildExportPayload(
-            p.elements,
-            boundData || {
-              source               : { metadata: {}, collections: {} },
-              fieldMapping         : {},
-              tableCollectionBindings: {},
-              collectionMappings   : {},
-            },
-            `document-${Date.now()}`,
-          ),
+          pageId:                   p.pageId,
+          label:                    p.label,
+          templateElements:         p.elements,
+          header:                   p.header,
+          footer:                   p.footer,
+          fieldMapping,
+          tableCollectionBindings,
+          collectionMappings,
         })),
-        outputFileName: `document-${Date.now()}`,
-      };
-      const res = await fetch(`${API_BASE}/generate-document`, {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body   : JSON.stringify(payload),
+        ir:             exportIr,
+        outputFileName,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || 'Export failed.');
-      }
-      const blob = await res.blob();
-      downloadBlob(blob, `document-${Date.now()}.pdf`);
+
+      downloadBlob(blob, `${outputFileName}.pdf`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed.');
     } finally {
@@ -548,7 +540,7 @@ function TemplateCanvas() {
     ));
   };
 
-  // ── Render helpers ────────────────────────────────────────────────────────
+  // ── Selected element (from original pages, not preview) ───────────────────
 
   const selectedElement = useMemo(() => {
     if (!selectedElementId) return null;
@@ -559,34 +551,40 @@ function TemplateCanvas() {
     return null;
   }, [pages, selectedElementId]);
 
+  // ── Render elements ───────────────────────────────────────────────────────
+
   const renderElements = (pageElements: CanvasElement[], pageId: string) =>
     pageElements.map(element => {
       const isSelected = element.id === selectedElementId;
       const select     = () => handleSelectElement(element.id, pageId);
 
       if (element.type === 'text') {
-        // For page-number elements, show a live preview string on the canvas
         const displayContent = element.pageNumber?.enabled
           ? pageNumberPreviewLabel(element)
           : element.content;
         return (
-          <TextElement key={element.id} id={element.id} content={displayContent}
+          <TextElement
+            key={element.id} id={element.id} content={displayContent}
             position={element.position} style={element.style}
             onUpdate={handleUpdateText} isSelected={isSelected} onSelect={select}
-            onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+            onResize={(id, fontSize) =>
+              handleUpdateElement(id, { style: { ...element.style, fontSize } })
+            }
           />
         );
       }
 
       if (element.type === 'paragraph') return (
-        <ParagraphElement key={element.id} id={element.id} content={element.content}
+        <ParagraphElement
+          key={element.id} id={element.id} content={element.content}
           position={element.position} style={element.style}
           onUpdate={handleUpdateParagraph} isSelected={isSelected} onSelect={select}
         />
       );
 
       if (element.type === 'radio') return (
-        <RadioElement key={element.id} id={element.id} options={element.options}
+        <RadioElement
+          key={element.id} id={element.id} options={element.options}
           selected={element.selected} orientation={element.orientation as any}
           position={element.position}
           onSelect={(id, opt) => handleUpdateRadio(id, { selected: opt })}
@@ -595,7 +593,8 @@ function TemplateCanvas() {
       );
 
       if (element.type === 'checkbox') return (
-        <CheckboxElement key={element.id} id={element.id} count={element.count}
+        <CheckboxElement
+          key={element.id} id={element.id} count={element.count}
           checkedValues={element.checkedValues} orientation={element.orientation as any}
           position={element.position}
           onUpdate={handleUpdateCheckbox} onElementSelect={select}
@@ -605,7 +604,8 @@ function TemplateCanvas() {
       if (element.type === 'table' && isLayoutTable(element)) {
         const tableEl = element as LayoutTableModel;
         return (
-          <LayoutTableElement key={tableEl.id} element={tableEl}
+          <LayoutTableElement
+            key={tableEl.id} element={tableEl}
             isSelected={tableEl.id === selectedElementId}
             onTableChromeSelect={() => {
               handleSelectElement(tableEl.id, pageId);
@@ -613,12 +613,16 @@ function TemplateCanvas() {
               setLayoutTableRange(prev => prev?.tableId === tableEl.id ? null : prev);
             }}
             onUpdate={handleUpdateElement}
-            activeCell={layoutTableCellSelection?.tableId === tableEl.id
-              ? { rowIndex: layoutTableCellSelection.rowIndex, colIndex: layoutTableCellSelection.colIndex }
-              : null}
-            selectionRange={layoutTableRange?.tableId === tableEl.id
-              ? { r0: layoutTableRange.r0, c0: layoutTableRange.c0, r1: layoutTableRange.r1, c1: layoutTableRange.c1 }
-              : null}
+            activeCell={
+              layoutTableCellSelection?.tableId === tableEl.id
+                ? { rowIndex: layoutTableCellSelection.rowIndex, colIndex: layoutTableCellSelection.colIndex }
+                : null
+            }
+            selectionRange={
+              layoutTableRange?.tableId === tableEl.id
+                ? { r0: layoutTableRange.r0, c0: layoutTableRange.c0, r1: layoutTableRange.r1, c1: layoutTableRange.c1 }
+                : null
+            }
             onSelectionRangeChange={(tableId, range) => {
               if (range) setLayoutTableRange({ tableId, ...range });
               else setLayoutTableRange(prev => prev?.tableId === tableId ? null : prev);
@@ -632,7 +636,8 @@ function TemplateCanvas() {
       }
 
       if (element.type === 'image') return (
-        <ImageElement key={element.id} id={element.id} src={element.src}
+        <ImageElement
+          key={element.id} id={element.id} src={element.src}
           position={element.position} style={element.style}
           onUpdate={handleUpdateImage}
           onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
@@ -641,7 +646,8 @@ function TemplateCanvas() {
       );
 
       if (element.type === 'line') return (
-        <LineElement key={element.id} id={element.id} position={element.position} style={element.style}
+        <LineElement
+          key={element.id} id={element.id} position={element.position} style={element.style}
           onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
           onUpdatePosition={(id, p) => handleUpdateElement(id, { position: p })}
           isSelected={isSelected} onSelect={select}
@@ -649,8 +655,9 @@ function TemplateCanvas() {
       );
 
       if (element.type === 'box') return (
-        <BoxElement key={element.id} id={element.id} position={element.position}
-          shape={element.shape as any} style={element.style}
+        <BoxElement
+          key={element.id} id={element.id} position={element.position}
+          shape={(element as any).shape} style={element.style}
           onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
           onUpdatePosition={(id, p) => handleUpdateElement(id, { position: p })}
           isSelected={isSelected} onSelect={select}
@@ -658,7 +665,8 @@ function TemplateCanvas() {
       );
 
       if (element.type === 'date') return (
-        <DateElement key={element.id} id={element.id} value={element.value} time={element.time}
+        <DateElement
+          key={element.id} id={element.id} value={element.value} time={element.time}
           includeTime={element.includeTime} format={element.format as any}
           position={element.position} style={element.style}
           onUpdate={handleUpdateElement} onElementSelect={select}
@@ -674,7 +682,7 @@ function TemplateCanvas() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="template-canvas-container">
 
-        {/* ── Toolbar ── */}
+        {/* Toolbar */}
         <Toolbar
           onAddParagraph={handleAddParagraph}
           onAddRadio={handleAddRadio}
@@ -698,20 +706,20 @@ function TemplateCanvas() {
           hasElements={allElements.length > 0}
         />
 
-        {/* ── Upload panel ── */}
+        {/* Upload panel */}
         {uploadPanelOpen && (
           <div className="upload-panel-backdrop">
             <UploadData
               staticPlaceholders={staticPlaceholders}
               tables={tableInfos}
               onClose={() => setUploadPanelOpen(false)}
-              onDataMapped={handleUploadMapped}
+              onConfirm={handleDataConfirm}
             />
           </div>
         )}
 
-        {/* ── Data banner ── */}
-        {boundData && (
+        {/* Data banner */}
+        {ir && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
               <span>{totalRows} record{totalRows !== 1 ? 's' : ''} bound</span>
@@ -724,24 +732,38 @@ function TemplateCanvas() {
             <div className="batch-export-actions">
               {totalRows > 1 && (
                 <div className="preview-nav">
-                  <button type="button" className="preview-nav-btn" onClick={handlePrevRow} disabled={previewRowIndex === 0}>‹</button>
-                  <span className="preview-nav-count">{previewRowIndex + 1} / {totalRows}</span>
-                  <button type="button" className="preview-nav-btn" onClick={handleNextRow} disabled={previewRowIndex === totalRows - 1}>›</button>
+                  <button
+                    type="button" className="preview-nav-btn"
+                    onClick={() => setPreviewRowIndex(i => Math.max(0, i - 1))}
+                    disabled={previewRowIndex === 0}
+                  >‹</button>
+                  <span className="preview-nav-count">
+                    {previewRowIndex + 1} / {totalRows}
+                  </span>
+                  <button
+                    type="button" className="preview-nav-btn"
+                    onClick={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
+                    disabled={previewRowIndex === totalRows - 1}
+                  >›</button>
                 </div>
               )}
-              <button type="button" className="clear-button" onClick={handleClearBoundData}>Clear Data</button>
+              <button type="button" className="clear-button" onClick={handleClearData}>
+                Clear Data
+              </button>
             </div>
           </div>
         )}
 
-        {/* ── Export overlay ── */}
+        {/* Export overlay */}
         {isExporting && (
           <div className="export-overlay">
-            <div className="export-overlay-card"><p>{exportStatus || 'Generating…'}</p></div>
+            <div className="export-overlay-card">
+              <p>{exportStatus || 'Generating…'}</p>
+            </div>
           </div>
         )}
 
-        {/* ── Save modal ── */}
+        {/* Save modal */}
         {showSaveModal && (
           <SaveTemplateModal
             initialName={templateMeta.name || ''}
@@ -750,7 +772,7 @@ function TemplateCanvas() {
           />
         )}
 
-        {/* ── Canvas pages ── */}
+        {/* Canvas pages */}
         <div className="canvas-pages-wrapper">
           {previewPages.map((page, pageIdx) => (
             <div key={page.pageId} className="canvas-page-block">
@@ -770,7 +792,7 @@ function TemplateCanvas() {
               >
                 {renderElements(page.elements, page.pageId)}
 
-                {/* ── Header boundary line ── */}
+                {/* Header boundary */}
                 <BoundaryLine
                   type="header"
                   config={page.header}
@@ -778,11 +800,11 @@ function TemplateCanvas() {
                   canvasH={1123}
                   onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'header' }); setActivePageId(page.pageId); }}
                   onDeselect={() => setSelectedBoundary(null)}
-                  onChange={h => handleUpdatePageHeader(page.pageId, h as any)}
+                  onChange={h => handleUpdatePageHeader(page.pageId, h as HeaderConfig)}
                   onDelete={() => handleDeleteBoundary(page.pageId, 'header')}
                 />
 
-                {/* ── Footer boundary line ── */}
+                {/* Footer boundary */}
                 <BoundaryLine
                   type="footer"
                   config={page.footer}
@@ -790,36 +812,38 @@ function TemplateCanvas() {
                   canvasH={1123}
                   onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'footer' }); setActivePageId(page.pageId); }}
                   onDeselect={() => setSelectedBoundary(null)}
-                  onChange={f => handleUpdatePageFooter(page.pageId, f as any)}
+                  onChange={f => handleUpdatePageFooter(page.pageId, f as FooterConfig)}
                   onDelete={() => handleDeleteBoundary(page.pageId, 'footer')}
-                  onAddPageNumber={(atY) => handleAddPageNumber(atY, page.pageId)}
+                  onAddPageNumber={atY => handleAddPageNumber(atY, page.pageId)}
                 />
 
-                {/* ── Zone shading ── */}
+                {/* Header zone shading */}
                 {page.header.enabled && (
                   <div
                     className="canvas-zone canvas-zone--header"
                     style={{
-                      height         : page.header.boundaryY,
+                      height:          page.header.boundaryY,
                       backgroundColor: page.header.style.backgroundColor !== 'transparent'
                         ? adjustColorOpacity(page.header.style.backgroundColor, page.header.style.opacity ?? 1)
                         : 'rgba(99,102,241,0.04)',
-                      borderBottom   : page.header.style.borderWidth > 0
+                      borderBottom:    page.header.style.borderWidth > 0
                         ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
                         : undefined,
                     }}
                   />
                 )}
+
+                {/* Footer zone shading */}
                 {page.footer.enabled && (
                   <div
                     className="canvas-zone canvas-zone--footer"
                     style={{
-                      top            : page.footer.boundaryY,
-                      height         : 1123 - page.footer.boundaryY,
+                      top:             page.footer.boundaryY,
+                      height:          1123 - page.footer.boundaryY,
                       backgroundColor: page.footer.style.backgroundColor !== 'transparent'
                         ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
                         : 'rgba(99,102,241,0.04)',
-                      borderTop      : page.footer.style.borderWidth > 0
+                      borderTop:       page.footer.style.borderWidth > 0
                         ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`
                         : undefined,
                     }}
@@ -852,7 +876,7 @@ function TemplateCanvas() {
           ))}
         </div>
 
-        {/* ── Properties panel ── */}
+        {/* Properties panel */}
         <PropertiesPanel
           selectedElement={selectedElement as any}
           onUpdate={handleUpdateElement}

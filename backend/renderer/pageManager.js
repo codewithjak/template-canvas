@@ -26,22 +26,23 @@ const MB    = 20;   // margin bottom (pt)
 class PageManager {
   /**
    * @param {import('pdf-lib').PDFDocument} pdfDoc
+   * @param {object} [opts]
    */
-  constructor(pdfDoc) {
+  constructor(pdfDoc, opts = {}) {
     this.doc         = pdfDoc;
-    this.pageWidth   = A4_W;
-    this.pageHeight  = A4_H;
-    this.marginTop   = MT;
-    this.marginBot   = MB;
-    this.contentH    = A4_H - MT - MB;   // 801.89 pt usable per page
+    this.pageWidth   = opts.width  || A4_W;
+    this.pageHeight  = opts.height || A4_H;
+    this.marginTop   = opts.marginTop ?? MT;
+    this.marginBot   = opts.marginBottom ?? MB;
+    this.contentH    = this.pageHeight - this.marginTop - this.marginBot;
 
     // Add the first page
-    this.page        = pdfDoc.addPage([A4_W, A4_H]);
+    this.page        = pdfDoc.addPage([this.pageWidth, this.pageHeight]);
     this.pageIndex   = 0;
 
     // Y cursor starts at top of content area.
-    // pdf-lib uses bottom-left origin, so top = A4_H - marginTop.
-    this.y           = A4_H - MT;
+    // pdf-lib uses bottom-left origin, so top = pageHeight - marginTop.
+    this.y           = this.pageHeight - this.marginTop;
   }
 
   /**
@@ -56,9 +57,9 @@ class PageManager {
    * Returns the new page object.
    */
   newPage() {
-    this.page      = this.doc.addPage([A4_W, A4_H]);
+    this.page      = this.doc.addPage([this.pageWidth, this.pageHeight]);
     this.pageIndex += 1;
-    this.y         = A4_H - this.marginTop;
+    this.y         = this.pageHeight - this.marginTop;
     return this.page;
   }
 
@@ -73,7 +74,7 @@ class PageManager {
    * Current page's top Y in pt (for drawing headers on continuation pages).
    */
   get topY() {
-    return A4_H - this.marginTop;
+    return this.pageHeight - this.marginTop;
   }
 }
 

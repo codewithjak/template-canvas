@@ -145,6 +145,23 @@ const Icons = {
       <path d="M2 14 5 9l3 5H2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
     </svg>
   ),
+  Barcode: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="2" width="2" height="12" fill="currentColor"/>
+      <rect x="4" y="2" width="1" height="12" fill="currentColor"/>
+      <rect x="6" y="2" width="2" height="12" fill="currentColor"/>
+      <rect x="9" y="2" width="1" height="12" fill="currentColor"/>
+      <rect x="11" y="2" width="1.5" height="12" fill="currentColor"/>
+      <rect x="13" y="2" width="2" height="12" fill="currentColor"/>
+    </svg>
+  ),
+  PageSize: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M13 4v9.5a1.5 1.5 0 0 1-1.5 1.5H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M5 5h3M5 7.5h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".5"/>
+    </svg>
+  ),
 };
 
 /* ── Tooltip wrapper ───────────────────────────────────────── */
@@ -267,6 +284,71 @@ function ShapesMenu({ onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddE
   );
 }
 
+/* ── Page Size Menu ────────────────────────────────────────── */
+interface PageSizeMenuProps {
+  currentPageSize: string;
+  onSelect: (preset: string) => void;
+}
+
+function PageSizeMenu({ currentPageSize, onSelect }: PageSizeMenuProps) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const presets = [
+    { key: 'a4',     label: 'A4 (8.27 × 11.69")' },
+    { key: 'letter', label: 'US Letter (8.5 × 11")' },
+    { key: '4x6',    label: '4×6 Label' },
+    { key: '4x4',    label: '4×4 Label' },
+    { key: '3x5',    label: '3×5 Label' },
+  ];
+
+  return (
+    <div className="tb-shapes-wrap" ref={ref}>
+      <Tooltip label="Page size">
+        <button
+          className={`tb-btn tb-btn--default ${open ? 'tb-btn--active' : ''}`}
+          onClick={() => setOpen(v => !v)}
+          aria-label="Page size"
+          aria-expanded={open}
+          aria-haspopup="true"
+        >
+          <Icons.PageSize />
+          <svg className="tb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <path d="M2.5 3.5 5 6l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </Tooltip>
+
+      {open && (
+        <div className="tb-shapes-menu" role="menu">
+          <div className="tb-shapes-menu__label">Page Size</div>
+          {presets.map(({ key, label }) => (
+            <button
+              key={key}
+              className={`tb-shapes-item ${key === currentPageSize ? 'tb-shapes-item--active' : ''}`}
+              role="menuitem"
+              onClick={() => { onSelect(key); setOpen(false); }}
+            >
+              <span className="tb-shapes-item__icon">
+                {key === currentPageSize ? '✓' : ''}
+              </span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Toolbar ───────────────────────────────────────────────── */
 export interface ToolbarProps {
   onAddParagraph ?: () => void;
@@ -276,6 +358,7 @@ export interface ToolbarProps {
   onAddText       : () => void;
   onAddTable     ?: () => void;
   onAddImage     ?: () => void;
+  onAddBarcode   ?: () => void;
   onAddWatermark ?: () => void;
   onAddSignature ?: () => void;
   onAddLine      ?: () => void;
@@ -293,15 +376,18 @@ export interface ToolbarProps {
   showRulers     ?: boolean;
   hasSelection   ?: boolean;
   hasElements    ?: boolean;
+  onPageSizeChange?: (preset: string) => void;
+  currentPageSize ?: string;
 }
 
 export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
-  onAddText, onAddTable, onAddImage, onAddWatermark, onAddSignature,
+  onAddText, onAddTable, onAddImage, onAddBarcode, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
   onDelete, onSave, onLoad, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
   hasSelection, hasElements,
+  onPageSizeChange, currentPageSize,
 }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const hasShapes = onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse;
@@ -309,11 +395,25 @@ export default function Toolbar({
   return (
     <div className="tb" role="toolbar" aria-label="Document toolbar">
 
+      {/* ── Page Size ── */}
+      {onPageSizeChange && (
+        <>
+          <div className="tb-group">
+            <PageSizeMenu
+              currentPageSize={currentPageSize || 'a4'}
+              onSelect={onPageSizeChange}
+            />
+          </div>
+          <Divider />
+        </>
+      )}
+
       {/* ── Elements ── */}
       <div className="tb-group">
         <IconBtn icon={<Icons.Text />}  label="Text"  shortcut="T" onClick={onAddText} />
         {onAddTable && <IconBtn icon={<Icons.Table />} label="Table" shortcut="G" onClick={onAddTable} />}
         {onAddImage && <IconBtn icon={<Icons.Image />} label="Image" shortcut="I" onClick={onAddImage} />}
+        {onAddBarcode && <IconBtn icon={<Icons.Barcode />} label="Barcode / QR" shortcut="B" onClick={onAddBarcode} />}
         {onAddWatermark && <IconBtn icon={<Icons.Watermark />} label="Watermark" shortcut="W" onClick={onAddWatermark} />}
         {onAddSignature && <IconBtn icon={<Icons.Signature />} label="Digital signature" shortcut="S" onClick={onAddSignature} />}
       </div>

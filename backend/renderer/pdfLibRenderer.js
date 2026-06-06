@@ -9,7 +9,7 @@
  * Layout engine: computeLayout() runs once and produces a LayoutPlan.
  * The draw pass iterates the plan — no dry runs, no recalculation.
  *
- * Coordinate system: canvasToPdf() is the single conversion point.
+ * Coordinate system: canvasToPdf(, dim) is the single conversion point.
  * Placeholder resolution: imported from utils/resolver.js — no local copy.
  *
  * LAYOUT FIX (v2.1)
@@ -96,7 +96,9 @@ function normalizeOpacity(value) {
  * @returns {{ pageIndex: number, pdfY: number }}
  *   pdfY = top edge of element in pdf-lib bottom-up coords on that page
  */
-function canvasToPdf(absoluteCanvasY) {
+function canvasToPdf(absoluteCanvasY, dim) {
+  const { CANVAS_PH, PDF_H, SCALE } = dim || { CANVAS_PH: 1123, PDF_H: 841.89, SCALE: 595.28/794 };
+
   const pageIndex = Math.floor(absoluteCanvasY / CANVAS_PH);
   const localY    = absoluteCanvasY - pageIndex * CANVAS_PH;
   const pdfY      = PDF_H - localY * SCALE;
@@ -107,8 +109,8 @@ function canvasToPdf(absoluteCanvasY) {
 // Page pool
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getPage(pdfDoc, pages, idx) {
-  while (pages.length <= idx) pages.push(pdfDoc.addPage([PDF_W, PDF_H]));
+function getPage(pdfDoc, pages, idx, effPdfW = PDF_W, effPdfH = PDF_H) {
+  while (pages.length <= idx) pages.push(pdfDoc.addPage([effPdfW, effPdfH]));
   return pages[idx];
 }
 
@@ -211,7 +213,9 @@ function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
   return lines.length * lh + padPt * 2;
 }
 
-function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
+function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx, dim) {
+  const { SCALE } = dim || { SCALE: 595.28/794 };
+
   const padPx    = 3;
   const defFsPx  = ts.fontSize || 11;
   let   maxH     = isHeader ? HDR_H_PX : ROW_H_PX;
@@ -237,7 +241,9 @@ function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
   return maxH;
 }
 
-function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader) {
+function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fonts, isHeader, dim) {
+  const { CANVAS_W, SCALE } = dim || { CANVAS_W: 794, SCALE: 595.28/794 };
+
   const rowHpt     = rowHpx * SCALE;
   const rowBotYpdf = rowTopYpdf - rowHpt;
   const headerBg   = toColor(ts.headerBg   || ts.borderColor || '#214883');
@@ -387,18 +393,20 @@ function resolvePageNumber(el, pdfPageIdx, totalPages, footerCfg) {
 // Zone classifier
 // ─────────────────────────────────────────────────────────────────────────────
 
-function getZoneBounds(canvasPageIdx, pageConfigs) {
+function getZoneBounds(canvasPageIdx, pageConfigs, dim) {
+  const CANVAS_PH_VAL = (dim && dim.CANVAS_PH) || CANVAS_PH;
   const cfg     = pageConfigs[canvasPageIdx] || pageConfigs[0] || {};
   const hdrBY   = cfg.header?.enabled ? (cfg.header.boundaryY   || 0)         : 0;
-  const ftrBY   = cfg.footer?.enabled ? (cfg.footer.boundaryY   || CANVAS_PH) : CANVAS_PH;
-  return { hdrBY, ftrBY, headerHpx: hdrBY, footerHpx: CANVAS_PH - ftrBY, cfg };
+  const ftrBY   = cfg.footer?.enabled ? (cfg.footer.boundaryY   || CANVAS_PH_VAL) : CANVAS_PH_VAL;
+  return { hdrBY, ftrBY, headerHpx: hdrBY, footerHpx: CANVAS_PH_VAL - ftrBY, cfg };
 }
 
-function classifyElement(el, pageConfigs) {
+function classifyElement(el, pageConfigs, dim) {
+  const CANVAS_PH_VAL = (dim && dim.CANVAS_PH) || CANVAS_PH;
   const absY          = el.position?.y || 0;
-  const canvasPageIdx = Math.floor(absY / CANVAS_PH);
-  const localY        = absY - canvasPageIdx * CANVAS_PH;
-  const { hdrBY, ftrBY } = getZoneBounds(canvasPageIdx, pageConfigs);
+  const canvasPageIdx = Math.floor(absY / CANVAS_PH_VAL);
+  const localY        = absY - canvasPageIdx * CANVAS_PH_VAL;
+  const { hdrBY, ftrBY } = getZoneBounds(canvasPageIdx, pageConfigs, dim);
 
   if (localY < hdrBY)  return 'header';
   if (localY >= ftrBY) return 'footer';
@@ -441,11 +449,12 @@ function classifyElement(el, pageConfigs) {
  * @param {object}   fonts          - { normal, bold } embedded pdf-lib fonts
  * @returns {{ plan: LayoutEntry[], totalPages: number }}
  */
-function computeLayout(sorted, pageConfigs, fonts) {
+function computeLayout(sorted, pageConfigs, fonts, dim) {
+  const CANVAS_PH_VAL = (dim && dim.CANVAS_PH) || CANVAS_PH;
   // ── Group elements by canvas page ────────────────────────────────────────
   const byCanvasPage = new Map();
   for (const el of sorted) {
-    const cpIdx = Math.floor((el.position?.y || 0) / CANVAS_PH);
+    const cpIdx = Math.floor((el.position?.y || 0) / CANVAS_PH_VAL);
     if (!byCanvasPage.has(cpIdx)) byCanvasPage.set(cpIdx, []);
     byCanvasPage.get(cpIdx).push(el);
   }
@@ -461,8 +470,8 @@ function computeLayout(sorted, pageConfigs, fonts) {
     .sort((a, b) => a[0] - b[0]);
 
   for (const [cpIdx, elements] of sortedCanvasPages) {
-    const { headerHpx, footerHpx, cfg } = getZoneBounds(cpIdx, pageConfigs);
-    const availableHpx = CANVAS_PH - headerHpx - footerHpx;
+    const { headerHpx, footerHpx, cfg } = getZoneBounds(cpIdx, pageConfigs, dim);
+    const availableHpx = CANVAS_PH_VAL - headerHpx - footerHpx;
 
     // cumulativeOffset is scoped to THIS canvas page only.
     // It pushes elements down when a table above them (on the same page) expands.
@@ -472,7 +481,7 @@ function computeLayout(sorted, pageConfigs, fonts) {
     for (const el of elements) {
       const absY          = el.position?.y || 0;
       // Position of this element within the content zone of its canvas page
-      const localContentY = (absY - cpIdx * CANVAS_PH) - headerHpx;
+      const localContentY = (absY - cpIdx * CANVAS_PH_VAL) - headerHpx;
 
       // Apply only this canvas page's accumulated expansion
       const correctedContentY = localContentY + cumulativeOffset;
@@ -480,26 +489,26 @@ function computeLayout(sorted, pageConfigs, fonts) {
       // Which overflow sub-page within this canvas page's content zone
       const overflowPageIdx = Math.floor(correctedContentY / availableHpx);
 
-      // absoluteY: position in the unified coordinate space used by canvasToPdf().
+      // absoluteY: position in the unified coordinate space used by canvasToPdf(, dim).
       // Uses pdfPageBase instead of cpIdx so overflow from previous canvas pages
       // is accounted for — this is the key fix.
-      const absoluteY = pdfPageBase * CANVAS_PH
+      const absoluteY = pdfPageBase * CANVAS_PH_VAL
         + headerHpx
         + (correctedContentY % availableHpx)
-        + overflowPageIdx * CANVAS_PH;
+        + overflowPageIdx * CANVAS_PH_VAL;
 
-      const pdfPageIdx = Math.floor(absoluteY / CANVAS_PH);
+      const pdfPageIdx = Math.floor(absoluteY / CANVAS_PH_VAL);
       if (pdfPageIdx > maxPdfPageThisSection) maxPdfPageThisSection = pdfPageIdx;
 
       let expansion = 0;
 
       if (el.type === 'table') {
-        expansion        = measureTableExpansion(el, fonts);
+        expansion        = measureTableExpansion(el, fonts, dim);
         cumulativeOffset += expansion;
 
         // Table may span multiple PDF pages — track the last page it reaches
         const tableEndAbsY = absoluteY + (el._templateRowCount || 1) * ROW_H_PX + expansion;
-        const tableEndPage = Math.floor(tableEndAbsY / CANVAS_PH);
+        const tableEndPage = Math.floor(tableEndAbsY / CANVAS_PH_VAL);
         if (tableEndPage > maxPdfPageThisSection) maxPdfPageThisSection = tableEndPage;
       }
 
@@ -522,7 +531,9 @@ function computeLayout(sorted, pageConfigs, fonts) {
  * @param {object} fonts
  * @returns {number} expansion in canvas px (≥ 0)
  */
-function measureTableExpansion(el, fonts) {
+function measureTableExpansion(el, fonts, dim) {
+  const { CANVAS_W, HDR_H_PX, ROW_H_PX } = dim || { CANVAS_W: 794, HDR_H_PX: 32, ROW_H_PX: 26 };
+
   const columns  = el.columns || [];
   const ts       = el.style   || {};
   const hasHdr   = !!(el.headerRow?.cells?.length);
@@ -544,7 +555,9 @@ function measureTableExpansion(el, fonts) {
 // Table drawing  (real pass — reads from layout plan)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx) {
+function drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx, dim) {
+  const { CANVAS_W, CANVAS_PH, PDF_H, SCALE } = dim || { CANVAS_W: 794, CANVAS_PH: 1123, PDF_H: 841.89, SCALE: 595.28/794 };
+
   const columns  = el.columns || [];
   const tableXpx = el.position?.x || 0;
   const ts       = el.style    || {};
@@ -562,7 +575,7 @@ function drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx) {
     : 0;
 
   if (hasHdr) {
-    const page = getPage(pdfDoc, pages, curPageIdx);
+    const page = getPage(pdfDoc, pages, curPageIdx, dim.PDF_W, dim.PDF_H);
     drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
     curLocalYpx += hdrActualHPx;
     curTopYpdf  -= hdrActualHPx * SCALE;
@@ -578,15 +591,15 @@ function drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx) {
       curTopYpdf   = PDF_H - headerHpx * SCALE;
 
       if (hasHdr) {
-        const newPage = getPage(pdfDoc, pages, curPageIdx);
-        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
+        const newPage = getPage(pdfDoc, pages, curPageIdx, dim.PDF_W, dim.PDF_H);
+        drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true, dim);
         curLocalYpx += hdrActualHPx;
         curTopYpdf  -= hdrActualHPx * SCALE;
       }
     }
 
-    const page = getPage(pdfDoc, pages, curPageIdx);
-    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, rowHpx, ts, fonts, false);
+    const page = getPage(pdfDoc, pages, curPageIdx, dim.PDF_W, dim.PDF_H);
+    drawTableRow(page, row.cells, columns, tableXpx, curTopYpdf, rowHpx, ts, fonts, false, dim);
     curLocalYpx += rowHpx;
     curTopYpdf  -= rowHpx * SCALE;
   }
@@ -596,9 +609,11 @@ function drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx) {
 // Static element drawing
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
-  const { pageIndex, pdfY } = canvasToPdf(absoluteY);
-  const page = getPage(pdfDoc, pages, pageIndex);
+async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
+  const { CANVAS_W, SCALE } = dim || { CANVAS_W: 794, SCALE: 595.28/794 };
+
+  const { pageIndex, pdfY } = canvasToPdf(absoluteY, dim);
+  const page = getPage(pdfDoc, pages, pageIndex, dim.PDF_W, dim.PDF_H);
   const xPt  = (el.position?.x || 0) * SCALE;
   const s    = el.style || {};
 
@@ -617,6 +632,13 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts) {
       break;
     }
 
+    case 'barcode': {
+      const { drawBarcode } = require('./elementDrawers');
+      const wPt = (s.width || 0) * SCALE;
+      const hPt = (s.height || 0) * SCALE;
+      await drawBarcode(page, pdfDoc, el, xPt, pdfY, wPt, hPt);
+      break;
+    }
     case 'line': {
       const lenPt   = (s.length    || 100) * SCALE;
       const thickPt = Math.max(0.5, (s.thickness || 1) * SCALE);
@@ -712,8 +734,10 @@ async function drawHeaderFooter(
   hdrEls, ftrEls,
   headerCfg, footerCfg,
   shouldDrawHeader, shouldDrawFooter,
-  fonts
+  fonts, dim
 ) {
+  const { CANVAS_PH, PDF_W, PDF_H, SCALE } = dim || { CANVAS_PH: 1123, PDF_W: 595.28, PDF_H: 841.89, SCALE: 595.28/794 };
+
   const headerBoundaryY = headerCfg?.boundaryY || 0;
   const footerBoundaryY = footerCfg?.boundaryY || CANVAS_PH;
 
@@ -721,7 +745,7 @@ async function drawHeaderFooter(
   if (shouldDrawHeader && headerCfg?.style?.backgroundColor &&
       headerCfg.style.backgroundColor !== 'transparent') {
     const hHpt = headerBoundaryY * SCALE;
-    const page = getPage(pdfDoc, pages, pi);
+    const page = getPage(pdfDoc, pages, pi, dim.PDF_W, dim.PDF_H);
     const { color, opacity } = parseColorWithOpacity(headerCfg.style.backgroundColor);
     page.drawRectangle({
       x: 0, y: PDF_H - hHpt, width: PDF_W, height: hHpt,
@@ -730,8 +754,8 @@ async function drawHeaderFooter(
   }
 
   if (shouldDrawHeader && (headerCfg?.style?.borderWidth || 0) > 0) {
-    const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + headerBoundaryY);
-    const pg = getPage(pdfDoc, pages, pageIndex);
+    const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + headerBoundaryY, dim);
+    const pg = getPage(pdfDoc, pages, pageIndex, dim.PDF_W, dim.PDF_H);
     pg.drawLine({
       start: { x: 0, y: pdfY }, end: { x: PDF_W, y: pdfY },
       thickness: headerCfg.style.borderWidth * SCALE,
@@ -743,7 +767,7 @@ async function drawHeaderFooter(
   if (shouldDrawHeader) {
     for (const el of hdrEls) {
       const localY = (el.position?.y || 0) % CANVAS_PH;
-      await drawElement(pdfDoc, pages, el, pi * CANVAS_PH + localY, fonts);
+      await drawElement(pdfDoc, pages, el, pi * CANVAS_PH + localY, fonts, dim);
     }
   }
 
@@ -752,8 +776,8 @@ async function drawHeaderFooter(
       footerCfg.style.backgroundColor !== 'transparent') {
     const fTopPx = footerBoundaryY;
     const fHpx   = CANVAS_PH - fTopPx;
-    const page   = getPage(pdfDoc, pages, pi);
-    const { pdfY: fTopPdf } = canvasToPdf(pi * CANVAS_PH + fTopPx);
+    const page   = getPage(pdfDoc, pages, pi, dim.PDF_W, dim.PDF_H);
+    const { pdfY: fTopPdf } = canvasToPdf(pi * CANVAS_PH + fTopPx, dim);
     const { color, opacity } = parseColorWithOpacity(footerCfg.style.backgroundColor);
     page.drawRectangle({
       x: 0, y: fTopPdf - fHpx * SCALE, width: PDF_W, height: fHpx * SCALE,
@@ -762,8 +786,8 @@ async function drawHeaderFooter(
   }
 
   if (shouldDrawFooter && (footerCfg?.style?.borderWidth || 0) > 0) {
-    const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + footerBoundaryY);
-    const pg = getPage(pdfDoc, pages, pageIndex);
+    const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + footerBoundaryY, dim);
+    const pg = getPage(pdfDoc, pages, pageIndex, dim.PDF_W, dim.PDF_H);
     pg.drawLine({
       start: { x: 0, y: pdfY }, end: { x: PDF_W, y: pdfY },
       thickness:  footerCfg.style.borderWidth * SCALE,
@@ -782,7 +806,7 @@ async function drawHeaderFooter(
     const elToDraw = isPageNumEl
       ? resolvePageNumber(el, pi, totalPages, footerCfg)
       : el;
-    await drawElement(pdfDoc, pages, elToDraw, absY, fonts);
+    await drawElement(pdfDoc, pages, elToDraw, absY, fonts, dim);
   }
 }
 
@@ -790,7 +814,9 @@ async function drawHeaderFooter(
 // Canvas-page → PDF-page start index mapping
 // ─────────────────────────────────────────────────────────────────────────────
 
-function buildCanvasPageMap(plan) {
+function buildCanvasPageMap(plan, dim) {
+  const { CANVAS_PH } = dim || { CANVAS_PH: 1123 };
+
   const map = new Map([[0, 0]]);
   for (const entry of plan) {
     const cpIdx = Math.floor((entry.el.position?.y || 0) / CANVAS_PH);
@@ -839,7 +865,24 @@ async function generatePdfBuffer({
   tableCollectionBindings = {},
   collectionMappings      = {},
   pageConfigs             = [],
+  pageSize                = null,
 }) {
+  const effCanvasW  = pageSize?.canvasWidth  || CANVAS_W;
+  const effCanvasPH = pageSize?.canvasHeight || CANVAS_PH;
+  const effPdfW     = pageSize?.pdfWidth     || PDF_W;
+  const effPdfH     = pageSize?.pdfHeight    || PDF_H;
+  const effScale    = effPdfW / effCanvasW;
+  
+  const dim = {
+    CANVAS_W: effCanvasW,
+    CANVAS_PH: effCanvasPH,
+    PDF_W: effPdfW,
+    PDF_H: effPdfH,
+    SCALE: effScale,
+    HDR_H_PX: 32,
+    ROW_H_PX: 26
+  };
+
   if (!ir || !ir.fields || !ir.collections) {
     throw new Error('[generatePdfBuffer] ir (CanonicalDocument) is required.');
   }
@@ -872,41 +915,41 @@ async function generatePdfBuffer({
   await preloadImages(resolved);
 
   // ── 3. Zone classification ────────────────────────────────────────────────
-  const contentEls = resolved.filter(el => classifyElement(el, pageConfigs) === 'content');
+  const contentEls = resolved.filter(el => classifyElement(el, pageConfigs, dim) === 'content');
   const sorted     = [...contentEls].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
 
   // ── 4. Create PDF and embed fonts ─────────────────────────────────────────
   const pdfDoc = await PDFDocument.create();
   const fonts  = await embedFonts(pdfDoc);
   const pages  = [];
-  getPage(pdfDoc, pages, 0);
+  getPage(pdfDoc, pages, 0, effPdfW, effPdfH);
 
   // ── 5. Compute layout (per-canvas-page offsets + pdfPageBase overflow fix) ─
-  const { plan, totalPages } = computeLayout(sorted, pageConfigs, fonts);
+  const { plan, totalPages } = computeLayout(sorted, pageConfigs, fonts, dim);
 
   // ── 6. Draw content elements from plan ───────────────────────────────────
   for (const entry of plan) {
     const { el, absoluteY, pdfPageIdx, headerHpx, footerHpx, cfg } = entry;
 
     if (el.type === 'table') {
-      drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx);
+      drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx, dim);
     } else {
       let elToDraw = el;
       if (el.type === 'text' && el.pageNumber?.enabled) {
         const footerCfg = cfg.footer || null;
         elToDraw = resolvePageNumber(el, pdfPageIdx, totalPages, footerCfg);
       }
-      await drawElement(pdfDoc, pages, elToDraw, absoluteY, fonts);
+      await drawElement(pdfDoc, pages, elToDraw, absoluteY, fonts, dim);
     }
   }
 
   // ── 7. Draw headers and footers on every PDF page ─────────────────────────
-  const canvasPageMap = buildCanvasPageMap(plan);
+  const canvasPageMap = buildCanvasPageMap(plan, dim);
   const cpEntries     = [...canvasPageMap.entries()].sort((a, b) => a[1] - b[1]);
   const finalTotal    = Math.max(pages.length, totalPages);
 
   for (let pi = 0; pi < finalTotal; pi++) {
-    getPage(pdfDoc, pages, pi);
+    getPage(pdfDoc, pages, pi, effPdfW, effPdfH);
 
     const cfg           = getCfgForPdfPage(pi, cpEntries, pageConfigs);
     const currentCpIdx  = getCanvasPageForPdfPage(pi, cpEntries);
@@ -920,14 +963,14 @@ async function generatePdfBuffer({
 
     const hdrEls = headerEnabled
       ? resolved.filter(el =>
-          classifyElement(el, pageConfigs) === 'header' &&
-          Math.floor((el.position?.y || 0) / CANVAS_PH) === currentCpIdx)
+          classifyElement(el, pageConfigs, dim) === 'header' &&
+          Math.floor((el.position?.y || 0) / dim.CANVAS_PH) === currentCpIdx)
       : [];
 
     const ftrEls = footerEnabled
       ? resolved.filter(el =>
-          classifyElement(el, pageConfigs) === 'footer' &&
-          Math.floor((el.position?.y || 0) / CANVAS_PH) === currentCpIdx)
+          classifyElement(el, pageConfigs, dim) === 'footer' &&
+          Math.floor((el.position?.y || 0) / dim.CANVAS_PH) === currentCpIdx)
       : [];
 
     await drawHeaderFooter(
@@ -936,7 +979,7 @@ async function generatePdfBuffer({
       headerCfg, footerCfg,
       headerEnabled && (pi === 0 || headerRepeats),
       footerEnabled && (pi === 0 || footerRepeats),
-      fonts,
+      fonts, dim,
     );
   }
 

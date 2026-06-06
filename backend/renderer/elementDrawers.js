@@ -328,4 +328,75 @@ function drawTable(pdfDoc, el, manager, fonts) {
   return totalConsumed;
 }
 
-module.exports = { drawBox, drawLine, drawText, drawImage, drawTable };
+// ── BARCODE ──────────────────────────────────────────────────────────────────
+
+async function drawBarcode(page, pdfDoc, el, x, y, wPt, hPt) {
+  const bwipjs = require('bwip-js');
+  const barcodeConfig = el.barcode || {};
+  const value = el.content || el.barcodeValue || '12345';
+  const format = barcodeConfig.format || 'code128';
+
+  // Map friendly names to bwip-js bcid values
+  const formatMap = {
+    'code128': 'code128',
+    'code39': 'code39',
+    'qrcode': 'qrcode',
+    'ean13': 'ean13',
+    'upca': 'upca',
+    'itf14': 'itf14',
+  };
+
+  const bcid = formatMap[format] || 'code128';
+  const isQR = bcid === 'qrcode';
+
+  try {
+    const opts = {
+      bcid,
+      text: String(value),
+      scale: 3,
+      includetext: !isQR && (barcodeConfig.showText !== false),
+      textxalign: 'center',
+    };
+
+    // For non-QR codes, set height; for QR, it auto-sizes
+    if (!isQR) {
+      opts.height = 10;
+    }
+
+    const pngBuffer = await bwipjs.toBuffer(opts);
+
+    // Embed as PNG in the PDF
+    const embedded = await pdfDoc.embedPng(pngBuffer);
+    const dims = embedded.scale(1);
+
+    // Scale to fit within wPt x hPt while maintaining aspect ratio
+    const scaleX = wPt / dims.width;
+    const scaleY = hPt / dims.height;
+    const s = Math.min(scaleX, scaleY);
+    const drawW = dims.width * s;
+    const drawH = dims.height * s;
+
+    // Center within the element bounds
+    const drawX = x + (wPt - drawW) / 2;
+    const drawY = (y - hPt) + (hPt - drawH) / 2;
+
+    page.drawImage(embedded, {
+      x: drawX,
+      y: drawY,
+      width: drawW,
+      height: drawH,
+    });
+  } catch (err) {
+    // Fallback: draw a placeholder rectangle with error text
+    const { rgb } = require('pdf-lib');
+    page.drawRectangle({
+      x, y: y - hPt, width: wPt, height: hPt,
+      borderColor: rgb(0.8, 0.2, 0.2),
+      borderWidth: 1,
+    });
+  }
+
+  return hPt;
+}
+
+module.exports = { drawBox, drawLine, drawText, drawImage, drawTable, drawBarcode };

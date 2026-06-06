@@ -28,18 +28,25 @@
 
 const CANVAS_W = 794;    // canvas width in px
 const PDF_W    = 595.28; // A4 width in pt
+const DEFAULT_CANVAS_W = 794;
+const DEFAULT_PDF_W    = 595.28;
 
 // Uniform scale: 1 canvas px = SCALE PDF pt
-const SCALE = PDF_W / CANVAS_W;  // ≈ 0.7497
+const SCALE = DEFAULT_PDF_W / DEFAULT_CANVAS_W;  // ≈ 0.7497
+
+function makeScale(canvasW, pdfW) {
+  return (pdfW || DEFAULT_PDF_W) / (canvasW || DEFAULT_CANVAS_W);
+}
 
 /**
  * Convert a canvas pixel measurement to PDF points.
  * Used for x positions, widths, heights, font sizes, border widths.
- * @param {number} px
+ * @param {number} pixels
+ * @param {number} [customScale]
  * @returns {number} pt
  */
-function px(pixels) {
-  return (pixels || 0) * SCALE;
+function px(pixels, customScale) {
+  return (pixels || 0) * (customScale != null ? customScale : SCALE);
 }
 
 /**
@@ -139,4 +146,4 @@ function measureTextHeight(text, font, fontSizePt, maxWidthPt, lineHeightPt) {
   return lines.length * lh;
 }
 
-module.exports = { px, parseColor, wrapText, measureTextHeight, SCALE, CANVAS_W, PDF_W };
+module.exports = { px, parseColor, wrapText, measureTextHeight, SCALE, CANVAS_W, PDF_W, DEFAULT_CANVAS_W, DEFAULT_PDF_W, makeScale };

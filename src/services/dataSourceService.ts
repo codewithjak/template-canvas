@@ -23,7 +23,7 @@ import type {
   TableCollectionBindings,
 } from '../types/dataSource';
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+import { API_BASE } from './config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -114,6 +114,7 @@ export interface GenerateDocumentParams {
     filterColumn:   string;   // column in the related collection
     driverRowField: string;   // field in the driver row to match against
   }>;
+  pageSize?: { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
 }
 
 export interface BulkDocumentOptions {
@@ -146,6 +147,7 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
       rowIndex:            params.rowIndex ?? 0,
       driverCollectionKey: params.driverCollectionKey,
       relatedCollections:  params.relatedCollections ?? {},
+      pageSize:            params.pageSize ?? null,
     }),
   });
 
@@ -174,6 +176,7 @@ export async function generateBulkDocuments(params: GenerateBulkDocumentsParams)
       ir:             params.ir,
       outputFileName: params.outputFileName ?? 'documents',
       bulk:           params.bulk,
+      pageSize:       params.pageSize ?? null,
     }),
   });
 

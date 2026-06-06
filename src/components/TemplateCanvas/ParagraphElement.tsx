@@ -65,6 +65,20 @@ function ParagraphElement({ id, content, position, style, onUpdate, isSelected, 
     // Allow Enter for new lines, not to blur
   };
 
+  const validatePlaceholder = (placeholder: string): boolean => {
+    const match = placeholder.match(/^\{\{([^}]+)\}\}$/);
+    if (!match) return false;
+
+    const variableName = match[1].trim();
+    if (variableName.length === 0) return false;
+
+    // Each dot-separated segment must be a valid identifier.
+    // Allows: {{name}}, {{client.name}}, {{invoice.line.total}}
+    // Rejects: {{.name}}, {{client.}}, {{client..name}}, {{123abc}}
+    const validVariableRegex = /^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$/;
+    return validVariableRegex.test(variableName);
+  };
+
   const parseTextWithPlaceholders = (text: string) => {
     const parts: Array<{ text: string; isPlaceholder: boolean; isValid?: boolean }> = [];
     const placeholderRegex = /\{\{[^}]*\}\}/g;
@@ -76,7 +90,7 @@ function ParagraphElement({ id, content, position, style, onUpdate, isSelected, 
         parts.push({ text: text.substring(lastIndex, match.index), isPlaceholder: false });
       }
       const placeholderText = match[0];
-      const isValid = /^\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}$/.test(placeholderText);
+      const isValid = validatePlaceholder(placeholderText);
       parts.push({ text: placeholderText, isPlaceholder: true, isValid });
       lastIndex = match.index + match[0].length;
     }
@@ -155,7 +169,7 @@ function ParagraphElement({ id, content, position, style, onUpdate, isSelected, 
                 className={`placeholder-text ${part.isValid === false ? 'placeholder-invalid' : ''}`}
                 title={
                   part.isValid === false
-                    ? 'Invalid placeholder syntax. Use {{variable_name}}'
+                    ? 'Invalid placeholder syntax. Use {{variable_name}} or {{parent.field_name}}'
                     : `Placeholder: ${part.text}`
                 }
               >

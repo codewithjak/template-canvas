@@ -58,6 +58,82 @@ function toColor(str) {
   return rgb(0,0,0);
 }
 
+/**
+ * Parse a color string and extract RGB and opacity.
+ * Returns { color: rgb(...), opacity: 0-1 }
+ * Supports: #hex, rgb(r,g,b), rgba(r,g,b,a), transparent
+ */
+function parseColorWithOpacity(str) {
+  if (!str || typeof str !== 'string') return { color: rgb(0, 0, 0), opacity: 1 };
+  const s = str.trim();
+  
+  // rgba format
+  const rgbaMatch = s.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/i);
+  if (rgbaMatch) {
+    return {
+      color: rgb(+rgbaMatch[1]/255, +rgbaMatch[2]/255, +rgbaMatch[3]/255),
+      opacity: Math.min(1, Math.max(0, +rgbaMatch[4]))
+    };
+  }
+  
+  // hex format
+  if (s.startsWith('#')) {
+    let h = s.slice(1);
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (h.length === 6) {
+      const r = parseInt(h.slice(0,2),16)/255;
+      const g = parseInt(h.slice(2,4),16)/255;
+      const b = parseInt(h.slice(4,6),16)/255;
+      if (!isNaN(r+g+b)) return { color: rgb(r,g,b), opacity: 1 };
+    }
+  }
+  
+  // rgb format
+  const rgbMatch = s.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (rgbMatch) return { color: rgb(+rgbMatch[1]/255, +rgbMatch[2]/255, +rgbMatch[3]/255), opacity: 1 };
+  
+  if (s === 'white' || s === 'transparent') return { color: rgb(1,1,1), opacity: s === 'transparent' ? 0 : 1 };
+  
+  return { color: rgb(0,0,0), opacity: 1 };
+}
+
+/**
+ * Apply opacity to a color string.
+ * Returns an rgba color string.
+ * Supports: #hex, rgb(r,g,b), already formatted colors
+ */
+function applyOpacityToColor(colorStr, opacity) {
+  if (!colorStr || colorStr === 'transparent') return 'rgba(0, 0, 0, 0)';
+  
+  opacity = Math.max(0, Math.min(1, opacity)); // Clamp to 0-1
+  
+  // If already rgba, replace opacity
+  if (colorStr.startsWith('rgba')) {
+    return colorStr.replace(/[\d.]+\s*\)/, `${opacity})`);
+  }
+  
+  // hex format
+  if (colorStr.startsWith('#')) {
+    let h = colorStr.slice(1);
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (h.length === 6) {
+      const r = parseInt(h.slice(0,2), 16);
+      const g = parseInt(h.slice(2,4), 16);
+      const b = parseInt(h.slice(4,6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+  }
+  
+  // rgb format
+  const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
+  if (rgbMatch) {
+    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${opacity})`;
+  }
+  
+  // Fallback: return as-is
+  return colorStr;
+}
+
 // ── Coordinate conversion ──────────────────────────────────────────────────────
 
 /**
@@ -630,7 +706,10 @@ async function generatePdfBuffer({
 
   // ── 7. Draw header/footer on every used page ──────────────────────────────
   const totalPages = pages.length;
-  const footerStartFrom = footerCfg?.pageNumberStartFrom || 1;
+  
+  // Count pages where footer actually appears (for total page calculation)
+  const footerPageCount = footerEnabled ? (footerRepeats ? totalPages : 1) : 0;
+  const headerPageCount = headerEnabled ? (headerRepeats ? totalPages : 1) : 0;
 
   for (let pi = 0; pi < totalPages; pi++) {
     getPage(pdfDoc, pages, pi);
@@ -642,12 +721,18 @@ async function generatePdfBuffer({
       if (headerCfg.style?.backgroundColor && headerCfg.style.backgroundColor !== 'transparent') {
         const hHpt = headerBoundaryY * SCALE;
         const page = getPage(pdfDoc, pages, pi);
+        
+        // Parse color and extract opacity
+        const { color, opacity } = parseColorWithOpacity(
+          headerCfg.style.backgroundColor
+        );
         page.drawRectangle({
           x: 0,
           y: PDF_H - hHpt,
           width : PDF_W,
           height: hHpt,
-          color : toColor(headerCfg.style.backgroundColor),
+          color : color,
+          opacity: headerCfg.style.opacity ?? opacity,
         });
       }
 
@@ -679,35 +764,42 @@ async function generatePdfBuffer({
         const fHpx   = CANVAS_PH - fTopPx;
         const page   = getPage(pdfDoc, pages, pi);
         const { pdfY: fTopPdf } = canvasToPdf(pi * CANVAS_PH + fTopPx);
+        
+        // Parse color and extract opacity
+        const { color, opacity } = parseColorWithOpacity(
+          footerCfg.style.backgroundColor
+        );
         page.drawRectangle({
           x: 0,
           y: fTopPdf - fHpx * SCALE,
           width : PDF_W,
           height: fHpx * SCALE,
-          color : toColor(footerCfg.style.backgroundColor),
+          color : color,
+          opacity: footerCfg.style.opacity ?? opacity,
         });
       }
     }
     if (shouldDrawFooter && footerEls.length > 0) {
-      const pageNumInfo = {
-        current : pi + footerStartFrom,
-        total   : totalPages + footerStartFrom - 1,
-        format  : footerCfg?.pageNumberFormat || 'Page X of Y',
-        alignment: 'right',
-      };
-
       for (const el of footerEls) {
         const absY = pi * CANVAS_PH + (el.position?.y || 0);
         // Check if this is a page number element
-        const pnInfo = (el.type === 'text' && el.pageNumber?.enabled)
-          ? { ...pageNumInfo, alignment: el.pageNumber?.alignment || 'right' }
-          : null;
-
-        if (pnInfo) {
-          const { current, total, format } = pnInfo;
-          let numText = String(current);
-          if (format === 'Page X of Y') numText = `Page ${current} of ${total}`;
-          else if (format === 'X / Y')   numText = `${current} / ${total}`;
+        if (el.type === 'text' && el.pageNumber?.enabled) {
+          // Get page number config from element or fall back to footer config
+          const pnCfg = el.pageNumber || {};
+          const startFrom = pnCfg.startFrom || footerCfg?.pageNumberStartFrom || 1;
+          const format = pnCfg.format || footerCfg?.pageNumberFormat || 'Page X of Y';
+          const alignment = pnCfg.alignment || footerCfg?.pageNumberAlignment || 'right';
+          
+          // Calculate current page number for footer
+          // If repeat on overflow is false, footer only appears on page 0, so page number is always startFrom
+          // If repeat on overflow is true, page number increments for each page
+          const currentPageNum = footerRepeats ? (pi + startFrom) : startFrom;
+          const totalPageNum = footerRepeats ? (footerPageCount + startFrom - 1) : startFrom;
+          
+          let numText = String(currentPageNum);
+          if (format === 'Page X of Y') numText = `Page ${currentPageNum} of ${totalPageNum}`;
+          else if (format === 'X / Y')   numText = `${currentPageNum} / ${totalPageNum}`;
+          
           const elWithNum = { ...el, content: numText };
           await drawElement(pdfDoc, pages, elWithNum, absY, fonts);
         } else {

@@ -71,6 +71,7 @@ export interface ZoneStyle {
   backgroundColor : string;
   borderColor     : string;
   borderWidth     : number;   // top border for footer, bottom border for header
+  opacity         : number;   // 0-1 for background transparency
 }
 
 export interface HeaderConfig {
@@ -85,6 +86,10 @@ export interface FooterConfig {
   repeatOnOverflow : boolean;
   boundaryY        : number;    // px from top of canvas — line position
   style            : ZoneStyle;
+  // Page number formatting options
+  pageNumberFormat    ?: 'Page X of Y' | 'X / Y' | 'X';
+  pageNumberAlignment ?: 'left' | 'center' | 'right';
+  pageNumberStartFrom ?: number;
 }
 
 export function defaultHeader(): HeaderConfig {
@@ -92,7 +97,7 @@ export function defaultHeader(): HeaderConfig {
     enabled         : false,
     repeatOnOverflow: false,
     boundaryY       : 80,
-    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1 },
+    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1, opacity: 1 },
   };
 }
 
@@ -101,7 +106,7 @@ export function defaultFooter(): FooterConfig {
     enabled         : false,
     repeatOnOverflow: false,
     boundaryY       : 1043,   // 1123 - 80
-    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1 },
+    style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1, opacity: 1 },
   };
 }
 

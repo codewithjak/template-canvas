@@ -416,9 +416,21 @@ function PropertiesPanel({
     }
   };
 
-  const isInFooterZone = selectedElement?.type === 'text'
-  && activePageFooter?.enabled
-  && (selectedElement.position?.y ?? 0) >= (activePageFooter?.boundaryY ?? Infinity);
+  // const isInFooterZone = selectedElement?.type === 'text'
+  // && activePageFooter?.enabled
+  // && (selectedElement.position?.y ?? 0) >= (activePageFooter?.boundaryY ?? Infinity);
+
+  const isPageNumberElement =
+    selectedElement?.type === 'text' &&
+    !!(selectedElement as any).pageNumber?.enabled;
+ 
+  const isInFooterZone =
+    selectedElement?.type === 'text' &&
+    activePageFooter?.enabled === true &&
+    (selectedElement.position?.y ?? 0) >= (activePageFooter?.boundaryY ?? Infinity);
+ 
+  // Show the section if the element is a page-number element OR is in footer zone
+  const showPageNumberProperties = isPageNumberElement || isInFooterZone;
 
   return (
     <div className="properties-panel">
@@ -1165,7 +1177,7 @@ function PropertiesPanel({
         )}
 
         {/* Page number properties — only for text elements in footer zone */}
-        {selectedElement.type === 'text' && isInFooterZone && (
+         {selectedElement.type === 'text' && showPageNumberProperties && (
           <PageNumberProperties
             config={(selectedElement as any).pageNumber}
             onChange={pnConfig =>

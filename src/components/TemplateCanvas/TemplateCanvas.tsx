@@ -2,21 +2,13 @@
  * TemplateCanvas.tsx
  * Multi-page canvas.
  *
- * State shape:
- *   pages: CanvasPage[]   — ordered array of canvas pages
- *   Each page owns its elements independently.
- *
- * Template JSON (v2.0):
- *   { version:'2.0', meta:{...}, pages:[...], ai:null }
- *   v1.0 files are auto-migrated on load.
- *
- * New features vs previous version:
- *   - Multiple canvas pages rendered as a vertical stack
- *   - PageBreakDivider between pages (select to see settings)
- *   - "Add Page" toolbar button
- *   - Per-page: label, repeatHeader toggle
- *   - Save modal asks for template name (once; reuses on subsequent saves)
- *   - Drag: elements stay within their own canvas page
+ * Changes vs previous version:
+ *   - handleAddPageNumber() creates a text element with pageNumber.enabled=true
+ *     so it renders the live page number on the canvas (via a preview string)
+ *     and exports correctly to PDF.
+ *   - The Toolbar receives an onAddPageNumber prop.
+ *   - renderElements resolves the page-number preview label for selected
+ *     text elements that carry pageNumber.enabled=true.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -25,7 +17,7 @@ import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import Toolbar           from './Toolbar';
 import UploadData        from './UploadData';
 import PageBreakDivider  from './PageBreakDivider';
-import BoundaryLine     from './BoundaryLine';
+import BoundaryLine      from './BoundaryLine';
 import SaveTemplateModal from './SaveTemplateModal';
 import TextElement       from './TextElement';
 import ImageElement      from './ImageElement';
@@ -39,7 +31,7 @@ import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel   from './PropertiesPanel';
 
 import type { BoundData }   from '../../types/dataSource';
-import type { CanvasPage, CanvasElement, TemplateMeta, HeaderConfig, FooterConfig }  from '../../types/canvas';
+import type { CanvasPage, CanvasElement, TemplateMeta, HeaderConfig, FooterConfig, TextElementType }  from '../../types/canvas';
 import {
   createPage,
   createTemplateDocument,
@@ -61,9 +53,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Convert a color string (hex or rgb) to rgba with specified opacity. */
 function adjustColorOpacity(color: string, opacity: number): string {
-  // Handle hex colors
   if (color.startsWith('#')) {
     const hex = color.replace('#', '');
     const r = parseInt(hex.substring(0, 2), 16);
@@ -71,21 +61,18 @@ function adjustColorOpacity(color: string, opacity: number): string {
     const b = parseInt(hex.substring(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   }
-  // Handle rgb colors
   if (color.startsWith('rgb')) {
     const match = color.match(/\d+/g);
     if (match && match.length >= 3) {
       return `rgba(${match[0]}, ${match[1]}, ${match[2]}, ${opacity})`;
     }
   }
-  // If it's already rgba, just return it with adjusted opacity
   if (color.startsWith('rgba')) {
     return color.replace(/[\d.]+\s*\)/, `${opacity})`);
   }
   return color;
 }
 
-/** Find which page owns a given element id. */
 function findPageOfElement(pages: CanvasPage[], elementId: string): string | null {
   for (const p of pages) {
     if (p.elements.some(e => e.id === elementId)) return p.pageId;
@@ -93,15 +80,27 @@ function findPageOfElement(pages: CanvasPage[], elementId: string): string | nul
   return null;
 }
 
-/** Update elements on a specific page, leaving other pages untouched. */
 function updatePageElements(
-  pages    : CanvasPage[],
-  pageId   : string,
-  updater  : (els: CanvasElement[]) => CanvasElement[],
+  pages   : CanvasPage[],
+  pageId  : string,
+  updater : (els: CanvasElement[]) => CanvasElement[],
 ): CanvasPage[] {
   return pages.map(p =>
     p.pageId === pageId ? { ...p, elements: updater(p.elements) } : p
   );
+}
+
+/**
+ * Return a human-readable preview label for a page-number text element so
+ * the designer can see something meaningful on the canvas instead of a blank.
+ */
+function pageNumberPreviewLabel(el: TextElementType): string {
+  const pn     = el.pageNumber!;
+  const start  = pn.startFrom ?? 1;
+  const format = pn.format ?? 'Page X of Y';
+  if (format === 'Page X of Y') return `Page ${start} of N`;
+  if (format === 'X / Y')       return `${start} / N`;
+  return String(start);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -114,7 +113,6 @@ function TemplateCanvas() {
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
 
-  // templateMeta persists across saves so templateId + createdAt are stable
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
 
   // ── Selection state ───────────────────────────────────────────────────────
@@ -122,7 +120,7 @@ function TemplateCanvas() {
   const [selectedElementId,    setSelectedElementId]    = useState<string | null>(null);
   const [activePageId,         setActivePageId]         = useState<string>('page-1');
   const [selectedPageBreakId,  setSelectedPageBreakId]  = useState<string | null>(null);
-  const [selectedBoundary,     setSelectedBoundary]        = useState<{ pageId: string; type: 'header' | 'footer' } | null>(null);
+  const [selectedBoundary,     setSelectedBoundary]     = useState<{ pageId: string; type: 'header' | 'footer' } | null>(null);
 
   const [layoutTableCellSelection, setLayoutTableCellSelection] = useState<{
     tableId: string; rowIndex: number; colIndex: number;
@@ -133,21 +131,21 @@ function TemplateCanvas() {
 
   // ── Data / export state ───────────────────────────────────────────────────
 
-  const [boundData,      setBoundData]      = useState<BoundData | null>(null);
-  const [previewRowIndex,setPreviewRowIndex] = useState(0);
-  const [uploadPanelOpen,setUploadPanelOpen] = useState(false);
-  const [isExporting,    setIsExporting]     = useState(false);
-  const [exportStatus,   setExportStatus]    = useState<string | null>(null);
+  const [boundData,       setBoundData]       = useState<BoundData | null>(null);
+  const [previewRowIndex, setPreviewRowIndex] = useState(0);
+  const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
+  const [isExporting,     setIsExporting]     = useState(false);
+  const [exportStatus,    setExportStatus]    = useState<string | null>(null);
 
   // ── Save modal ────────────────────────────────────────────────────────────
 
-  const [showSaveModal,  setShowSaveModal]   = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
   // ── Sensors ───────────────────────────────────────────────────────────────
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  // ── Derived: all elements across all pages (for upload panel) ─────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
 
   const allElements = useMemo(
     () => pages.flatMap(p => p.elements),
@@ -157,7 +155,7 @@ function TemplateCanvas() {
   const staticPlaceholders = useMemo(() => getStaticPlaceholders(allElements as any), [allElements]);
   const tableInfos          = useMemo(() => getTableInfos(allElements as any),         [allElements]);
 
-  // ── Preview elements per page ─────────────────────────────────────────────
+  // ── Preview pages ─────────────────────────────────────────────────────────
 
   const previewPages = useMemo((): CanvasPage[] => {
     if (!boundData) return pages;
@@ -173,6 +171,10 @@ function TemplateCanvas() {
     setPages(prev => updatePageElements(prev, activePageId, els => [...els, el]));
   }, [activePageId]);
 
+  const addElToPage = useCallback(<T extends CanvasElement>(el: T, pageId: string) => {
+    setPages(prev => updatePageElements(prev, pageId, els => [...els, el]));
+  }, []);
+
   // ── Add / delete pages ────────────────────────────────────────────────────
 
   const handleAddPage = () => {
@@ -187,7 +189,6 @@ function TemplateCanvas() {
     setPages(prev => prev.filter(p => p.pageId !== pageId));
     setSelectedPageBreakId(null);
     setActivePageId(prev => prev === pageId ? pages[0].pageId : prev);
-    // Deselect element if it was on the deleted page
     if (selectedElementId) {
       const ownerPage = findPageOfElement(pages, selectedElementId);
       if (ownerPage === pageId) setSelectedElementId(null);
@@ -278,6 +279,50 @@ function TemplateCanvas() {
     style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' },
   });
 
+  const handleAddPageNumber = useCallback((atY?: number, targetPageId?: string) => {
+    const pageId     = targetPageId ?? activePageId;
+    const targetPage = pages.find(p => p.pageId === pageId);
+    const footer     = targetPage?.footer;
+  
+    const footerEnabled = footer?.enabled ?? false;
+    const boundaryY     = footer?.boundaryY ?? 1043;
+  
+    const elementY = atY != null
+      ? atY
+      : footerEnabled ? boundaryY + 16 : 1060;
+  
+    const fmt       = (footer as any)?.pageNumberFormat    ?? 'Page X of Y';
+    const alignment = (footer as any)?.pageNumberAlignment ?? 'right';
+    const startFrom = (footer as any)?.pageNumberStartFrom ?? 1;
+  
+    const previewContent =
+      fmt === 'X / Y' ? `${startFrom} / N` :
+      fmt === 'X'     ? String(startFrom)   :
+      `Page ${startFrom} of N`;
+  
+    const el: TextElementType = {
+      id        : `pagenum-${Date.now()}`,
+      type      : 'text',
+      content   : previewContent,
+      position  : { x: 600, y: elementY },
+      style     : {
+        fontSize  : 10,
+        fontWeight: 'normal',
+        color     : '#64748b',
+        fontFamily: 'Arial, sans-serif',
+      },
+      pageNumber: {
+        enabled  : true,
+        format   : fmt,
+        alignment,
+        startFrom,
+      },
+    };
+  
+    addElToPage(el as unknown as CanvasElement, pageId);
+    setActivePageId(pageId);
+    setTimeout(() => setSelectedElementId(el.id), 0);
+  }, [pages, activePageId, addElToPage]);
   // ── Element update ────────────────────────────────────────────────────────
 
   const handleUpdateElement = useCallback((id: string, updates: any) => {
@@ -287,18 +332,20 @@ function TemplateCanvas() {
       els.map(element => {
         if (element.id !== id) return element;
         const updated: any = { ...element };
-        if (updates.position) updated.position = { ...updated.position, ...updates.position };
+        if (updates.position)  updated.position  = { ...updated.position, ...updates.position };
         if (updates.style && 'style' in updated) updated.style = { ...updated.style, ...updates.style };
-        if ('content'     in updates && 'content'     in updated) updated.content     = updates.content;
-        if ('src'         in updates && 'src'         in updated) updated.src         = updates.src;
-        if ('orientation' in updates) updated.orientation = updates.orientation;
-        if ('count'       in updates) updated.count       = updates.count;
-        if ('options'     in updates) updated.options     = updates.options;
-        if ('shape'       in updates) updated.shape       = updates.shape;
-        if ('value'       in updates && 'value' in updated) updated.value = updates.value;
-        if ('time'        in updates && 'time'  in updated) updated.time  = updates.time;
-        if ('includeTime' in updates) updated.includeTime = updates.includeTime;
-        if ('format'      in updates) updated.format      = updates.format;
+        if ('content'      in updates && 'content'     in updated) updated.content     = updates.content;
+        if ('src'          in updates && 'src'         in updated) updated.src         = updates.src;
+        if ('orientation'  in updates) updated.orientation  = updates.orientation;
+        if ('count'        in updates) updated.count        = updates.count;
+        if ('options'      in updates) updated.options      = updates.options;
+        if ('shape'        in updates) updated.shape        = updates.shape;
+        if ('value'        in updates && 'value'  in updated) updated.value  = updates.value;
+        if ('time'         in updates && 'time'   in updated) updated.time   = updates.time;
+        if ('includeTime'  in updates) updated.includeTime  = updates.includeTime;
+        if ('format'       in updates) updated.format       = updates.format;
+        // Page number config update
+        if ('pageNumber'   in updates) updated.pageNumber   = updates.pageNumber;
         if (isLayoutTable(updated)) {
           if (updates.columns   !== undefined) updated.columns   = updates.columns;
           if (updates.headerRow !== undefined) updated.headerRow = updates.headerRow;
@@ -374,12 +421,8 @@ function TemplateCanvas() {
   };
 
   const handleSaveTemplate = () => {
-    // If we already have a name, save directly. Otherwise show modal.
-    if (templateMeta.name) {
-      doSave(templateMeta.name);
-    } else {
-      setShowSaveModal(true);
-    }
+    if (templateMeta.name) doSave(templateMeta.name);
+    else setShowSaveModal(true);
   };
 
   // ── Load ──────────────────────────────────────────────────────────────────
@@ -391,27 +434,21 @@ function TemplateCanvas() {
     reader.onload = ev => {
       try {
         const raw = JSON.parse(ev.target?.result as string);
-
         let doc;
         if (raw.version === '2.0' && Array.isArray(raw.pages)) {
-          // v2.0 — use directly
           doc = raw;
         } else if (Array.isArray(raw.elements)) {
-          // v1.0 — migrate
           doc = migrateV1(raw);
         } else {
           alert('Invalid template file.');
           return;
         }
-
-        // Strip legacy canvas tables from all pages
         const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) =>
           ensurePageDefaults({
             ...p,
             elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
           })
         );
-
         setPages(cleanPages);
         setTemplateMeta(doc.meta || {});
         setSelectedElementId(null);
@@ -429,17 +466,12 @@ function TemplateCanvas() {
 
   // ── Data upload ───────────────────────────────────────────────────────────
 
-  const handleUploadMapped = (bd: BoundData) => {
-    setBoundData(bd);
-    setPreviewRowIndex(0);
-    setUploadPanelOpen(false);
-  };
-
+  const handleUploadMapped  = (bd: BoundData) => { setBoundData(bd); setPreviewRowIndex(0); setUploadPanelOpen(false); };
   const handleClearBoundData = () => { setBoundData(null); setPreviewRowIndex(0); };
 
-  const totalRows      = boundData ? maxBoundRows(boundData) : 0;
-  const handlePrevRow  = () => setPreviewRowIndex(i => Math.max(0, i - 1));
-  const handleNextRow  = () => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1));
+  const totalRows     = boundData ? maxBoundRows(boundData) : 0;
+  const handlePrevRow = () => setPreviewRowIndex(i => Math.max(0, i - 1));
+  const handleNextRow = () => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1));
 
   // ── Export ────────────────────────────────────────────────────────────────
 
@@ -461,8 +493,6 @@ function TemplateCanvas() {
           ? `Generating document with ${rowCount} record${rowCount !== 1 ? 's' : ''}…`
           : 'Generating document…'
       );
-
-      // Build payload — send pages array to backend
       const payload = {
         pages: pages.map(p => ({
           pageId          : p.pageId,
@@ -484,18 +514,15 @@ function TemplateCanvas() {
         })),
         outputFileName: `document-${Date.now()}`,
       };
-
       const res = await fetch(`${API_BASE}/generate-document`, {
-        method  : 'POST',
-        headers : { 'Content-Type': 'application/json' },
-        body    : JSON.stringify(payload),
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify(payload),
       });
-
       if (!res.ok) {
         const err = await res.json().catch(() => null);
         throw new Error(err?.error || 'Export failed.');
       }
-
       const blob = await res.blob();
       downloadBlob(blob, `document-${Date.now()}.pdf`);
     } catch (err) {
@@ -507,8 +534,6 @@ function TemplateCanvas() {
   };
 
   // ── Drag ──────────────────────────────────────────────────────────────────
-  // Elements stay within their own page — we find the owning page by element id
-  // and only update that page's elements.
 
   const handleDragEnd = (event: any) => {
     const { active, delta } = event;
@@ -540,13 +565,19 @@ function TemplateCanvas() {
       const isSelected = element.id === selectedElementId;
       const select     = () => handleSelectElement(element.id, pageId);
 
-      if (element.type === 'text') return (
-        <TextElement key={element.id} id={element.id} content={element.content}
-          position={element.position} style={element.style}
-          onUpdate={handleUpdateText} isSelected={isSelected} onSelect={select}
-          onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
-        />
-      );
+      if (element.type === 'text') {
+        // For page-number elements, show a live preview string on the canvas
+        const displayContent = element.pageNumber?.enabled
+          ? pageNumberPreviewLabel(element)
+          : element.content;
+        return (
+          <TextElement key={element.id} id={element.id} content={displayContent}
+            position={element.position} style={element.style}
+            onUpdate={handleUpdateText} isSelected={isSelected} onSelect={select}
+            onResize={(id, fontSize) => handleUpdateElement(id, { style: { ...element.style, fontSize } })}
+          />
+        );
+      }
 
       if (element.type === 'paragraph') return (
         <ParagraphElement key={element.id} id={element.id} content={element.content}
@@ -658,6 +689,7 @@ function TemplateCanvas() {
           onAddRectangle={handleAddRectangle}
           onAddTriangle={handleAddTriangle}
           onAddEllipse={handleAddEllipse}
+          onAddPageNumber={handleAddPageNumber}   // ← new
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
           onLoad={handleLoadTemplate}
@@ -725,12 +757,10 @@ function TemplateCanvas() {
           {previewPages.map((page, pageIdx) => (
             <div key={page.pageId} className="canvas-page-block">
 
-              {/* Page label above canvas */}
               <div className="canvas-page-label">
                 {page.label || `Page ${pageIdx + 1}`}
               </div>
 
-              {/* The canvas itself */}
               <div
                 className={`template-canvas ${activePageId === page.pageId ? 'template-canvas--active' : ''}`}
                 onClick={e => {
@@ -764,6 +794,7 @@ function TemplateCanvas() {
                   onDeselect={() => setSelectedBoundary(null)}
                   onChange={f => handleUpdatePageFooter(page.pageId, f as any)}
                   onDelete={() => handleDeleteBoundary(page.pageId, 'footer')}
+                  onAddPageNumber={(atY) => handleAddPageNumber(atY, page.pageId)}
                 />
 
                 {/* ── Zone shading ── */}
@@ -798,7 +829,6 @@ function TemplateCanvas() {
                 )}
               </div>
 
-              {/* Page break divider — shown between pages, not after the last */}
               {pageIdx < previewPages.length - 1 && (
                 <PageBreakDivider
                   pageNumber={pageIdx + 2}

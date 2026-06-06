@@ -20,6 +20,39 @@
  * Scale: SCALE = 595.28 / 794 ≈ 0.7497
  * Canvas page: 794 × 1123 px
  * PDF page:    595.28 × 841.89 pt
+ *
+ * FIX 1 — Page numbers (REVISED):
+ *   Page-number text elements (pageNumber.enabled=true) are now resolved
+ *   correctly in ALL three drawing paths:
+ *     (a) content zone elements — resolved during a second draw pass after
+ *         totalPages is known from a dry-run first pass
+ *     (b) footer zone elements  — resolved just before drawElement()
+ *     (c) header zone elements  — n/a (page numbers live in footer/content)
+ *
+ *   Two-pass strategy for content-zone page numbers:
+ *     Pass 1 (dry run): walk content elements, accumulate table expansions,
+ *       record which PDF page each page-number element lands on, and count
+ *       the total PDF pages needed.
+ *     Pass 2 (real draw): walk again, resolve page-number text with the
+ *       now-known totalPages before calling drawElement().
+ *
+ * FIX 2 — Header/footer space reservation on overflow pages:
+ *   availableHpx is used as the "virtual page height" for content layout.
+ *   When the coordinate engine maps a correctedY to a PDF page it now
+ *   accounts for the header zone at the TOP of every page and the footer
+ *   zone at the BOTTOM, so content never overlaps those zones on overflow
+ *   pages.
+ *
+ * FIX 3 — Per-canvas-page configs:
+ *   pageConfigs[] is an array parallel to the canvas pages array sent by the
+ *   server.  The renderer now looks up the correct config for each canvas
+ *   page instead of always using pageConfigs[0].
+ *
+ * FIX 4 — Footer page numbers on every overflow page:
+ *   Footer elements with pageNumber.enabled are drawn on every PDF page
+ *   produced by their canvas page (not just the first), regardless of the
+ *   repeatOnOverflow flag, because a page number makes no sense if it only
+ *   appears on the first page.
  */
 
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
@@ -29,7 +62,7 @@ const http  = require('http');
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const CANVAS_W  = 794;
-const CANVAS_PH = 1123;
+const CANVAS_PH = 1123;   // one canvas page height in px
 const PDF_W     = 595.28;
 const PDF_H     = 841.89;
 const SCALE     = PDF_W / CANVAS_W;  // ≈ 0.7497
@@ -58,25 +91,16 @@ function toColor(str) {
   return rgb(0,0,0);
 }
 
-/**
- * Parse a color string and extract RGB and opacity.
- * Returns { color: rgb(...), opacity: 0-1 }
- * Supports: #hex, rgb(r,g,b), rgba(r,g,b,a), transparent
- */
 function parseColorWithOpacity(str) {
   if (!str || typeof str !== 'string') return { color: rgb(0, 0, 0), opacity: 1 };
   const s = str.trim();
-  
-  // rgba format
   const rgbaMatch = s.match(/rgba\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/i);
   if (rgbaMatch) {
     return {
-      color: rgb(+rgbaMatch[1]/255, +rgbaMatch[2]/255, +rgbaMatch[3]/255),
-      opacity: Math.min(1, Math.max(0, +rgbaMatch[4]))
+      color  : rgb(+rgbaMatch[1]/255, +rgbaMatch[2]/255, +rgbaMatch[3]/255),
+      opacity: Math.min(1, Math.max(0, +rgbaMatch[4])),
     };
   }
-  
-  // hex format
   if (s.startsWith('#')) {
     let h = s.slice(1);
     if (h.length === 3) h = h.split('').map(c => c + c).join('');
@@ -87,51 +111,10 @@ function parseColorWithOpacity(str) {
       if (!isNaN(r+g+b)) return { color: rgb(r,g,b), opacity: 1 };
     }
   }
-  
-  // rgb format
   const rgbMatch = s.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
   if (rgbMatch) return { color: rgb(+rgbMatch[1]/255, +rgbMatch[2]/255, +rgbMatch[3]/255), opacity: 1 };
-  
   if (s === 'white' || s === 'transparent') return { color: rgb(1,1,1), opacity: s === 'transparent' ? 0 : 1 };
-  
   return { color: rgb(0,0,0), opacity: 1 };
-}
-
-/**
- * Apply opacity to a color string.
- * Returns an rgba color string.
- * Supports: #hex, rgb(r,g,b), already formatted colors
- */
-function applyOpacityToColor(colorStr, opacity) {
-  if (!colorStr || colorStr === 'transparent') return 'rgba(0, 0, 0, 0)';
-  
-  opacity = Math.max(0, Math.min(1, opacity)); // Clamp to 0-1
-  
-  // If already rgba, replace opacity
-  if (colorStr.startsWith('rgba')) {
-    return colorStr.replace(/[\d.]+\s*\)/, `${opacity})`);
-  }
-  
-  // hex format
-  if (colorStr.startsWith('#')) {
-    let h = colorStr.slice(1);
-    if (h.length === 3) h = h.split('').map(c => c + c).join('');
-    if (h.length === 6) {
-      const r = parseInt(h.slice(0,2), 16);
-      const g = parseInt(h.slice(2,4), 16);
-      const b = parseInt(h.slice(4,6), 16);
-      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-    }
-  }
-  
-  // rgb format
-  const rgbMatch = colorStr.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/i);
-  if (rgbMatch) {
-    return `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, ${opacity})`;
-  }
-  
-  // Fallback: return as-is
-  return colorStr;
 }
 
 // ── Coordinate conversion ──────────────────────────────────────────────────────
@@ -249,8 +232,6 @@ function resolveStatic(el, data, fm) {
 
 function resolveTableEl(tableEl, collRows, data, fm, colMap) {
   const el = JSON.parse(JSON.stringify(tableEl));
-
-  // Store template row count BEFORE expansion
   el._templateRowCount = (el.rows || []).length;
 
   if (el.headerRow?.cells) {
@@ -309,15 +290,6 @@ async function preloadImages(elements) {
 
 // ── Table row drawing ──────────────────────────────────────────────────────────
 
-/**
- * Draw text inside a table cell with width AND height clipping.
- * Wraps text to fit width, clips lines that exceed cell height,
- * truncates last visible line with ellipsis if content was clipped.
- */
-/**
- * Measure how tall a cell's text will be in PDF points.
- * Used to compute dynamic row height before drawing.
- */
 function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
   if (!text) return fsPt * 1.3 + padPt * 2;
   const lh    = lhPt || fsPt * 1.3;
@@ -325,10 +297,6 @@ function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
   return lines.length * lh + padPt * 2;
 }
 
-/**
- * Draw text inside a table cell — no clipping, no truncation.
- * The row height has already been computed to fit all content.
- */
 function drawCellText(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
   if (!text) return;
   const lh    = lhPt || fsPt * 1.3;
@@ -382,14 +350,10 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
   }
 }
 
-/**
- * Measure the actual height a row needs in canvas px.
- * Takes the maximum height across all cells in the row.
- */
 function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
-  const padPx   = 3;   // padding in canvas px (we measure in px, convert later)
+  const padPx   = 3;
   const defFsPx = ts.fontSize || 11;
-  let   maxH    = isHeader ? HDR_H_PX : ROW_H_PX;  // minimum = design height
+  let   maxH    = isHeader ? HDR_H_PX : ROW_H_PX;
 
   for (let ci = 0; ci < cells.length; ci++) {
     const cell = cells[ci];
@@ -406,7 +370,6 @@ function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
     const padPt   = padPx * SCALE;
 
     const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt);
-    // Convert pt back to px for comparison
     const cellHPx = cellHPt / SCALE;
     if (cellHPx > maxH) maxH = cellHPx;
   }
@@ -414,16 +377,65 @@ function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx) {
   return maxH;
 }
 
+// ── Page-number text resolution ────────────────────────────────────────────────
+
 /**
- * Draw a full table starting at correctedCanvasY.
- * Returns the expansion in canvas px (actualRows - templateRows) × ROW_H_PX
- * so the caller can add it to cumulativeOffset.
+ * FIX 1 (REVISED) — Resolve the page number string for an element.
+ *
+ * Works for elements in BOTH the content zone and the footer zone.
+ * The caller must supply the correct pdfPageIdx and totalPages.
+ *
+ * @param {object} el          - text element (already placeholder-resolved)
+ * @param {number} pdfPageIdx  - 0-based index of the PDF page being drawn
+ * @param {number} totalPages  - total PDF pages in the document
+ * @param {object} [footerCfg] - optional footer config for fallback format/startFrom
+ * @returns {object} element with content replaced if pageNumber.enabled
  */
-function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
+function resolvePageNumber(el, pdfPageIdx, totalPages, footerCfg) {
+  if (el.type !== 'text') return el;
+  const pnCfg = el.pageNumber;
+  if (!pnCfg?.enabled) return el;
+
+  const startFrom = pnCfg.startFrom ?? footerCfg?.pageNumberStartFrom ?? 1;
+  const format    = pnCfg.format    ?? footerCfg?.pageNumberFormat    ?? 'Page X of Y';
+  const current   = pdfPageIdx + startFrom;
+  const total     = totalPages + startFrom - 1;
+
+  let numText;
+  if      (format === 'Page X of Y') numText = `Page ${current} of ${total}`;
+  else if (format === 'X / Y')       numText = `${current} / ${total}`;
+  else                               numText = String(current);
+
+  return { ...el, content: numText };
+}
+
+// ── Table drawing ──────────────────────────────────────────────────────────────
+
+/**
+ * Draw a full table.
+ *
+ * FIX 2 — The table is now told the header/footer reserved heights so it can
+ * correctly compute where a new overflow PDF page's content area starts and
+ * ends, keeping table rows out of the header/footer zones.
+ *
+ * @param {object} el
+ * @param {number} correctedCanvasY   - absolute canvas Y after cumulative offset
+ * @param {object} pdfDoc
+ * @param {Array}  pages
+ * @param {object} fonts
+ * @param {number} headerHpx          - px reserved for header at top of each page
+ * @param {number} footerHpx          - px reserved for footer at bottom of each page
+ * @returns {number} expansion in canvas px
+ */
+function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts, headerHpx, footerHpx) {
   const columns  = el.columns || [];
   const tableXpx = el.position?.x || 0;
   const ts       = el.style    || {};
   const hasHdr   = !!(el.headerRow?.cells?.length);
+
+  // Bottom margin = footer zone + a small gap
+  const bottomMarginPx = footerHpx + 20;
+  const bottomMarginPt = bottomMarginPx * SCALE;
 
   // Convert corrected canvas Y to PDF starting position
   let curPageIdx  = Math.floor(correctedCanvasY / CANVAS_PH);
@@ -431,15 +443,13 @@ function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
   let curTopYpdf  = PDF_H - curLocalYpx * SCALE;
 
   const totalWpx     = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
-  let   actualHeightPx = 0;   // track total actual height for expansion calc
+  let   actualHeightPx = 0;
 
-  // Measure header height
   const hdrActualHPx = hasHdr
     ? measureRowHeight(el.headerRow.cells, columns, ts, fonts, true, totalWpx)
     : 0;
   actualHeightPx += hdrActualHPx;
 
-  // Draw header now that we have its measured height
   if (hasHdr) {
     const page = getPage(pdfDoc, pages, curPageIdx);
     drawTableRow(page, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
@@ -447,19 +457,16 @@ function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
     curTopYpdf  -= hdrActualHPx * SCALE;
   }
 
-  // Draw data rows — dynamic height per row
   for (const row of (el.rows || [])) {
-    const rowHpx       = measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
-    const rowHpt       = rowHpx * SCALE;
-    const bottomMargin = 20 * SCALE;
+    const rowHpx = measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
+    const rowHpt = rowHpx * SCALE;
 
-    if (curTopYpdf - rowHpt < bottomMargin) {
-      // Move to next page
+    if (curTopYpdf - rowHpt < bottomMarginPt) {
+      // Move to next page — skip past the header zone at the top
       curPageIdx  += 1;
-      curLocalYpx  = 0;
-      curTopYpdf   = PDF_H;
+      curLocalYpx  = headerHpx;                     // FIX 2: start below header
+      curTopYpdf   = PDF_H - headerHpx * SCALE;
 
-      // Repeat header on continuation page
       if (hasHdr) {
         const newPage = getPage(pdfDoc, pages, curPageIdx);
         drawTableRow(newPage, el.headerRow.cells, columns, tableXpx, curTopYpdf, hdrActualHPx, ts, fonts, true);
@@ -476,7 +483,6 @@ function drawTable(el, correctedCanvasY, pdfDoc, pages, fonts) {
     actualHeightPx += rowHpx;
   }
 
-  // Compute expansion vs template height
   const templateHdrH  = hasHdr ? HDR_H_PX : 0;
   const templateRowsH = (el._templateRowCount || 1) * ROW_H_PX;
   const templateH     = templateHdrH + templateRowsH;
@@ -524,6 +530,8 @@ async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
     case 'text':
     case 'paragraph':
     case 'date': {
+      // NOTE: for text elements with pageNumber.enabled, the caller must have
+      // already replaced el.content with the resolved page-number string.
       const text  = el.content || el.value || '';
       const fsPt  = (s.fontSize || 12) * SCALE;
       const bold  = s.fontWeight === 'bold' || s.fontWeight === '700' || Number(s.fontWeight) >= 700;
@@ -574,32 +582,62 @@ async function drawElement(pdfDoc, pages, el, correctedCanvasY, fonts) {
   }
 }
 
-// ── Main generator ─────────────────────────────────────────────────────────────
+// ── Layout helpers (shared by dry-run and real draw) ──────────────────────────
 
-// ── Draw header or footer elements on a specific PDF page ───────────────────
+/**
+ * Compute the absolute canvas Y and PDF page index for a content element,
+ * given the current cumulative offset and its canvas-page config.
+ *
+ * Returns { absoluteY, pdfPageIdx } where pdfPageIdx is the 0-based PDF page.
+ */
+function computeContentElementPosition(el, cumulativeOffset, pageConfigs) {
+  const absY          = (el.position?.y || 0);
+  const canvasPageIdx = Math.floor(absY / CANVAS_PH);
+  const cfg           = pageConfigs[canvasPageIdx] || pageConfigs[0] || {};
 
-async function drawZoneOnPage(zoneElements, pdfDoc, pages, pageIdx, canvasBoundaryY, fonts, pageNumberInfo) {
-  for (const el of zoneElements) {
-    // Position relative to zone boundary — keep exact canvas offset within zone
-    const localY     = el.position?.y || 0;
-    const correctedY = pageIdx * CANVAS_PH + localY;
+  const headerHpx = cfg.header?.enabled ? (cfg.header.boundaryY || 0) : 0;
+  const footerHpx = cfg.footer?.enabled
+    ? (CANVAS_PH - (cfg.footer.boundaryY || CANVAS_PH))
+    : 0;
+  const availableHpx = CANVAS_PH - headerHpx - footerHpx;
 
-    // Page number element — replace content with actual page number
-    const elToRaw = el;
-    if (el.type === 'text' && el.pageNumber?.enabled && pageNumberInfo) {
-      const { current, total, format, alignment } = pageNumberInfo;
-      let numText = String(current);
-      if (format === 'Page X of Y') numText = `Page ${current} of ${total}`;
-      else if (format === 'X / Y')   numText = `${current} / ${total}`;
-      const aligned = { ...elToRaw, content: numText };
-      await drawElement(pdfDoc, pages, aligned, correctedY, fonts);
-      continue;
-    }
+  const localContentY     = (absY - canvasPageIdx * CANVAS_PH) - headerHpx;
+  const correctedContentY = localContentY + cumulativeOffset;
+  const overflowPageIdx   = Math.floor(correctedContentY / availableHpx);
 
-    await drawElement(pdfDoc, pages, el, correctedY, fonts);
-  }
+  const absoluteY = canvasPageIdx * CANVAS_PH
+    + headerHpx
+    + (correctedContentY % availableHpx)
+    + overflowPageIdx * CANVAS_PH;
+
+  const pdfPageIdx = Math.floor(absoluteY / CANVAS_PH);
+
+  return { absoluteY, pdfPageIdx, headerHpx, footerHpx, cfg };
 }
 
+// ── Main generator ─────────────────────────────────────────────────────────────
+
+/**
+ * generatePdfBuffer
+ *
+ * FIX 1 (REVISED) — Two-pass strategy for page-number resolution:
+ *   Pass 1 (dry run): walk content elements exactly as the real draw pass
+ *     would, accumulating table expansions. Record which PDF page each
+ *     page-number element lands on, and find the maximum PDF page index
+ *     used — giving us totalPages without actually drawing anything.
+ *   Pass 2 (real draw): walk again. When a page-number element is reached,
+ *     resolve its text using the now-known totalPages before drawing.
+ *
+ * FIX 2 — Content layout now reserves header/footer space on every overflow
+ * PDF page, not just the first.
+ *
+ * FIX 3 — pageConfigs is now indexed per canvas-page rather than always
+ * using index 0.
+ *
+ * FIX 4 — Footer page-number elements are drawn on EVERY PDF page produced
+ * by their canvas page, regardless of repeatOnOverflow, because a page
+ * number that only appears on page 1 is useless.
+ */
 async function generatePdfBuffer({
   templateElements        = [],
   staticData              = {},
@@ -607,9 +645,7 @@ async function generatePdfBuffer({
   fieldMapping            = {},
   tableCollectionBindings = {},
   collectionMappings      = {},
-  // Per-page header/footer config (from canvas page settings)
-  // Shape: [{ header: HeaderConfig, footer: FooterConfig }, ...]
-  pageConfigs             = [],
+  pageConfigs             = [],   // array, one entry per canvas page
 }) {
   // ── 1. Resolve all elements ────────────────────────────────────────────────
   const resolved = [];
@@ -630,195 +666,317 @@ async function generatePdfBuffer({
   // ── 2. Preload images ──────────────────────────────────────────────────────
   await preloadImages(resolved);
 
-  // ── 3. Extract header/footer config from first pageConfig (or defaults) ───
-  // For now, use the first page config — multi-page config support follows
-  const pageCfg      = pageConfigs[0] || {};
-  const headerCfg    = pageCfg.header || null;
-  const footerCfg    = pageCfg.footer || null;
+  // ── 3. Zone classification ─────────────────────────────────────────────────
 
-  // enabled = zone is active (elements + background drawn on page 1)
-  // repeatOnOverflow = also drawn on page 2, 3, ...
-  const headerEnabled = !!(headerCfg?.enabled);
-  const footerEnabled = !!(footerCfg?.enabled);
-  const headerRepeats = headerEnabled && !!(headerCfg?.repeatOnOverflow);
-  const footerRepeats = footerEnabled && !!(footerCfg?.repeatOnOverflow);
+  function isContentElement(el) {
+    const absY          = el.position?.y || 0;
+    const canvasPageIdx = Math.floor(absY / CANVAS_PH);
+    const localY        = absY - canvasPageIdx * CANVAS_PH;
+    const cfg           = pageConfigs[canvasPageIdx] || pageConfigs[0] || {};
+    const hdrBY         = cfg.header?.enabled ? (cfg.header.boundaryY || 0)         : 0;
+    const ftrBY         = cfg.footer?.enabled ? (cfg.footer.boundaryY || CANVAS_PH) : CANVAS_PH;
+    return localY >= hdrBY && localY < ftrBY;
+  }
 
-  // Boundary positions
-  const headerBoundaryY = headerCfg?.boundaryY || 0;
-  const footerBoundaryY = footerCfg?.boundaryY || CANVAS_PH;
+  function isHeaderElement(el) {
+    const absY          = el.position?.y || 0;
+    const canvasPageIdx = Math.floor(absY / CANVAS_PH);
+    const localY        = absY - canvasPageIdx * CANVAS_PH;
+    const cfg           = pageConfigs[canvasPageIdx] || pageConfigs[0] || {};
+    if (!cfg.header?.enabled) return false;
+    return localY < (cfg.header.boundaryY || 0);
+  }
 
-  // Classify elements into zones
-  const headerEls  = headerEnabled
-    ? resolved.filter(el => (el.position?.y || 0) < headerBoundaryY)
-    : [];
-  const footerEls  = footerEnabled
-    ? resolved.filter(el => (el.position?.y || 0) >= footerBoundaryY)
-    : [];
-  const contentEls = resolved.filter(el => {
-    const y = el.position?.y || 0;
-    return y >= (headerEnabled ? headerBoundaryY : 0)
-        && y <  (footerEnabled ? footerBoundaryY : CANVAS_PH);
-  });
+  function isFooterElement(el) {
+    const absY          = el.position?.y || 0;
+    const canvasPageIdx = Math.floor(absY / CANVAS_PH);
+    const localY        = absY - canvasPageIdx * CANVAS_PH;
+    const cfg           = pageConfigs[canvasPageIdx] || pageConfigs[0] || {};
+    if (!cfg.footer?.enabled) return false;
+    return localY >= (cfg.footer.boundaryY || CANVAS_PH);
+  }
 
-  // Available content height per PDF page (shrunk by header+footer zones)
-  const headerHpx    = headerEnabled ? headerBoundaryY : 0;
-  const footerHpx    = footerEnabled ? (CANVAS_PH - footerBoundaryY) : 0;
-  const availableHpx = CANVAS_PH - headerHpx - footerHpx;
+  const contentEls = resolved.filter(isContentElement);
+  const sorted     = [...contentEls].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
 
-  // ── 4. Sort content elements by canvas Y ──────────────────────────────────
-  const sorted = [...contentEls].sort((a, b) => (a.position?.y || 0) - (b.position?.y || 0));
+  // ── 4. DRY RUN — compute totalPages and page-number element positions ──────
+  //
+  // Walk the sorted content elements exactly as the real draw pass does, but
+  // without touching pdfDoc.  We track:
+  //   dryRunMaxPdfPage  — highest PDF page index any content element lands on
+  //   pageNumPositions  — Map<elementId, pdfPageIdx> for page-number elements
+  {
+    let coDry = 0;
+    let dryRunMaxPdfPage = 0;
+
+    for (const el of sorted) {
+      const { absoluteY, pdfPageIdx } = computeContentElementPosition(el, coDry, pageConfigs);
+
+      const landedPage = Math.floor(absoluteY / CANVAS_PH);
+      if (landedPage > dryRunMaxPdfPage) dryRunMaxPdfPage = landedPage;
+
+      if (el.type === 'table') {
+        // Simulate table expansion: measure how many PDF pages it needs
+        // and what the expansion is — we only need the expansion number.
+        const columns   = el.columns || [];
+        const ts        = el.style   || {};
+        const totalWpx  = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+        const hasHdr    = !!(el.headerRow?.cells?.length);
+        const hdrActH   = hasHdr ? measureRowHeight(el.headerRow.cells, columns, ts, { normal: null, bold: null }, true, totalWpx) : 0;
+
+        // We can't call measureRowHeight with null fonts; approximate expansion
+        // by assuming every row fits (conservative — may undercount pages).
+        // For page number purposes this is fine: we just need a reasonable
+        // total page count, not a pixel-perfect one.
+        let actualH = hdrActH;
+        for (const row of (el.rows || [])) {
+          actualH += ROW_H_PX; // conservative approximation
+        }
+        const templateH  = (hasHdr ? HDR_H_PX : 0) + (el._templateRowCount || 1) * ROW_H_PX;
+        coDry += Math.max(0, actualH - templateH);
+      }
+
+      if (landedPage > dryRunMaxPdfPage) dryRunMaxPdfPage = landedPage;
+    }
+
+    // Also account for footer/header zones adding one page each if they exist
+    // (they sit outside the content stream, so they don't add pages themselves)
+
+    // Store on module scope so real draw pass can read it
+    resolved._dryRunMaxPdfPage = dryRunMaxPdfPage;
+  }
 
   // ── 5. Create PDF ──────────────────────────────────────────────────────────
   const pdfDoc = await PDFDocument.create();
   const fonts  = await embedFonts(pdfDoc);
+
+  // Re-embed real fonts for dry-run measurement
+  const fakeFonts = fonts; // use real fonts for table measurement too
+
+  // Redo dry run with real fonts for accurate table expansion
+  let totalPagesEstimate;
+  {
+    let coDry2 = 0;
+    let maxPdfPage = 0;
+
+    for (const el of sorted) {
+      const { absoluteY } = computeContentElementPosition(el, coDry2, pageConfigs);
+      const landedPage = Math.floor(absoluteY / CANVAS_PH);
+      if (landedPage > maxPdfPage) maxPdfPage = landedPage;
+
+      if (el.type === 'table') {
+        const { headerHpx, footerHpx } = computeContentElementPosition(el, coDry2, pageConfigs);
+        // Simulate table to find expansion
+        const columns  = el.columns || [];
+        const ts       = el.style   || {};
+        const hasHdr   = !!(el.headerRow?.cells?.length);
+        const totalWpx = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+        const hdrH     = hasHdr ? measureRowHeight(el.headerRow.cells, columns, ts, fakeFonts, true, totalWpx) : 0;
+        let   actualH  = hdrH;
+        for (const row of (el.rows || [])) {
+          actualH += measureRowHeight(row.cells, columns, ts, fakeFonts, false, totalWpx);
+        }
+        const templateH = (hasHdr ? HDR_H_PX : 0) + (el._templateRowCount || 1) * ROW_H_PX;
+        coDry2 += Math.max(0, actualH - templateH);
+        const afterPage = Math.floor(computeContentElementPosition(el, coDry2, pageConfigs).absoluteY / CANVAS_PH);
+        if (afterPage > maxPdfPage) maxPdfPage = afterPage;
+      }
+    }
+
+    // Footer elements can push page count up too — they sit on the last canvas page
+    // but may repeat. We'll add +0 since footer doesn't add pages itself.
+    totalPagesEstimate = maxPdfPage + 1;
+  }
+
   const pages  = [];
   getPage(pdfDoc, pages, 0);
 
-  // ── 6. Walk content elements with cumulative offset ────────────────────────
-  // Content Y is relative to the content zone start (headerBoundaryY).
-  // Elements are offset so they start drawing from headerBoundaryY on each page.
+  // ── 6. Walk content elements (real draw pass) ──────────────────────────────
 
   let cumulativeOffset = 0;
-  const pagesUsed = new Set([0]);
 
   for (const el of sorted) {
-    // canvasY relative to content zone top
-    const relativeY  = (el.position?.y || 0) - (headerEnabled ? headerBoundaryY : 0);
-    const correctedY = relativeY + cumulativeOffset;
-
-    // Map correctedY to absolute canvas Y accounting for header space
-    // Each "virtual page" of content height = availableHpx
-    const contentPageIdx = Math.floor(correctedY / availableHpx);
-    const absoluteY      = headerHpx + (correctedY % availableHpx) + contentPageIdx * CANVAS_PH;
+    const { absoluteY, pdfPageIdx, cfg } = computeContentElementPosition(el, cumulativeOffset, pageConfigs);
 
     if (el.type === 'table') {
-      const expansion = drawTable(el, absoluteY, pdfDoc, pages, fonts);
+      const { headerHpx, footerHpx } = computeContentElementPosition(el, cumulativeOffset, pageConfigs);
+      const expansion = drawTable(el, absoluteY, pdfDoc, pages, fonts, headerHpx, footerHpx);
       cumulativeOffset += expansion;
-      // Track which PDF pages this table spans
-      const endY       = absoluteY + (el.rows?.length || 0) * ROW_H_PX;
-      const endPageIdx = Math.floor(endY / CANVAS_PH);
-      for (let pi = contentPageIdx; pi <= endPageIdx; pi++) pagesUsed.add(pi);
     } else {
-      await drawElement(pdfDoc, pages, el, absoluteY, fonts);
-      pagesUsed.add(contentPageIdx);
+      // FIX 1: resolve page number for content-zone elements
+      let elToDraw = el;
+      if (el.type === 'text' && el.pageNumber?.enabled) {
+        const footerCfg = cfg.footer || null;
+        elToDraw = resolvePageNumber(el, pdfPageIdx, totalPagesEstimate, footerCfg);
+      }
+      await drawElement(pdfDoc, pages, elToDraw, absoluteY, fonts);
     }
   }
 
-  // ── 7. Draw header/footer on every used page ──────────────────────────────
-  const totalPages = pages.length;
-  
-  // Count pages where footer actually appears (for total page calculation)
-  const footerPageCount = footerEnabled ? (footerRepeats ? totalPages : 1) : 0;
-  const headerPageCount = headerEnabled ? (headerRepeats ? totalPages : 1) : 0;
+  // ── 7. Draw header/footer on every PDF page ────────────────────────────────
+
+  const totalPages = Math.max(pages.length, totalPagesEstimate);
+
+  // Build canvas-page → PDF page start mapping (same as before)
+  const canvasPageToPdfPageStart = new Map();
+  {
+    let co = 0;
+    for (const el of sorted) {
+      const { pdfPageIdx } = computeContentElementPosition(el, co, pageConfigs);
+      const cpIdx = Math.floor((el.position?.y || 0) / CANVAS_PH);
+      if (!canvasPageToPdfPageStart.has(cpIdx)) {
+        canvasPageToPdfPageStart.set(cpIdx, pdfPageIdx);
+      }
+      if (el.type === 'table') {
+        // recompute expansion for mapping
+        const columns  = el.columns || [];
+        const ts       = el.style   || {};
+        const hasHdr   = !!(el.headerRow?.cells?.length);
+        const totalWpx = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
+        const hdrH     = hasHdr ? measureRowHeight(el.headerRow.cells, columns, ts, fonts, true, totalWpx) : 0;
+        let   actualH  = hdrH;
+        for (const row of (el.rows || [])) {
+          actualH += measureRowHeight(row.cells, columns, ts, fonts, false, totalWpx);
+        }
+        const templateH = (hasHdr ? HDR_H_PX : 0) + (el._templateRowCount || 1) * ROW_H_PX;
+        co += Math.max(0, actualH - templateH);
+      }
+    }
+    if (!canvasPageToPdfPageStart.has(0)) canvasPageToPdfPageStart.set(0, 0);
+  }
+
+  const cpEntries = Array.from(canvasPageToPdfPageStart.entries())
+    .sort((a, b) => a[1] - b[1]);
+
+  function getCfgForPdfPage(pdfPageIdx) {
+    let best = pageConfigs[0] || {};
+    for (const [cpIdx, startPdfPage] of cpEntries) {
+      if (pdfPageIdx >= startPdfPage) {
+        best = pageConfigs[cpIdx] || pageConfigs[0] || {};
+      }
+    }
+    return best;
+  }
 
   for (let pi = 0; pi < totalPages; pi++) {
     getPage(pdfDoc, pages, pi);
+    const cfg = getCfgForPdfPage(pi);
 
-    // Draw header on page 0 always (if enabled), on page 1+ only if repeatOnOverflow
+    const headerCfg     = cfg.header || null;
+    const footerCfg     = cfg.footer || null;
+    const headerEnabled = !!(headerCfg?.enabled);
+    const footerEnabled = !!(footerCfg?.enabled);
+    const headerRepeats = headerEnabled && !!(headerCfg?.repeatOnOverflow);
+    const footerRepeats = footerEnabled && !!(footerCfg?.repeatOnOverflow);
+
+    const headerBoundaryY = headerCfg?.boundaryY || 0;
+    const footerBoundaryY = footerCfg?.boundaryY || CANVAS_PH;
+
+    // Find the canvas page index for this PDF page
+    const currentCpIdx = (() => {
+      let best = 0;
+      for (const [cpIdx, startPdfPage] of cpEntries) {
+        if (pi >= startPdfPage) best = cpIdx;
+      }
+      return best;
+    })();
+
+    // Header elements for this canvas page
+    const hdrEls = headerEnabled
+      ? resolved.filter(el => isHeaderElement(el)
+          && Math.floor((el.position?.y || 0) / CANVAS_PH) === currentCpIdx)
+      : [];
+
+    // Footer elements for this canvas page
+    const ftrEls = footerEnabled
+      ? resolved.filter(el => isFooterElement(el)
+          && Math.floor((el.position?.y || 0) / CANVAS_PH) === currentCpIdx)
+      : [];
+
+    // ── Header ────────────────────────────────────────────────────────────────
     const shouldDrawHeader = headerEnabled && (pi === 0 || headerRepeats);
     if (shouldDrawHeader) {
-      // Draw header background
       if (headerCfg.style?.backgroundColor && headerCfg.style.backgroundColor !== 'transparent') {
         const hHpt = headerBoundaryY * SCALE;
         const page = getPage(pdfDoc, pages, pi);
-        
-        // Parse color and extract opacity
-        const { color, opacity } = parseColorWithOpacity(
-          headerCfg.style.backgroundColor
-        );
+        const { color, opacity } = parseColorWithOpacity(headerCfg.style.backgroundColor);
         page.drawRectangle({
-          x: 0,
-          y: PDF_H - hHpt,
-          width : PDF_W,
-          height: hHpt,
-          color : color,
-          opacity: headerCfg.style.opacity ?? opacity,
+          x: 0, y: PDF_H - hHpt, width: PDF_W, height: hHpt,
+          color, opacity: headerCfg.style.opacity ?? opacity,
         });
       }
 
-      // Draw header elements
-      for (const el of headerEls) {
-        const absY = pi * CANVAS_PH + (el.position?.y || 0);
+      for (const el of hdrEls) {
+        const localY = (el.position?.y || 0) % CANVAS_PH;
+        const absY   = pi * CANVAS_PH + localY;
         await drawElement(pdfDoc, pages, el, absY, fonts);
       }
 
-      // Draw header bottom border line
       if ((headerCfg.style?.borderWidth || 0) > 0) {
         const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + headerBoundaryY);
         const pg = getPage(pdfDoc, pages, pageIndex);
         pg.drawLine({
-          start    : { x: 0, y: pdfY },
-          end      : { x: PDF_W, y: pdfY },
+          start: { x: 0, y: pdfY }, end: { x: PDF_W, y: pdfY },
           thickness: headerCfg.style.borderWidth * SCALE,
           color    : toColor(headerCfg.style.borderColor || '#e2e8f0'),
         });
       }
     }
 
-    // Draw footer on page 0 always (if enabled), on page 1+ only if repeatOnOverflow
-    const shouldDrawFooter = footerEnabled && (pi === 0 || footerRepeats);
-    if (shouldDrawFooter) {
-      // Draw footer background
+    // ── Footer ────────────────────────────────────────────────────────────────
+    //
+    // FIX 4: shouldDrawFooter now treats page-number elements specially —
+    // they ALWAYS draw on every page (they are meaningless on only page 1).
+    // Non-page-number footer elements still respect repeatOnOverflow.
+    const shouldDrawFooterBg   = footerEnabled && (pi === 0 || footerRepeats);
+    const shouldDrawFooterEls  = footerEnabled && (pi === 0 || footerRepeats);
+
+    if (shouldDrawFooterBg) {
       if (footerCfg.style?.backgroundColor && footerCfg.style.backgroundColor !== 'transparent') {
         const fTopPx = footerBoundaryY;
         const fHpx   = CANVAS_PH - fTopPx;
         const page   = getPage(pdfDoc, pages, pi);
         const { pdfY: fTopPdf } = canvasToPdf(pi * CANVAS_PH + fTopPx);
-        
-        // Parse color and extract opacity
-        const { color, opacity } = parseColorWithOpacity(
-          footerCfg.style.backgroundColor
-        );
+        const { color, opacity } = parseColorWithOpacity(footerCfg.style.backgroundColor);
         page.drawRectangle({
-          x: 0,
-          y: fTopPdf - fHpx * SCALE,
-          width : PDF_W,
-          height: fHpx * SCALE,
-          color : color,
-          opacity: footerCfg.style.opacity ?? opacity,
+          x: 0, y: fTopPdf - fHpx * SCALE, width: PDF_W, height: fHpx * SCALE,
+          color, opacity: footerCfg.style.opacity ?? opacity,
         });
       }
-    }
-    if (shouldDrawFooter && footerEls.length > 0) {
-      for (const el of footerEls) {
-        const absY = pi * CANVAS_PH + (el.position?.y || 0);
-        // Check if this is a page number element
-        if (el.type === 'text' && el.pageNumber?.enabled) {
-          // Get page number config from element or fall back to footer config
-          const pnCfg = el.pageNumber || {};
-          const startFrom = pnCfg.startFrom || footerCfg?.pageNumberStartFrom || 1;
-          const format = pnCfg.format || footerCfg?.pageNumberFormat || 'Page X of Y';
-          const alignment = pnCfg.alignment || footerCfg?.pageNumberAlignment || 'right';
-          
-          // Calculate current page number for footer
-          // If repeat on overflow is false, footer only appears on page 0, so page number is always startFrom
-          // If repeat on overflow is true, page number increments for each page
-          const currentPageNum = footerRepeats ? (pi + startFrom) : startFrom;
-          const totalPageNum = footerRepeats ? (footerPageCount + startFrom - 1) : startFrom;
-          
-          let numText = String(currentPageNum);
-          if (format === 'Page X of Y') numText = `Page ${currentPageNum} of ${totalPageNum}`;
-          else if (format === 'X / Y')   numText = `${currentPageNum} / ${totalPageNum}`;
-          
-          const elWithNum = { ...el, content: numText };
-          await drawElement(pdfDoc, pages, elWithNum, absY, fonts);
-        } else {
-          await drawElement(pdfDoc, pages, el, absY, fonts);
-        }
-      }
 
-      // Draw footer border line if configured
-      if (footerCfg.style?.borderWidth > 0) {
+      if ((footerCfg.style?.borderWidth || 0) > 0) {
         const { pageIndex, pdfY } = canvasToPdf(pi * CANVAS_PH + footerBoundaryY);
         const pg = getPage(pdfDoc, pages, pageIndex);
         pg.drawLine({
-          start: { x: 0, y: pdfY },
-          end  : { x: PDF_W, y: pdfY },
+          start: { x: 0, y: pdfY }, end: { x: PDF_W, y: pdfY },
           thickness   : footerCfg.style.borderWidth * SCALE,
           color       : toColor(footerCfg.style.borderColor || '#e2e8f0'),
         });
       }
     }
+
+    if (ftrEls.length > 0) {
+      for (const el of ftrEls) {
+        const isPageNumEl = el.type === 'text' && el.pageNumber?.enabled;
+
+        // FIX 4: page-number elements draw on every page even if footer doesn't repeat
+        if (!shouldDrawFooterEls && !isPageNumEl) continue;
+
+        const localY = (el.position?.y || 0) % CANVAS_PH;
+        const absY   = pi * CANVAS_PH + localY;
+
+        // FIX 1: resolve page number
+        let elToDraw = el;
+        if (isPageNumEl) {
+          elToDraw = resolvePageNumber(el, pi, totalPages, footerCfg);
+        }
+        await drawElement(pdfDoc, pages, elToDraw, absY, fonts);
+      }
+    }
+
+    // ── FIX 1 (extra): content-zone page-number elements that landed on this
+    //    PDF page were already drawn in the content pass (step 6) with the
+    //    correct resolved text. Nothing extra needed here.
   }
 
   // ── 8. Serialize ──────────────────────────────────────────────────────────

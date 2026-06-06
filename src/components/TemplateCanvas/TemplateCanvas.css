@@ -292,3 +292,67 @@
 .canvas-zone--footer {
   /* background and border set dynamically via inline style */
 }
+
+.batch-control-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+ 
+.batch-control-btn:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-primary);
+  background: var(--color-background-secondary);
+}
+ 
+.batch-control-btn:active {
+  background: var(--color-background-tertiary);
+}
+ 
+/*
+ * mapping-collection-meta — small inline annotation in the table mapping header
+ * showing row count + column count for the bound collection.
+ */
+.mapping-collection-meta {
+  font-weight: 400;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.batch-control-btn--primary {
+  background: #214883;
+  color: #fff;
+  border-color: #214883;
+}
+.batch-control-btn--primary:hover:not(:disabled) {
+  background: #1a3a6b;
+  border-color: #1a3a6b;
+}
+.batch-control-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.batch-control-btn--bulk {
+  background: #f0f4ff;
+  color: #214883;
+  border-color: #c8d8f8;
+}
+.batch-control-btn--bulk:hover:not(:disabled) {
+  background: #dbe8ff;
+  border-color: #214883;
+}
+.batch-control-btn--bulk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

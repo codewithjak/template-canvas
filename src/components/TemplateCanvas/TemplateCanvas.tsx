@@ -29,6 +29,7 @@ import CheckboxElement   from './CheckboxElement';
 import DateElement       from './DateElement';
 import LayoutTableElement from './LayoutTableElement';
 import PropertiesPanel   from './PropertiesPanel';
+import PageRulers, { type PageRulerSelection } from './PageRulers';
 
 import type {
   CanonicalDocument,
@@ -113,6 +114,37 @@ function pageNumberPreviewLabel(el: TextElementType): string {
   return String(start);
 }
 
+function getElementRulerSelection(element: CanvasElement | null): PageRulerSelection | null {
+  if (!element) return null;
+
+  const selection: PageRulerSelection = {
+    x: element.position.x,
+    y: element.position.y,
+  };
+
+  if (element.type === 'image' || element.type === 'box') {
+    selection.width = element.style.width;
+    selection.height = element.style.height;
+  } else if (element.type === 'line') {
+    selection.width = element.style.direction === 'horizontal'
+      ? element.style.length
+      : element.style.thickness;
+    selection.height = element.style.direction === 'vertical'
+      ? element.style.length
+      : element.style.thickness;
+  } else if (isLayoutTable(element)) {
+    selection.width = element.size?.width ?? element.columns.reduce((sum, col) => (
+      col.hidden ? sum : sum + col.width
+    ), 0);
+    selection.height = element.size?.height ?? (
+      (element.headerRow ? 32 : 0) +
+      element.rows.reduce((sum, row) => sum + (row.height ?? 32), 0)
+    );
+  }
+
+  return selection;
+}
+
 /** Total preview rows = max rows across all bound collections. */
 function maxCollectionRows(ir: CanonicalDocument | null): number {
   if (!ir) return 0;
@@ -139,6 +171,7 @@ function TemplateCanvas() {
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
+  const [showPageRulers, setShowPageRulers] = useState(false);
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
@@ -664,6 +697,16 @@ function TemplateCanvas() {
     return null;
   }, [pages, selectedElementId]);
 
+  const selectedElementPageId = useMemo(
+    () => selectedElementId ? findPageOfElement(pages, selectedElementId) : null,
+    [pages, selectedElementId],
+  );
+
+  const selectedRulerSelection = useMemo(
+    () => getElementRulerSelection(selectedElement),
+    [selectedElement],
+  );
+
   // ── Render elements ───────────────────────────────────────────────────────
 
   const renderElements = (pageElements: CanvasElement[], pageId: string) =>
@@ -815,6 +858,8 @@ function TemplateCanvas() {
           onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
           onAddPage={handleAddPage}
+          showRulers={showPageRulers}
+          onToggleRulers={() => setShowPageRulers(v => !v)}
           hasSelection={!!selectedElementId}
           hasElements={allElements.length > 0}
         />
@@ -964,73 +1009,91 @@ function TemplateCanvas() {
               </div>
 
               <div
-                className={`template-canvas ${activePageId === page.pageId ? 'template-canvas--active' : ''}`}
-                onClick={e => {
-                  if (e.target === e.currentTarget) {
-                    clearAllSelections();
-                    setActivePageId(page.pageId);
-                  }
-                }}
+                className={`canvas-page-stage ${
+                  showPageRulers && activePageId === page.pageId ? 'canvas-page-stage--with-rulers' : ''
+                }`}
               >
-                {renderElements(page.elements, page.pageId)}
-
-                {/* Header boundary */}
-                <BoundaryLine
-                  type="header"
-                  config={page.header}
-                  isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'header'}
-                  canvasH={1123}
-                  onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'header' }); setActivePageId(page.pageId); }}
-                  onDeselect={() => setSelectedBoundary(null)}
-                  onChange={h => handleUpdatePageHeader(page.pageId, h as HeaderConfig)}
-                  onDelete={() => handleDeleteBoundary(page.pageId, 'header')}
-                />
-
-                {/* Footer boundary */}
-                <BoundaryLine
-                  type="footer"
-                  config={page.footer}
-                  isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'footer'}
-                  canvasH={1123}
-                  onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'footer' }); setActivePageId(page.pageId); }}
-                  onDeselect={() => setSelectedBoundary(null)}
-                  onChange={f => handleUpdatePageFooter(page.pageId, f as FooterConfig)}
-                  onDelete={() => handleDeleteBoundary(page.pageId, 'footer')}
-                  onAddPageNumber={atY => handleAddPageNumber(atY, page.pageId)}
-                />
-
-                {/* Header zone shading */}
-                {page.header.enabled && (
-                  <div
-                    className="canvas-zone canvas-zone--header"
-                    style={{
-                      height:          page.header.boundaryY,
-                      backgroundColor: page.header.style.backgroundColor !== 'transparent'
-                        ? adjustColorOpacity(page.header.style.backgroundColor, page.header.style.opacity ?? 1)
-                        : 'rgba(99,102,241,0.04)',
-                      borderBottom:    page.header.style.borderWidth > 0
-                        ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
-                        : undefined,
-                    }}
+                {showPageRulers && activePageId === page.pageId && (
+                  <PageRulers
+                    width={794}
+                    height={1123}
+                    selection={
+                      selectedElementPageId === page.pageId
+                        ? selectedRulerSelection
+                        : null
+                    }
                   />
                 )}
 
-                {/* Footer zone shading */}
-                {page.footer.enabled && (
-                  <div
-                    className="canvas-zone canvas-zone--footer"
-                    style={{
-                      top:             page.footer.boundaryY,
-                      height:          1123 - page.footer.boundaryY,
-                      backgroundColor: page.footer.style.backgroundColor !== 'transparent'
-                        ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
-                        : 'rgba(99,102,241,0.04)',
-                      borderTop:       page.footer.style.borderWidth > 0
-                        ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`
-                        : undefined,
-                    }}
+                <div
+                  className={`template-canvas ${activePageId === page.pageId ? 'template-canvas--active' : ''}`}
+                  onClick={e => {
+                    if (e.target === e.currentTarget) {
+                      clearAllSelections();
+                      setActivePageId(page.pageId);
+                    }
+                  }}
+                >
+                  {renderElements(page.elements, page.pageId)}
+
+                  {/* Header boundary */}
+                  <BoundaryLine
+                    type="header"
+                    config={page.header}
+                    isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'header'}
+                    canvasH={1123}
+                    onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'header' }); setActivePageId(page.pageId); }}
+                    onDeselect={() => setSelectedBoundary(null)}
+                    onChange={h => handleUpdatePageHeader(page.pageId, h as HeaderConfig)}
+                    onDelete={() => handleDeleteBoundary(page.pageId, 'header')}
                   />
-                )}
+
+                  {/* Footer boundary */}
+                  <BoundaryLine
+                    type="footer"
+                    config={page.footer}
+                    isSelected={selectedBoundary?.pageId === page.pageId && selectedBoundary?.type === 'footer'}
+                    canvasH={1123}
+                    onSelect={() => { clearAllSelections(); setSelectedBoundary({ pageId: page.pageId, type: 'footer' }); setActivePageId(page.pageId); }}
+                    onDeselect={() => setSelectedBoundary(null)}
+                    onChange={f => handleUpdatePageFooter(page.pageId, f as FooterConfig)}
+                    onDelete={() => handleDeleteBoundary(page.pageId, 'footer')}
+                    onAddPageNumber={atY => handleAddPageNumber(atY, page.pageId)}
+                  />
+
+                  {/* Header zone shading */}
+                  {page.header.enabled && (
+                    <div
+                      className="canvas-zone canvas-zone--header"
+                      style={{
+                        height:          page.header.boundaryY,
+                        backgroundColor: page.header.style.backgroundColor !== 'transparent'
+                          ? adjustColorOpacity(page.header.style.backgroundColor, page.header.style.opacity ?? 1)
+                          : 'rgba(99,102,241,0.04)',
+                        borderBottom:    page.header.style.borderWidth > 0
+                          ? `${page.header.style.borderWidth}px solid ${page.header.style.borderColor}`
+                          : undefined,
+                      }}
+                    />
+                  )}
+
+                  {/* Footer zone shading */}
+                  {page.footer.enabled && (
+                    <div
+                      className="canvas-zone canvas-zone--footer"
+                      style={{
+                        top:             page.footer.boundaryY,
+                        height:          1123 - page.footer.boundaryY,
+                        backgroundColor: page.footer.style.backgroundColor !== 'transparent'
+                          ? adjustColorOpacity(page.footer.style.backgroundColor, page.footer.style.opacity ?? 1)
+                          : 'rgba(99,102,241,0.04)',
+                        borderTop:       page.footer.style.borderWidth > 0
+                          ? `${page.footer.style.borderWidth}px solid ${page.footer.style.borderColor}`
+                          : undefined,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
 
               {pageIdx < previewPages.length - 1 && (

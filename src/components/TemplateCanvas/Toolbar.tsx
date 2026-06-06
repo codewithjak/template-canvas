@@ -87,6 +87,13 @@ const Icons = {
       <path d="M11 7h3M12.5 5.5v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
     </svg>
   ),
+  Ruler: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M4.5 3.5v3M7 3.5v2M9.5 3.5v3M12 3.5v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M2 9h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  ),
   Save: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 3a1 1 0 0 1 1-1h8l3 3v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3Z" stroke="currentColor" strokeWidth="1.5"/>
@@ -267,6 +274,8 @@ export interface ToolbarProps {
   onUpload       ?: () => void;
   onExportPDF    ?: () => void;
   onAddPage      ?: () => void;
+  onToggleRulers ?: () => void;
+  showRulers     ?: boolean;
   hasSelection   ?: boolean;
   hasElements    ?: boolean;
 }
@@ -276,6 +285,7 @@ export default function Toolbar({
   onAddText, onAddTable, onAddImage,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
   onDelete, onSave, onLoad, onUpload, onExportPDF, onAddPage,
+  onToggleRulers, showRulers,
   hasSelection, hasElements,
 }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -326,6 +336,22 @@ export default function Toolbar({
           <Divider />
           <div className="tb-group">
             <IconBtn icon={<Icons.AddPage />} label="Add page" shortcut="⌘↵" onClick={onAddPage} variant="page" />
+          </div>
+        </>
+      )}
+
+      {/* ── View ── */}
+      {onToggleRulers && (
+        <>
+          <Divider />
+          <div className="tb-group">
+            <IconBtn
+              icon={<Icons.Ruler />}
+              label={showRulers ? 'Hide rulers' : 'Show rulers'}
+              shortcut="R"
+              onClick={onToggleRulers}
+              active={showRulers}
+            />
           </div>
         </>
       )}

@@ -113,9 +113,10 @@ function drawLine(page, el, x, y) {
  * @param {number} maxWPt   available width in pt
  * @param {string} color    CSS color
  * @param {number} lineHeightPt
+ * @param {string} align    'left' | 'center' | 'right'
  * @returns {number}  total height consumed in pt
  */
-function drawText(page, text, font, fontSizePt, x, y, maxWPt, color, lineHeightPt) {
+function drawText(page, text, font, fontSizePt, x, y, maxWPt, color, lineHeightPt, align = 'left') {
   const lh    = lineHeightPt || fontSizePt * 1.3;
   const lines = wrapText(String(text || ''), font, fontSizePt, maxWPt);
   const col   = colorOf(color || '#000000');
@@ -125,8 +126,18 @@ function drawText(page, text, font, fontSizePt, x, y, maxWPt, color, lineHeightP
     if (!line && lines.length > 1) { curY -= lh; continue; }
     // baseline = curY - ascent (≈ 80% of fontSize)
     const baseline = curY - fontSizePt * 0.8;
+    
+    let drawX = x;
+    if (align === 'center') {
+      const lineWidth = font.widthOfTextAtSize(line, fontSizePt);
+      drawX = x + (maxWPt - lineWidth) / 2;
+    } else if (align === 'right') {
+      const lineWidth = font.widthOfTextAtSize(line, fontSizePt);
+      drawX = x + maxWPt - lineWidth;
+    }
+    
     try {
-      page.drawText(line, { x, y: baseline, size: fontSizePt, font, color: col });
+      page.drawText(line, { x: drawX, y: baseline, size: fontSizePt, font, color: col });
     } catch (e) {
       // swallow individual line errors
     }
@@ -224,10 +235,12 @@ function drawTableRow(page, cells, columns, tableX, rowTopY, rowHPt, tableStyle,
     }
 
     // Border
-    page.drawRectangle({
-      x: curX, y: rowBottomY, width: colW, height: rowHPt,
-      borderColor: bColor, borderWidth: bw,
-    });
+    if (tableStyle.showBorders !== false) {
+      page.drawRectangle({
+        x: curX, y: rowBottomY, width: colW, height: rowHPt,
+        borderColor: bColor, borderWidth: bw,
+      });
+    }
 
     // Text
     const textColor = isHeader ? headerText : (cs2.color || defCol);
@@ -237,7 +250,7 @@ function drawTableRow(page, cells, columns, tableX, rowTopY, rowHPt, tableStyle,
     const textWPt   = Math.max(1, colW - padPt * 2);
     const textTopY  = rowTopY - padPt;
 
-    drawText(page, cellText, font, fsPt, textX, textTopY, textWPt, textColor, fsPt * 1.3);
+    drawText(page, cellText, font, fsPt, textX, textTopY, textWPt, textColor, fsPt * 1.3, align);
 
     curX += colW;
   }

@@ -158,13 +158,24 @@ function wrapText(text, font, fsPt, maxWPt) {
   return lines.length ? lines : [''];
 }
 
-function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt) {
+function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align = 'left') {
   const lh    = lhPt || fsPt * 1.3;
   const lines = wrapText(text, font, fsPt, maxWPt);
   let   y     = topY;
+  
   for (const line of lines) {
     if (!line && lines.length > 1) { y -= lh; continue; }
-    try { page.drawText(line, { x, y: y - fsPt * 0.8, size: fsPt, font, color }); } catch (e) {}
+    
+    let drawX = x;
+    if (align === 'center') {
+      const lineWidth = font.widthOfTextAtSize(line, fsPt);
+      drawX = x + (maxWPt - lineWidth) / 2;
+    } else if (align === 'right') {
+      const lineWidth = font.widthOfTextAtSize(line, fsPt);
+      drawX = x + maxWPt - lineWidth;
+    }
+    
+    try { page.drawText(line, { x: drawX, y: y - fsPt * 0.8, size: fsPt, font, color }); } catch (e) {}
     y -= lh;
   }
 }
@@ -229,18 +240,21 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
     const font   = bold ? fonts.bold : fonts.normal;
     const tColor = isHeader ? headerText : toColor(cs2.color || ts.color || '#000000');
     const bgCol  = isHeader ? headerBg  : (cs2.backgroundColor ? toColor(cs2.backgroundColor) : null);
+    const align  = cs2.textAlign || columns[ci]?.alignment || 'left';
 
     if (bgCol)
       page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt, color: bgCol });
-    page.drawRectangle({
-      x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt,
-      borderColor: borderC, borderWidth: borderW,
-    });
+    if (ts.showBorders !== false) {
+      page.drawRectangle({
+        x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt,
+        borderColor: borderC, borderWidth: borderW,
+      });
+    }
 
     const padPt   = 3 * SCALE;
     const textWPt = cWpt - padPt * 2;
     drawTextAt(page, cell.content?.value || '', font, fsPt,
-      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2);
+      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2, align);
 
     curXpx += colWpx;
   }

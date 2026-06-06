@@ -81,6 +81,7 @@ export interface LayoutTableElement {
     fontFamily: string;
     borderColor?: string;
     borderWidth?: number;
+    showBorders?: boolean;
   };
 }
 

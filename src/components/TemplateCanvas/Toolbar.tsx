@@ -21,7 +21,6 @@ interface ToolbarProps {
   onAddRectangle  ?: () => void;
   onAddTriangle   ?: () => void;
   onAddEllipse    ?: () => void;
-  onAddPageNumber ?: () => void;   // ← NEW
   onDelete        ?: () => void;
   onSave          ?: () => void;
   onLoad          ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -36,7 +35,6 @@ function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
   onAddText, onAddTable, onAddImage, onAddLine,
   onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
-  onAddPageNumber,
   onDelete, onSave, onLoad, onUpload, onExportPDF,
   onAddPage,
   hasSelection, hasElements,
@@ -62,12 +60,6 @@ function Toolbar({
           <button className="toolbar-icon-button" onClick={onAddImage} title="Add image" aria-label="Add image">
             <span className="toolbar-icon" aria-hidden="true">🖼️</span>
             <span className="toolbar-label">Image</span>
-          </button>
-        )}
-        {onAddPageNumber && (
-          <button className="toolbar-icon-button" onClick={onAddPageNumber} title="Add page number" aria-label="Add page number">
-            <span className="toolbar-icon" aria-hidden="true">#</span>
-            <span className="toolbar-label">Page No.</span>
           </button>
         )}
       </div>

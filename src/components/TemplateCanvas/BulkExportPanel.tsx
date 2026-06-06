@@ -159,11 +159,15 @@ export function BulkExportPanel({
 
     await run({
       ir:                      enrichedIr,
-      templateElements:        pages.flatMap(p => p.elements ?? []),
-      pageConfigs:             pages.map(p => p.pageConfig ?? {}),
-      fieldMapping,
-      tableCollectionBindings,
-      collectionMappings,
+      pages:                   pages.map(p => ({
+        pageId:                  p.pageId,
+        templateElements:        p.elements ?? [],
+        header:                  (p as any).header ?? null,
+        footer:                  (p as any).footer ?? null,
+        fieldMapping,
+        tableCollectionBindings,
+        collectionMappings,
+      })),
       bulk: {
         driverCollectionKey:  driverKey,
         fileNameTemplate,

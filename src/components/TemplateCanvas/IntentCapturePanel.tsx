@@ -5,6 +5,11 @@
  * before the file lands — giving the AI layer a prior so it doesn't
  * guess cold on genuinely flat datasets.
  *
+ * Three options:
+ *   - per-row:    Each row is a separate document (labels, cards, certificates)
+ *   - relational: Data has parent-child relationships (invoices, report cards)
+ *   - flat:       Single complete report — all data in one PDF
+ *
  * Contract:
  *   - Renders before the dropzone
  *   - Calls onSelect(intent) when the user picks an option
@@ -31,7 +36,7 @@ export const IntentCapturePanel: React.FC<IntentCapturePanelProps> = ({ onSelect
       <div className="icp-options">
         <button
           className="icp-option"
-          onClick={() => onSelect('flat')}
+          onClick={() => onSelect('per-row')}
           type="button"
         >
           <div className="icp-option-icon" aria-hidden="true">
@@ -44,8 +49,8 @@ export const IntentCapturePanel: React.FC<IntentCapturePanelProps> = ({ onSelect
           <div className="icp-option-body">
             <span className="icp-option-title">Each row is a separate document</span>
             <span className="icp-option-desc">
-              A single sheet where every row becomes its own PDF — student results,
-              invoices, certificates, reports. No relationships between sheets.
+              A single table where every row becomes its own PDF —
+              certificates, labels, ID cards, letters.
             </span>
           </div>
           <div className="icp-option-arrow" aria-hidden="true">›</div>
@@ -69,10 +74,35 @@ export const IntentCapturePanel: React.FC<IntentCapturePanelProps> = ({ onSelect
             </svg>
           </div>
           <div className="icp-option-body">
-            <span className="icp-option-title">My data has related sheets that belong together</span>
+            <span className="icp-option-title">My data has related tables</span>
             <span className="icp-option-desc">
               Multiple sheets where one sheet's rows link to rows in another —
               students and their grades, orders and their line items, classes and students.
+            </span>
+          </div>
+          <div className="icp-option-arrow" aria-hidden="true">›</div>
+        </button>
+
+        <button
+          className="icp-option"
+          onClick={() => onSelect('flat')}
+          type="button"
+        >
+          <div className="icp-option-icon icp-option-icon--report" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="6" y="3" width="20" height="26" rx="2" fill="currentColor" opacity="0.15"/>
+              <rect x="6" y="3" width="20" height="26" rx="2" stroke="currentColor" strokeWidth="1.5" opacity="0.9" fill="none"/>
+              <rect x="10" y="8" width="12" height="2" rx="1" fill="currentColor" opacity="0.7"/>
+              <rect x="10" y="13" width="12" height="2" rx="1" fill="currentColor" opacity="0.5"/>
+              <rect x="10" y="18" width="8" height="2" rx="1" fill="currentColor" opacity="0.35"/>
+              <rect x="10" y="23" width="10" height="2" rx="1" fill="currentColor" opacity="0.35"/>
+            </svg>
+          </div>
+          <div className="icp-option-body">
+            <span className="icp-option-title">This is a single complete report</span>
+            <span className="icp-option-desc">
+              All your data — tables, fields, sections — renders into one PDF.
+              Financial statements, audit reports, dashboards.
             </span>
           </div>
           <div className="icp-option-arrow" aria-hidden="true">›</div>

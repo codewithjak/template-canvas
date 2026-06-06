@@ -625,7 +625,7 @@ function TemplateCanvas() {
         ([, rel]) => rel.relatedCollections.length > 0,
       );
       const driverKey = withRelated?.[0] ?? Object.keys(doc.collections)[0];
-      setRds(toRuntimeDataStructure(doc, 'unknown', 'relational-bulk', driverKey));
+      setRds(toRuntimeDataStructure(doc, 'unknown', 'relational', driverKey));
     }
   };
 
@@ -997,8 +997,12 @@ function TemplateCanvas() {
         {ir && (
           <div className="batch-export-controls">
             <div className="batch-export-summary">
-              <span>{totalRows} record{totalRows !== 1 ? 's' : ''} bound</span>
-              {totalRows > 1 && (
+              <span>
+                {rds?.executionPlan.mode === 'single'
+                  ? 'Full report — all data'
+                  : `${totalRows} record${totalRows !== 1 ? 's' : ''} bound`}
+              </span>
+              {totalRows > 1 && rds?.executionPlan.mode !== 'single' && (
                 <span className="preview-label">
                   &nbsp;— previewing record {previewRowIndex + 1} of {totalRows}
                 </span>
@@ -1006,7 +1010,7 @@ function TemplateCanvas() {
             </div>
 
             <div className="batch-export-actions">
-              {totalRows > 1 && (
+              {totalRows > 1 && rds?.executionPlan.mode !== 'single' && (
                 <div className="preview-nav">
                   <button
                     type="button" className="preview-nav-btn"
@@ -1043,15 +1047,17 @@ function TemplateCanvas() {
                 Export PDF
               </button>
 
-              <button
-                type="button"
-                className="batch-control-btn batch-control-btn--bulk"
-                onClick={() => setBulkPanelOpen(true)}
-                disabled={isExporting}
-                title="Generate one PDF per row"
-              >
-                Bulk Export ↗
-              </button>
+              {rds?.executionPlan.mode !== 'single' && (
+                <button
+                  type="button"
+                  className="batch-control-btn batch-control-btn--bulk"
+                  onClick={() => setBulkPanelOpen(true)}
+                  disabled={isExporting}
+                  title="Generate one PDF per row"
+                >
+                  Bulk Export ↗
+                </button>
+              )}
 
               <button type="button" className="clear-button" onClick={handleClearData}>
                 Clear Data

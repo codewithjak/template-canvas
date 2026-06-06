@@ -3,14 +3,16 @@
  *
  * Orchestrates a three-phase flow:
  *
- *   Phase 0 — Intent capture (new)
- *     IntentCapturePanel asks "flat or relational?" before the file lands.
- *     Intent === 'flat'       → skip relationship detection entirely
+ *   Phase 0 — Intent capture
+ *     IntentCapturePanel asks the user to choose from three options:
+ *     Intent === 'flat'       → single complete report, skip detection, driverKey = null
+ *     Intent === 'per-row'    → each row is a separate document, skip detection
  *     Intent === 'relational' → run detection + RelationshipReview after parse
  *
  *   Phase 1 — Upload + parse
  *     Same dropzone as before. Parses file → CanonicalDocument.
- *     If intent === 'flat': goes straight to Phase 2 (mapping).
+ *     If intent === 'flat': goes straight to Phase 2 (mapping). Mode = 'single'.
+ *     If intent === 'per-row': goes straight to Phase 2 (mapping). Mode = 'per-row'.
  *     If intent === 'relational': goes to Phase 1.5.
  *
  *   Phase 1.5 — Relationship review (new, relational only)
@@ -278,8 +280,8 @@ const UploadData: React.FC<UploadDataProps> = ({
     const enrichedIr: CanonicalDocument = { ...ir, fields: enrichedFields };
 
     // Build RuntimeDataStructure
-    const driverKey = autoDriverKey ?? collectionKeys[0];
-    const executionMode = intent === 'flat' ? 'flat-bulk' : 'relational-bulk';
+    const driverKey = intent === 'flat' ? undefined : (autoDriverKey ?? collectionKeys[0]);
+    const executionMode = intent === 'flat' ? 'single' : intent === 'per-row' ? 'per-row' : 'relational';
 
     const rds = toRuntimeDataStructure(enrichedIr, intent, executionMode, driverKey);
 

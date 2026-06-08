@@ -12,11 +12,13 @@ import {
   type TemplateSummary,
   type TemplateRecord,
 } from '../../services/templatesRepo'
+import { BUILTIN_TEMPLATES, type BuiltinTemplate } from '../../templates/registry'
 import './TemplatesLibraryModal.css'
 
 interface Props {
   currentTemplateId: string | null
   onOpen: (record: TemplateRecord) => void
+  onOpenBuiltin: (template: BuiltinTemplate) => void
   onClose: () => void
 }
 
@@ -32,7 +34,7 @@ function formatDate(iso: string): string {
       })
 }
 
-const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onClose }) => {
+const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onOpenBuiltin, onClose }) => {
   const [items, setItems] = useState<TemplateSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -83,11 +85,34 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onC
     <div className="tlm-backdrop" onClick={onClose}>
       <div className="tlm-card" onClick={(e) => e.stopPropagation()}>
         <div className="tlm-header">
-          <h2 className="tlm-title">My Templates</h2>
+          <h2 className="tlm-title">Templates</h2>
           <button className="tlm-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
+
+        <div className="tlm-body">
+        <section className="tlm-section">
+          <h3 className="tlm-section-title">Built-in Templates</h3>
+          <p className="tlm-section-sub">Start from a ready-made design — opens as a new, editable copy.</p>
+          <div className="tlm-gallery">
+            {BUILTIN_TEMPLATES.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className="tlm-tile"
+                onClick={() => onOpenBuiltin(t)}
+              >
+                <span className="tlm-tile-size">{t.sizeLabel}</span>
+                <span className="tlm-tile-name">{t.name}</span>
+                <span className="tlm-tile-desc">{t.description}</span>
+                <span className="tlm-tile-cat">{t.category}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <h3 className="tlm-section-title">My Templates</h3>
 
         {loading && <p className="tlm-msg">Loading…</p>}
         {error && <p className="tlm-msg tlm-msg--error">{error}</p>}
@@ -134,6 +159,7 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onC
             ))}
           </ul>
         )}
+        </div>
       </div>
     </div>
   )

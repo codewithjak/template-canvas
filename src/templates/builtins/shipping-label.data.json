@@ -1,0 +1,16 @@
+{
+  "fields": {
+    "service": "PRIORITY",
+    "from_name": "Your Company",
+    "from_address": "123 Market Street, City, ST 12345",
+    "to_name": "Jane Doe",
+    "to_company": "Doe Design Co.",
+    "to_address": "456 Oak Avenue, Portland, OR 97201",
+    "to_country": "United States",
+    "tracking": "1Z999AA10123456784",
+    "weight": "2.4 LB",
+    "box": "1 OF 1"
+  },
+  "collections": {},
+  "source": { "type": "json", "fileName": "shipping-label.data.json" }
+}

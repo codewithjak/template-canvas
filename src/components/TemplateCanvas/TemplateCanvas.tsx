@@ -85,6 +85,7 @@ import {
   updateTemplate as updateCloudTemplate,
   type TemplateRecord,
 } from '../../services/templatesRepo';
+import { type BuiltinTemplate } from '../../templates/registry';
 import {
   detectRelationships,
   buildRelatedCollectionsConfig,
@@ -642,6 +643,15 @@ function TemplateCanvas() {
     setTemplatesLibraryOpen(false);
   };
 
+  // Open a bundled built-in template. Loads as a fresh UNSAVED copy
+  // (currentTemplateId = null) so Save creates the user's own row and the
+  // shipped original is never modified.
+  const handleOpenBuiltin = (template: BuiltinTemplate) => {
+    applyDocument(template.doc);
+    setCurrentTemplateId(null);
+    setTemplatesLibraryOpen(false);
+  };
+
   // ── Data upload confirm ───────────────────────────────────────────────────
   //
   // ── CHANGE 3: Accept optional 5th param rds? from UploadData v3.
@@ -1144,6 +1154,7 @@ function TemplateCanvas() {
           <TemplatesLibraryModal
             currentTemplateId={currentTemplateId}
             onOpen={handleOpenCloudTemplate}
+            onOpenBuiltin={handleOpenBuiltin}
             onClose={() => setTemplatesLibraryOpen(false)}
           />
         )}

@@ -1,0 +1,137 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-shipping-label",
+    "name": "Shipping Label",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "pageSize": {
+    "preset": "4x6",
+    "canvasWidth": 384,
+    "canvasHeight": 576,
+    "pdfWidth": 288,
+    "pdfHeight": 432
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Label",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 60,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 516,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "lbl-header-bar",
+          "type": "box",
+          "position": { "x": 16, "y": 16 },
+          "style": { "width": 352, "height": 46, "borderWidth": 0, "borderColor": "#0f172a", "borderStyle": "solid", "backgroundColor": "#0f172a", "borderRadius": 8, "opacity": 1 }
+        },
+        {
+          "id": "lbl-service",
+          "type": "text",
+          "content": "PRIORITY",
+          "position": { "x": 30, "y": 28 },
+          "style": { "fontSize": 20, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-service-sub",
+          "type": "text",
+          "content": "EXPRESS",
+          "position": { "x": 190, "y": 32 },
+          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#cbd5e1", "fontFamily": "Arial, sans-serif", "width": 164, "textAlign": "right" }
+        },
+        {
+          "id": "lbl-from-label",
+          "type": "text",
+          "content": "FROM",
+          "position": { "x": 16, "y": 78 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-from-addr",
+          "type": "paragraph",
+          "content": "Your Company\n123 Market Street\nCity, ST 12345",
+          "position": { "x": 16, "y": 92 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "lineHeight": 1.4 }
+        },
+        {
+          "id": "lbl-divider-1",
+          "type": "line",
+          "position": { "x": 16, "y": 148 },
+          "style": { "length": 352, "thickness": 1, "direction": "horizontal", "color": "#cbd5e1", "style": "solid" }
+        },
+        {
+          "id": "lbl-shipto-label",
+          "type": "text",
+          "content": "SHIP TO",
+          "position": { "x": 16, "y": 160 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-shipto-name",
+          "type": "text",
+          "content": "JANE DOE",
+          "position": { "x": 16, "y": 176 },
+          "style": { "fontSize": 19, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-shipto-addr",
+          "type": "paragraph",
+          "content": "DOE DESIGN CO.\n456 OAK AVENUE\nPORTLAND, OR 97201\nUNITED STATES",
+          "position": { "x": 16, "y": 206 },
+          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#1f2937", "fontFamily": "Arial, sans-serif", "lineHeight": 1.45 }
+        },
+        {
+          "id": "lbl-divider-2",
+          "type": "line",
+          "position": { "x": 16, "y": 312 },
+          "style": { "length": 352, "thickness": 1, "direction": "horizontal", "color": "#cbd5e1", "style": "solid" }
+        },
+        {
+          "id": "lbl-track-label",
+          "type": "text",
+          "content": "TRACKING #",
+          "position": { "x": 16, "y": 324 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-track-value",
+          "type": "text",
+          "content": "1Z 999 AA1 01 2345 6784",
+          "position": { "x": 16, "y": 338 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "lbl-barcode",
+          "type": "barcode",
+          "content": "1Z999AA10123456784",
+          "position": { "x": 16, "y": 364 },
+          "style": { "width": 352, "height": 110 },
+          "barcode": { "format": "code128", "showText": true }
+        },
+        {
+          "id": "lbl-meta",
+          "type": "text",
+          "content": "WEIGHT  2.4 LB        BOX  1 OF 1",
+          "position": { "x": 16, "y": 492 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

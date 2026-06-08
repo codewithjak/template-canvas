@@ -1,0 +1,27 @@
+{
+  "fields": {
+    "company_name": "Your Company",
+    "company_address": "123 Market Street, City, ST 12345",
+    "invoice_number": "INV-1042",
+    "issue_date": "Apr 9, 2026",
+    "due_date": "Apr 23, 2026",
+    "customer_name": "Jane Doe",
+    "customer_company": "Doe Design Co.",
+    "customer_address": "456 Oak Avenue, Portland, OR 97201",
+    "subtotal": "$1,400.00",
+    "tax": "$70.00",
+    "total": "$1,470.00",
+    "amount_due": "$1,470.00"
+  },
+  "collections": {
+    "items": {
+      "columns": ["description", "qty", "unit_price", "amount"],
+      "rows": [
+        { "description": "Brand & Logo Design", "qty": "1", "unit_price": "$900.00", "amount": "$900.00" },
+        { "description": "Website Build", "qty": "1", "unit_price": "$400.00", "amount": "$400.00" },
+        { "description": "Hosting (monthly)", "qty": "2", "unit_price": "$50.00", "amount": "$100.00" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "invoice.data.json" }
+}

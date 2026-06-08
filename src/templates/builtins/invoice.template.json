@@ -1,0 +1,261 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-invoice",
+    "name": "Invoice",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Invoice",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "inv-logo-mark",
+          "type": "box",
+          "position": { "x": 60, "y": 56 },
+          "style": { "width": 46, "height": 46, "borderWidth": 0, "borderColor": "#1d4ed8", "borderStyle": "solid", "backgroundColor": "#1d4ed8", "borderRadius": 10, "opacity": 1 }
+        },
+        {
+          "id": "inv-brand-name",
+          "type": "text",
+          "content": "Your Company",
+          "position": { "x": 118, "y": 58 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-brand-sub",
+          "type": "text",
+          "content": "123 Market Street · City, ST 12345",
+          "position": { "x": 118, "y": 90 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-title",
+          "type": "text",
+          "content": "INVOICE",
+          "position": { "x": 434, "y": 54 },
+          "style": { "fontSize": 34, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "inv-meta-no",
+          "type": "text",
+          "content": "Invoice No.   INV-1042",
+          "position": { "x": 434, "y": 104 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "inv-meta-issued",
+          "type": "text",
+          "content": "Issued   Apr 9, 2026",
+          "position": { "x": 434, "y": 122 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "inv-meta-due",
+          "type": "text",
+          "content": "Due   Apr 23, 2026",
+          "position": { "x": 434, "y": 140 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "inv-divider-top",
+          "type": "line",
+          "position": { "x": 60, "y": 184 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "inv-billto-label",
+          "type": "text",
+          "content": "BILL TO",
+          "position": { "x": 60, "y": 208 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-billto-name",
+          "type": "text",
+          "content": "Jane Doe",
+          "position": { "x": 60, "y": 226 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-billto-addr",
+          "type": "paragraph",
+          "content": "Doe Design Co.\n456 Oak Avenue\nPortland, OR 97201",
+          "position": { "x": 60, "y": 248 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "lineHeight": 1.5 }
+        },
+        {
+          "id": "inv-due-box",
+          "type": "box",
+          "position": { "x": 484, "y": 204 },
+          "style": { "width": 250, "height": 72, "borderWidth": 0, "borderColor": "#e2e8f0", "borderStyle": "solid", "backgroundColor": "#f1f5f9", "borderRadius": 10, "opacity": 1 }
+        },
+        {
+          "id": "inv-due-label",
+          "type": "text",
+          "content": "AMOUNT DUE",
+          "position": { "x": 500, "y": 218 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-due-amount",
+          "type": "text",
+          "content": "$1,470.00",
+          "position": { "x": 500, "y": 234 },
+          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-items-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": { "x": 60, "y": 320 },
+          "size": { "width": 674, "height": 180 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": false },
+          "binding": { "enabled": false, "collectionKey": "items", "itemAlias": "item" },
+          "columns": [
+            { "id": "col-desc", "width": 330, "alignment": "left" },
+            { "id": "col-qty", "width": 80, "alignment": "center" },
+            { "id": "col-price", "width": 132, "alignment": "right" },
+            { "id": "col-amount", "width": 132, "alignment": "right" }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 34,
+            "cells": [
+              { "id": "h-desc", "content": { "type": "text", "value": "DESCRIPTION" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "left", "backgroundColor": "#f8fafc" } },
+              { "id": "h-qty", "content": { "type": "text", "value": "QTY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "center", "backgroundColor": "#f8fafc" } },
+              { "id": "h-price", "content": { "type": "text", "value": "UNIT PRICE" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "right", "backgroundColor": "#f8fafc" } },
+              { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "right", "backgroundColor": "#f8fafc" } }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 36,
+              "cells": [
+                { "id": "r1-desc", "content": { "type": "text", "value": "Brand & Logo Design" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r1-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r1-price", "content": { "type": "text", "value": "$900.00" }, "style": { "textAlign": "right", "color": "#334155" } },
+                { "id": "r1-amount", "content": { "type": "text", "value": "$900.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-2",
+              "height": 36,
+              "cells": [
+                { "id": "r2-desc", "content": { "type": "text", "value": "Website Build" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r2-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r2-price", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#334155" } },
+                { "id": "r2-amount", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-3",
+              "height": 36,
+              "cells": [
+                { "id": "r3-desc", "content": { "type": "text", "value": "Hosting (monthly)" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r3-qty", "content": { "type": "text", "value": "2" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r3-price", "content": { "type": "text", "value": "$50.00" }, "style": { "textAlign": "right", "color": "#334155" } },
+                { "id": "r3-amount", "content": { "type": "text", "value": "$100.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "inv-sub-label",
+          "type": "text",
+          "content": "Subtotal",
+          "position": { "x": 434, "y": 500 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "inv-sub-value",
+          "type": "text",
+          "content": "$1,400.00",
+          "position": { "x": 634, "y": 500 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
+        },
+        {
+          "id": "inv-tax-label",
+          "type": "text",
+          "content": "Tax (5%)",
+          "position": { "x": 434, "y": 524 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "inv-tax-value",
+          "type": "text",
+          "content": "$70.00",
+          "position": { "x": 634, "y": 524 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
+        },
+        {
+          "id": "inv-total-divider",
+          "type": "line",
+          "position": { "x": 494, "y": 552 },
+          "style": { "length": 240, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "inv-total-label",
+          "type": "text",
+          "content": "Total",
+          "position": { "x": 434, "y": 564 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "inv-total-value",
+          "type": "text",
+          "content": "$1,470.00",
+          "position": { "x": 624, "y": 564 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif", "width": 110, "textAlign": "right" }
+        },
+        {
+          "id": "inv-thanks",
+          "type": "text",
+          "content": "Thank you for your business.",
+          "position": { "x": 60, "y": 520 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-foot-divider",
+          "type": "line",
+          "position": { "x": 60, "y": 1000 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "inv-foot-note",
+          "type": "paragraph",
+          "content": "Payment due within 14 days. Make payment to Your Company.\nQuestions? billing@yourcompany.com · (555) 010-2040",
+          "position": { "x": 60, "y": 1016 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "lineHeight": 1.5 }
+        }
+      ]
+    }
+  ]
+}

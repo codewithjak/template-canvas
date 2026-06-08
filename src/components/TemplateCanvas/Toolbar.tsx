@@ -113,6 +113,12 @@ const Icons = {
       <path d="M5 2v3h6V2M5 9h6v5H5V9Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
     </svg>
   ),
+  Library: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2.5 2.5h3v11h-3zM6.5 2.5h3v11h-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="m10.6 3 2.9.8-2.4 9.5-2.9-.8" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    </svg>
+  ),
   Load: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 9v4a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -447,6 +453,7 @@ export interface ToolbarProps {
   onAddEllipse   ?: () => void;
   onDelete       ?: () => void;
   onSave         ?: () => void;
+  onOpenTemplates?: () => void;
   onLoad         ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onUpload       ?: () => void;
   onExportPDF    ?: () => void;
@@ -468,7 +475,7 @@ export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
   onAddText, onAddTable, onAddImage, onAddBarcode, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
-  onDelete, onSave, onLoad, onUpload, onExportPDF, onAddPage,
+  onDelete, onSave, onOpenTemplates, onLoad, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
   hasSelection, hasElements,
   onPageSizeChange, currentPageSize,
@@ -568,6 +575,10 @@ export default function Toolbar({
         {onSave && (
           <IconBtn icon={<Icons.Save />} label="Save template" shortcut="⌘S"
             onClick={onSave} disabled={!hasElements} variant="action" />
+        )}
+        {onOpenTemplates && (
+          <IconBtn icon={<Icons.Library />} label="My templates"
+            onClick={onOpenTemplates} variant="action" />
         )}
         {onLoad && (
           <>

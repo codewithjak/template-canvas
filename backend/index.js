@@ -18,7 +18,9 @@ const app    = express();
 const PORT   = process.env.PORT || 3001;
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(cors());
+// In production set FRONTEND_ORIGIN to the deployed frontend URL
+// (e.g. https://app.map-doc.com) so the API only accepts that origin.
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

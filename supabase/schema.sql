@@ -180,3 +180,35 @@ create policy templates_delete_team on public.templates
 drop policy if exists invites_select_team on public.invites;
 create policy invites_select_team on public.invites
   for select using (public.is_team_member(team_id));
+
+-- ---------- Analytics events ----------------------------------------
+-- Append-only usage log, keyed on the TEAM (the tenant). user_id is an
+-- optional "who within the team did it" drill-down, not the grouping key.
+-- One row per tracked action: login, template_created, pdf_exported.
+create table if not exists public.analytics_events (
+  id          bigint generated always as identity primary key,
+  team_id     uuid not null references public.teams(id) on delete cascade,
+  user_id     uuid references public.profiles(id) on delete set null,
+  event_type  text not null
+                check (event_type in ('login','template_created','pdf_exported')),
+  metadata    jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_analytics_team on public.analytics_events(team_id, created_at);
+create index if not exists idx_analytics_type on public.analytics_events(event_type, created_at);
+
+alter table public.analytics_events enable row level security;
+
+-- Insert: only into a team you belong to, and only attributed to yourself.
+drop policy if exists analytics_insert_team on public.analytics_events;
+create policy analytics_insert_team on public.analytics_events
+  for insert with check (
+    public.is_team_member(team_id)
+    and (user_id is null or user_id = auth.uid())
+  );
+
+-- Read: any member can read their team's events (team-level dashboards).
+drop policy if exists analytics_select_team on public.analytics_events;
+create policy analytics_select_team on public.analytics_events
+  for select using (public.is_team_member(team_id));

@@ -23,7 +23,7 @@ import type {
   TableCollectionBindings,
 } from '../types/dataSource';
 
-import { API_BASE } from './config';
+import { API_BASE, authHeaders } from './config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -139,7 +139,7 @@ export interface GenerateBulkDocumentsParams extends GenerateDocumentParams {
 export async function generateDocument(params: GenerateDocumentParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-document`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body:    JSON.stringify({
       pages:               params.pages,
       ir:                  params.ir,
@@ -172,7 +172,7 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
 export async function generateBulkDocuments(params: GenerateBulkDocumentsParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-bulk-documents`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body:    JSON.stringify({
       pages:          params.pages,
       ir:             params.ir,

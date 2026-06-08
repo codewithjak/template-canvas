@@ -9,6 +9,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth, POST_LOGIN_KEY } from '../auth/AuthContext'
+import { logEvent } from '../services/analytics'
 import '../auth/AuthModal.css'
 
 export default function AuthCallback() {
@@ -20,6 +21,10 @@ export default function AuthCallback() {
   useEffect(() => {
     if (loading || errorDescription) return
     if (session) {
+      // This route only mounts on the OAuth redirect, so this fires once
+      // per genuine sign-in (unlike onAuthStateChange, which also fires on
+      // tab focus and token refresh).
+      void logEvent('login')
       const next = sessionStorage.getItem(POST_LOGIN_KEY) || '/canvas'
       sessionStorage.removeItem(POST_LOGIN_KEY)
       navigate(next, { replace: true })

@@ -8,6 +8,7 @@
  */
 import { supabase } from './supabaseClient'
 import { getActiveTeamId } from './teamService'
+import { logEvent } from './analytics'
 
 export interface TemplateSummary {
   id: string
@@ -66,6 +67,8 @@ export async function createTemplate(name: string, body: unknown): Promise<strin
     .single()
 
   if (error) throw error
+
+  void logEvent('template_created', { template_id: data.id, name })
   return data.id as string
 }
 

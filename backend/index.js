@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const express = require('express');
 const cors    = require('cors');
 const multer  = require('multer');
@@ -13,6 +15,7 @@ const { parseDataSource, validateBindings } = require('./parsers/index');
 const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer');
 const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { replacePlaceholders }               = require('./utils/resolver');
+const { logExportEvent }                    = require('./analytics');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
@@ -289,6 +292,10 @@ app.post('/generate-document', async (req, res) => {
 
     // ── Format-aware response ─────────────────────────────────────────
     const format = String(req.body.format || 'pdf').toLowerCase();
+
+    // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
+    logExportEvent(req.headers.authorization, { format, mode: 'single' });
+
     if (format === 'zpl') {
       const zplBuffer = await generateZplBuffer({
         ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
@@ -353,6 +360,9 @@ app.post('/generate-bulk-documents', async (req, res) => {
     const zipFileName      = sanitizeZipName(bulk.zipFileName || `${outputFileName || 'documents'}.zip`, 'documents.zip');
     const relatedCollections = bulk.relatedCollections || {};
     const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
+
+    // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
+    logExportEvent(req.headers.authorization, { format, mode: 'bulk', rows: total });
 
     res.set({
       'Content-Type':        'application/zip',
@@ -451,6 +461,9 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
 
   jobs.set(jobId, { status: 'running', current: 0, total, zipPath, zipFileName, createdAt: Date.now() });
+
+  // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
+  logExportEvent(req.headers.authorization, { format, mode: 'bulk_async', rows: total });
 
   res.json({ jobId });
 

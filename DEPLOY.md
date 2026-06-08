@@ -36,104 +36,202 @@ export REGION=us-east-1
 
 ---
 
-## PART A — Backend → App Runner
+## PART A — Backend → Amazon Lightsail
 
-The backend is **stateful** (in-memory job registry, temp files in `os.tmpdir()`), so it needs a
-persistent server, NOT Lambda. App Runner = managed runtime + autoscaling + HTTPS + free domain cert.
+The backend is **stateful** (in-memory job registry, temp files in `os.tmpdir()`), so a single
+small VM is a natural fit. Lightsail = fixed-price VM. We run Node under systemd and put **Caddy**
+in front for automatic Let's Encrypt HTTPS.
 
-**Chosen path: App Runner from GitHub source** (no Docker, no ECR). App Runner pulls the repo,
-builds the Node app, and runs it. Deploy branch: **TC-0026**.
+**Chosen config:** Ubuntu, **$7/mo (1 GB)** plan, code via **git clone** from GitHub (branch TC-0026).
 
-### A1. Files already in repo
-- `backend/apprunner.yaml` — build/run config (runtime nodejs18, build `npm ci --omit=dev`,
-  start `node index.js`, port 3001, env `FRONTEND_ORIGIN`).
-- CORS in `backend/index.js` is restricted to `process.env.FRONTEND_ORIGIN`.
-- `backend/Dockerfile` + `.dockerignore` exist but are **unused** in the source-based path
-  (kept in case you switch to the ECR/container path later).
+> The `backend/Dockerfile`, `backend/.dockerignore`, and `backend/apprunner.yaml` are **unused**
+> in the Lightsail path — leave them (handy if you migrate to ECS later) or delete them.
 
-### A2. Push the backend to GitHub
-Source-based App Runner builds from GitHub, so the backend changes must be pushed first:
+### A1. Push the branch to GitHub first
+The VM clones from GitHub, so TC-0026 must be on the remote:
 ```bash
-git add backend/ DEPLOY.md
-git commit -m "Add App Runner config for AWS backend deploy"
 git push origin TC-0026
 ```
-> `.env.production` is intentionally **not** committed (gitignored) — it's the *frontend* build
-> env and is used locally in Part B. App Runner only needs the `backend/` files.
+If the repo is private, set up read access on the VM in A4 (deploy key).
 
-### A3. Create the App Runner service (Console)
-1. App Runner → **Create service** → Source: **Source code repository**.
-2. **Add new** GitHub connection → authorize AWS → pick repo `codewithjak/template-canvas`,
-   branch **TC-0026**.
-3. Deployment trigger: **Automatic** (redeploy on every push) or Manual.
-4. Build settings → **Use a configuration file** (it reads `backend/apprunner.yaml`).
-   - **Source directory:** `backend`
-5. Service settings → confirm/set env var `FRONTEND_ORIGIN = https://app.map-doc.com`.
-6. CPU / Memory: **1 vCPU / 2 GB** to start.
-7. **Auto scaling: set max size = 1** (see warning below).
-8. Create → wait for **Running** → you get `https://xxxx.us-east-1.awsapprunner.com`. Smoke-test it.
+### A2. Create the Lightsail instance
+1. Lightsail console (https://lightsail.aws.amazon.com) → **Create instance**.
+2. Region: pick one near your users (e.g. us-east-1).
+3. Platform **Linux/Unix** → Blueprint **OS Only → Ubuntu 24.04 LTS**.
+4. Plan: **$7/mo (1 GB RAM, 1 vCPU)**.
+5. Name it `mapdoc-backend` → **Create instance**.
 
-> ⚠️ **Keep max instances = 1.** The backend stores jobs in an in-memory `Map` and writes temp
-> files to local disk. Multiple instances would not share that state and bulk-export jobs would
-> appear to vanish. To scale out later, move jobs to a shared store (S3 + a DB/Redis registry).
+### A3. Attach a static IP + open ports
+1. Lightsail → **Networking** → **Create static IP** → attach to `mapdoc-backend`. Note the IP.
+2. Instance → **Networking** tab → **IPv4 Firewall** → add rules:
+   - **HTTP (80)** — allow
+   - **HTTPS (443)** — allow
+   - SSH (22) is already open. **Do NOT open 3001** (Caddy reaches it locally).
 
-### A4. Custom domain `api.map-doc.com`
-1. App Runner → service → **Custom domains** → **Link domain** → `api.map-doc.com`.
-2. App Runner shows DNS records (validation CNAMEs + target). Add them in the Route 53
-   `map-doc.com` hosted zone.
-3. App Runner **auto-provisions the TLS cert** — no manual ACM step here.
-4. Wait for status **Active** (10–30 min). Test: `curl https://api.map-doc.com/<an-endpoint>`.
+### A4. Install Node, clone the repo, install deps
+SSH in (Lightsail → instance → **Connect using SSH**, or your own terminal), then:
+```bash
+# Node.js 20 LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs git
+
+# Clone (HTTPS shown; for a PRIVATE repo use a deploy key — see note)
+cd ~
+git clone https://github.com/codewithjak/template-canvas.git
+cd template-canvas
+git checkout TC-0026
+cd backend
+npm ci --omit=dev
+```
+> **Private repo?** Generate a read-only deploy key on the VM and add the public key to the repo
+> (GitHub → repo → Settings → Deploy keys):
+> ```bash
+> ssh-keygen -t ed25519 -C "lightsail-deploy" -f ~/.ssh/id_ed25519 -N ""
+> cat ~/.ssh/id_ed25519.pub      # paste into GitHub Deploy keys (read-only)
+> ```
+> then clone with `git clone git@github.com:codewithjak/template-canvas.git`.
+
+### A5. Run the backend under systemd
+Create the service unit:
+```bash
+sudo tee /etc/systemd/system/mapdoc-backend.service > /dev/null <<'EOF'
+[Unit]
+Description=map-doc backend (Express render/export)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/template-canvas/backend
+ExecStart=/usr/bin/node index.js
+Restart=always
+Environment=PORT=3001
+Environment=FRONTEND_ORIGIN=https://app.map-doc.com
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now mapdoc-backend
+sudo systemctl status mapdoc-backend       # should be active (running)
+curl http://localhost:3001/                # local smoke test
+```
+
+### A6. DNS — point api.map-doc.com at the static IP (Route 53)
+Route 53 → `map-doc.com` zone → **Create record**:
+- Name: `api`, Type: **A**, value: the Lightsail **static IP**, TTL 300.
+
+Wait until it resolves before the next step:
+```bash
+dig +short api.map-doc.com     # should return the static IP
+```
+
+### A7. Caddy → automatic HTTPS reverse proxy
+```bash
+sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | \
+  sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | \
+  sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt-get update && sudo apt-get install -y caddy
+
+# Caddyfile: proxy the domain to the local Node app; Caddy auto-issues the TLS cert
+sudo tee /etc/caddy/Caddyfile > /dev/null <<'EOF'
+api.map-doc.com {
+    reverse_proxy localhost:3001
+}
+EOF
+
+sudo systemctl restart caddy
+sudo systemctl status caddy
+```
+Caddy now fetches a Let's Encrypt cert automatically (needs port 80 open + DNS pointing here — done in A3/A6). Test from your laptop:
+```bash
+curl https://api.map-doc.com/        # HTTPS, valid cert
+```
+
+### A8. Redeploys later
+```bash
+ssh into the box
+cd ~/template-canvas && git pull origin TC-0026
+cd backend && npm ci --omit=dev
+sudo systemctl restart mapdoc-backend
+```
 
 ---
 
-## PART B — Frontend → S3 + CloudFront
+## PART B — Frontend → S3 + CloudFront (done via AWS CLI)
+
+Built locally and deployed via CLI. **Live resource IDs (account 525125475269):**
+
+| Resource | Value |
+|---|---|
+| S3 bucket | `app.map-doc.com` (private, us-east-1) |
+| ACM cert (us-east-1) | `arn:aws:acm:us-east-1:525125475269:certificate/93b748c6-f941-4245-803c-0d31a5ac7817` |
+| CloudFront OAC | `E23MTNF8X8J8WF` |
+| CloudFront distribution | `EXYNIGEV4PUYQ` → `de4i7685j67eo.cloudfront.net` |
+| Route 53 zone | `Z07910522KSPAWOHRXYKH` |
+
+> **IAM note:** the deploy IAM user `junaidkhan01` needed these managed policies attached:
+> AWSCertificateManagerFullAccess, AmazonS3FullAccess, CloudFrontFullAccess, AmazonRoute53FullAccess.
 
 ### B1. Build with the production API URL
-`.env.production` is already in the repo (gitignored). Confirm `VITE_API_URL=https://api.map-doc.com`, then:
+`.env.production` (gitignored) sets `VITE_API_URL=https://api.map-doc.com`. Then:
 ```bash
 npm ci
-npm run build        # → dist/
+npm run build        # → dist/  (verify the URL is baked in: grep -o https://api.map-doc.com dist/assets/*.js)
 ```
 
-### B2. Create the S3 bucket (keep it private)
+### B2. ACM certificate (us-east-1) + DNS validation
+CloudFront certs **must** be in us-east-1. Requested with DNS validation; the validation CNAME
+was upserted into Route 53, and it validated to **ISSUED** in a couple of minutes:
 ```bash
-aws s3 mb s3://app.map-doc.com --region $REGION
+ARN=$(aws acm request-certificate --domain-name app.map-doc.com \
+  --validation-method DNS --region us-east-1 --query CertificateArn --output text)
+# read DomainValidationOptions[0].ResourceRecord {Name,Value}, then UPSERT it as a CNAME in Route 53
+```
+
+### B3. Private S3 bucket + upload
+```bash
+aws s3api create-bucket --bucket app.map-doc.com --region us-east-1   # block-public-access ON by default
 aws s3 sync dist/ s3://app.map-doc.com --delete
 ```
-Leave **Block all public access = ON**. CloudFront reaches it via Origin Access Control (OAC).
 
-### B3. TLS certificate (ACM) — MUST be in us-east-1
+### B4. CloudFront — OAC + distribution
 ```bash
-aws acm request-certificate \
-  --domain-name app.map-doc.com \
-  --validation-method DNS \
-  --region us-east-1
+# Origin Access Control (lets CloudFront read the private bucket)
+aws cloudfront create-origin-access-control --origin-access-control-config \
+  "Name=app-map-doc-oac,SigningProtocol=sigv4,SigningBehavior=always,OriginAccessControlOriginType=s3"
 ```
-Add the returned CNAME validation record in Route 53; cert validates in a few minutes.
-(For apex, request `map-doc.com` and `www.map-doc.com` instead.)
+Distribution config (see `/tmp/cf-config.json` shape in this repo's history) sets:
+- Origin = `app.map-doc.com.s3.us-east-1.amazonaws.com` with the OAC, `S3OriginConfig.OriginAccessIdentity=""`
+- `ViewerProtocolPolicy=redirect-to-https`, managed CachePolicy `CachingOptimized`
+- `DefaultRootObject=index.html`
+- **SPA fix:** CustomErrorResponses 403→`/index.html` (200) and 404→`/index.html` (200)
+- `Aliases=[app.map-doc.com]`, ACM cert, `sni-only`, `TLSv1.2_2021`
+- `PriceClass_100` (cheapest: NA + EU edges; bump to `PriceClass_200`/`All` if you need Asia/global edges)
 
-### B4. CloudFront distribution (Console)
-1. **Create distribution** → Origin = the S3 bucket → **Origin access: Origin access control (OAC)**;
-   let it create the policy, then **update the bucket policy** when prompted.
-2. Viewer protocol policy: **Redirect HTTP → HTTPS**.
-3. Alternate domain name (CNAME): `app.map-doc.com`. Custom SSL certificate: the ACM cert from B3.
-4. Default root object: `index.html`.
-5. **SPA routing fix (critical for react-router):** Error pages → add custom responses for
-   **403** and **404** → response page `/index.html`, **HTTP response code 200**.
-   Without this, deep links like `/canvas` break on refresh.
+### B5. S3 bucket policy — scope to this distribution only
+```json
+{ "Version":"2008-10-17","Statement":[{
+  "Sid":"AllowCloudFrontServicePrincipal","Effect":"Allow",
+  "Principal":{"Service":"cloudfront.amazonaws.com"},
+  "Action":"s3:GetObject","Resource":"arn:aws:s3:::app.map-doc.com/*",
+  "Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::525125475269:distribution/EXYNIGEV4PUYQ"}}
+}]}
+```
 
-### B5. Point the domain at CloudFront (Route 53)
-In the `map-doc.com` hosted zone, create:
-- **A** record, name `app`, **Alias = Yes**, target = the CloudFront distribution.
-- **AAAA** record, name `app`, Alias → same target (IPv6).
+### B6. Route 53 alias → CloudFront
+UPSERT **A** and **AAAA** alias records for `app.map-doc.com` →
+`de4i7685j67eo.cloudfront.net`, AliasTarget HostedZoneId **Z2FDTNDATAQYW2** (the fixed
+CloudFront zone ID, same for every distribution).
 
-(For apex: A + AAAA alias at the zone root pointing to CloudFront.)
-
-### B6. Redeploys later
+### B7. Redeploys later
 ```bash
 npm run build
 aws s3 sync dist/ s3://app.map-doc.com --delete
-aws cloudfront create-invalidation --distribution-id <DIST_ID> --paths "/*"
+aws cloudfront create-invalidation --distribution-id EXYNIGEV4PUYQ --paths "/*"
 ```
 
 ---
@@ -151,13 +249,14 @@ Supabase Dashboard → **Authentication → URL Configuration**:
 ---
 
 ## Order of operations recap
-1. ECR push → App Runner → `api.map-doc.com` Active.
+1. Push TC-0026 → Lightsail VM → systemd + Caddy → `api.map-doc.com` on HTTPS.
 2. `.env.production` (API URL) → `npm run build`.
 3. S3 + ACM(us-east-1) + CloudFront (403/404 → index.html) → `app.map-doc.com` live.
 4. Supabase redirect URLs.
 
 ## Rough monthly cost (low traffic)
-- App Runner (1 vCPU/2GB, always on): ~$25–40
+- Lightsail VM (1 GB): **$7 fixed**
 - S3 + CloudFront (static SPA): ~$1–5
 - Route 53 hosted zone: $0.50 + queries
-- ACM / App Runner certs: free
+- TLS certs (Caddy/Let's Encrypt + ACM): free
+- **Total ≈ $9–13/month**

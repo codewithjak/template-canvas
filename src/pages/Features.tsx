@@ -53,32 +53,32 @@ const features = [
   {
     Icon: Icons.Template,
     title: 'Rich element library',
-    body: 'Text blocks, images, layout tables, lines, and boxes — everything you need to compose any document type from scratch.',
+    body: 'Text, paragraphs, tables, images, lines, boxes, checkboxes, radios, date fields, watermarks, and signatures — compose any document from scratch.',
   },
   {
-    Icon: Icons.Reuse,
-    title: 'Save & reload',
-    body: 'Export templates as JSON and reload them instantly. Share a single file across your whole team for consistent results.',
-  },
-  {
-    Icon: Icons.Export,
-    title: 'One-click PDF export',
-    body: 'Generate pixel-perfect, print-ready PDFs directly from your template. What you see is exactly what you get.',
+    Icon: Icons.Bolt,
+    title: 'Barcodes & QR codes',
+    body: 'Drop in scannable barcodes and QR codes across dozens of symbologies — ideal for labels, shipping, and inventory documents.',
   },
   {
     Icon: Icons.Map,
     title: 'Dynamic data mapping',
-    body: 'Connect CSV, Excel, or API data to auto-fill fields and generate documents at scale — no copy-paste, no repetition.',
+    body: 'Connect CSV, Excel, or API data. Mapdoc auto-detects fields and relationships and maps them straight into your template.',
   },
   {
-    Icon: Icons.Bolt,
-    title: 'Drag & drop canvas',
-    body: 'Intuitive canvas interface with precise element positioning and snapping. No code, no configuration required.',
+    Icon: Icons.Reuse,
+    title: 'Bulk generation',
+    body: 'Turn one template and a dataset into hundreds of personalised documents in a single run — no copy-paste, no repetition.',
+  },
+  {
+    Icon: Icons.Export,
+    title: 'PDF & ZPL export',
+    body: 'Generate pixel-perfect, print-ready PDFs — or ZPL output for thermal and label printers. What you see is what you get.',
   },
   {
     Icon: Icons.Eye,
-    title: 'Real-time preview',
-    body: 'Every change renders live as you build. The preview is your output — accurate, instant, and always up to date.',
+    title: 'Multi-page & live preview',
+    body: 'Multiple pages, custom page sizes, page breaks, and page numbers — all with an accurate, real-time preview as you build.',
   },
 ]
 
@@ -171,15 +171,15 @@ export default function Features() {
             <span className="eyebrow eyebrow--light">Coming soon</span>
             <h2>The roadmap is <em>just getting started.</em></h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Data mapping, API connectors, team workspaces, and bulk generation
-              are all in active development.
+              Data mapping, bulk generation, and PDF/ZPL export are already live.
+              Collaboration and cloud features are next on the roadmap.
             </p>
           </div>
           <div className="feat-grid">
             {[
-              { title: 'Bulk generation',    body: 'Upload a spreadsheet and generate hundreds of personalised documents in one run.' },
-              { title: 'API connector',      body: 'Pull live data from your existing systems directly into any template field.' },
-              { title: 'Team workspaces',    body: 'Shared template libraries, role-based access, and version history for your whole org.' },
+              { title: 'Team workspaces',  body: 'Shared template libraries and role-based access so your whole org works from the same source.' },
+              { title: 'Version history',  body: 'Track every change to a template, compare revisions, and roll back to any previous version.' },
+              { title: 'Cloud sync',       body: 'Save templates and data sources to the cloud and pick up where you left off on any device.' },
             ].map(({ title, body }) => (
               <article className="feat-card feat-card--dark" key={title}>
                 <div className="feat-card__icon" style={{ opacity: 0.5 }}>
@@ -262,12 +262,12 @@ function FeatureHighlight() {
       </div>
       <div style={{ padding: '1.25rem', display: 'grid', gap: '0.75rem' }}>
         {[
-          { icon: '📝', label: 'Text & paragraphs',  done: true  },
-          { icon: '▦',  label: 'Layout tables',      done: true  },
-          { icon: '🖼', label: 'Image blocks',        done: true  },
-          { icon: '📄', label: 'PDF export',         done: true  },
-          { icon: '⚡', label: 'Data mapping',        done: false },
-          { icon: '👥', label: 'Team workspaces',    done: false },
+          { icon: '📝', label: 'Text, tables & images', done: true  },
+          { icon: '▦',  label: 'Barcodes & QR codes',   done: true  },
+          { icon: '⚡', label: 'Data mapping',           done: true  },
+          { icon: '📄', label: 'PDF & ZPL export',       done: true  },
+          { icon: '🗂', label: 'Bulk generation',        done: true  },
+          { icon: '👥', label: 'Team workspaces',        done: false },
         ].map(({ icon, label, done }) => (
           <div key={label} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',

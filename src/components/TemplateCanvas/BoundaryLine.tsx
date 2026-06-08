@@ -7,8 +7,15 @@
  */
 
 import React, { useCallback, useRef } from 'react';
-import type { HeaderConfig, FooterConfig } from '../../types/canvas';
+import type { HeaderConfig, FooterConfig, ZoneScope } from '../../types/canvas';
+import { zoneScope, syncRepeatFlag } from '../../types/canvas';
 import './BoundaryLine.css';
+
+const SCOPE_OPTIONS: { value: ZoneScope; label: string; hint: string }[] = [
+  { value: 'first-page-only',        label: 'First page only',           hint: 'Drawn only on the first PDF page this canvas page produces.' },
+  { value: 'this-page-and-overflow', label: 'Repeat on overflow pages',  hint: 'Redrawn on every PDF page this canvas page overflows onto.' },
+  { value: 'entire-document',        label: 'Every page (whole doc)',    hint: 'This zone — its style and elements — becomes the master and repeats on every page of the entire export.' },
+];
 
 type ZoneConfig = HeaderConfig | FooterConfig;
 
@@ -75,7 +82,13 @@ const BoundaryLine: React.FC<BoundaryLineProps> = ({
   const label      = isHeader ? 'Header' : 'Footer';
   const icon       = isHeader ? '⬆' : '⬇';
   const footerCfg  = config as any;
-  const repeatIsOn = !isHeader && config.enabled && config.repeatOnOverflow;
+  const scope      = zoneScope(config);
+  // Page numbering only makes sense when the footer appears on more than the
+  // first page (i.e. it repeats on overflow or on the whole document).
+  const repeatIsOn = !isHeader && config.enabled && scope !== 'first-page-only';
+
+  const setScope = (next: ZoneScope) =>
+    onChange(syncRepeatFlag({ ...(config as any), scope: next }));
 
   return (
     <div
@@ -123,21 +136,26 @@ const BoundaryLine: React.FC<BoundaryLineProps> = ({
 
           {config.enabled && (
             <>
-              {/* Repeat on overflow */}
-              <div className="bl-field bl-field--toggle">
+              {/* Where the zone is drawn (scope) */}
+              <div className="bl-field bl-field--column">
                 <span className="bl-label">
-                  Repeat on overflow pages
+                  Show {label.toLowerCase()} on
                   <span className="bl-hint">
-                    {label} redrawn on every PDF page this canvas page produces.
+                    {SCOPE_OPTIONS.find(o => o.value === scope)?.hint}
                   </span>
                 </span>
-                <div
-                  className={`bl-toggle ${config.repeatOnOverflow ? 'bl-toggle--on' : ''}`}
-                  onClick={() => onChange({ ...config, repeatOnOverflow: !config.repeatOnOverflow })}
-                  role="switch"
-                  aria-checked={config.repeatOnOverflow}
-                >
-                  <div className="bl-toggle__knob" />
+                <div className="bl-scope-group">
+                  {SCOPE_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`bl-scope-btn ${scope === opt.value ? 'bl-scope-btn--active' : ''}`}
+                      onClick={() => setScope(opt.value)}
+                      title={opt.hint}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -287,10 +305,11 @@ const BoundaryLine: React.FC<BoundaryLineProps> = ({
                 </>
               )}
 
-              {/* Nudge when repeat is off */}
+              {/* Nudge when footer only shows on the first page */}
               {!isHeader && !repeatIsOn && (
                 <p className="bl-hint bl-hint--muted">
-                  Turn on <strong>Repeat on overflow pages</strong> to enable page numbering.
+                  Set this footer to <strong>Repeat on overflow pages</strong> or{' '}
+                  <strong>Every page</strong> to enable page numbering.
                 </p>
               )}
             </>

@@ -545,39 +545,48 @@ h1, h2, h3 { margin: 0; }
   padding: 1.75rem;
 }
 
-.step-card::before {
-  counter-increment: step;
-  content: "0" counter(step);
-  display: block;
+.step-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.step-card__num {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
   font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-style: italic;
+  font-size: 1.15rem;
+  font-weight: 700;
   line-height: 1;
+  box-shadow: 0 6px 16px rgba(35, 85, 244, 0.35);
+}
+
+.step-card__label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--blue);
-  opacity: 0.25;
-  margin-bottom: 0.75rem;
 }
 
 .step-card h3 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
+  color: var(--ink);
   margin-bottom: 0.5rem;
 }
 
 .step-card p { font-size: 0.95rem; color: var(--ink-2); line-height: 1.65; }
 
-/* connector line between steps */
 .steps { position: relative; }
-.steps::after {
-  content: '';
-  position: absolute;
-  top: 2.75rem;
-  left: calc(33.33% + 1.5rem);
-  right: calc(33.33% + 1.5rem);
-  height: 1px;
-  background: linear-gradient(90deg, var(--blue) 0%, var(--blue) 50%, transparent 50%);
-  background-size: 8px 1px;
-}
 
 /* ── Video section ─────────────────────────────────────────── */
 .video-wrap {
@@ -719,7 +728,6 @@ h1, h2, h3 { margin: 0; }
   .hero__visual { order: -1; max-width: 480px; }
   .feat-grid { grid-template-columns: repeat(2, 1fr); }
   .steps { grid-template-columns: 1fr; }
-  .steps::after { display: none; }
   .footer__inner { grid-template-columns: 1fr; gap: 2.5rem; }
 }
 

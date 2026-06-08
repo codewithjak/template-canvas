@@ -127,6 +127,43 @@
   gap            : 12px;
 }
 
+.bl-field--column {
+  flex-direction : column;
+  align-items    : stretch;
+  gap            : 8px;
+}
+
+/* 3-way scope selector (replaces the old repeat-on-overflow toggle) */
+.bl-scope-group {
+  display        : flex;
+  flex-direction : column;
+  gap            : 4px;
+}
+
+.bl-scope-btn {
+  text-align     : left;
+  padding        : 7px 10px;
+  border-radius  : 5px;
+  border         : 1px solid #d1d5db;
+  background     : #f8fafc;
+  color          : #475569;
+  font-size      : 12px;
+  font-weight    : 500;
+  cursor         : pointer;
+  transition     : all 0.15s;
+}
+
+.bl-scope-btn:hover {
+  border-color   : #cbd5e1;
+}
+
+.bl-scope-btn--active {
+  border-color   : #6366f1;
+  background     : #eef2ff;
+  color          : #4338ca;
+  font-weight    : 600;
+}
+
 .bl-label {
   font-size      : 12px;
   font-weight    : 600;

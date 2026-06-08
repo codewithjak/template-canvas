@@ -153,7 +153,7 @@ export default function Home() {
                 Open Mapdoc <Icon.Arrow />
               </Link>
               <a className="btn btn--ghost btn--lg" href="#demo">
-                <Icon.Play /> Watch Demo
+                <Icon.Play /> See it in action
               </a>
             </div>
             <ul className="hero__bullets">
@@ -219,16 +219,20 @@ export default function Home() {
             <span className="eyebrow eyebrow--light">How it works</span>
             <h2>Three steps to a <em>polished document.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              From blank canvas to branded PDF — Mapdoc keeps the process simple.
+              From blank canvas to mapped data and a print-ready PDF or ZPL export — Mapdoc keeps the process simple.
             </p>
           </div>
           <div className="steps">
             {[
-              { title: 'Design your template', body: 'Drag and drop text blocks, images, tables, and shapes onto the canvas to define your document layout.' },
-              { title: 'Save & reuse it',       body: 'Save templates as JSON. Load them any time for new documents without touching the layout again.' },
-              { title: 'Export as PDF',          body: 'One click exports a high-quality, print-ready PDF — consistent and professional, every time.' },
-            ].map(({ title, body }) => (
+              { label: 'Design',  title: 'Build your template', body: 'Drag and drop text, tables, images, barcodes, QR codes, and shapes onto the canvas to lay out your document — no code required.' },
+              { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, or connect an API. Mapdoc auto-detects fields and relationships and maps them into your template.' },
+              { label: 'Export',  title: 'Generate at scale',   body: 'Produce one polished file or bulk-generate hundreds of personalised documents — exported as print-ready PDF or ZPL in a single click.' },
+            ].map(({ label, title, body }, i) => (
               <article className="step-card feat-card feat-card--dark" key={title}>
+                <div className="step-card__head">
+                  <span className="step-card__num">{i + 1}</span>
+                  <span className="step-card__label">{label}</span>
+                </div>
                 <h3>{title}</h3>
                 <p>{body}</p>
               </article>
@@ -246,12 +250,12 @@ export default function Home() {
           </div>
           <div className="feat-grid">
             {[
-              { Icon: Icon.Template, title: 'Rich elements',     body: 'Text, images, layout tables, lines, and boxes — everything to compose any document type.' },
-              { Icon: Icon.Reuse,    title: 'Save & reload',     body: 'Export templates as JSON and reload them instantly. Share across your team with one file.' },
-              { Icon: Icon.Export,   title: 'PDF export',        body: 'Generate pixel-perfect, print-ready PDFs directly from your template in one click.' },
-              { Icon: Icon.Map,      title: 'Data mapping',      body: 'Connect CSV, Excel, or API data to auto-fill fields and generate documents at scale.' },
-              { Icon: Icon.Bolt,     title: 'Drag & drop',       body: 'Intuitive canvas interface with precise element positioning — no code required.' },
-              { Icon: Icon.Shield,   title: 'Real-time preview', body: 'See every change live as you build — what you see is exactly what you export.' },
+              { Icon: Icon.Template, title: 'Rich element library', body: 'Text, paragraphs, tables, images, lines, boxes, checkboxes, radios, dates, watermarks, and signatures.' },
+              { Icon: Icon.Map,      title: 'Barcodes & QR codes',  body: 'Drop in scannable barcodes and QR codes across dozens of symbologies — perfect for labels and tracking.' },
+              { Icon: Icon.Reuse,    title: 'Data mapping',         body: 'Connect CSV, Excel, or API data. Mapdoc auto-detects relationships and maps fields to your template.' },
+              { Icon: Icon.Bolt,     title: 'Bulk generation',      body: 'Turn one template and a dataset into hundreds of personalised documents in a single run.' },
+              { Icon: Icon.Export,   title: 'PDF & ZPL export',     body: 'One-click, print-ready PDFs — or ZPL output for thermal and label printers.' },
+              { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
             ].map(({ Icon: Ic, title, body }) => (
               <article className="feat-card" key={title}>
                 <div className="feat-card__icon" style={{color:'var(--blue)'}}>
@@ -270,16 +274,15 @@ export default function Home() {
         <div className="wrap">
           <div className="section__head section__head--center" style={{marginInline:'auto'}}>
             <span className="eyebrow">See it in action</span>
-            <h2>Watch how to build a template and <em>export polished documents.</em></h2>
+            <h2>Build a template, map your data, and <em>export polished documents.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              Template creation, element arrangement, and PDF export — all in a few minutes.
+              Template creation, element arrangement, data mapping, and PDF or ZPL export — all in a few minutes.
             </p>
           </div>
-          <div className="video-wrap">
-            <video width="100%" controls poster="/video-placeholder.jpg">
-              <source src="/demo-video.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+          <div className="video-wrap" style={{ background: '#fff', padding: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ maxWidth: 520, width: '100%' }}>
+              <ProductMockup />
+            </div>
           </div>
         </div>
       </section>
@@ -328,7 +331,7 @@ export default function Home() {
         </div>
 
         <div className="wrap footer__bottom">
-          <span>© 2025 Mapdoc. All rights reserved.</span>
+          <span>© 2026 Mapdoc. All rights reserved.</span>
           <span>Map it. Make it.</span>
         </div>
       </footer>

@@ -11,3 +11,10 @@ run:
   env:
     - name: FRONTEND_ORIGIN
       value: https://app.map-doc.com
+    # Server-side usage tracking. SUPABASE_URL is the BASE project URL
+    # (no /rest/v1). The service-role key is secret — set it as a managed
+    # secret in App Runner, not inline here. If unset, tracking no-ops.
+    - name: SUPABASE_URL
+      value: https://jbdybsmieotaqovfklrw.supabase.co
+    # - name: SUPABASE_SERVICE_ROLE_KEY
+    #   value: <set via App Runner secret / env, never commit>

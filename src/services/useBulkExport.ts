@@ -16,7 +16,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { CanonicalDocument } from '../types/dataSource';
 
-import { API_BASE } from './config';
+import { API_BASE, authHeaders } from './config';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -99,7 +99,7 @@ async function streamingExport(
 
   const response = await fetch(`${API_BASE}/generate-bulk-documents`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body:    JSON.stringify({
       ir:       params.ir,
       pages:    params.pages,
@@ -154,7 +154,7 @@ async function asyncExport(
   // 1. Submit job
   const submitResp = await fetch(`${API_BASE}/generate-bulk-documents/async`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body:    JSON.stringify({
       ir:       params.ir,
       pages:    params.pages,

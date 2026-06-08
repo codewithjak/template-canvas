@@ -156,16 +156,34 @@ export interface ZoneStyle {
   opacity         : number;   // 0-1 for background transparency
 }
 
+/**
+ * Where a header/footer zone is drawn across the exported PDF.
+ *
+ *  - 'first-page-only'        → only the first PDF page of THIS canvas page.
+ *  - 'this-page-and-overflow' → every PDF page THIS canvas page produces
+ *                               (i.e. it repeats onto table/content overflow pages).
+ *  - 'entire-document'        → this zone (its style AND its elements) becomes the
+ *                               document "master" and is drawn on EVERY PDF page of
+ *                               the whole export — letterhead / running footer.
+ *
+ * Replaces the old `repeatOnOverflow` boolean. The boolean is kept in the
+ * interfaces purely for backward-compatible serialization and is derived from
+ * `scope` (see `zoneScope` / `syncRepeatFlag`).
+ */
+export type ZoneScope = 'first-page-only' | 'this-page-and-overflow' | 'entire-document';
+
 export interface HeaderConfig {
   enabled          : boolean;
-  repeatOnOverflow : boolean;   // repeat on every PDF overflow page from this canvas page
+  scope            : ZoneScope;
+  repeatOnOverflow : boolean;   // legacy mirror of `scope` — kept for back-compat
   boundaryY        : number;    // px from top of canvas — line position
   style            : ZoneStyle;
 }
 
 export interface FooterConfig {
   enabled          : boolean;
-  repeatOnOverflow : boolean;
+  scope            : ZoneScope;
+  repeatOnOverflow : boolean;   // legacy mirror of `scope` — kept for back-compat
   boundaryY        : number;    // px from top of canvas — line position
   style            : ZoneStyle;
   // Page number formatting options
@@ -174,9 +192,24 @@ export interface FooterConfig {
   pageNumberStartFrom ?: number;
 }
 
+/**
+ * Resolve a zone's scope, tolerating templates saved before `scope` existed
+ * (where only the `repeatOnOverflow` boolean was present).
+ */
+export function zoneScope(cfg?: { scope?: ZoneScope; repeatOnOverflow?: boolean } | null): ZoneScope {
+  if (cfg?.scope) return cfg.scope;
+  return cfg?.repeatOnOverflow ? 'this-page-and-overflow' : 'first-page-only';
+}
+
+/** Keep the legacy `repeatOnOverflow` boolean consistent with `scope`. */
+export function syncRepeatFlag<T extends { scope: ZoneScope; repeatOnOverflow: boolean }>(cfg: T): T {
+  return { ...cfg, repeatOnOverflow: cfg.scope !== 'first-page-only' };
+}
+
 export function defaultHeader(): HeaderConfig {
   return {
     enabled         : false,
+    scope           : 'first-page-only',
     repeatOnOverflow: false,
     boundaryY       : 80,
     style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1, opacity: 1 },
@@ -187,6 +220,7 @@ export function defaultFooter(canvasHeight?: number): FooterConfig {
   const h = canvasHeight ?? 1123;
   return {
     enabled         : false,
+    scope           : 'first-page-only',
     repeatOnOverflow: false,
     boundaryY       : h - 80,
     style           : { backgroundColor: 'transparent', borderColor: '#e2e8f0', borderWidth: 1, opacity: 1 },
@@ -272,10 +306,13 @@ export function migrateV1(json: any): TemplateDocument {
  * before header/footer was introduced).
  */
 export function ensurePageDefaults(page: any): CanvasPage {
+  const header = page.header ?? defaultHeader();
+  const footer = page.footer ?? defaultFooter();
+  // Back-fill `scope` for templates saved before the scope enum existed.
   return {
     ...page,
-    header: page.header ?? defaultHeader(),
-    footer: page.footer ?? defaultFooter(),
+    header: syncRepeatFlag({ ...header, scope: zoneScope(header) }),
+    footer: syncRepeatFlag({ ...footer, scope: zoneScope(footer) }),
   };
 }
 

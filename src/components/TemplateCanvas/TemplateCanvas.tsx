@@ -35,6 +35,7 @@ import DataStructureViewer from './DataStructureViewer';
 import PageBreakDivider    from './PageBreakDivider';
 import BoundaryLine        from './BoundaryLine';
 import SaveTemplateModal   from './SaveTemplateModal';
+import TemplatesLibraryModal from './TemplatesLibraryModal';
 import TextElement         from './TextElement';
 import ImageElement        from './ImageElement';
 import LineElement         from './LineElement';
@@ -79,6 +80,11 @@ import {
   validateBindings,
 } from '../../services/mappingEngine';
 import { generateDocument } from '../../services/dataSourceService';
+import {
+  createTemplate as createCloudTemplate,
+  updateTemplate as updateCloudTemplate,
+  type TemplateRecord,
+} from '../../services/templatesRepo';
 import {
   detectRelationships,
   buildRelatedCollectionsConfig,
@@ -264,6 +270,12 @@ function TemplateCanvas() {
   // ── Save modal ────────────────────────────────────────────────────────────
 
   const [showSaveModal, setShowSaveModal] = useState(false);
+
+  // ── Cloud persistence (Supabase, team-scoped) ──────────────────────────────
+
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
+  const [templatesLibraryOpen, setTemplatesLibraryOpen] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // ── Sensors ───────────────────────────────────────────────────────────────
 
@@ -540,27 +552,61 @@ function TemplateCanvas() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
-  const doSave = (name: string) => {
+  // Persist the current canvas to Supabase (create on first save, update after).
+  const persistToCloud = async (name: string) => {
     const doc = createTemplateDocument(pages, name, templateMeta, pageSize);
-    const docWithGlobal = {
+    const body = {
       ...doc,
       meta: { ...doc.meta, globalFields: savedGlobalFields },
     };
     setTemplateMeta(doc.meta);
-    const blob = new Blob([JSON.stringify(docWithGlobal, null, 2)], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.json`;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
+    setCloudStatus('saving');
+    try {
+      if (currentTemplateId) {
+        await updateCloudTemplate(currentTemplateId, name, body);
+      } else {
+        const id = await createCloudTemplate(name, body);
+        setCurrentTemplateId(id);
+      }
+      setCloudStatus('saved');
+      window.setTimeout(() => setCloudStatus('idle'), 2500);
+    } catch (err) {
+      setCloudStatus('error');
+      alert('Could not save template: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   const handleSaveTemplate = () => {
-    if (templateMeta.name) doSave(templateMeta.name);
+    if (templateMeta.name) void persistToCloud(templateMeta.name);
     else setShowSaveModal(true);
   };
 
   // ── Load ──────────────────────────────────────────────────────────────────
+
+  // Apply a parsed v2.0 template document to canvas state. Shared by file
+  // import and cloud open.
+  const applyDocument = (doc: any) => {
+    const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) =>
+      ensurePageDefaults({
+        ...p,
+        elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
+      })
+    );
+    setPages(cleanPages);
+    setTemplateMeta(doc.meta || {});
+    setPageSize(doc.pageSize ? doc.pageSize : defaultPageSize());
+    setSavedGlobalFields(doc.meta?.globalFields ?? {});
+    setSelectedElementId(null);
+    setSelectedPageBreakId(null);
+    setIr(null);
+    setRds(null);
+    setFieldMapping({});
+    setTableCollectionBindings({});
+    setCollectionMappings({});
+    setPreviewRowIndex(0);
+    setBulkPanelOpen(false);
+    setActivePageId(cleanPages[0]?.pageId || 'page-1');
+  };
 
   const handleLoadTemplate = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -578,36 +624,22 @@ function TemplateCanvas() {
           alert('Invalid template file.');
           return;
         }
-        const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) =>
-          ensurePageDefaults({
-            ...p,
-            elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
-          })
-        );
-        setPages(cleanPages);
-        setTemplateMeta(doc.meta || {});
-        if (doc.pageSize) {
-          setPageSize(doc.pageSize);
-        } else {
-          setPageSize(defaultPageSize());
-        }
-        setSavedGlobalFields(doc.meta?.globalFields ?? {});
-        setSelectedElementId(null);
-        setSelectedPageBreakId(null);
-        setIr(null);
-        setRds(null); // ── NEW: clear rds on template load
-        setFieldMapping({});
-        setTableCollectionBindings({});
-        setCollectionMappings({});
-        setPreviewRowIndex(0);
-        setBulkPanelOpen(false);
-        setActivePageId(cleanPages[0]?.pageId || 'page-1');
+        applyDocument(doc);
+        // Imported from a file, not linked to a cloud row yet.
+        setCurrentTemplateId(null);
       } catch {
         alert('Error reading template file.');
       }
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  // Open a template fetched from Supabase.
+  const handleOpenCloudTemplate = (record: TemplateRecord) => {
+    applyDocument(record.body_json);
+    setCurrentTemplateId(record.id);
+    setTemplatesLibraryOpen(false);
   };
 
   // ── Data upload confirm ───────────────────────────────────────────────────
@@ -964,6 +996,7 @@ function TemplateCanvas() {
           onAddEllipse={handleAddEllipse}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
+          onOpenTemplates={() => setTemplatesLibraryOpen(true)}
           onLoad={handleLoadTemplate}
           onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
@@ -1102,9 +1135,46 @@ function TemplateCanvas() {
         {showSaveModal && (
           <SaveTemplateModal
             initialName={templateMeta.name || ''}
-            onConfirm={name => { setShowSaveModal(false); doSave(name); }}
+            onConfirm={name => { setShowSaveModal(false); void persistToCloud(name); }}
             onCancel={() => setShowSaveModal(false)}
           />
+        )}
+
+        {templatesLibraryOpen && (
+          <TemplatesLibraryModal
+            currentTemplateId={currentTemplateId}
+            onOpen={handleOpenCloudTemplate}
+            onClose={() => setTemplatesLibraryOpen(false)}
+          />
+        )}
+
+        {cloudStatus !== 'idle' && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 20,
+              right: 20,
+              zIndex: 1700,
+              padding: '8px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              boxShadow: '0 6px 20px rgba(15,23,42,0.25)',
+              background:
+                cloudStatus === 'error'
+                  ? '#dc2626'
+                  : cloudStatus === 'saving'
+                  ? '#475569'
+                  : '#16a34a',
+            }}
+          >
+            {cloudStatus === 'saving'
+              ? 'Saving…'
+              : cloudStatus === 'saved'
+              ? '✓ Saved to your team'
+              : 'Save failed'}
+          </div>
         )}
 
         <div className="canvas-pages-wrapper" style={{ width: pageSize.canvasWidth }}>

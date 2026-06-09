@@ -131,6 +131,7 @@ export default function Home() {
           <div className="brand">Mapdoc</div>
           <nav className="topbar__nav">
             <Link to="/features" className="topbar__link">Features</Link>
+            <Link to="/pricing" className="topbar__link">Pricing</Link>
             <Link to="/careers" className="topbar__link">Careers</Link>
           </nav>
           <Link to="/canvas" className="btn btn--primary btn--sm">Launch App</Link>

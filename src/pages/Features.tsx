@@ -92,6 +92,7 @@ export default function Features() {
           <Link to="/" className="brand">Mapdoc</Link>
           <nav className="topbar__nav">
             <Link to="/features" className="topbar__link" style={{ color: 'var(--blue)' }}>Features</Link>
+            <Link to="/pricing" className="topbar__link">Pricing</Link>
             <Link to="/careers" className="topbar__link">Careers</Link>
           </nav>
           <Link to="/canvas" className="btn btn--primary btn--sm">Launch App</Link>

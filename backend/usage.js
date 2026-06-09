@@ -3,31 +3,27 @@
 /**
  * backend/usage.js
  *
- * Plan limits + usage derivation. Usage is NOT stored in a separate counter
- * table — it is derived from the existing append-only analytics_events log so
- * there is nothing to keep in sync.
+ * Plan limits + usage derivation + export entitlement checks. Usage is NOT
+ * stored in a separate counter table — it is derived from the existing
+ * append-only analytics_events log so there is nothing to keep in sync.
  *
  * IMPORTANT billing nuance: a bulk export writes ONE analytics_events row with
  * metadata.rows = N (see backend/index.js logExportEvent calls), not N rows.
  * So per-PDF usage = SUM(metadata.rows), NOT COUNT(*). getMonthlyExportCount
  * sums accordingly; a single export with no rows counts as 1.
  *
- * Limits live here as plain constants keyed on teams.plan. No new plans table
- * is required for the MVP; promote to a table later if pricing gets richer.
+ * Plan limits + capabilities now live in backend/plans.js (shared definition,
+ * mirrored on the client at src/config/plans.ts).
  */
 
 const { getAdmin } = require('./supabaseAdmin');
-
-// null = unlimited. Tune freely — these are not load-bearing elsewhere.
-const PLAN_LIMITS = {
-  free: { maxTemplates: 3,    maxExportsPerMonth: 50 },
-  pro:  { maxTemplates: 100,  maxExportsPerMonth: 5000 },
-  scale:{ maxTemplates: null, maxExportsPerMonth: 100000 },
-};
-
-function getPlanLimits(plan) {
-  return PLAN_LIMITS[plan] || PLAN_LIMITS.free;
-}
+const {
+  getPlan,
+  getPlanLimits,
+  planAllows,
+  minPlanFor,
+} = require('./plans');
+const { resolveTeamFromJwt } = require('./apiKeys');
 
 function monthStartIso(d = new Date()) {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
@@ -80,8 +76,95 @@ async function getUsageSummary(teamId) {
   const limits = getPlanLimits(plan);
   return {
     plan,
+    capabilities:     getPlan(plan).capabilities,
     templates:        { used: templates,        limit: limits.maxTemplates },
     exportsThisMonth: { used: exportsThisMonth,  limit: limits.maxExportsPerMonth },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Export entitlement guard
+//
+// Called by the three generate endpoints BEFORE doing any rendering work.
+// Resolves the team from the verified JWT, then checks capability + monthly
+// cap. Returns a plain result the route can act on:
+//
+//   { allowed: true,  plan, teamId, watermark }
+//   { allowed: false, status, error }
+//
+// Degrades OPEN when Supabase isn't configured (local dev), mirroring
+// analytics' fire-and-forget philosophy — a misconfigured server should never
+// block every export. When configured, an unauthenticated request is rejected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const UPGRADE_LABEL = {
+  bulk: 'Bulk generation',
+  zpl:  'ZPL / label export',
+  api:  'API access',
+};
+
+async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, format = 'pdf' }) {
+  const sb = getAdmin();
+  if (!sb) {
+    // Not configured for Supabase (e.g. local dev) — cannot resolve a plan,
+    // so don't block. Watermark defaults to off in this mode.
+    return { allowed: true, plan: 'free', teamId: null, watermark: false, unmetered: true };
+  }
+
+  const ctx = await resolveTeamFromJwt(authHeader);
+  if (!ctx) {
+    return { allowed: false, status: 401, error: 'Sign in to export documents.' };
+  }
+
+  const plan      = await getTeamPlan(ctx.teamId);
+  const limits    = getPlanLimits(plan);
+  const isBulk    = mode === 'bulk' || mode === 'bulk_async';
+  const requested = Math.max(1, Number(rows) || 1);
+
+  const capabilityError = (cap) => {
+    const min      = minPlanFor(cap);
+    const planName = min ? getPlan(min).name : 'a paid';
+    return {
+      allowed: false,
+      status:  403,
+      error:   `${UPGRADE_LABEL[cap]} requires the ${planName} plan. Upgrade to unlock it.`,
+    };
+  };
+
+  // 1. Capability gates ──────────────────────────────────────────────
+  if (format === 'zpl' && !planAllows(plan, 'zpl')) return capabilityError('zpl');
+  if (isBulk && !planAllows(plan, 'bulk'))          return capabilityError('bulk');
+
+  // 2. Per-job row ceiling (bulk only) ───────────────────────────────
+  if (isBulk && limits.maxBulkRowsPerJob != null && requested > limits.maxBulkRowsPerJob) {
+    return {
+      allowed: false,
+      status:  403,
+      error:   `This job has ${requested} rows, above your plan's limit of ${limits.maxBulkRowsPerJob} per job. Upgrade for larger batches.`,
+    };
+  }
+
+  // 3. Monthly export cap ────────────────────────────────────────────
+  if (limits.maxExportsPerMonth != null) {
+    const used = await getMonthlyExportCount(ctx.teamId);
+    if (used + requested > limits.maxExportsPerMonth) {
+      const remaining = Math.max(0, limits.maxExportsPerMonth - used);
+      return {
+        allowed: false,
+        status:  402,
+        error:   `Monthly export limit reached (${limits.maxExportsPerMonth}). ` +
+                 `${remaining} remaining this month — upgrade to continue exporting.`,
+      };
+    }
+  }
+
+  return {
+    allowed:   true,
+    plan,
+    teamId:    ctx.teamId,
+    // Free tier (anything lacking cleanExport) gets a watermark stamped on PDF
+    // output. ZPL is gated off for those plans, so PDF-only stamping is fine.
+    watermark: !planAllows(plan, 'cleanExport'),
   };
 }
 
@@ -91,4 +174,5 @@ module.exports = {
   getMonthlyExportCount,
   getTemplateCount,
   getUsageSummary,
+  checkExportAllowed,
 };

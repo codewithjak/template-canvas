@@ -1,0 +1,400 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-quotation",
+    "name": "Quotation",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Quotation",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "qt-band",
+          "type": "box",
+          "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 150, "borderWidth": 0, "borderColor": "#0d9488", "borderStyle": "solid", "backgroundColor": "#0d9488", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "qt-band-accent",
+          "type": "box",
+          "position": { "x": 0, "y": 150 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#f59e0b", "borderStyle": "solid", "backgroundColor": "#f59e0b", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "qt-logo-mark",
+          "type": "box",
+          "position": { "x": 60, "y": 44 },
+          "style": { "width": 48, "height": 48, "borderWidth": 0, "borderColor": "#ffffff", "borderStyle": "solid", "backgroundColor": "#ffffff", "borderRadius": 12, "opacity": 100 }
+        },
+        {
+          "id": "qt-logo-glyph",
+          "type": "text",
+          "content": "N",
+          "position": { "x": 76, "y": 50 },
+          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#0d9488", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-brand-name",
+          "type": "text",
+          "content": "Nimbus Solutions",
+          "position": { "x": 124, "y": 48 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-brand-sub",
+          "type": "text",
+          "content": "123 Market Street · City, ST 12345 · nimbus.example",
+          "position": { "x": 124, "y": 80 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#ccfbf1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-title",
+          "type": "text",
+          "content": "QUOTATION",
+          "position": { "x": 434, "y": 46 },
+          "style": { "fontSize": 32, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "qt-title-sub",
+          "type": "text",
+          "content": "Valid for 30 days",
+          "position": { "x": 434, "y": 92 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#ccfbf1", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+        },
+        {
+          "id": "qt-billto-label",
+          "type": "text",
+          "content": "PREPARED FOR",
+          "position": { "x": 60, "y": 190 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#0d9488", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-billto-name",
+          "type": "text",
+          "content": "Acme Retail Group",
+          "position": { "x": 60, "y": 208 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-billto-line1",
+          "type": "text",
+          "content": "Attn: Mark Reyes, Operations",
+          "position": { "x": 60, "y": 232 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-billto-line2",
+          "type": "text",
+          "content": "456 Oak Avenue, Portland, OR 97201",
+          "position": { "x": 60, "y": 250 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-billto-line3",
+          "type": "text",
+          "content": "mark@acmeretail.example",
+          "position": { "x": 60, "y": 268 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-meta-box",
+          "type": "box",
+          "position": { "x": 474, "y": 184 },
+          "style": { "width": 260, "height": 116, "borderWidth": 1, "borderColor": "#99f6e4", "borderStyle": "solid", "backgroundColor": "#f0fdfa", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "qt-meta-no-l",
+          "type": "text",
+          "content": "Quote No.",
+          "position": { "x": 490, "y": 198 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-meta-no-v",
+          "type": "text",
+          "content": "QT-2041",
+          "position": { "x": 590, "y": 198 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 128, "textAlign": "right" }
+        },
+        {
+          "id": "qt-meta-date-l",
+          "type": "text",
+          "content": "Date",
+          "position": { "x": 490, "y": 222 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-meta-date-v",
+          "type": "text",
+          "content": "Jun 9, 2026",
+          "position": { "x": 590, "y": 222 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 128, "textAlign": "right" }
+        },
+        {
+          "id": "qt-meta-exp-l",
+          "type": "text",
+          "content": "Expires",
+          "position": { "x": 490, "y": 246 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-meta-exp-v",
+          "type": "text",
+          "content": "Jul 9, 2026",
+          "position": { "x": 590, "y": 246 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 128, "textAlign": "right" }
+        },
+        {
+          "id": "qt-meta-rep-l",
+          "type": "text",
+          "content": "Prepared by",
+          "position": { "x": 490, "y": 270 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-meta-rep-v",
+          "type": "text",
+          "content": "S. Carter",
+          "position": { "x": 590, "y": 270 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 128, "textAlign": "right" }
+        },
+        {
+          "id": "qt-items-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": { "x": 60, "y": 336 },
+          "size": { "width": 674, "height": 220 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": false },
+          "binding": { "enabled": false, "collectionKey": "items", "itemAlias": "item" },
+          "columns": [
+            { "id": "col-item", "width": 64, "alignment": "center" },
+            { "id": "col-desc", "width": 286, "alignment": "left" },
+            { "id": "col-qty", "width": 64, "alignment": "center" },
+            { "id": "col-price", "width": 130, "alignment": "right" },
+            { "id": "col-amount", "width": 130, "alignment": "right" }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 36,
+            "cells": [
+              { "id": "h-item", "content": { "type": "text", "value": "#" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#0d9488" } },
+              { "id": "h-desc", "content": { "type": "text", "value": "DESCRIPTION" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#0d9488" } },
+              { "id": "h-qty", "content": { "type": "text", "value": "QTY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#0d9488" } },
+              { "id": "h-price", "content": { "type": "text", "value": "UNIT PRICE" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#0d9488" } },
+              { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#0d9488" } }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 36,
+              "cells": [
+                { "id": "r1-item", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#64748b" } },
+                { "id": "r1-desc", "content": { "type": "text", "value": "Discovery & requirements workshop" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r1-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r1-price", "content": { "type": "text", "value": "$1,200.00" }, "style": { "textAlign": "right", "color": "#334155" } },
+                { "id": "r1-amount", "content": { "type": "text", "value": "$1,200.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-2",
+              "height": 36,
+              "cells": [
+                { "id": "r2-item", "content": { "type": "text", "value": "2" }, "style": { "textAlign": "center", "color": "#64748b", "backgroundColor": "#f0fdfa" } },
+                { "id": "r2-desc", "content": { "type": "text", "value": "Custom storefront design (5 pages)" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r2-qty", "content": { "type": "text", "value": "5" }, "style": { "textAlign": "center", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r2-price", "content": { "type": "text", "value": "$650.00" }, "style": { "textAlign": "right", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r2-amount", "content": { "type": "text", "value": "$3,250.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#f0fdfa" } }
+              ]
+            },
+            {
+              "id": "row-3",
+              "height": 36,
+              "cells": [
+                { "id": "r3-item", "content": { "type": "text", "value": "3" }, "style": { "textAlign": "center", "color": "#64748b" } },
+                { "id": "r3-desc", "content": { "type": "text", "value": "Payment gateway integration" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r3-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r3-price", "content": { "type": "text", "value": "$1,800.00" }, "style": { "textAlign": "right", "color": "#334155" } },
+                { "id": "r3-amount", "content": { "type": "text", "value": "$1,800.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-4",
+              "height": 36,
+              "cells": [
+                { "id": "r4-item", "content": { "type": "text", "value": "4" }, "style": { "textAlign": "center", "color": "#64748b", "backgroundColor": "#f0fdfa" } },
+                { "id": "r4-desc", "content": { "type": "text", "value": "Staff training & handover (per session)" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r4-qty", "content": { "type": "text", "value": "2" }, "style": { "textAlign": "center", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r4-price", "content": { "type": "text", "value": "$450.00" }, "style": { "textAlign": "right", "color": "#334155", "backgroundColor": "#f0fdfa" } },
+                { "id": "r4-amount", "content": { "type": "text", "value": "$900.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#f0fdfa" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "qt-notes-label",
+          "type": "text",
+          "content": "NOTES & SCOPE",
+          "position": { "x": 60, "y": 600 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#0d9488", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-notes-body",
+          "type": "paragraph",
+          "content": "Pricing covers the deliverables listed above.\nThird-party licenses and hosting are billed\nseparately. A 50% deposit is required to begin\nwork, with the balance due on delivery.",
+          "position": { "x": 60, "y": 620 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-sub-label",
+          "type": "text",
+          "content": "Subtotal",
+          "position": { "x": 434, "y": 600 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "qt-sub-value",
+          "type": "text",
+          "content": "$7,150.00",
+          "position": { "x": 634, "y": 600 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
+        },
+        {
+          "id": "qt-disc-label",
+          "type": "text",
+          "content": "Discount (10%)",
+          "position": { "x": 434, "y": 624 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "qt-disc-value",
+          "type": "text",
+          "content": "-$715.00",
+          "position": { "x": 634, "y": 624 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#dc2626", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
+        },
+        {
+          "id": "qt-tax-label",
+          "type": "text",
+          "content": "Tax (8%)",
+          "position": { "x": 434, "y": 648 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+        },
+        {
+          "id": "qt-tax-value",
+          "type": "text",
+          "content": "$514.80",
+          "position": { "x": 634, "y": 648 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
+        },
+        {
+          "id": "qt-total-box",
+          "type": "box",
+          "position": { "x": 434, "y": 678 },
+          "style": { "width": 300, "height": 48, "borderWidth": 0, "borderColor": "#0d9488", "borderStyle": "solid", "backgroundColor": "#0d9488", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "qt-total-label",
+          "type": "text",
+          "content": "TOTAL",
+          "position": { "x": 450, "y": 694 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-total-value",
+          "type": "text",
+          "content": "$6,949.80",
+          "position": { "x": 564, "y": 692 },
+          "style": { "fontSize": 18, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 154, "textAlign": "right" }
+        },
+        {
+          "id": "qt-accept-label",
+          "type": "text",
+          "content": "ACCEPTANCE",
+          "position": { "x": 60, "y": 800 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#0d9488", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-accept-body",
+          "type": "text",
+          "content": "To accept this quotation, please sign below and return a copy.",
+          "position": { "x": 60, "y": 818 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-sign-line",
+          "type": "line",
+          "position": { "x": 60, "y": 882 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "qt-sign-label",
+          "type": "text",
+          "content": "Authorized signature",
+          "position": { "x": 60, "y": 890 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-date-line",
+          "type": "line",
+          "position": { "x": 474, "y": 882 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "qt-date-label",
+          "type": "text",
+          "content": "Date",
+          "position": { "x": 474, "y": 890 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-foot-divider",
+          "type": "line",
+          "position": { "x": 60, "y": 1000 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "qt-foot-note1",
+          "type": "text",
+          "content": "Nimbus Solutions · 123 Market Street, City, ST 12345",
+          "position": { "x": 60, "y": 1016 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "qt-foot-note2",
+          "type": "text",
+          "content": "hello@nimbus.example · (555) 010-2040 · nimbus.example",
+          "position": { "x": 60, "y": 1032 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

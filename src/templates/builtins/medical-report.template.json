@@ -1,0 +1,365 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-medical-report",
+    "name": "Medical Report",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Medical Report",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 120,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "mr-top-band",
+          "type": "box",
+          "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#dc2626", "borderStyle": "solid", "backgroundColor": "#dc2626", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "mr-cross-box",
+          "type": "box",
+          "position": { "x": 60, "y": 52 },
+          "style": { "width": 48, "height": 48, "borderWidth": 0, "borderColor": "#dc2626", "borderStyle": "solid", "backgroundColor": "#dc2626", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "mr-cross-v",
+          "type": "box",
+          "position": { "x": 80, "y": 60 },
+          "style": { "width": 8, "height": 32, "borderWidth": 0, "borderColor": "#ffffff", "borderStyle": "solid", "backgroundColor": "#ffffff", "borderRadius": 2, "opacity": 100 }
+        },
+        {
+          "id": "mr-cross-h",
+          "type": "box",
+          "position": { "x": 68, "y": 72 },
+          "style": { "width": 32, "height": 8, "borderWidth": 0, "borderColor": "#ffffff", "borderStyle": "solid", "backgroundColor": "#ffffff", "borderRadius": 2, "opacity": 100 }
+        },
+        {
+          "id": "mr-clinic-name",
+          "type": "text",
+          "content": "Riverside Medical Center",
+          "position": { "x": 122, "y": 54 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-clinic-sub",
+          "type": "text",
+          "content": "Department of Internal Medicine · 789 Health Blvd, City, ST 12345 · (555) 030-1100",
+          "position": { "x": 122, "y": 86 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-title-bar",
+          "type": "box",
+          "position": { "x": 60, "y": 124 },
+          "style": { "width": 674, "height": 40, "borderWidth": 0, "borderColor": "#0f172a", "borderStyle": "solid", "backgroundColor": "#0f172a", "borderRadius": 8, "opacity": 100 }
+        },
+        {
+          "id": "mr-title",
+          "type": "text",
+          "content": "MEDICAL EXAMINATION REPORT",
+          "position": { "x": 76, "y": 136 },
+          "style": { "fontSize": 16, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-confidential",
+          "type": "text",
+          "content": "CONFIDENTIAL",
+          "position": { "x": 514, "y": 139 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#fca5a5", "fontFamily": "Arial, sans-serif", "width": 204, "textAlign": "right" }
+        },
+        {
+          "id": "mr-patient-box",
+          "type": "box",
+          "position": { "x": 60, "y": 184 },
+          "style": { "width": 674, "height": 118, "borderWidth": 1, "borderColor": "#e2e8f0", "borderStyle": "solid", "backgroundColor": "#f8fafc", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "mr-pt-strip",
+          "type": "box",
+          "position": { "x": 60, "y": 184 },
+          "style": { "width": 6, "height": 118, "borderWidth": 0, "borderColor": "#dc2626", "borderStyle": "solid", "backgroundColor": "#dc2626", "borderRadius": 3, "opacity": 100 }
+        },
+        {
+          "id": "mr-pt-section",
+          "type": "text",
+          "content": "PATIENT INFORMATION",
+          "position": { "x": 80, "y": 196 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-name-l",
+          "type": "text",
+          "content": "Name",
+          "position": { "x": 80, "y": 220 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-name-v",
+          "type": "text",
+          "content": "John A. Whitfield",
+          "position": { "x": 80, "y": 234 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-id-l",
+          "type": "text",
+          "content": "Patient ID",
+          "position": { "x": 300, "y": 220 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-id-v",
+          "type": "text",
+          "content": "MRN-558210",
+          "position": { "x": 300, "y": 234 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-dob-l",
+          "type": "text",
+          "content": "DOB",
+          "position": { "x": 490, "y": 220 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-dob-v",
+          "type": "text",
+          "content": "Mar 14, 1981 (45)",
+          "position": { "x": 490, "y": 234 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-sex-l",
+          "type": "text",
+          "content": "Sex",
+          "position": { "x": 80, "y": 264 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-sex-v",
+          "type": "text",
+          "content": "Male",
+          "position": { "x": 80, "y": 278 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-visit-l",
+          "type": "text",
+          "content": "Date of Exam",
+          "position": { "x": 300, "y": 264 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-visit-v",
+          "type": "text",
+          "content": "Jun 9, 2026",
+          "position": { "x": 300, "y": 278 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-phys-l",
+          "type": "text",
+          "content": "Physician",
+          "position": { "x": 490, "y": 264 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-pt-phys-v",
+          "type": "text",
+          "content": "Dr. Elena Marsh, MD",
+          "position": { "x": 490, "y": 278 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-complaint-label",
+          "type": "text",
+          "content": "CHIEF COMPLAINT",
+          "position": { "x": 60, "y": 326 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#dc2626", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-complaint-body",
+          "type": "paragraph",
+          "content": "Patient presents with intermittent chest tightness and shortness of breath on\nexertion over the past three weeks. No prior cardiac history reported.",
+          "position": { "x": 60, "y": 346 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-vitals-label",
+          "type": "text",
+          "content": "VITAL SIGNS",
+          "position": { "x": 60, "y": 404 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#dc2626", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-vitals-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": { "x": 60, "y": 424 },
+          "size": { "width": 674, "height": 140 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": true },
+          "binding": { "enabled": false, "collectionKey": "vitals", "itemAlias": "vital" },
+          "columns": [
+            { "id": "col-measure", "width": 270, "alignment": "left" },
+            { "id": "col-result", "width": 200, "alignment": "left" },
+            { "id": "col-range", "width": 204, "alignment": "left" }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 32,
+            "cells": [
+              { "id": "h-measure", "content": { "type": "text", "value": "MEASUREMENT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#dc2626" } },
+              { "id": "h-result", "content": { "type": "text", "value": "RESULT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#dc2626" } },
+              { "id": "h-range", "content": { "type": "text", "value": "REFERENCE RANGE" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#dc2626" } }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 30,
+              "cells": [
+                { "id": "r1-m", "content": { "type": "text", "value": "Blood Pressure" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r1-r", "content": { "type": "text", "value": "138 / 88 mmHg" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold" } },
+                { "id": "r1-ref", "content": { "type": "text", "value": "< 120 / 80 mmHg" }, "style": { "textAlign": "left", "color": "#64748b" } }
+              ]
+            },
+            {
+              "id": "row-2",
+              "height": 30,
+              "cells": [
+                { "id": "r2-m", "content": { "type": "text", "value": "Heart Rate" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#fef2f2" } },
+                { "id": "r2-r", "content": { "type": "text", "value": "82 bpm" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#fef2f2" } },
+                { "id": "r2-ref", "content": { "type": "text", "value": "60 – 100 bpm" }, "style": { "textAlign": "left", "color": "#64748b", "backgroundColor": "#fef2f2" } }
+              ]
+            },
+            {
+              "id": "row-3",
+              "height": 30,
+              "cells": [
+                { "id": "r3-m", "content": { "type": "text", "value": "Temperature" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r3-r", "content": { "type": "text", "value": "98.6 °F" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold" } },
+                { "id": "r3-ref", "content": { "type": "text", "value": "97.0 – 99.0 °F" }, "style": { "textAlign": "left", "color": "#64748b" } }
+              ]
+            },
+            {
+              "id": "row-4",
+              "height": 30,
+              "cells": [
+                { "id": "r4-m", "content": { "type": "text", "value": "Oxygen Saturation" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#fef2f2" } },
+                { "id": "r4-r", "content": { "type": "text", "value": "97 %" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#fef2f2" } },
+                { "id": "r4-ref", "content": { "type": "text", "value": "95 – 100 %" }, "style": { "textAlign": "left", "color": "#64748b", "backgroundColor": "#fef2f2" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mr-findings-label",
+          "type": "text",
+          "content": "EXAMINATION FINDINGS",
+          "position": { "x": 60, "y": 588 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#dc2626", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-findings-body",
+          "type": "paragraph",
+          "content": "General: Alert and oriented, in no acute distress.\nCardiovascular: Regular rate and rhythm; soft systolic murmur at the left sternal border.\nRespiratory: Clear to auscultation bilaterally; no wheezes or crackles.\nECG: Mild ST-segment changes; recommend follow-up stress testing.",
+          "position": { "x": 60, "y": 608 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-assess-label",
+          "type": "text",
+          "content": "ASSESSMENT & PLAN",
+          "position": { "x": 60, "y": 712 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#dc2626", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-assess-body",
+          "type": "paragraph",
+          "content": "1. Stage 1 hypertension — begin lifestyle modification and low-dose\n    antihypertensive; recheck blood pressure in 4 weeks.\n2. Exertional chest discomfort — schedule cardiac stress test and lipid panel.\n3. Patient advised on warning signs requiring immediate care.",
+          "position": { "x": 60, "y": 732 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-sign-line",
+          "type": "line",
+          "position": { "x": 60, "y": 884 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "mr-sign-name",
+          "type": "text",
+          "content": "Dr. Elena Marsh, MD",
+          "position": { "x": 60, "y": 892 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-sign-title",
+          "type": "text",
+          "content": "Attending Physician · License #ST-44120",
+          "position": { "x": 60, "y": 908 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-date-line",
+          "type": "line",
+          "position": { "x": 474, "y": 884 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "mr-date-label",
+          "type": "text",
+          "content": "Date signed",
+          "position": { "x": 474, "y": 892 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-foot-divider",
+          "type": "line",
+          "position": { "x": 60, "y": 1000 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "mr-foot-note1",
+          "type": "text",
+          "content": "This document contains protected health information. Unauthorized disclosure is prohibited.",
+          "position": { "x": 60, "y": 1016 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "mr-foot-note2",
+          "type": "text",
+          "content": "Riverside Medical Center · 789 Health Blvd, City, ST 12345 · records@riverside.example",
+          "position": { "x": 60, "y": 1030 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

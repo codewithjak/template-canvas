@@ -3,11 +3,11 @@
 }
 
 .structures-button {
-  background: #f9fafc;
+  background: var(--color-background-secondary);
 }
 
 .structures-button:hover {
-  background: #eef3ff;
+  background: var(--color-accent-bg);
 }
 
 .structures-menu {

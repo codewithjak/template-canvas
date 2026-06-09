@@ -59,31 +59,33 @@
 .stm-btn {
   height         : 38px;
   padding        : 0 18px;
-  border-radius  : 8px;
+  border-radius  : var(--btn-radius);
   font-size      : 13px;
-  font-weight    : 600;
+  font-weight    : var(--btn-font-weight);
   cursor         : pointer;
   border         : 1px solid transparent;
-  transition     : all 0.15s;
+  transition     : var(--btn-transition);
 }
 
 .stm-btn--cancel {
-  background    : #f1f5f9;
-  border-color  : #cbd5e1;
-  color         : #475569;
+  background    : var(--color-background-secondary);
+  border-color  : var(--color-border-primary);
+  color         : var(--color-text-secondary);
 }
 
 .stm-btn--cancel:hover {
-  background    : #e2e8f0;
+  background    : var(--color-background-tertiary);
 }
 
 .stm-btn--save {
-  background    : #6366f1;
-  color         : #ffffff;
+  background    : var(--color-accent);
+  border-color  : var(--color-accent);
+  color         : var(--color-accent-contrast);
 }
 
 .stm-btn--save:hover:not(:disabled) {
-  background    : #4f46e5;
+  background    : var(--color-accent-hover);
+  border-color  : var(--color-accent-hover);
 }
 
 .stm-btn--save:disabled {

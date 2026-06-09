@@ -172,17 +172,18 @@
 .page-break-delete-btn {
   align-self     : flex-start;
   padding        : 6px 12px;
-  border-radius  : 6px;
-  border         : 1px solid #fca5a5;
-  background     : #fee2e2;
-  color          : #991b1b;
+  border-radius  : var(--btn-radius-sm);
+  border         : 1px solid var(--color-danger-border);
+  background     : var(--color-danger-bg);
+  color          : var(--color-danger);
   font-size      : 12px;
-  font-weight    : 600;
+  font-weight    : var(--btn-font-weight);
   cursor         : pointer;
-  transition     : all 0.15s;
+  transition     : var(--btn-transition);
 }
 
 .page-break-delete-btn:hover {
-  background    : #fecaca;
-  border-color  : #f87171;
+  background    : var(--color-danger);
+  border-color  : var(--color-danger);
+  color         : var(--color-accent-contrast);
 }

@@ -227,42 +227,42 @@
 
 .rr-btn {
   font-size      : 11.5px;
-  font-weight    : 500;
+  font-weight    : var(--btn-font-weight);
   padding        : 3px 10px;
-  border-radius  : 5px;
+  border-radius  : var(--btn-radius-sm);
   cursor         : pointer;
-  border         : 0.5px solid transparent;
-  transition     : background 0.12s, border-color 0.12s;
+  border         : 1px solid transparent;
+  transition     : var(--btn-transition);
   white-space    : nowrap;
 }
 
 .rr-btn--approve {
-  background     : #214883;
-  color          : #ffffff;
-  border-color   : #214883;
+  background     : var(--color-accent);
+  color          : var(--color-accent-contrast);
+  border-color   : var(--color-accent);
 }
-.rr-btn--approve:hover { background: #1a3a6b; }
+.rr-btn--approve:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
 
 .rr-btn--edit {
-  background     : #f8fafc;
-  color          : #475569;
-  border-color   : #e2e8f0;
+  background     : var(--color-background-secondary);
+  color          : var(--color-text-secondary);
+  border-color   : var(--color-border-secondary);
 }
-.rr-btn--edit:hover { background: #f1f5f9; border-color: #cbd5e1; }
+.rr-btn--edit:hover { background: var(--color-background-tertiary); border-color: var(--color-border-primary); }
 
 .rr-btn--reject {
   background     : transparent;
-  color          : #94a3b8;
-  border-color   : #e2e8f0;
+  color          : var(--color-text-tertiary);
+  border-color   : var(--color-border-secondary);
 }
-.rr-btn--reject:hover { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.rr-btn--reject:hover { background: var(--color-danger-bg); color: var(--color-danger); border-color: var(--color-danger-border); }
 
 .rr-btn--undo {
   background     : transparent;
-  color          : #64748b;
-  border-color   : #e2e8f0;
+  color          : var(--color-text-muted);
+  border-color   : var(--color-border-secondary);
 }
-.rr-btn--undo:hover { background: #f8fafc; }
+.rr-btn--undo:hover { background: var(--color-background-secondary); }
 
 /* ── Explanation ────────────────────────────────────────────────────────── */
 
@@ -300,27 +300,28 @@
 .rr-btn-secondary {
   padding        : 7px 14px;
   font-size      : 12px;
-  font-weight    : 500;
-  border-radius  : 6px;
-  border         : 0.5px solid #cbd5e1;
-  background     : #ffffff;
-  color          : #475569;
+  font-weight    : var(--btn-font-weight);
+  border-radius  : var(--btn-radius);
+  border         : 1px solid var(--color-border-primary);
+  background     : var(--color-background-primary);
+  color          : var(--color-text-secondary);
   cursor         : pointer;
+  transition     : var(--btn-transition);
 }
-.rr-btn-secondary:hover { background: #f1f5f9; }
+.rr-btn-secondary:hover { background: var(--color-background-secondary); }
 
 .rr-btn-primary {
   padding        : 7px 16px;
   font-size      : 12px;
-  font-weight    : 500;
-  border-radius  : 6px;
-  border         : none;
-  background     : #214883;
-  color          : #ffffff;
+  font-weight    : var(--btn-font-weight);
+  border-radius  : var(--btn-radius);
+  border         : 1px solid var(--color-accent);
+  background     : var(--color-accent);
+  color          : var(--color-accent-contrast);
   cursor         : pointer;
-  transition     : background 0.12s;
+  transition     : var(--btn-transition);
 }
-.rr-btn-primary:hover:not(:disabled) { background: #1a3a6b; }
+.rr-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
 .rr-btn-primary:disabled {
   opacity        : 0.55;
   cursor         : not-allowed;

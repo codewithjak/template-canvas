@@ -1531,7 +1531,7 @@ function PropertiesPanel({
           <div className="property-section-title">Position</div>
           <div className="property-grid-two">
             <div className="property-group">
-              <label className="property-label">Position X</label>
+              <label className="property-label">X</label>
               <input
                 type="number"
                 value={Math.round(selectedElement.position.x)}
@@ -1541,7 +1541,7 @@ function PropertiesPanel({
               />
             </div>
             <div className="property-group">
-              <label className="property-label">Position Y</label>
+              <label className="property-label">Y</label>
               <input
                 type="number"
                 value={Math.round(selectedElement.position.y)}

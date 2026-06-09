@@ -268,18 +268,19 @@
 .bep-nav-btn {
   width           : 24px;
   height          : 24px;
-  border          : 0.5px solid #cbd5e1;
-  border-radius   : 4px;
-  background      : #ffffff;
-  color           : #475569;
+  border          : 1px solid var(--color-border-secondary);
+  border-radius   : var(--btn-radius-sm);
+  background      : var(--color-background-primary);
+  color           : var(--color-text-secondary);
   font-size       : 14px;
   cursor          : pointer;
   display         : flex;
   align-items     : center;
   justify-content : center;
   line-height     : 1;
+  transition      : var(--btn-transition);
 }
-.bep-nav-btn:hover:not(:disabled) { border-color: #378ADD; color: #185FA5; }
+.bep-nav-btn:hover:not(:disabled) { background: var(--color-accent-bg); border-color: var(--color-accent); color: var(--color-accent-strong); }
 .bep-nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .bep-nav-label {
@@ -403,23 +404,24 @@
 .bep-btn-secondary {
   padding         : 7px 16px;
   font-size       : 12px;
-  font-weight     : 500;
-  border-radius   : 6px;
+  font-weight     : var(--btn-font-weight);
+  border-radius   : var(--btn-radius);
   cursor          : pointer;
+  transition      : var(--btn-transition);
 }
 
 .bep-btn-primary {
-  background      : #214883;
-  color           : #ffffff;
-  border          : none;
+  background      : var(--color-accent);
+  color           : var(--color-accent-contrast);
+  border          : 1px solid var(--color-accent);
 }
-.bep-btn-primary:hover:not(:disabled) { background: #1a3a6b; }
+.bep-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
 .bep-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .bep-btn-secondary {
-  background      : #ffffff;
-  color           : #475569;
-  border          : 0.5px solid #cbd5e1;
+  background      : var(--color-background-primary);
+  color           : var(--color-text-secondary);
+  border          : 1px solid var(--color-border-primary);
 }
-.bep-btn-secondary:hover:not(:disabled) { background: #f1f5f9; }
+.bep-btn-secondary:hover:not(:disabled) { background: var(--color-background-secondary); }
 .bep-btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }

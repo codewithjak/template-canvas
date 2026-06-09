@@ -1,16 +1,7 @@
-import { Link, useNavigate } from 'react-router-dom'
 import TemplateCanvas from '../components/TemplateCanvas/TemplateCanvas'
-import { useAuth } from '../auth/AuthContext'
+import UserMenu from '../auth/UserMenu'
 
 function Canvas() {
-  const { user, signOut } = useAuth()
-  const navigate = useNavigate()
-
-  const handleSignOut = async () => {
-    await signOut()
-    navigate('/', { replace: true })
-  }
-
   return (
     <div>
       <div
@@ -29,35 +20,7 @@ function Canvas() {
           minHeight: '52px',
         }}
       >
-        <Link
-          to="/"
-          className="button button--secondary"
-          style={{ fontSize: '13px', padding: '8px 16px' }}
-        >
-          ← Back to Home
-        </Link>
-        <div
-          style={{
-            marginLeft: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}
-        >
-          {user?.email && (
-            <span style={{ fontSize: '13px', color: '#64748b' }}>
-              {user.email}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="button button--secondary"
-            style={{ fontSize: '13px', padding: '8px 16px' }}
-          >
-            Sign out
-          </button>
-        </div>
+        <UserMenu />
       </div>
       <div style={{ height: '52px' }} />
       <TemplateCanvas />

@@ -17,6 +17,12 @@ import invoiceDoc from './builtins/invoice.template.json'
 import invoiceData from './builtins/invoice.data.json'
 import shippingLabelDoc from './builtins/shipping-label.template.json'
 import shippingLabelData from './builtins/shipping-label.data.json'
+import quotationDoc from './builtins/quotation.template.json'
+import quotationData from './builtins/quotation.data.json'
+import medicalReportDoc from './builtins/medical-report.template.json'
+import medicalReportData from './builtins/medical-report.data.json'
+import procurementReportDoc from './builtins/procurement-report.template.json'
+import procurementReportData from './builtins/procurement-report.data.json'
 
 export type BuiltinCategory = 'Billing' | 'Shipping' | 'Reports' | 'Office'
 
@@ -52,5 +58,32 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: '4×6',
     doc: shippingLabelDoc as unknown as TemplateDocument,
     data: shippingLabelData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-quotation',
+    name: 'Quotation',
+    description: 'A4 sales quote with branded header, line items, discount/tax totals, and signature block.',
+    category: 'Billing',
+    sizeLabel: 'A4',
+    doc: quotationDoc as unknown as TemplateDocument,
+    data: quotationData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-medical-report',
+    name: 'Medical Report',
+    description: 'A4 clinical exam report with patient panel, vital-signs table, findings, and physician sign-off.',
+    category: 'Reports',
+    sizeLabel: 'A4',
+    doc: medicalReportDoc as unknown as TemplateDocument,
+    data: medicalReportData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-procurement-report',
+    name: 'Procurement Report',
+    description: 'A4 quarterly procurement summary with spend stat cards, purchase-order table, and approvals.',
+    category: 'Reports',
+    sizeLabel: 'A4',
+    doc: procurementReportDoc as unknown as TemplateDocument,
+    data: procurementReportData as unknown as CanonicalDocument,
   },
 ]

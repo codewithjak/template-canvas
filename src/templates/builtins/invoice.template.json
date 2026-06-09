@@ -36,99 +36,126 @@
       },
       "elements": [
         {
+          "id": "inv-band",
+          "type": "box",
+          "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 150, "borderWidth": 0, "borderColor": "#1d4ed8", "borderStyle": "solid", "backgroundColor": "#1d4ed8", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "inv-band-accent",
+          "type": "box",
+          "position": { "x": 0, "y": 150 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#f59e0b", "borderStyle": "solid", "backgroundColor": "#f59e0b", "borderRadius": 0, "opacity": 100 }
+        },
+        {
           "id": "inv-logo-mark",
           "type": "box",
-          "position": { "x": 60, "y": 56 },
-          "style": { "width": 46, "height": 46, "borderWidth": 0, "borderColor": "#1d4ed8", "borderStyle": "solid", "backgroundColor": "#1d4ed8", "borderRadius": 10, "opacity": 1 }
+          "position": { "x": 60, "y": 44 },
+          "style": { "width": 48, "height": 48, "borderWidth": 0, "borderColor": "#ffffff", "borderStyle": "solid", "backgroundColor": "#ffffff", "borderRadius": 12, "opacity": 100 }
+        },
+        {
+          "id": "inv-logo-glyph",
+          "type": "text",
+          "content": "Y",
+          "position": { "x": 76, "y": 50 },
+          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-brand-name",
           "type": "text",
           "content": "Your Company",
-          "position": { "x": 118, "y": 58 },
-          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "position": { "x": 124, "y": 48 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-brand-sub",
           "type": "text",
           "content": "123 Market Street · City, ST 12345",
-          "position": { "x": 118, "y": 90 },
-          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
+          "position": { "x": 124, "y": 80 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#dbeafe", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-title",
           "type": "text",
           "content": "INVOICE",
-          "position": { "x": 434, "y": 54 },
-          "style": { "fontSize": 34, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+          "position": { "x": 434, "y": 44 },
+          "style": { "fontSize": 32, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
         },
         {
           "id": "inv-meta-no",
           "type": "text",
           "content": "Invoice No.   INV-1042",
-          "position": { "x": 434, "y": 104 },
-          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+          "position": { "x": 434, "y": 92 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#dbeafe", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
         },
         {
           "id": "inv-meta-issued",
           "type": "text",
           "content": "Issued   Apr 9, 2026",
-          "position": { "x": 434, "y": 122 },
-          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
+          "position": { "x": 434, "y": 110 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#dbeafe", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
         },
         {
           "id": "inv-meta-due",
           "type": "text",
           "content": "Due   Apr 23, 2026",
-          "position": { "x": 434, "y": 140 },
-          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
-        },
-        {
-          "id": "inv-divider-top",
-          "type": "line",
-          "position": { "x": 60, "y": 184 },
-          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+          "position": { "x": 434, "y": 128 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#dbeafe", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" }
         },
         {
           "id": "inv-billto-label",
           "type": "text",
           "content": "BILL TO",
-          "position": { "x": 60, "y": 208 },
-          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+          "position": { "x": 60, "y": 192 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-billto-name",
           "type": "text",
           "content": "Jane Doe",
-          "position": { "x": 60, "y": 226 },
-          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "position": { "x": 60, "y": 210 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
         },
         {
-          "id": "inv-billto-addr",
-          "type": "paragraph",
-          "content": "Doe Design Co.\n456 Oak Avenue\nPortland, OR 97201",
-          "position": { "x": 60, "y": 248 },
-          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "lineHeight": 1.5 }
+          "id": "inv-billto-company",
+          "type": "text",
+          "content": "Doe Design Co.",
+          "position": { "x": 60, "y": 234 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-billto-addr1",
+          "type": "text",
+          "content": "456 Oak Avenue",
+          "position": { "x": 60, "y": 252 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-billto-addr2",
+          "type": "text",
+          "content": "Portland, OR 97201",
+          "position": { "x": 60, "y": 270 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-due-box",
           "type": "box",
-          "position": { "x": 484, "y": 204 },
-          "style": { "width": 250, "height": 72, "borderWidth": 0, "borderColor": "#e2e8f0", "borderStyle": "solid", "backgroundColor": "#f1f5f9", "borderRadius": 10, "opacity": 1 }
+          "position": { "x": 474, "y": 184 },
+          "style": { "width": 260, "height": 88, "borderWidth": 1, "borderColor": "#bfdbfe", "borderStyle": "solid", "backgroundColor": "#eff6ff", "borderRadius": 10, "opacity": 100 }
         },
         {
           "id": "inv-due-label",
           "type": "text",
           "content": "AMOUNT DUE",
-          "position": { "x": 500, "y": 218 },
+          "position": { "x": 490, "y": 200 },
           "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-due-amount",
           "type": "text",
           "content": "$1,470.00",
-          "position": { "x": 500, "y": 234 },
-          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
+          "position": { "x": 490, "y": 220 },
+          "style": { "fontSize": 28, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-items-table",
@@ -148,10 +175,10 @@
             "id": "row-head",
             "height": 34,
             "cells": [
-              { "id": "h-desc", "content": { "type": "text", "value": "DESCRIPTION" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "left", "backgroundColor": "#f8fafc" } },
-              { "id": "h-qty", "content": { "type": "text", "value": "QTY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "center", "backgroundColor": "#f8fafc" } },
-              { "id": "h-price", "content": { "type": "text", "value": "UNIT PRICE" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "right", "backgroundColor": "#f8fafc" } },
-              { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "textAlign": "right", "backgroundColor": "#f8fafc" } }
+              { "id": "h-desc", "content": { "type": "text", "value": "DESCRIPTION" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#1d4ed8" } },
+              { "id": "h-qty", "content": { "type": "text", "value": "QTY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#1d4ed8" } },
+              { "id": "h-price", "content": { "type": "text", "value": "UNIT PRICE" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#1d4ed8" } },
+              { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#1d4ed8" } }
             ]
           },
           "rows": [
@@ -169,10 +196,10 @@
               "id": "row-2",
               "height": 36,
               "cells": [
-                { "id": "r2-desc", "content": { "type": "text", "value": "Website Build" }, "style": { "textAlign": "left", "color": "#334155" } },
-                { "id": "r2-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155" } },
-                { "id": "r2-price", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#334155" } },
-                { "id": "r2-amount", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+                { "id": "r2-desc", "content": { "type": "text", "value": "Website Build" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eff6ff" } },
+                { "id": "r2-qty", "content": { "type": "text", "value": "1" }, "style": { "textAlign": "center", "color": "#334155", "backgroundColor": "#eff6ff" } },
+                { "id": "r2-price", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#334155", "backgroundColor": "#eff6ff" } },
+                { "id": "r2-amount", "content": { "type": "text", "value": "$400.00" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eff6ff" } }
               ]
             },
             {
@@ -188,59 +215,87 @@
           ]
         },
         {
+          "id": "inv-thanks-label",
+          "type": "text",
+          "content": "THANK YOU",
+          "position": { "x": 60, "y": 520 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-thanks",
+          "type": "text",
+          "content": "We appreciate your business.",
+          "position": { "x": 60, "y": 538 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
           "id": "inv-sub-label",
           "type": "text",
           "content": "Subtotal",
-          "position": { "x": 434, "y": 500 },
+          "position": { "x": 434, "y": 512 },
           "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
         },
         {
           "id": "inv-sub-value",
           "type": "text",
           "content": "$1,400.00",
-          "position": { "x": 634, "y": 500 },
+          "position": { "x": 634, "y": 512 },
           "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
         },
         {
           "id": "inv-tax-label",
           "type": "text",
           "content": "Tax (5%)",
-          "position": { "x": 434, "y": 524 },
+          "position": { "x": 434, "y": 536 },
           "style": { "fontSize": 12, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
         },
         {
           "id": "inv-tax-value",
           "type": "text",
           "content": "$70.00",
-          "position": { "x": 634, "y": 524 },
+          "position": { "x": 634, "y": 536 },
           "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 100, "textAlign": "right" }
         },
         {
-          "id": "inv-total-divider",
-          "type": "line",
-          "position": { "x": 494, "y": 552 },
-          "style": { "length": 240, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+          "id": "inv-total-box",
+          "type": "box",
+          "position": { "x": 434, "y": 566 },
+          "style": { "width": 300, "height": 48, "borderWidth": 0, "borderColor": "#1d4ed8", "borderStyle": "solid", "backgroundColor": "#1d4ed8", "borderRadius": 10, "opacity": 100 }
         },
         {
           "id": "inv-total-label",
           "type": "text",
-          "content": "Total",
-          "position": { "x": 434, "y": 564 },
-          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "right" }
+          "content": "TOTAL",
+          "position": { "x": 450, "y": 582 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-total-value",
           "type": "text",
           "content": "$1,470.00",
-          "position": { "x": 624, "y": 564 },
-          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif", "width": 110, "textAlign": "right" }
+          "position": { "x": 564, "y": 580 },
+          "style": { "fontSize": 18, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 154, "textAlign": "right" }
         },
         {
-          "id": "inv-thanks",
+          "id": "inv-pay-label",
           "type": "text",
-          "content": "Thank you for your business.",
-          "position": { "x": 60, "y": 520 },
-          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "content": "PAYMENT DETAILS",
+          "position": { "x": 60, "y": 700 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#1d4ed8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-pay-line1",
+          "type": "text",
+          "content": "Bank   First National · Acct 0123 4567 · Routing 021000021",
+          "position": { "x": 60, "y": 718 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-pay-line2",
+          "type": "text",
+          "content": "Payment due within 14 days of the issue date.",
+          "position": { "x": 60, "y": 736 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
         },
         {
           "id": "inv-foot-divider",
@@ -249,11 +304,18 @@
           "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
         },
         {
-          "id": "inv-foot-note",
-          "type": "paragraph",
-          "content": "Payment due within 14 days. Make payment to Your Company.\nQuestions? billing@yourcompany.com · (555) 010-2040",
+          "id": "inv-foot-note1",
+          "type": "text",
+          "content": "Your Company · 123 Market Street, City, ST 12345",
           "position": { "x": 60, "y": 1016 },
-          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "lineHeight": 1.5 }
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "inv-foot-note2",
+          "type": "text",
+          "content": "Questions? billing@yourcompany.com · (555) 010-2040",
+          "position": { "x": 60, "y": 1032 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
         }
       ]
     }

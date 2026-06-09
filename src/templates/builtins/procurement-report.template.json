@@ -1,0 +1,419 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-procurement-report",
+    "name": "Procurement Report",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Procurement Report",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "pr-band",
+          "type": "box",
+          "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 150, "borderWidth": 0, "borderColor": "#4338ca", "borderStyle": "solid", "backgroundColor": "#4338ca", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "pr-band-accent",
+          "type": "box",
+          "position": { "x": 0, "y": 150 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#f59e0b", "borderStyle": "solid", "backgroundColor": "#f59e0b", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "pr-logo-mark",
+          "type": "box",
+          "position": { "x": 60, "y": 44 },
+          "style": { "width": 48, "height": 48, "borderWidth": 0, "borderColor": "#ffffff", "borderStyle": "solid", "backgroundColor": "#ffffff", "borderRadius": 12, "opacity": 100 }
+        },
+        {
+          "id": "pr-logo-glyph",
+          "type": "text",
+          "content": "P",
+          "position": { "x": 77, "y": 50 },
+          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#4338ca", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-brand-name",
+          "type": "text",
+          "content": "Northgate Industries",
+          "position": { "x": 124, "y": 48 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-brand-sub",
+          "type": "text",
+          "content": "Procurement Department · procurement@northgate.example",
+          "position": { "x": 124, "y": 80 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-title",
+          "type": "text",
+          "content": "PROCUREMENT REPORT",
+          "position": { "x": 384, "y": 48 },
+          "style": { "fontSize": 26, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 350, "textAlign": "right" }
+        },
+        {
+          "id": "pr-subtitle",
+          "type": "text",
+          "content": "Period: Q2 2026 (Apr – Jun)",
+          "position": { "x": 384, "y": 88 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif", "width": 350, "textAlign": "right" }
+        },
+        {
+          "id": "pr-card1",
+          "type": "box",
+          "position": { "x": 60, "y": 184 },
+          "style": { "width": 159, "height": 84, "borderWidth": 1, "borderColor": "#c7d2fe", "borderStyle": "solid", "backgroundColor": "#eef2ff", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "pr-card1-l",
+          "type": "text",
+          "content": "TOTAL SPEND",
+          "position": { "x": 74, "y": 198 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card1-v",
+          "type": "text",
+          "content": "$248,900",
+          "position": { "x": 74, "y": 214 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#1e1b4b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card1-s",
+          "type": "text",
+          "content": "Q2 2026",
+          "position": { "x": 74, "y": 246 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card2",
+          "type": "box",
+          "position": { "x": 231, "y": 184 },
+          "style": { "width": 159, "height": 84, "borderWidth": 1, "borderColor": "#c7d2fe", "borderStyle": "solid", "backgroundColor": "#eef2ff", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "pr-card2-l",
+          "type": "text",
+          "content": "PURCHASE ORDERS",
+          "position": { "x": 245, "y": 198 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card2-v",
+          "type": "text",
+          "content": "42",
+          "position": { "x": 245, "y": 214 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#1e1b4b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card2-s",
+          "type": "text",
+          "content": "+6 vs Q1",
+          "position": { "x": 245, "y": 246 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card3",
+          "type": "box",
+          "position": { "x": 402, "y": 184 },
+          "style": { "width": 159, "height": 84, "borderWidth": 1, "borderColor": "#c7d2fe", "borderStyle": "solid", "backgroundColor": "#eef2ff", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "pr-card3-l",
+          "type": "text",
+          "content": "SUPPLIERS",
+          "position": { "x": 416, "y": 198 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card3-v",
+          "type": "text",
+          "content": "18",
+          "position": { "x": 416, "y": 214 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#1e1b4b", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card3-s",
+          "type": "text",
+          "content": "3 new this quarter",
+          "position": { "x": 416, "y": 246 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#6366f1", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card4",
+          "type": "box",
+          "position": { "x": 573, "y": 184 },
+          "style": { "width": 161, "height": 84, "borderWidth": 0, "borderColor": "#059669", "borderStyle": "solid", "backgroundColor": "#059669", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "pr-card4-l",
+          "type": "text",
+          "content": "COST SAVINGS",
+          "position": { "x": 587, "y": 198 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#d1fae5", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card4-v",
+          "type": "text",
+          "content": "$19,400",
+          "position": { "x": 587, "y": 214 },
+          "style": { "fontSize": 22, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-card4-s",
+          "type": "text",
+          "content": "7.2% vs target",
+          "position": { "x": 587, "y": 246 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#d1fae5", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-table-label",
+          "type": "text",
+          "content": "TOP PURCHASE ORDERS BY VALUE",
+          "position": { "x": 60, "y": 300 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#4338ca", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-orders-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": { "x": 60, "y": 320 },
+          "size": { "width": 674, "height": 226 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": false },
+          "binding": { "enabled": false, "collectionKey": "orders", "itemAlias": "order" },
+          "columns": [
+            { "id": "col-po", "width": 92, "alignment": "left" },
+            { "id": "col-supplier", "width": 196, "alignment": "left" },
+            { "id": "col-cat", "width": 142, "alignment": "left" },
+            { "id": "col-status", "width": 100, "alignment": "left" },
+            { "id": "col-amount", "width": 144, "alignment": "right" }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 34,
+            "cells": [
+              { "id": "h-po", "content": { "type": "text", "value": "PO #" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#4338ca" } },
+              { "id": "h-supplier", "content": { "type": "text", "value": "SUPPLIER" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#4338ca" } },
+              { "id": "h-cat", "content": { "type": "text", "value": "CATEGORY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#4338ca" } },
+              { "id": "h-status", "content": { "type": "text", "value": "STATUS" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#4338ca" } },
+              { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#4338ca" } }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 32,
+              "cells": [
+                { "id": "r1-po", "content": { "type": "text", "value": "PO-2044" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold" } },
+                { "id": "r1-sup", "content": { "type": "text", "value": "Meridian Tech" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r1-cat", "content": { "type": "text", "value": "IT Hardware" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r1-st", "content": { "type": "text", "value": "Received" }, "style": { "textAlign": "left", "color": "#059669", "fontWeight": "bold" } },
+                { "id": "r1-amt", "content": { "type": "text", "value": "$61,800" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-2",
+              "height": 32,
+              "cells": [
+                { "id": "r2-po", "content": { "type": "text", "value": "PO-2041" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r2-sup", "content": { "type": "text", "value": "Apex Components" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r2-cat", "content": { "type": "text", "value": "Raw Materials" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r2-st", "content": { "type": "text", "value": "Received" }, "style": { "textAlign": "left", "color": "#059669", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r2-amt", "content": { "type": "text", "value": "$52,300" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } }
+              ]
+            },
+            {
+              "id": "row-3",
+              "height": 32,
+              "cells": [
+                { "id": "r3-po", "content": { "type": "text", "value": "PO-2045" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold" } },
+                { "id": "r3-sup", "content": { "type": "text", "value": "Cardinal Tooling" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r3-cat", "content": { "type": "text", "value": "Equipment" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r3-st", "content": { "type": "text", "value": "Approved" }, "style": { "textAlign": "left", "color": "#4338ca", "fontWeight": "bold" } },
+                { "id": "r3-amt", "content": { "type": "text", "value": "$39,750" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-4",
+              "height": 32,
+              "cells": [
+                { "id": "r4-po", "content": { "type": "text", "value": "PO-2042" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r4-sup", "content": { "type": "text", "value": "Vertex Logistics" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r4-cat", "content": { "type": "text", "value": "Freight" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r4-st", "content": { "type": "text", "value": "Approved" }, "style": { "textAlign": "left", "color": "#4338ca", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r4-amt", "content": { "type": "text", "value": "$18,450" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } }
+              ]
+            },
+            {
+              "id": "row-5",
+              "height": 32,
+              "cells": [
+                { "id": "r5-po", "content": { "type": "text", "value": "PO-2046" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold" } },
+                { "id": "r5-sup", "content": { "type": "text", "value": "Summit Packaging" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r5-cat", "content": { "type": "text", "value": "Packaging" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r5-st", "content": { "type": "text", "value": "Received" }, "style": { "textAlign": "left", "color": "#059669", "fontWeight": "bold" } },
+                { "id": "r5-amt", "content": { "type": "text", "value": "$12,480" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold" } }
+              ]
+            },
+            {
+              "id": "row-6",
+              "height": 32,
+              "cells": [
+                { "id": "r6-po", "content": { "type": "text", "value": "PO-2043" }, "style": { "textAlign": "left", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r6-sup", "content": { "type": "text", "value": "BlueOak Supplies" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r6-cat", "content": { "type": "text", "value": "Office" }, "style": { "textAlign": "left", "color": "#334155", "backgroundColor": "#eef2ff" } },
+                { "id": "r6-st", "content": { "type": "text", "value": "Pending" }, "style": { "textAlign": "left", "color": "#b45309", "fontWeight": "bold", "backgroundColor": "#eef2ff" } },
+                { "id": "r6-amt", "content": { "type": "text", "value": "$4,120" }, "style": { "textAlign": "right", "color": "#0f172a", "fontWeight": "bold", "backgroundColor": "#eef2ff" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "pr-notes-label",
+          "type": "text",
+          "content": "NOTES & HIGHLIGHTS",
+          "position": { "x": 60, "y": 568 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#4338ca", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-note1",
+          "type": "text",
+          "content": "Consolidated raw-material vendors from 6 to 3 suppliers.",
+          "position": { "x": 60, "y": 588 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-note2",
+          "type": "text",
+          "content": "Negotiated 7.2% savings against the Q2 budget target.",
+          "position": { "x": 60, "y": 606 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-note3",
+          "type": "text",
+          "content": "One PO (PO-2043) pending finance approval at quarter close.",
+          "position": { "x": 60, "y": 624 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-total-box",
+          "type": "box",
+          "position": { "x": 434, "y": 566 },
+          "style": { "width": 300, "height": 64, "borderWidth": 0, "borderColor": "#4338ca", "borderStyle": "solid", "backgroundColor": "#4338ca", "borderRadius": 10, "opacity": 100 }
+        },
+        {
+          "id": "pr-total-label",
+          "type": "text",
+          "content": "QUARTER SPEND",
+          "position": { "x": 450, "y": 582 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-total-value",
+          "type": "text",
+          "content": "$248,900",
+          "position": { "x": 450, "y": 598 },
+          "style": { "fontSize": 24, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 268, "textAlign": "right" }
+        },
+        {
+          "id": "pr-appr-label",
+          "type": "text",
+          "content": "APPROVALS",
+          "position": { "x": 60, "y": 712 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#4338ca", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-sign-line1",
+          "type": "line",
+          "position": { "x": 60, "y": 788 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "pr-sign-name1",
+          "type": "text",
+          "content": "Dana Okafor",
+          "position": { "x": 60, "y": 796 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-sign-title1",
+          "type": "text",
+          "content": "Procurement Lead",
+          "position": { "x": 60, "y": 812 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-sign-line2",
+          "type": "line",
+          "position": { "x": 474, "y": 788 },
+          "style": { "length": 260, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "pr-sign-name2",
+          "type": "text",
+          "content": "R. Feldman",
+          "position": { "x": 474, "y": 796 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-sign-title2",
+          "type": "text",
+          "content": "Finance Director",
+          "position": { "x": 474, "y": 812 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-foot-divider",
+          "type": "line",
+          "position": { "x": 60, "y": 1000 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "pr-foot-note1",
+          "type": "text",
+          "content": "Northgate Industries · Procurement Department · Confidential",
+          "position": { "x": 60, "y": 1016 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "pr-foot-note2",
+          "type": "text",
+          "content": "Generated Jun 9, 2026 · procurement@northgate.example",
+          "position": { "x": 60, "y": 1032 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "fields": {
+    "clinic_name": "Riverside Medical Center",
+    "clinic_department": "Department of Internal Medicine",
+    "clinic_address": "789 Health Blvd, City, ST 12345",
+    "clinic_phone": "(555) 030-1100",
+    "patient_name": "John A. Whitfield",
+    "patient_id": "MRN-558210",
+    "patient_dob": "Mar 14, 1981 (45)",
+    "patient_sex": "Male",
+    "exam_date": "Jun 9, 2026",
+    "physician": "Dr. Elena Marsh, MD",
+    "physician_license": "ST-44120",
+    "chief_complaint": "Patient presents with intermittent chest tightness and shortness of breath on exertion over the past three weeks. No prior cardiac history reported.",
+    "findings": "General: Alert and oriented, in no acute distress. Cardiovascular: Regular rate and rhythm; soft systolic murmur at left sternal border. Respiratory: Clear bilaterally. ECG: Mild ST-segment changes.",
+    "assessment": "Stage 1 hypertension; exertional chest discomfort pending cardiac stress test and lipid panel."
+  },
+  "collections": {
+    "vitals": {
+      "columns": ["measurement", "result", "reference_range"],
+      "rows": [
+        { "measurement": "Blood Pressure", "result": "138 / 88 mmHg", "reference_range": "< 120 / 80 mmHg" },
+        { "measurement": "Heart Rate", "result": "82 bpm", "reference_range": "60 – 100 bpm" },
+        { "measurement": "Temperature", "result": "98.6 °F", "reference_range": "97.0 – 99.0 °F" },
+        { "measurement": "Oxygen Saturation", "result": "97 %", "reference_range": "95 – 100 %" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "medical-report.data.json" }
+}

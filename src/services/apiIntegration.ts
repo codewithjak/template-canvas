@@ -33,6 +33,8 @@ export interface ApiKeyMeta {
 
 export interface UsageSummary {
   plan: string;
+  /** Present on responses from servers running the entitlements build. */
+  capabilities?: Record<string, boolean>;
   templates:        { used: number; limit: number | null };
   exportsThisMonth: { used: number; limit: number | null };
 }

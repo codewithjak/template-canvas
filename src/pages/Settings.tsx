@@ -17,6 +17,8 @@ import {
   type UsageSummary,
 } from '../services/apiIntegration'
 import { API_BASE } from '../services/config'
+import { usePlan } from '../plan/PlanProvider'
+import { getPlan, minPlanFor } from '../config/plans'
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
@@ -48,6 +50,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
 
 export default function Settings() {
   const navigate = useNavigate()
+  const { plan, can } = usePlan()
   const [meta, setMeta] = useState<ApiKeyMeta | null>(null)
   const [usage, setUsage] = useState<UsageSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -135,7 +138,28 @@ export default function Settings() {
               <div style={{ background: '#fef2f2', color: '#b91c1c', padding: '11px 14px', borderRadius: 10, fontSize: 13, marginBottom: 20 }}>{error}</div>
             )}
 
+            <Card title="Plan" subtitle="Your current subscription.">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ fontSize: 14, color: '#0f172a' }}>
+                  <strong>{getPlan(plan).name}</strong>
+                  <span style={{ color: '#94a3b8' }}> · ${getPlan(plan).price}/mo</span>
+                </div>
+                <button onClick={() => navigate('/pricing')} style={{ border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4f46e5', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {plan === 'business' ? 'Manage plan' : 'Upgrade'}
+                </button>
+              </div>
+            </Card>
+
             <Card title="API access" subtitle="Push data into your templates from any system using a team API key.">
+              {!can('api') ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ fontSize: 14, color: '#64748b' }}>
+                    API access is included in the <strong>{minPlanFor('api')?.name}</strong> plan.
+                  </div>
+                  <button onClick={() => navigate('/pricing')} style={{ border: 'none', background: '#4f46e5', color: '#fff', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Upgrade</button>
+                </div>
+              ) : (
+              <>
               {freshKey && (
                 <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 18 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: '#065f46', marginBottom: 6 }}>Copy your key now — it won’t be shown again.</div>
@@ -166,6 +190,8 @@ export default function Settings() {
                   <button disabled={busy} onClick={handleIssue} style={{ border: 'none', background: '#2563eb', color: '#fff', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>{busy ? 'Generating…' : 'Generate API key'}</button>
                 </div>
               )}
+              </>
+              )}
             </Card>
 
             {usage && (
@@ -175,12 +201,14 @@ export default function Settings() {
               </Card>
             )}
 
-            <Card title="Push data" subtitle="Send JSON to a template; it’s normalized and stored, ready to map and export.">
-              <pre style={{ background: '#0f172a', color: '#e2e8f0', borderRadius: 10, padding: 16, fontSize: 12, lineHeight: 1.6, overflowX: 'auto', margin: 0 }}>{curl}</pre>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>
-                Find <code>templateId</code> in the template you want to fill.
-              </div>
-            </Card>
+            {can('api') && (
+              <Card title="Push data" subtitle="Send JSON to a template; it’s normalized and stored, ready to map and export.">
+                <pre style={{ background: '#0f172a', color: '#e2e8f0', borderRadius: 10, padding: 16, fontSize: 12, lineHeight: 1.6, overflowX: 'auto', margin: 0 }}>{curl}</pre>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 10 }}>
+                  Find <code>templateId</code> in the template you want to fill.
+                </div>
+              </Card>
+            )}
           </>
         )}
       </main>

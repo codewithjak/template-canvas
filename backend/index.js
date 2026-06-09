@@ -16,6 +16,9 @@ const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer
 const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
+const { checkExportAllowed }                = require('./usage');
+const { stampWatermark }                    = require('./renderer/watermark');
+const { planAllows }                        = require('./plans');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
@@ -257,6 +260,15 @@ app.post('/generate-document', async (req, res) => {
   if (!Array.isArray(req.body.pages)) {
     return res.status(400).json({ error: '"pages" array is required.' });
   }
+
+  const format = String(req.body.format || 'pdf').toLowerCase();
+
+  // Entitlement gate (plan capability + monthly cap). Runs before any work.
+  const gate = await checkExportAllowed({
+    authHeader: req.headers.authorization, mode: 'single', rows: 1, format,
+  });
+  if (!gate.allowed) return res.status(gate.status).json({ error: gate.error });
+
   try {
     let {
       templateElements,
@@ -291,8 +303,6 @@ app.post('/generate-document', async (req, res) => {
     });
 
     // ── Format-aware response ─────────────────────────────────────────
-    const format = String(req.body.format || 'pdf').toLowerCase();
-
     // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
     logExportEvent(req.headers.authorization, { format, mode: 'single' });
 
@@ -307,11 +317,14 @@ app.post('/generate-document', async (req, res) => {
       return res.send(zplBuffer);
     }
 
+    // Free tier: brand the PDF server-side so it can't be stripped client-side.
+    const outBuffer = gate.watermark ? await stampWatermark(pdfBuffer) : pdfBuffer;
+
     res.set({
       'Content-Type':        'application/pdf',
       'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.pdf"`,
     });
-    return res.send(pdfBuffer);
+    return res.send(outBuffer);
   } catch (err) {
     console.error('[generate-document]', err);
     return res.status(500).json({ error: err.message || 'Failed to generate document.' });
@@ -361,6 +374,13 @@ app.post('/generate-bulk-documents', async (req, res) => {
     const relatedCollections = bulk.relatedCollections || {};
     const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
+    // Entitlement gate (bulk capability + per-job rows + monthly cap). Must
+    // run before any bytes are streamed so we can still return a JSON error.
+    const gate = await checkExportAllowed({
+      authHeader: req.headers.authorization, mode: 'bulk', rows: total, format,
+    });
+    if (!gate.allowed) return res.status(gate.status).json({ error: gate.error });
+
     // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
     logExportEvent(req.headers.authorization, { format, mode: 'bulk', rows: total });
 
@@ -391,10 +411,11 @@ app.post('/generate-bulk-documents', async (req, res) => {
       }
 
       try {
-        const buffer = await generateBuffer({
+        let buffer = await generateBuffer({
           ir: rowIr, templateElements, fieldMapping,
           tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
         });
+        if (gate.watermark && format !== 'zpl') buffer = await stampWatermark(buffer);
 
         const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
         const safeName     = uniqueFileName(
@@ -457,6 +478,12 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const relatedCollections = bulk.relatedCollections || {};
   const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
+  // Entitlement gate (bulk capability + per-job rows + monthly cap).
+  const gate = await checkExportAllowed({
+    authHeader: req.headers.authorization, mode: 'bulk_async', rows: total, format,
+  });
+  if (!gate.allowed) return res.status(gate.status).json({ error: gate.error });
+
   const jobId   = uuidv4();
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
 
@@ -483,7 +510,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
         const rowIr = buildRowIr(normalised.ir, driverCollectionKey, row, i, relatedCollections);
 
         try {
-          const buffer = await generateBuffer({
+          let buffer = await generateBuffer({
             ir:                      rowIr,
             templateElements:        normalised.templateElements,
             fieldMapping:            normalised.fieldMapping,
@@ -492,6 +519,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
             pageConfigs:             normalised.pageConfigs,
             pageSize:                normalised.pageSize,
           });
+          if (gate.watermark && format !== 'zpl') buffer = await stampWatermark(buffer);
 
           const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
           const safeName     = uniqueFileName(
@@ -586,7 +614,8 @@ const {
   getKeyMeta,
   revokeKeyForTeam,
 } = require('./apiKeys');
-const { getUsageSummary } = require('./usage');
+const { getUsageSummary, getTeamPlan } = require('./usage');
+const { PLAN_ORDER, getPlan } = require('./plans');
 const { getAdmin: getSupabaseAdmin } = require('./supabaseAdmin');
 
 // Flatten a saved template document (body_json) to its element list.
@@ -601,6 +630,10 @@ app.post('/v1/keys', async (req, res) => {
   try {
     const ctx = await resolveTeamFromJwt(req.headers.authorization);
     if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    // API access is a Business-tier capability.
+    if (!planAllows(await getTeamPlan(ctx.teamId), 'api')) {
+      return res.status(403).json({ error: 'API access requires the Business plan. Upgrade to unlock it.' });
+    }
     const apiKey = await issueKeyForTeam(ctx.teamId);
     // Returned ONCE. Only a hash is stored — it cannot be retrieved again.
     return res.json({ apiKey, prefix: apiKey.slice(0, 14) });
@@ -662,6 +695,12 @@ app.post('/v1/ingest', async (req, res) => {
 
     const teamId = await resolveTeamFromApiKey(rawKey);
     if (!teamId) return res.status(403).json({ error: 'Invalid or revoked API key.' });
+
+    // A team can hold a key issued while on Business but later downgrade — keep
+    // the capability check live on every request, not just at issue time.
+    if (!planAllows(await getTeamPlan(teamId), 'api')) {
+      return res.status(403).json({ error: 'API access requires the Business plan.' });
+    }
 
     const { templateId, data } = req.body || {};
     if (!templateId)        return res.status(400).json({ error: '"templateId" is required.' });
@@ -729,6 +768,43 @@ app.post('/v1/ingest', async (req, res) => {
   } catch (err) {
     console.error('[v1/ingest]', err);
     return res.status(500).json({ error: err.message || 'Ingestion failed.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /v1/plan  — DEV-ONLY plan switch (stand-in for Stripe checkout)
+//
+// Lets a signed-in user set their own team's plan, so the full gating
+// experience is testable before billing exists. Guarded by an env flag and
+// DISABLED unless ALLOW_PLAN_SELF_SERVICE=true — in production the Stripe
+// webhook is the only thing that may write teams.plan.
+//
+// Body: { plan: 'free' | 'pro' | 'business' }
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/v1/plan', async (req, res) => {
+  if (process.env.ALLOW_PLAN_SELF_SERVICE !== 'true') {
+    return res.status(403).json({ error: 'Plan changes are handled through billing.' });
+  }
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+
+    const plan = String(req.body?.plan || '').toLowerCase();
+    if (!PLAN_ORDER.includes(plan)) {
+      return res.status(400).json({ error: `plan must be one of: ${PLAN_ORDER.join(', ')}` });
+    }
+
+    const sb = getSupabaseAdmin();
+    if (!sb) return res.status(503).json({ error: 'Server not configured for Supabase.' });
+
+    const { error } = await sb.from('teams').update({ plan }).eq('id', ctx.teamId);
+    if (error) throw error;
+
+    return res.json({ plan, name: getPlan(plan).name });
+  } catch (err) {
+    console.error('[v1/plan]', err);
+    return res.status(500).json({ error: err.message || 'Could not change plan.' });
   }
 });
 

@@ -48,6 +48,7 @@ import LayoutTableElement  from './LayoutTableElement';
 import PropertiesPanel     from './PropertiesPanel';
 import PageRulers, { type PageRulerSelection } from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
+import { usePlan } from '../../plan/PlanProvider';
 import BarcodeElement from './BarcodeElement';
 import type { BarcodeElementType, PageSizeConfig } from '../../types/canvas';
 import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize } from '../../types/canvas';
@@ -195,6 +196,10 @@ function removeEmptyMappings(mapping: FieldMapping): FieldMapping {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TemplateCanvas() {
+
+  // ── Plan / entitlements ─────────────────────────────────────────────────────
+  // UI-side gating only; the backend re-checks every export and save limit.
+  const { can, atLimit, promptUpgrade, refresh: refreshPlan } = usePlan();
 
   // ── Core state ────────────────────────────────────────────────────────────
 
@@ -568,6 +573,7 @@ function TemplateCanvas() {
       } else {
         const id = await createCloudTemplate(name, body);
         setCurrentTemplateId(id);
+        void refreshPlan(); // a new template changed the team's template count
       }
       setCloudStatus('saved');
       window.setTimeout(() => setCloudStatus('idle'), 2500);
@@ -578,6 +584,17 @@ function TemplateCanvas() {
   };
 
   const handleSaveTemplate = () => {
+    // Saving a NEW template is what consumes a template slot; updates to an
+    // already-saved one are always allowed even at the limit.
+    if (!currentTemplateId && atLimit('templates')) {
+      promptUpgrade({
+        title: 'Template limit reached',
+        message:
+          "You've used all the templates on your plan. Upgrade for unlimited templates, " +
+          'or delete one to free up a slot.',
+      });
+      return;
+    }
     if (templateMeta.name) void persistToCloud(templateMeta.name);
     else setShowSaveModal(true);
   };
@@ -802,6 +819,7 @@ function TemplateCanvas() {
     } finally {
       setIsExporting(false);
       setExportStatus(null);
+      void refreshPlan(); // reflect the export against the monthly cap
     }
   };
 
@@ -1022,7 +1040,17 @@ function TemplateCanvas() {
           customPageWidth={pageSize.widthInches}
           customPageHeight={pageSize.heightInches}
           exportFormat={exportFormat}
-          onExportFormatChange={setExportFormat}
+          onExportFormatChange={(format) => {
+            if (format === 'zpl' && !can('zpl')) {
+              promptUpgrade({
+                capability: 'zpl',
+                title: 'ZPL export is a Pro feature',
+                message: 'Export ZPL for thermal and label printers on the Pro plan and above.',
+              });
+              return;
+            }
+            setExportFormat(format);
+          }}
         />
 
         {uploadPanelOpen && (
@@ -1119,7 +1147,17 @@ function TemplateCanvas() {
                 <button
                   type="button"
                   className="batch-control-btn batch-control-btn--bulk"
-                  onClick={() => setBulkPanelOpen(true)}
+                  onClick={() => {
+                    if (!can('bulk')) {
+                      promptUpgrade({
+                        capability: 'bulk',
+                        title: 'Bulk generation is a Pro feature',
+                        message: 'Generate one document per row from your whole dataset on the Pro plan and above.',
+                      });
+                      return;
+                    }
+                    setBulkPanelOpen(true);
+                  }}
                   disabled={isExporting}
                   title="Generate one PDF per row"
                 >

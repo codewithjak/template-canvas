@@ -6,16 +6,20 @@ import Features from './pages/Features'
 import Careers from './pages/Careers'
 import Canvas from './pages/Canvas'
 import Settings from './pages/Settings'
+import Pricing from './pages/Pricing'
 import AuthCallback from './pages/AuthCallback'
+import { PlanProvider } from './plan/PlanProvider'
 import './App.css'
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <PlanProvider>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/careers" element={<Careers />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
@@ -35,6 +39,7 @@ function App() {
             }
           />
         </Routes>
+        </PlanProvider>
       </Router>
     </AuthProvider>
   )

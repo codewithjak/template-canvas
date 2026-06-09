@@ -298,16 +298,6 @@ export default function Home() {
               generate documents at scale — invoices, HR letters, reports, bulk
               workflows, all without manual copy-paste.
             </p>
-            <form className="waitlist-form" onSubmit={e => e.preventDefault()}>
-              <input
-                type="email"
-                aria-label="Enter your email"
-                placeholder="Enter your work email"
-                className="waitlist-input"
-                required
-              />
-              <button className="btn btn--primary" type="submit">Join waitlist</button>
-            </form>
           </div>
 
           <div className="footer__nav">

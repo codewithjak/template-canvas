@@ -561,6 +561,177 @@ app.get('/bulk-jobs/:jobId/download', (req, res) => {
   });
 });
 
+// ════════════════════════════════════════════════════════════════════════════
+// API INTEGRATION ENDPOINTS   (additive — see supabase/api_integration.sql)
+//
+//   Key management — browser, authenticated by Supabase JWT:
+//     POST   /v1/keys          issue or rotate the team's single API key
+//     GET    /v1/keys          key metadata (prefix/created/revoked) — never the secret
+//     POST   /v1/keys/revoke   revoke the current key
+//     GET    /v1/usage         plan + usage summary
+//
+//   Data ingestion — external systems, authenticated by the API key:
+//     POST   /v1/ingest        push JSON → normalised IR stored against a template
+//
+// These endpoints are entirely separate from the existing generate/parse
+// routes above; they add a second auth mode (API key) without altering the
+// JWT-based flow the app already uses.
+// ════════════════════════════════════════════════════════════════════════════
+
+const {
+  extractApiKey,
+  resolveTeamFromJwt,
+  resolveTeamFromApiKey,
+  issueKeyForTeam,
+  getKeyMeta,
+  revokeKeyForTeam,
+} = require('./apiKeys');
+const { getUsageSummary } = require('./usage');
+const { getAdmin: getSupabaseAdmin } = require('./supabaseAdmin');
+
+// Flatten a saved template document (body_json) to its element list.
+function collectTemplateElements(bodyJson) {
+  if (!bodyJson || !Array.isArray(bodyJson.pages)) return [];
+  return bodyJson.pages.flatMap(p => (Array.isArray(p.elements) ? p.elements : []));
+}
+
+// ── Key management (JWT-scoped) ───────────────────────────────────────────────
+
+app.post('/v1/keys', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    const apiKey = await issueKeyForTeam(ctx.teamId);
+    // Returned ONCE. Only a hash is stored — it cannot be retrieved again.
+    return res.json({ apiKey, prefix: apiKey.slice(0, 14) });
+  } catch (err) {
+    console.error('[v1/keys POST]', err);
+    return res.status(500).json({ error: err.message || 'Could not issue key.' });
+  }
+});
+
+app.get('/v1/keys', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    return res.json({ key: await getKeyMeta(ctx.teamId) });
+  } catch (err) {
+    console.error('[v1/keys GET]', err);
+    return res.status(500).json({ error: err.message || 'Could not load key.' });
+  }
+});
+
+app.post('/v1/keys/revoke', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    await revokeKeyForTeam(ctx.teamId);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[v1/keys/revoke]', err);
+    return res.status(500).json({ error: err.message || 'Could not revoke key.' });
+  }
+});
+
+app.get('/v1/usage', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    return res.json(await getUsageSummary(ctx.teamId));
+  } catch (err) {
+    console.error('[v1/usage]', err);
+    return res.status(500).json({ error: err.message || 'Could not load usage.' });
+  }
+});
+
+// ── Data ingestion (API-key-scoped) ───────────────────────────────────────────
+//
+// Body: { templateId: <uuid>, data: <any JSON> }
+// Auth: X-API-Key: tc_live_…   (or Authorization: Bearer tc_live_…)
+//
+// Normalises the payload to the CanonicalDocument IR using the SAME parser the
+// app's /parse-json route uses, verifies the template belongs to the key's
+// team, then upserts the payload onto template_bindings.last_payload for
+// (team, template). Existing mapping columns on that row are preserved.
+// validateBindings runs against any saved mapping so the caller sees missing
+// bindings instead of silent blanks downstream.
+app.post('/v1/ingest', async (req, res) => {
+  try {
+    const rawKey = extractApiKey(req);
+    if (!rawKey) return res.status(401).json({ error: 'API key required (X-API-Key header).' });
+
+    const teamId = await resolveTeamFromApiKey(rawKey);
+    if (!teamId) return res.status(403).json({ error: 'Invalid or revoked API key.' });
+
+    const { templateId, data } = req.body || {};
+    if (!templateId)        return res.status(400).json({ error: '"templateId" is required.' });
+    if (data === undefined) return res.status(400).json({ error: '"data" is required.' });
+
+    const sb = getSupabaseAdmin();
+    if (!sb) return res.status(503).json({ error: 'Server not configured for Supabase.' });
+
+    // Tenant isolation: the template must belong to the key's team.
+    const { data: tpl, error: tplErr } = await sb
+      .from('templates')
+      .select('id, team_id, body_json')
+      .eq('id', templateId)
+      .maybeSingle();
+    if (tplErr) throw tplErr;
+    if (!tpl || tpl.team_id !== teamId) {
+      return res.status(404).json({ error: 'Template not found for this team.' });
+    }
+
+    // Normalise → CanonicalDocument IR (same path as POST /parse-json).
+    let ir;
+    try {
+      ir = parseDataSource(data, 'application/json');
+    } catch (e) {
+      return res.status(422).json({ error: `Could not parse data: ${e.message}` });
+    }
+
+    // Load any existing binding so we can validate against its saved mapping.
+    const { data: binding } = await sb
+      .from('template_bindings')
+      .select('field_mapping')
+      .eq('team_id', teamId)
+      .eq('template_id', templateId)
+      .maybeSingle();
+
+    const fieldMapping = binding?.field_mapping || {};
+    const elements     = collectTemplateElements(tpl.body_json);
+    const validation   = validateBindings(elements, ir, fieldMapping);
+
+    // Store latest payload. Only these columns are written, so existing mapping
+    // columns are preserved on update and default to '{}' on first insert.
+    const { error: upErr } = await sb.from('template_bindings').upsert(
+      {
+        team_id:        teamId,
+        template_id:    templateId,
+        last_payload:   ir,
+        last_ingest_at: new Date().toISOString(),
+        updated_at:     new Date().toISOString(),
+      },
+      { onConflict: 'team_id,template_id' },
+    );
+    if (upErr) throw upErr;
+
+    return res.json({
+      ok:          true,
+      templateId,
+      bound:       !!binding, // false → app needs a one-time link/mapping
+      fields:      Object.keys(ir.fields).length,
+      collections: Object.fromEntries(
+        Object.entries(ir.collections).map(([k, c]) => [k, c.rows.length]),
+      ),
+      warnings:    ir.source?.warnings || [],
+      validation,
+    });
+  } catch (err) {
+    console.error('[v1/ingest]', err);
+    return res.status(500).json({ error: err.message || 'Ingestion failed.' });
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Start
 // ─────────────────────────────────────────────────────────────────────────────

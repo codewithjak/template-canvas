@@ -1,16 +1,22 @@
 {
   "fields": {
     "service": "PRIORITY",
+    "service_sub": "EXPRESS",
     "from_name": "Your Company",
-    "from_address": "123 Market Street, City, ST 12345",
-    "to_name": "Jane Doe",
-    "to_company": "Doe Design Co.",
-    "to_address": "456 Oak Avenue, Portland, OR 97201",
-    "to_country": "United States",
-    "tracking": "1Z999AA10123456784",
+    "from_address_line1": "123 Market Street",
+    "from_address_line2": "City, ST 12345",
+    "to_name": "JANE DOE",
+    "to_company": "DOE DESIGN CO.",
+    "to_address_line1": "456 OAK AVENUE",
+    "to_address_line2": "PORTLAND, OR 97201",
+    "to_country": "UNITED STATES",
+    "tracking": "1Z 999 AA1 01 2345 6784",
     "weight": "2.4 LB",
     "box": "1 OF 1"
   },
   "collections": {},
-  "source": { "type": "json", "fileName": "shipping-label.data.json" }
+  "source": {
+    "type": "json",
+    "fileName": "shipping-label.data.json"
+  }
 }

@@ -1,0 +1,61 @@
+{
+  "fields": {
+    "brand_name": "Summit Assurance",
+    "brand_sub": "Risk Engineering",
+    "risk_address_0": "Acme Retail Group",
+    "risk_address_1": "456 Oak Avenue, Portland, OR",
+    "surveyor_0": "T. Whitfield",
+    "surveyor_1": "Risk Engineer",
+    "survey_no": "RS-4120",
+    "policy_ref": "P-558210",
+    "occupancy": "Retail warehouse",
+    "construction": "Masonry / steel",
+    "date": "Jun 9, 2026",
+    "risk_grade": "B+",
+    "recommendations": "3",
+    "fire_score": "82",
+    "security": "Good",
+    "sign_name_0": "T. Whitfield",
+    "sign_title_0": "Risk Engineer",
+    "sign_name_1": "Underwriting",
+    "sign_title_1": "Reviewed"
+  },
+  "collections": {
+    "findings": {
+      "columns": [
+        "ref",
+        "area",
+        "finding",
+        "priority",
+        "status"
+      ],
+      "rows": [
+        {
+          "ref": "F-01",
+          "area": "Sprinkler system",
+          "finding": "Annual cert current",
+          "priority": "\u2014",
+          "status": "OK"
+        },
+        {
+          "ref": "F-02",
+          "area": "Electrical",
+          "finding": "Therm\u043e\u0433\u0440\u0430\u0444ic scan due",
+          "priority": "Medium",
+          "status": "Open"
+        },
+        {
+          "ref": "F-03",
+          "area": "Housekeeping",
+          "finding": "Aisle storage near exit",
+          "priority": "High",
+          "status": "Open"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "insurance-inspection-report.data.json"
+  }
+}

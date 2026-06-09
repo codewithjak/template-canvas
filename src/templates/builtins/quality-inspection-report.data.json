@@ -1,0 +1,70 @@
+{
+  "fields": {
+    "brand_name": "Vanguard Manufacturing",
+    "brand_sub": "Quality Assurance \u00b7 ISO 9001:2015",
+    "supplier_line_0": "Apex Components",
+    "supplier_line_1": "PO-2041 \u00b7 Lot L-7741",
+    "part_0": "Precision bearing housing",
+    "part_1": "PN VG-2200-A",
+    "report_no": "QIR-8841",
+    "inspector": "K. Patel",
+    "sample_size": "32 of 500",
+    "aql": "1.0",
+    "date": "Jun 9, 2026",
+    "inspected": "32",
+    "accepted": "30",
+    "rejected": "2",
+    "disposition": "ACCEPT",
+    "sign_name_0": "K. Patel",
+    "sign_title_0": "Inspector",
+    "sign_name_1": "Quality Engineer",
+    "sign_title_1": "Approved",
+    "sign_name_2": "Supplier",
+    "sign_title_2": "Acknowledged"
+  },
+  "collections": {
+    "characteristics": {
+      "columns": [
+        "char",
+        "spec",
+        "method",
+        "measured",
+        "result"
+      ],
+      "rows": [
+        {
+          "char": "Bore \u00d8",
+          "spec": "50.00 \u00b10.02 mm",
+          "method": "CMM",
+          "measured": "50.01",
+          "result": "PASS"
+        },
+        {
+          "char": "Surface finish",
+          "spec": "Ra \u2264 0.8 \u00b5m",
+          "method": "Profilometer",
+          "measured": "0.6",
+          "result": "PASS"
+        },
+        {
+          "char": "Hardness",
+          "spec": "58\u201362 HRC",
+          "method": "Rockwell",
+          "measured": "60",
+          "result": "PASS"
+        },
+        {
+          "char": "Concentricity",
+          "spec": "\u2264 0.03 mm",
+          "method": "CMM",
+          "measured": "0.041",
+          "result": "FAIL"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "quality-inspection-report.data.json"
+  }
+}

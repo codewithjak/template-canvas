@@ -1,0 +1,24 @@
+{
+  "fields": {
+    "brand_name": "Apex Engineering Group",
+    "brand_sub": "Accredited Inspection Body \u00b7 ISO/IEC 17020",
+    "issued_to_0": "Turner-Cole Construction",
+    "issued_to_1": "Riverside Tower \u2014 Phase 2",
+    "scope_0": "Structural steel erection",
+    "scope_1": "Levels 1 through 8",
+    "certificate_no": "COC-7741",
+    "standard": "AISC 360-22",
+    "inspector": "D. Marsh, PE",
+    "valid_until": "Jun 9, 2027",
+    "date": "Jun 9, 2026",
+    "sign_name_0": "D. Marsh, PE",
+    "sign_title_0": "Authorized Inspector",
+    "sign_name_1": "Technical Manager",
+    "sign_title_1": "Countersigned"
+  },
+  "collections": {},
+  "source": {
+    "type": "json",
+    "fileName": "compliance-certificate.data.json"
+  }
+}

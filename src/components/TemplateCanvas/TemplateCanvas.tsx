@@ -660,13 +660,26 @@ function TemplateCanvas() {
     setTemplatesLibraryOpen(false);
   };
 
-  // Open a bundled built-in template. Loads as a fresh UNSAVED copy
+  // Open a bundled built-in template. The template ships tokenized
+  // ({{placeholders}}) plus a matching sample-data file; we resolve the tokens
+  // against that sample data and BAKE the values into the canvas content, so it
+  // opens looking like a finished document the user can click into and edit
+  // directly (resume-template style). Loads as a fresh UNSAVED copy
   // (currentTemplateId = null) so Save creates the user's own row and the
   // shipped original is never modified.
   const handleOpenBuiltin = (template: BuiltinTemplate) => {
     applyDocument(template.doc);
     setCurrentTemplateId(null);
     setTemplatesLibraryOpen(false);
+
+    // Load the template's bundled sample data through the SAME path a data
+    // upload uses (handleDataConfirm), so it renders filled-in on the canvas
+    // and exports correctly — no engine changes. How the data renders is
+    // declared by the template's own meta, not decided here.
+    const mode   = template.doc.meta.executionMode ?? 'single';
+    const intent = mode === 'single' ? 'flat' : mode;
+    const rds    = toRuntimeDataStructure(template.data, intent, mode);
+    handleDataConfirm(template.data, {}, {}, {}, rds);
   };
 
   // ── Data upload confirm ───────────────────────────────────────────────────

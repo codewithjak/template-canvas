@@ -1,0 +1,65 @@
+{
+  "fields": {
+    "brand_name": "Meridian Freight Lines",
+    "brand_sub": "Ocean & Inland Carrier \u00b7 meridianfreight.example",
+    "shipper_0": "Northgate Industries",
+    "shipper_1": "120 Harbor Rd, Newark, NJ 07102",
+    "shipper_2": "EIN 84-1192034",
+    "consignee_0": "Acme Retail Group",
+    "consignee_1": "456 Oak Avenue, Portland, OR 97201",
+    "consignee_2": "Attn: Receiving Dock 4",
+    "b_l_no": "BOL-77310",
+    "booking": "BK-55218",
+    "vessel_voyage": "MV Cascade / 22E",
+    "port_of_loading": "Newark, NJ",
+    "port_of_discharge": "Portland, OR",
+    "date": "Jun 9, 2026",
+    "total_packages": "36",
+    "total_weight_kg": "19,540",
+    "total_volume_cbm": "51.2",
+    "sign_name_0": "M. Okonkwo",
+    "sign_title_0": "Carrier Agent",
+    "sign_name_1": "J. Reyes",
+    "sign_title_1": "Shipper",
+    "sign_name_2": "Dock Supervisor",
+    "sign_title_2": "Consignee"
+  },
+  "collections": {
+    "cargo": {
+      "columns": [
+        "container",
+        "packages",
+        "description",
+        "weight",
+        "volume"
+      ],
+      "rows": [
+        {
+          "container": "MEDU1234567",
+          "packages": "18 pallets",
+          "description": "Packaged industrial valves",
+          "weight": "9,420",
+          "volume": "24.6"
+        },
+        {
+          "container": "MEDU7654321",
+          "packages": "12 crates",
+          "description": "Steel fittings, assorted",
+          "weight": "7,180",
+          "volume": "18.2"
+        },
+        {
+          "container": "TCLU2468135",
+          "packages": "6 pallets",
+          "description": "Spare parts kits",
+          "weight": "2,940",
+          "volume": "8.4"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "bill-of-lading.data.json"
+  }
+}

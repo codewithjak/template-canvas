@@ -1,0 +1,70 @@
+{
+  "fields": {
+    "brand_name": "Apex Engineering Group",
+    "brand_sub": "Civil & Structural Consultants",
+    "project_0": "Riverside Tower \u2014 Phase 2",
+    "project_1": "1200 Riverfront Dr, Austin, TX",
+    "contractor_0": "Turner-Cole Construction",
+    "contractor_1": "License TX-CC-44821",
+    "report_no": "SIR-3041",
+    "inspector": "D. Marsh, PE",
+    "weather": "Clear, 31\u00b0C",
+    "discipline": "Structural",
+    "date": "Jun 9, 2026",
+    "items_checked": "24",
+    "conforming": "21",
+    "observations": "3",
+    "ncrs": "1",
+    "sign_name_0": "D. Marsh, PE",
+    "sign_title_0": "Inspector",
+    "sign_name_1": "Site Engineer",
+    "sign_title_1": "Contractor",
+    "sign_name_2": "QA Manager",
+    "sign_title_2": "Reviewed"
+  },
+  "collections": {
+    "items": {
+      "columns": [
+        "ref",
+        "area",
+        "criteria",
+        "result",
+        "action"
+      ],
+      "rows": [
+        {
+          "ref": "L4-C12",
+          "area": "Column C12 rebar",
+          "criteria": "Cover & spacing",
+          "result": "PASS",
+          "action": "None"
+        },
+        {
+          "ref": "L4-SLB",
+          "area": "Slab formwork",
+          "criteria": "Level \u00b15mm",
+          "result": "PASS",
+          "action": "None"
+        },
+        {
+          "ref": "L4-PT",
+          "area": "Post-tension ducts",
+          "criteria": "Alignment",
+          "result": "OBSERVE",
+          "action": "Re-survey"
+        },
+        {
+          "ref": "L4-WP",
+          "area": "Waterproofing",
+          "criteria": "Membrane lap",
+          "result": "FAIL",
+          "action": "NCR-118"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "site-inspection-report.data.json"
+  }
+}

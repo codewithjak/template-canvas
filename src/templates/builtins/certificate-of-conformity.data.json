@@ -1,0 +1,59 @@
+{
+  "fields": {
+    "brand_name": "Vanguard Manufacturing",
+    "brand_sub": "Quality Assurance Department",
+    "supplied_to_0": "Northgate Industries",
+    "supplied_to_1": "PO-2041",
+    "product_0": "Precision bearing housing",
+    "product_1": "PN VG-2200-A \u00b7 Lot L-7741",
+    "certificate_no": "CoC-5521",
+    "quantity": "500 units",
+    "standard": "ISO 9001:2015",
+    "material_cert": "EN 10204 3.1",
+    "date": "Jun 9, 2026",
+    "sign_name_0": "Quality Manager",
+    "sign_title_0": "Vanguard Manufacturing",
+    "sign_name_1": "QA Stamp",
+    "sign_title_1": "Authorized"
+  },
+  "collections": {
+    "requirements": {
+      "columns": [
+        "requirement",
+        "spec",
+        "result",
+        "evidence"
+      ],
+      "rows": [
+        {
+          "requirement": "Dimensional",
+          "spec": "Per drawing rev C",
+          "result": "CONFORMS",
+          "evidence": "QIR-8841"
+        },
+        {
+          "requirement": "Material",
+          "spec": "AISI 4140",
+          "result": "CONFORMS",
+          "evidence": "Mill cert 22-118"
+        },
+        {
+          "requirement": "Heat treatment",
+          "spec": "58\u201362 HRC",
+          "result": "CONFORMS",
+          "evidence": "HT log 7741"
+        },
+        {
+          "requirement": "Marking",
+          "spec": "PN + lot etched",
+          "result": "CONFORMS",
+          "evidence": "Visual 100%"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "certificate-of-conformity.data.json"
+  }
+}

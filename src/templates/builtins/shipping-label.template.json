@@ -4,7 +4,8 @@
     "templateId": "builtin-shipping-label",
     "name": "Shipping Label",
     "createdAt": "2026-01-01T00:00:00.000Z",
-    "updatedAt": "2026-01-01T00:00:00.000Z"
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "executionMode": "single"
   },
   "pageSize": {
     "preset": "4x6",
@@ -25,158 +26,350 @@
         "scope": "first-page-only",
         "repeatOnOverflow": false,
         "boundaryY": 60,
-        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 1,
+          "opacity": 1
+        }
       },
       "footer": {
         "enabled": false,
         "scope": "first-page-only",
         "repeatOnOverflow": false,
         "boundaryY": 516,
-        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 1,
+          "opacity": 1
+        }
       },
       "elements": [
         {
           "id": "lbl-header-bar",
           "type": "box",
-          "position": { "x": 16, "y": 16 },
-          "style": { "width": 352, "height": 46, "borderWidth": 0, "borderColor": "#0f172a", "borderStyle": "solid", "backgroundColor": "#0f172a", "borderRadius": 8, "opacity": 100 }
+          "position": {
+            "x": 16,
+            "y": 16
+          },
+          "style": {
+            "width": 352,
+            "height": 46,
+            "borderWidth": 0,
+            "borderColor": "#0f172a",
+            "borderStyle": "solid",
+            "backgroundColor": "#0f172a",
+            "borderRadius": 8,
+            "opacity": 100
+          }
         },
         {
           "id": "lbl-service",
           "type": "text",
-          "content": "PRIORITY",
-          "position": { "x": 30, "y": 28 },
-          "style": { "fontSize": 20, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+          "content": "{{service}}",
+          "position": {
+            "x": 30,
+            "y": 28
+          },
+          "style": {
+            "fontSize": 20,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-service-tag",
           "type": "box",
-          "position": { "x": 268, "y": 27 },
-          "style": { "width": 86, "height": 24, "borderWidth": 0, "borderColor": "#f59e0b", "borderStyle": "solid", "backgroundColor": "#f59e0b", "borderRadius": 6, "opacity": 100 }
+          "position": {
+            "x": 268,
+            "y": 27
+          },
+          "style": {
+            "width": 86,
+            "height": 24,
+            "borderWidth": 0,
+            "borderColor": "#f59e0b",
+            "borderStyle": "solid",
+            "backgroundColor": "#f59e0b",
+            "borderRadius": 6,
+            "opacity": 100
+          }
         },
         {
           "id": "lbl-service-sub",
           "type": "text",
-          "content": "EXPRESS",
-          "position": { "x": 268, "y": 32 },
-          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 86, "textAlign": "center" }
+          "content": "{{service_sub}}",
+          "position": {
+            "x": 268,
+            "y": 32
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 86,
+            "textAlign": "center"
+          }
         },
         {
           "id": "lbl-from-label",
           "type": "text",
           "content": "FROM",
-          "position": { "x": 16, "y": 76 },
-          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+          "position": {
+            "x": 16,
+            "y": 76
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#94a3b8",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-from-line1",
           "type": "text",
-          "content": "Your Company",
-          "position": { "x": 16, "y": 90 },
-          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+          "content": "{{from_name}}",
+          "position": {
+            "x": 16,
+            "y": 90
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-from-line2",
           "type": "text",
-          "content": "123 Market Street",
-          "position": { "x": 16, "y": 105 },
-          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+          "content": "{{from_address_line1}}",
+          "position": {
+            "x": 16,
+            "y": 105
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-from-line3",
           "type": "text",
-          "content": "City, ST 12345",
-          "position": { "x": 16, "y": 120 },
-          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif" }
+          "content": "{{from_address_line2}}",
+          "position": {
+            "x": 16,
+            "y": 120
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-divider-1",
           "type": "line",
-          "position": { "x": 16, "y": 148 },
-          "style": { "length": 352, "thickness": 1, "direction": "horizontal", "color": "#cbd5e1", "style": "solid" }
+          "position": {
+            "x": 16,
+            "y": 148
+          },
+          "style": {
+            "length": 352,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#cbd5e1",
+            "style": "solid"
+          }
         },
         {
           "id": "lbl-shipto-label",
           "type": "text",
           "content": "SHIP TO",
-          "position": { "x": 16, "y": 160 },
-          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+          "position": {
+            "x": 16,
+            "y": 160
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#94a3b8",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-shipto-name",
           "type": "text",
-          "content": "JANE DOE",
-          "position": { "x": 16, "y": 176 },
-          "style": { "fontSize": 19, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "content": "{{to_name}}",
+          "position": {
+            "x": 16,
+            "y": 176
+          },
+          "style": {
+            "fontSize": 19,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-shipto-line1",
           "type": "text",
-          "content": "DOE DESIGN CO.",
-          "position": { "x": 16, "y": 206 },
-          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#1f2937", "fontFamily": "Arial, sans-serif" }
+          "content": "{{to_company}}",
+          "position": {
+            "x": 16,
+            "y": 206
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "normal",
+            "color": "#1f2937",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-shipto-line2",
           "type": "text",
-          "content": "456 OAK AVENUE",
-          "position": { "x": 16, "y": 224 },
-          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#1f2937", "fontFamily": "Arial, sans-serif" }
+          "content": "{{to_address_line1}}",
+          "position": {
+            "x": 16,
+            "y": 224
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "normal",
+            "color": "#1f2937",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-shipto-line3",
           "type": "text",
-          "content": "PORTLAND, OR 97201",
-          "position": { "x": 16, "y": 242 },
-          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#1f2937", "fontFamily": "Arial, sans-serif" }
+          "content": "{{to_address_line2}}",
+          "position": {
+            "x": 16,
+            "y": 242
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "normal",
+            "color": "#1f2937",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-shipto-line4",
           "type": "text",
-          "content": "UNITED STATES",
-          "position": { "x": 16, "y": 260 },
-          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "content": "{{to_country}}",
+          "position": {
+            "x": 16,
+            "y": 260
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-divider-2",
           "type": "line",
-          "position": { "x": 16, "y": 312 },
-          "style": { "length": 352, "thickness": 1, "direction": "horizontal", "color": "#cbd5e1", "style": "solid" }
+          "position": {
+            "x": 16,
+            "y": 312
+          },
+          "style": {
+            "length": 352,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#cbd5e1",
+            "style": "solid"
+          }
         },
         {
           "id": "lbl-track-label",
           "type": "text",
           "content": "TRACKING #",
-          "position": { "x": 16, "y": 324 },
-          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#94a3b8", "fontFamily": "Arial, sans-serif" }
+          "position": {
+            "x": 16,
+            "y": 324
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#94a3b8",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-track-value",
           "type": "text",
-          "content": "1Z 999 AA1 01 2345 6784",
-          "position": { "x": 16, "y": 338 },
-          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif" }
+          "content": "{{tracking}}",
+          "position": {
+            "x": 16,
+            "y": 338
+          },
+          "style": {
+            "fontSize": 13,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif"
+          }
         },
         {
           "id": "lbl-barcode",
           "type": "barcode",
           "content": "1Z999AA10123456784",
-          "position": { "x": 16, "y": 364 },
-          "style": { "width": 352, "height": 110 },
-          "barcode": { "format": "code128", "showText": true }
+          "position": {
+            "x": 16,
+            "y": 364
+          },
+          "style": {
+            "width": 352,
+            "height": 110
+          },
+          "barcode": {
+            "format": "code128",
+            "showText": true
+          }
         },
         {
           "id": "lbl-meta-divider",
           "type": "line",
-          "position": { "x": 16, "y": 484 },
-          "style": { "length": 352, "thickness": 1, "direction": "horizontal", "color": "#cbd5e1", "style": "solid" }
+          "position": {
+            "x": 16,
+            "y": 484
+          },
+          "style": {
+            "length": 352,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#cbd5e1",
+            "style": "solid"
+          }
         },
         {
           "id": "lbl-meta",
           "type": "text",
-          "content": "WEIGHT  2.4 LB        BOX  1 OF 1",
-          "position": { "x": 16, "y": 494 },
-          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#475569", "fontFamily": "Arial, sans-serif" }
+          "content": "WEIGHT  {{weight}}        BOX  {{box}}",
+          "position": {
+            "x": 16,
+            "y": 494
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#475569",
+            "fontFamily": "Arial, sans-serif"
+          }
         }
       ]
     }

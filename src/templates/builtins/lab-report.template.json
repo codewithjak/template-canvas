@@ -1,0 +1,868 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-lab-report",
+    "name": "Lab Report",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Lab Report",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 1,
+          "opacity": 1
+        }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 1,
+          "opacity": 1
+        }
+      },
+      "elements": [
+        {
+          "id": "b-1",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "style": {
+            "width": 794,
+            "height": 128,
+            "borderWidth": 0,
+            "borderColor": "#0f766e",
+            "borderStyle": "solid",
+            "backgroundColor": "#0f766e",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-2",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 128
+          },
+          "style": {
+            "width": 794,
+            "height": 6,
+            "borderWidth": 0,
+            "borderColor": "#34d399",
+            "borderStyle": "solid",
+            "backgroundColor": "#34d399",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-3",
+          "type": "text",
+          "content": "R",
+          "position": {
+            "x": 72,
+            "y": 40
+          },
+          "style": {
+            "fontSize": 26,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-4",
+          "type": "text",
+          "content": "{{brand_name}}",
+          "position": {
+            "x": 108,
+            "y": 42
+          },
+          "style": {
+            "fontSize": 19,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 340,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-5",
+          "type": "text",
+          "content": "{{brand_sub}}",
+          "position": {
+            "x": 108,
+            "y": 74
+          },
+          "style": {
+            "fontSize": 10.5,
+            "fontWeight": "normal",
+            "color": "#dbeafe",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-6",
+          "type": "text",
+          "content": "LABORATORY REPORT",
+          "position": {
+            "x": 394,
+            "y": 38
+          },
+          "style": {
+            "fontSize": 30,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 340,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-7",
+          "type": "text",
+          "content": "Hematology & chemistry",
+          "position": {
+            "x": 394,
+            "y": 82
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#dbeafe",
+            "fontFamily": "Arial, sans-serif",
+            "width": 340,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-8",
+          "type": "text",
+          "content": "PATIENT",
+          "position": {
+            "x": 60,
+            "y": 158
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 300,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-9",
+          "type": "text",
+          "content": "{{patient_0}}",
+          "position": {
+            "x": 60,
+            "y": 176
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-10",
+          "type": "text",
+          "content": "{{patient_1}}",
+          "position": {
+            "x": 60,
+            "y": 193
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-11",
+          "type": "text",
+          "content": "{{patient_2}}",
+          "position": {
+            "x": 60,
+            "y": 210
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-12",
+          "type": "text",
+          "content": "ORDERING PROVIDER",
+          "position": {
+            "x": 60,
+            "y": 239
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 300,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-13",
+          "type": "text",
+          "content": "{{ordering_provider_0}}",
+          "position": {
+            "x": 60,
+            "y": 257
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-14",
+          "type": "text",
+          "content": "{{ordering_provider_1}}",
+          "position": {
+            "x": 60,
+            "y": 274
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-15",
+          "type": "text",
+          "content": "Accession",
+          "position": {
+            "x": 430,
+            "y": 158
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-16",
+          "type": "text",
+          "content": "{{accession}}",
+          "position": {
+            "x": 566,
+            "y": 158
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-17",
+          "type": "text",
+          "content": "Collected",
+          "position": {
+            "x": 430,
+            "y": 179
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-18",
+          "type": "text",
+          "content": "{{collected}}",
+          "position": {
+            "x": 566,
+            "y": 179
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-19",
+          "type": "text",
+          "content": "Received",
+          "position": {
+            "x": 430,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-20",
+          "type": "text",
+          "content": "{{received}}",
+          "position": {
+            "x": 566,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-21",
+          "type": "text",
+          "content": "Reported",
+          "position": {
+            "x": 430,
+            "y": 221
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-22",
+          "type": "text",
+          "content": "{{reported}}",
+          "position": {
+            "x": 566,
+            "y": 221
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-23",
+          "type": "text",
+          "content": "Specimen",
+          "position": {
+            "x": 430,
+            "y": 242
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-24",
+          "type": "text",
+          "content": "{{specimen}}",
+          "position": {
+            "x": 566,
+            "y": 242
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-25",
+          "type": "text",
+          "content": "RESULTS",
+          "position": {
+            "x": 60,
+            "y": 321
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "tbl-26",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": {
+            "x": 60,
+            "y": 341
+          },
+          "size": {
+            "width": 674,
+            "height": 182
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "borderColor": "#e2e8f0",
+            "borderWidth": 1,
+            "showBorders": true
+          },
+          "binding": {
+            "enabled": true,
+            "collectionKey": "results",
+            "itemAlias": "item"
+          },
+          "columns": [
+            {
+              "id": "col-test",
+              "width": 138,
+              "alignment": "left"
+            },
+            {
+              "id": "col-result",
+              "width": 134,
+              "alignment": "center"
+            },
+            {
+              "id": "col-units",
+              "width": 134,
+              "alignment": "center"
+            },
+            {
+              "id": "col-reference",
+              "width": 134,
+              "alignment": "center"
+            },
+            {
+              "id": "col-flag",
+              "width": 134,
+              "alignment": "center"
+            }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 32,
+            "cells": [
+              {
+                "id": "h-test",
+                "content": {
+                  "type": "text",
+                  "value": "TEST"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "left",
+                  "backgroundColor": "#0f766e"
+                }
+              },
+              {
+                "id": "h-result",
+                "content": {
+                  "type": "text",
+                  "value": "RESULT"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#0f766e"
+                }
+              },
+              {
+                "id": "h-units",
+                "content": {
+                  "type": "text",
+                  "value": "UNITS"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#0f766e"
+                }
+              },
+              {
+                "id": "h-reference",
+                "content": {
+                  "type": "text",
+                  "value": "REFERENCE"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#0f766e"
+                }
+              },
+              {
+                "id": "h-flag",
+                "content": {
+                  "type": "text",
+                  "value": "FLAG"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#0f766e"
+                }
+              }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 30,
+              "cells": [
+                {
+                  "id": "r-test",
+                  "content": {
+                    "type": "text",
+                    "value": "{{test}}"
+                  },
+                  "style": {
+                    "textAlign": "left",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "r-result",
+                  "content": {
+                    "type": "text",
+                    "value": "{{result}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "r-units",
+                  "content": {
+                    "type": "text",
+                    "value": "{{units}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "r-reference",
+                  "content": {
+                    "type": "text",
+                    "value": "{{reference}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "r-flag",
+                  "content": {
+                    "type": "text",
+                    "value": "{{flag}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "t-27",
+          "type": "text",
+          "content": "INTERPRETATION",
+          "position": {
+            "x": 60,
+            "y": 545
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-28",
+          "type": "text",
+          "content": "Mildly elevated WBC, fasting glucose and cholesterol. Correlate clinically;",
+          "position": {
+            "x": 60,
+            "y": 563
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#475569",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-29",
+          "type": "text",
+          "content": "consider repeat fasting panel and lifestyle counseling. Results reviewed by laboratory director.",
+          "position": {
+            "x": 60,
+            "y": 579
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#475569",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "l-30",
+          "type": "line",
+          "position": {
+            "x": 60,
+            "y": 940
+          },
+          "style": {
+            "length": 180,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#94a3b8",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "t-31",
+          "type": "text",
+          "content": "{{sign_name_0}}",
+          "position": {
+            "x": 60,
+            "y": 948
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-32",
+          "type": "text",
+          "content": "{{sign_title_0}}",
+          "position": {
+            "x": 60,
+            "y": 966
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "l-33",
+          "type": "line",
+          "position": {
+            "x": 270,
+            "y": 940
+          },
+          "style": {
+            "length": 180,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#94a3b8",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "t-34",
+          "type": "text",
+          "content": "{{sign_name_1}}",
+          "position": {
+            "x": 270,
+            "y": 948
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-35",
+          "type": "text",
+          "content": "{{sign_title_1}}",
+          "position": {
+            "x": 270,
+            "y": 966
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "l-36",
+          "type": "line",
+          "position": {
+            "x": 60,
+            "y": 1044
+          },
+          "style": {
+            "length": 674,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e2e8f0",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "t-37",
+          "type": "text",
+          "content": "Riverside Diagnostics \u00b7 Laboratory Report",
+          "position": {
+            "x": 60,
+            "y": 1054
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "normal",
+            "color": "#94a3b8",
+            "fontFamily": "Arial, sans-serif",
+            "width": 674,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-38",
+          "type": "text",
+          "content": "Protected health information \u2014 handle per HIPAA",
+          "position": {
+            "x": 60,
+            "y": 1068
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "normal",
+            "color": "#94a3b8",
+            "fontFamily": "Arial, sans-serif",
+            "width": 674,
+            "textAlign": "left"
+          }
+        }
+      ]
+    }
+  ]
+}

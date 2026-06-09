@@ -1,33 +1,75 @@
 {
   "fields": {
     "company_name": "Northgate Industries",
-    "department": "Procurement Department",
-    "department_email": "procurement@northgate.example",
-    "period": "Q2 2026 (Apr – Jun)",
+    "department_line": "Procurement Department \u00b7 procurement@northgate.example",
+    "period": "Q2 2026 (Apr \u2013 Jun)",
     "total_spend": "$248,900",
     "purchase_orders": "42",
     "suppliers": "18",
     "cost_savings": "$19,400",
-    "savings_pct": "7.2%",
     "quarter_spend": "$248,900",
     "prepared_by": "Dana Okafor",
     "prepared_by_title": "Procurement Lead",
     "approved_by": "R. Feldman",
-    "approved_by_title": "Finance Director",
-    "generated_date": "Jun 9, 2026"
+    "approved_by_title": "Finance Director"
   },
   "collections": {
     "orders": {
-      "columns": ["po_number", "supplier", "category", "status", "amount"],
+      "columns": [
+        "po_number",
+        "supplier",
+        "category",
+        "status",
+        "amount"
+      ],
       "rows": [
-        { "po_number": "PO-2044", "supplier": "Meridian Tech", "category": "IT Hardware", "status": "Received", "amount": "$61,800" },
-        { "po_number": "PO-2041", "supplier": "Apex Components", "category": "Raw Materials", "status": "Received", "amount": "$52,300" },
-        { "po_number": "PO-2045", "supplier": "Cardinal Tooling", "category": "Equipment", "status": "Approved", "amount": "$39,750" },
-        { "po_number": "PO-2042", "supplier": "Vertex Logistics", "category": "Freight", "status": "Approved", "amount": "$18,450" },
-        { "po_number": "PO-2046", "supplier": "Summit Packaging", "category": "Packaging", "status": "Received", "amount": "$12,480" },
-        { "po_number": "PO-2043", "supplier": "BlueOak Supplies", "category": "Office", "status": "Pending", "amount": "$4,120" }
+        {
+          "po_number": "PO-2044",
+          "supplier": "Meridian Tech",
+          "category": "IT Hardware",
+          "status": "Received",
+          "amount": "$61,800"
+        },
+        {
+          "po_number": "PO-2041",
+          "supplier": "Apex Components",
+          "category": "Raw Materials",
+          "status": "Received",
+          "amount": "$52,300"
+        },
+        {
+          "po_number": "PO-2045",
+          "supplier": "Cardinal Tooling",
+          "category": "Equipment",
+          "status": "Approved",
+          "amount": "$39,750"
+        },
+        {
+          "po_number": "PO-2042",
+          "supplier": "Vertex Logistics",
+          "category": "Freight",
+          "status": "Approved",
+          "amount": "$18,450"
+        },
+        {
+          "po_number": "PO-2046",
+          "supplier": "Summit Packaging",
+          "category": "Packaging",
+          "status": "Received",
+          "amount": "$12,480"
+        },
+        {
+          "po_number": "PO-2043",
+          "supplier": "BlueOak Supplies",
+          "category": "Office",
+          "status": "Pending",
+          "amount": "$4,120"
+        }
       ]
     }
   },
-  "source": { "type": "json", "fileName": "procurement-report.data.json" }
+  "source": {
+    "type": "json",
+    "fileName": "procurement-report.data.json"
+  }
 }

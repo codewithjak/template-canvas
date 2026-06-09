@@ -1,0 +1,68 @@
+{
+  "fields": {
+    "brand_name": "Apex Engineering Group",
+    "brand_sub": "Project Controls",
+    "project_0": "Riverside Tower \u2014 Phase 2",
+    "project_1": "Contract C-2024-118",
+    "client_0": "Riverfront Holdings",
+    "client_1": "PM: L. Tanaka",
+    "report_no": "PR-0612",
+    "period": "May 2026",
+    "contract_value": "$48.2M",
+    "planned": "42.0%",
+    "actual": "39.6%",
+    "schedule": "-2.4%",
+    "cost": "$19.1M",
+    "cpi": "1.03",
+    "rfis_open": "8",
+    "sign_name_0": "Project Director",
+    "sign_title_0": "Apex",
+    "sign_name_1": "L. Tanaka",
+    "sign_title_1": "Client PM"
+  },
+  "collections": {
+    "packages": {
+      "columns": [
+        "wbs",
+        "package",
+        "planned",
+        "actual",
+        "status"
+      ],
+      "rows": [
+        {
+          "wbs": "2.1",
+          "package": "Substructure",
+          "planned": "100%",
+          "actual": "100%",
+          "status": "Complete"
+        },
+        {
+          "wbs": "2.2",
+          "package": "Superstructure L1\u2013L8",
+          "planned": "60%",
+          "actual": "55%",
+          "status": "In progress"
+        },
+        {
+          "wbs": "2.3",
+          "package": "Facade procurement",
+          "planned": "30%",
+          "actual": "34%",
+          "status": "Ahead"
+        },
+        {
+          "wbs": "2.4",
+          "package": "MEP rough-in",
+          "planned": "18%",
+          "actual": "12%",
+          "status": "At risk"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "project-progress-report.data.json"
+  }
+}

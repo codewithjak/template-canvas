@@ -9,7 +9,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import ApiAccessModal from './ApiAccessModal'
 
 /** Deterministic accent color from a string, so each user gets a stable hue. */
 function colorFromString(input: string): string {
@@ -24,7 +23,6 @@ export default function UserMenu() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
-  const [showApi, setShowApi] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   // Close on outside click or Escape.
@@ -60,8 +58,6 @@ export default function UserMenu() {
   }
 
   return (
-    <>
-    {showApi && <ApiAccessModal onClose={() => setShowApi(false)} />}
     <div ref={rootRef} style={{ position: 'relative' }}>
       <button
         type="button"
@@ -175,7 +171,7 @@ export default function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            onClick={() => { setOpen(false); setShowApi(true) }}
+            onClick={() => { setOpen(false); navigate('/settings') }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -250,6 +246,5 @@ export default function UserMenu() {
         </div>
       )}
     </div>
-    </>
   )
 }

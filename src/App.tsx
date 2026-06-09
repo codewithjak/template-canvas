@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Features from './pages/Features'
 import Careers from './pages/Careers'
 import Canvas from './pages/Canvas'
+import Settings from './pages/Settings'
 import AuthCallback from './pages/AuthCallback'
 import './App.css'
 
@@ -22,6 +23,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Canvas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             }
           />

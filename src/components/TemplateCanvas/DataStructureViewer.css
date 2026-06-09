@@ -116,8 +116,9 @@
 }
 
 .dsv-nav-btn:hover:not(:disabled) {
-  background     : #eff6ff;
-  border-color   : #93c5fd;
+  background     : var(--color-accent-bg);
+  border-color   : var(--color-accent);
+  color          : var(--color-accent-strong);
 }
 
 .dsv-nav-btn:disabled {
@@ -264,31 +265,32 @@
 .dsv-btn {
   height         : 34px;
   padding        : 0 16px;
-  border-radius  : 7px;
+  border-radius  : var(--btn-radius);
   font-size      : 13px;
-  font-weight    : 600;
+  font-weight    : var(--btn-font-weight);
   cursor         : pointer;
-  transition     : all 0.12s;
+  transition     : var(--btn-transition);
   white-space    : nowrap;
   flex-shrink    : 0;
 }
 
 .dsv-btn-back {
-  background     : var(--color-background-secondary, #f1f5f9);
-  color          : var(--color-text-secondary, #475569);
-  border         : 1px solid var(--color-border-secondary, #cbd5e1);
+  background     : var(--color-background-primary);
+  color          : var(--color-text-secondary);
+  border         : 1px solid var(--color-border-primary);
 }
 
 .dsv-btn-back:hover {
-  background     : #e2e8f0;
+  background     : var(--color-background-secondary);
 }
 
 .dsv-btn-confirm {
-  background     : #4f46e5;
-  color          : #ffffff;
-  border         : none;
+  background     : var(--color-accent);
+  color          : var(--color-accent-contrast);
+  border         : 1px solid var(--color-accent);
 }
 
 .dsv-btn-confirm:hover {
-  background     : #4338ca;
+  background     : var(--color-accent-hover);
+  border-color   : var(--color-accent-hover);
 }

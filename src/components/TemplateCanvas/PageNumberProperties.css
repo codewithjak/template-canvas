@@ -122,23 +122,23 @@
 .pn-align-btn {
   flex           : 1;
   height         : 32px;
-  border         : 1px solid #d0d5dd;
-  border-radius  : 6px;
-  background     : #f8fafc;
+  border         : 1px solid var(--color-border-primary);
+  border-radius  : var(--btn-radius-sm);
+  background     : var(--color-background-secondary);
   cursor         : pointer;
   font-size      : 14px;
-  transition     : all 0.15s;
+  transition     : var(--btn-transition);
 }
 
 .pn-align-btn:hover {
-  background     : #e0e7ff;
-  border-color   : #a5b4fc;
+  background     : var(--color-accent-bg);
+  border-color   : var(--color-accent-border);
 }
 
 .pn-align-btn--active {
-  background     : #eef2ff;
-  border-color   : #6366f1;
-  color          : #4338ca;
+  background     : var(--color-accent-bg);
+  border-color   : var(--color-accent);
+  color          : var(--color-accent-strong);
 }
 
 /* Hint */

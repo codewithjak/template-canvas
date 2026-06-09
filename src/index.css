@@ -30,3 +30,75 @@ button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ── Editor design tokens ──────────────────────────────────────────────
+   Single source of truth for the editor surfaces (canvas, properties
+   panel, tables). These use the --color-* names the editor CSS already
+   referenced but never defined. The landing page (App.css) keeps its own
+   brand tokens; shadow tokens here are intentionally named differently
+   (--shadow-card/panel/pop/overlay) to avoid colliding with App.css's
+   --shadow-sm/md/lg on :root. */
+:root {
+  /* Text — slate ramp (strong → faint) */
+  --color-text-primary:   #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #64748b;
+  --color-text-tertiary:  #94a3b8;
+
+  /* Borders — light → strong */
+  --color-border-tertiary:  #e5e9f1;
+  --color-border-secondary: #d7dce5;
+  --color-border-primary:   #cbd5e1;
+
+  /* Surfaces */
+  --color-background-primary:   #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-tertiary:  #f1f5f9;
+  --color-canvas:               #eef1f6;
+  --color-scrim:                rgba(15, 23, 42, 0.5);
+
+  /* Accent — brand blue (single canonical primary) */
+  --color-accent:           #2355f4;
+  --color-accent-hover:     #1740d0;
+  --color-accent-strong:    #1740d0;
+  --color-accent-contrast:  #ffffff;
+  --color-accent-border:    #b7c8ff;
+  --color-accent-bg:        #eef2ff;
+  --color-accent-bg-strong: #e0e7ff;
+  --color-accent-ring:      rgba(35, 85, 244, 0.16);
+
+  /* Data-binding accent — kept a distinct hue from the primary on purpose */
+  --color-code: #6d28d9;
+
+  /* Semantic — danger / success (button variants + state colours) */
+  --color-danger:        #dc2626;
+  --color-danger-hover:  #b91c1c;
+  --color-danger-bg:     #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-success:        #16a34a;
+  --color-success-hover:  #15803d;
+  --color-success-bg:     #f0fdf4;
+  --color-success-border: #bbf7d0;
+
+  /* Elevation */
+  --shadow-card:    0 10px 30px rgba(15, 23, 42, 0.12);
+  --shadow-panel:   0 10px 24px rgba(15, 23, 42, 0.10);
+  --shadow-pop:     0 2px 12px rgba(15, 23, 42, 0.08);
+  --shadow-overlay: 0 20px 60px rgba(15, 23, 42, 0.18);
+
+  /* ── Buttons ──────────────────────────────────────────────────────────
+     Canonical button system (modelled on the Toolbar). Every button family
+     across the app routes its colours through the tokens above and uses
+     these shared geometry tokens, so the whole app shares one button look.
+       Primary   — filled accent, white text
+       Secondary — white, bordered, secondary text
+       Ghost     — transparent, hover tint
+       Toggle    — secondary; active = accent tint + accent border
+       Danger    — danger tint / fill
+       Icon/nav  — square, secondary look, smaller radius */
+  --btn-radius:      8px;
+  --btn-radius-sm:   6px;
+  --btn-font-weight: 600;
+  --btn-transition:  background 0.15s ease, border-color 0.15s ease,
+                     color 0.15s ease, box-shadow 0.15s ease;
+}

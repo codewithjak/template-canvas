@@ -161,15 +161,16 @@
 .upload-browse-btn {
   margin-top     : 8px;
   padding        : 7px 16px;
-  border         : none;
-  border-radius  : 6px;
-  background     : #214883;
-  color          : #ffffff;
+  border         : 1px solid var(--color-accent);
+  border-radius  : var(--btn-radius);
+  background     : var(--color-accent);
+  color          : var(--color-accent-contrast);
   cursor         : pointer;
   font-size      : 12px;
-  font-weight    : 500;
+  font-weight    : var(--btn-font-weight);
+  transition     : var(--btn-transition);
 }
-.upload-browse-btn:hover { background: #1a3a6b; }
+.upload-browse-btn:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
 
 .upload-progress {
   position       : absolute;
@@ -469,26 +470,28 @@
 .upload-btn-secondary {
   padding        : 7px 14px;
   font-size      : 12px;
-  font-weight    : 500;
-  border-radius  : 6px;
-  border         : 0.5px solid #cbd5e1;
-  background     : #ffffff;
-  color          : #475569;
+  font-weight    : var(--btn-font-weight);
+  border-radius  : var(--btn-radius);
+  border         : 1px solid var(--color-border-primary);
+  background     : var(--color-background-primary);
+  color          : var(--color-text-secondary);
   cursor         : pointer;
+  transition     : var(--btn-transition);
 }
-.upload-btn-secondary:hover { background: #f1f5f9; }
+.upload-btn-secondary:hover { background: var(--color-background-secondary); }
 
 .upload-btn-primary {
   padding        : 7px 16px;
   font-size      : 12px;
-  font-weight    : 500;
-  border-radius  : 6px;
-  border         : none;
-  background     : #214883;
-  color          : #ffffff;
+  font-weight    : var(--btn-font-weight);
+  border-radius  : var(--btn-radius);
+  border         : 1px solid var(--color-accent);
+  background     : var(--color-accent);
+  color          : var(--color-accent-contrast);
   cursor         : pointer;
+  transition     : var(--btn-transition);
 }
-.upload-btn-primary:hover:not(:disabled) { background: #1a3a6b; }
+.upload-btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); border-color: var(--color-accent-hover); }
 .upload-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ── Mapping collection meta (keep for TemplateCanvas use) ───────────────── */

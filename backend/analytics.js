@@ -14,20 +14,10 @@
  * so it can never delay or break a document download.
  */
 
-const { createClient } = require('@supabase/supabase-js');
-
-let admin = null;
-
-function getAdmin() {
-  if (admin) return admin;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return null; // analytics disabled
-  admin = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return admin;
-}
+// Shared service-role client (configured with a WebSocket transport so it
+// works on Node < 22). Returns null when Supabase env is unset → analytics
+// quietly disabled.
+const { getAdmin } = require('./supabaseAdmin');
 
 function bearerToken(authHeader) {
   if (!authHeader) return null;

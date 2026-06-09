@@ -16,6 +16,7 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const WebSocket = require('ws');
 
 let admin = null;
 
@@ -26,6 +27,10 @@ function getAdmin() {
   if (!url || !key) return null;
   admin = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    // supabase-js eagerly constructs a Realtime client, which throws on
+    // Node < 22 (no native WebSocket). We never use realtime, but the
+    // constructor still needs a transport — supply ws so it doesn't throw.
+    realtime: { transport: WebSocket },
   });
   return admin;
 }

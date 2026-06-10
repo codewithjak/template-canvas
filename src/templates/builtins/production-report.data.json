@@ -1,0 +1,61 @@
+{
+  "fields": {
+    "brand_name": "Vanguard Manufacturing",
+    "brand_sub": "Operations \u00b7 Plant 2",
+    "plant_line_0": "Plant 2 \u2014 CNC Cell 4",
+    "plant_line_1": "Shift A",
+    "supervisor_0": "M. Alvarez",
+    "supervisor_1": "Production Lead",
+    "report_no": "PRD-6612",
+    "shift": "A (06:00\u201314:00)",
+    "operators": "6",
+    "date": "Jun 9, 2026",
+    "work_order": "WO-44821",
+    "output": "482",
+    "target": "500",
+    "oee": "86.4%",
+    "scrap": "1.9%",
+    "sign_name_0": "M. Alvarez",
+    "sign_title_0": "Production Lead",
+    "sign_name_1": "Shift QA",
+    "sign_title_1": "Verified"
+  },
+  "collections": {
+    "output": {
+      "columns": [
+        "part",
+        "planned",
+        "produced",
+        "scrap",
+        "yield"
+      ],
+      "rows": [
+        {
+          "part": "VG-2200-A",
+          "planned": "250",
+          "produced": "244",
+          "scrap": "4",
+          "yield": "98.4%"
+        },
+        {
+          "part": "VG-1180-B",
+          "planned": "150",
+          "produced": "146",
+          "scrap": "3",
+          "yield": "98.0%"
+        },
+        {
+          "part": "VG-0450-C",
+          "planned": "100",
+          "produced": "92",
+          "scrap": "2",
+          "yield": "97.9%"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "production-report.data.json"
+  }
+}

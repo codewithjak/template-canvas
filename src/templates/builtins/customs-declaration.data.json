@@ -1,0 +1,64 @@
+{
+  "fields": {
+    "brand_name": "Meridian Customs Brokerage",
+    "brand_sub": "Licensed Customs Broker \u00b7 Filer 7741",
+    "importer_of_record_0": "Northgate Industries",
+    "importer_of_record_1": "EIN 84-1192034",
+    "importer_of_record_2": "120 Harbor Rd, Newark, NJ",
+    "exporter_0": "Hangzhou Precision Co.",
+    "exporter_1": "Zhejiang, CN",
+    "exporter_2": "Tax ID 91330100MA",
+    "entry_no": "ENT-2206-7741",
+    "entry_type": "01 \u2014 Consumption",
+    "hts_chapters": "84, 73",
+    "country_of_origin": "China",
+    "incoterms": "CIF Portland",
+    "date": "Jun 9, 2026",
+    "customs_value": "$79,790",
+    "estimated_duty": "$1,635.30",
+    "mpf_hmf": "$329.20",
+    "total_payable": "$1,964.50",
+    "sign_name_0": "R. Feldman",
+    "sign_title_0": "Licensed Broker",
+    "sign_name_1": "Importer",
+    "sign_title_1": "Authorized Signatory"
+  },
+  "collections": {
+    "goods": {
+      "columns": [
+        "hts",
+        "description",
+        "qty",
+        "value",
+        "duty"
+      ],
+      "rows": [
+        {
+          "hts": "8481.80.90",
+          "description": "Industrial valves, cast steel",
+          "qty": "320",
+          "value": "$48,200",
+          "duty": "2.0%"
+        },
+        {
+          "hts": "7307.19.30",
+          "description": "Pipe fittings, ductile iron",
+          "qty": "540",
+          "value": "$21,640",
+          "duty": "3.1%"
+        },
+        {
+          "hts": "8487.90.00",
+          "description": "Machinery parts, n.e.s.",
+          "qty": "180",
+          "value": "$9,950",
+          "duty": "0.0%"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "customs-declaration.data.json"
+  }
+}

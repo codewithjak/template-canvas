@@ -1,0 +1,66 @@
+{
+  "fields": {
+    "brand_name": "Summit Assurance",
+    "brand_sub": "Claims Division \u00b7 summit-assure.example",
+    "insured_0": "Acme Retail Group",
+    "insured_1": "Policy P-558210",
+    "insured_2": "456 Oak Avenue, Portland, OR",
+    "claimant_0": "Acme Retail Group",
+    "claimant_1": "Contact: M. Reyes",
+    "claim_no": "CLM-2206-118",
+    "policy_no": "P-558210",
+    "loss_type": "Water damage",
+    "date_of_loss": "May 28, 2026",
+    "adjuster": "S. Carter",
+    "date": "Jun 9, 2026",
+    "claimed": "$84,200",
+    "assessed": "$71,450",
+    "deductible": "$5,000",
+    "net_payable": "$66,450",
+    "assessed_loss": "$71,450",
+    "less_deductible": "-$5,000",
+    "net_settlement": "$66,450",
+    "sign_name_0": "S. Carter",
+    "sign_title_0": "Adjuster",
+    "sign_name_1": "Claims Manager",
+    "sign_title_1": "Approved"
+  },
+  "collections": {
+    "items": {
+      "columns": [
+        "item",
+        "description",
+        "claimed",
+        "assessed",
+        "status"
+      ],
+      "rows": [
+        {
+          "item": "1",
+          "description": "Stock \u2014 water damaged inventory",
+          "claimed": "$52,000",
+          "assessed": "$44,800",
+          "status": "Approved"
+        },
+        {
+          "item": "2",
+          "description": "Fixtures & shelving",
+          "claimed": "$18,200",
+          "assessed": "$15,650",
+          "status": "Approved"
+        },
+        {
+          "item": "3",
+          "description": "Business interruption (5 days)",
+          "claimed": "$14,000",
+          "assessed": "$11,000",
+          "status": "Partial"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "claims-report.data.json"
+  }
+}

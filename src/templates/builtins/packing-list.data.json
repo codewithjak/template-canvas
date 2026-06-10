@@ -1,0 +1,68 @@
+{
+  "fields": {
+    "brand_name": "Vanguard Manufacturing",
+    "brand_sub": "Shipping Department",
+    "ship_to_0": "Northgate Industries",
+    "ship_to_1": "120 Harbor Rd",
+    "ship_to_2": "Newark, NJ 07102",
+    "ship_from_0": "Vanguard Plant 2",
+    "ship_from_1": "Shipping Dock B",
+    "packing_list": "PL-7741",
+    "order_ref": "PO-2041",
+    "carrier": "Meridian Freight",
+    "cartons": "4",
+    "date": "Jun 9, 2026",
+    "total_cartons": "4",
+    "total_units": "500",
+    "total_net_weight_kg": "508.5",
+    "sign_name_0": "Shipping",
+    "sign_title_0": "Packed by",
+    "sign_name_1": "Receiver",
+    "sign_title_1": "Received by"
+  },
+  "collections": {
+    "cartons": {
+      "columns": [
+        "carton",
+        "part",
+        "description",
+        "qty",
+        "net"
+      ],
+      "rows": [
+        {
+          "carton": "1 of 4",
+          "part": "VG-2200-A",
+          "description": "Bearing housing",
+          "qty": "120",
+          "net": "186.0"
+        },
+        {
+          "carton": "2 of 4",
+          "part": "VG-2200-A",
+          "description": "Bearing housing",
+          "qty": "120",
+          "net": "186.0"
+        },
+        {
+          "carton": "3 of 4",
+          "part": "VG-1180-B",
+          "description": "Retainer ring",
+          "qty": "180",
+          "net": "94.5"
+        },
+        {
+          "carton": "4 of 4",
+          "part": "VG-0450-C",
+          "description": "Seal kit",
+          "qty": "80",
+          "net": "42.0"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "packing-list.data.json"
+  }
+}

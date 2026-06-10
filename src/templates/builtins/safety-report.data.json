@@ -1,0 +1,61 @@
+{
+  "fields": {
+    "brand_name": "Apex Engineering Group",
+    "brand_sub": "HSE Department",
+    "project_0": "Riverside Tower \u2014 Phase 2",
+    "project_1": "Austin, TX",
+    "prepared_for_0": "Client: Riverfront Holdings",
+    "prepared_for_1": "PM: L. Tanaka",
+    "report_no": "HSE-2241",
+    "period": "Jun 2 \u2013 Jun 8",
+    "site_manager": "R. Okafor",
+    "workforce": "142",
+    "date": "Jun 9, 2026",
+    "recordable": "0",
+    "near_misses": "2",
+    "toolbox_talks": "7",
+    "days_lti_free": "318",
+    "sign_name_0": "R. Okafor",
+    "sign_title_0": "Site Manager",
+    "sign_name_1": "HSE Lead",
+    "sign_title_1": "Approved"
+  },
+  "collections": {
+    "incidents": {
+      "columns": [
+        "id",
+        "type",
+        "description",
+        "severity",
+        "status"
+      ],
+      "rows": [
+        {
+          "id": "NM-441",
+          "type": "Near miss",
+          "description": "Dropped tool from L3 scaffold",
+          "severity": "Medium",
+          "status": "Closed"
+        },
+        {
+          "id": "NM-442",
+          "type": "Near miss",
+          "description": "Unsecured load on hoist",
+          "severity": "High",
+          "status": "Open"
+        },
+        {
+          "id": "OBS-77",
+          "type": "Observation",
+          "description": "PPE compliance at gate",
+          "severity": "Low",
+          "status": "Closed"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "safety-report.data.json"
+  }
+}

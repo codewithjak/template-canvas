@@ -1,0 +1,64 @@
+{
+  "fields": {
+    "brand_name": "Riverside Medical Center",
+    "brand_sub": "Patient Financial Services",
+    "bill_to_0": "John A. Whitfield",
+    "bill_to_1": "456 Oak Avenue, Portland, OR",
+    "bill_to_2": "MRN-558210",
+    "insurer_0": "Summit Health Plan",
+    "insurer_1": "Member SHP-220118",
+    "invoice_no": "MINV-4521",
+    "service_date": "Jun 9, 2026",
+    "provider": "Dr. Elena Marsh, MD",
+    "account": "ACC-558210",
+    "due_date": "Jul 9, 2026",
+    "total_charges": "$594.00",
+    "insurance_adjustment": "-$237.60",
+    "patient_responsibility": "$356.40"
+  },
+  "collections": {
+    "charges": {
+      "columns": [
+        "code",
+        "description",
+        "qty",
+        "charge",
+        "amount"
+      ],
+      "rows": [
+        {
+          "code": "99214",
+          "description": "Office visit, established patient",
+          "qty": "1",
+          "charge": "$220.00",
+          "amount": "$220.00"
+        },
+        {
+          "code": "80053",
+          "description": "Comprehensive metabolic panel",
+          "qty": "1",
+          "charge": "$148.00",
+          "amount": "$148.00"
+        },
+        {
+          "code": "85025",
+          "description": "Complete blood count w/ diff",
+          "qty": "1",
+          "charge": "$96.00",
+          "amount": "$96.00"
+        },
+        {
+          "code": "93000",
+          "description": "Electrocardiogram, 12-lead",
+          "qty": "1",
+          "charge": "$130.00",
+          "amount": "$130.00"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "healthcare-invoice.data.json"
+  }
+}

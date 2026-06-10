@@ -1,17 +1,15 @@
 {
   "fields": {
     "company_name": "Nimbus Solutions",
-    "company_address": "123 Market Street, City, ST 12345",
-    "company_email": "hello@nimbus.example",
-    "company_phone": "(555) 010-2040",
+    "company_address": "123 Market Street \u00b7 City, ST 12345 \u00b7 nimbus.example",
+    "customer_name": "Acme Retail Group",
+    "customer_contact": "Attn: Mark Reyes, Operations",
+    "customer_address": "456 Oak Avenue, Portland, OR 97201",
+    "customer_email": "mark@acmeretail.example",
     "quote_number": "QT-2041",
     "quote_date": "Jun 9, 2026",
     "expiry_date": "Jul 9, 2026",
     "prepared_by": "S. Carter",
-    "customer_name": "Acme Retail Group",
-    "customer_contact": "Mark Reyes, Operations",
-    "customer_address": "456 Oak Avenue, Portland, OR 97201",
-    "customer_email": "mark@acmeretail.example",
     "subtotal": "$7,150.00",
     "discount": "-$715.00",
     "tax": "$514.80",
@@ -19,14 +17,47 @@
   },
   "collections": {
     "items": {
-      "columns": ["line", "description", "qty", "unit_price", "amount"],
+      "columns": [
+        "line",
+        "description",
+        "qty",
+        "unit_price",
+        "amount"
+      ],
       "rows": [
-        { "line": "1", "description": "Discovery & requirements workshop", "qty": "1", "unit_price": "$1,200.00", "amount": "$1,200.00" },
-        { "line": "2", "description": "Custom storefront design (5 pages)", "qty": "5", "unit_price": "$650.00", "amount": "$3,250.00" },
-        { "line": "3", "description": "Payment gateway integration", "qty": "1", "unit_price": "$1,800.00", "amount": "$1,800.00" },
-        { "line": "4", "description": "Staff training & handover (per session)", "qty": "2", "unit_price": "$450.00", "amount": "$900.00" }
+        {
+          "line": "1",
+          "description": "Discovery & requirements workshop",
+          "qty": "1",
+          "unit_price": "$1,200.00",
+          "amount": "$1,200.00"
+        },
+        {
+          "line": "2",
+          "description": "Custom storefront design (5 pages)",
+          "qty": "5",
+          "unit_price": "$650.00",
+          "amount": "$3,250.00"
+        },
+        {
+          "line": "3",
+          "description": "Payment gateway integration",
+          "qty": "1",
+          "unit_price": "$1,800.00",
+          "amount": "$1,800.00"
+        },
+        {
+          "line": "4",
+          "description": "Staff training & handover (per session)",
+          "qty": "2",
+          "unit_price": "$450.00",
+          "amount": "$900.00"
+        }
       ]
     }
   },
-  "source": { "type": "json", "fileName": "quotation.data.json" }
+  "source": {
+    "type": "json",
+    "fileName": "quotation.data.json"
+  }
 }

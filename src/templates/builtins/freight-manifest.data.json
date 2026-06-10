@@ -1,0 +1,68 @@
+{
+  "fields": {
+    "brand_name": "Meridian Freight Lines",
+    "brand_sub": "Consolidated Cargo Manifest",
+    "carrier_0": "Meridian Freight Lines",
+    "carrier_1": "DOT 2210345 \u00b7 MC 778120",
+    "route_0": "Newark, NJ \u2192 Portland, OR",
+    "route_1": "Via I-80 / I-84 corridor",
+    "manifest_no": "MAN-40921",
+    "trailer": "TRL-5582",
+    "driver": "C. Alvarez",
+    "departure": "Jun 9, 2026",
+    "eta": "Jun 13, 2026",
+    "shipments": "14",
+    "total_pieces": "312",
+    "gross_weight": "18,240 kg",
+    "stops": "5",
+    "sign_name_0": "C. Alvarez",
+    "sign_title_0": "Driver",
+    "sign_name_1": "Dispatch",
+    "sign_title_1": "Terminal Manager"
+  },
+  "collections": {
+    "shipments": {
+      "columns": [
+        "pro",
+        "origin",
+        "destination",
+        "pieces",
+        "weight"
+      ],
+      "rows": [
+        {
+          "pro": "PRO-88201",
+          "origin": "Newark, NJ",
+          "destination": "Columbus, OH",
+          "pieces": "64",
+          "weight": "3,820"
+        },
+        {
+          "pro": "PRO-88202",
+          "origin": "Newark, NJ",
+          "destination": "Chicago, IL",
+          "pieces": "88",
+          "weight": "5,140"
+        },
+        {
+          "pro": "PRO-88203",
+          "origin": "Newark, NJ",
+          "destination": "Denver, CO",
+          "pieces": "72",
+          "weight": "4,360"
+        },
+        {
+          "pro": "PRO-88204",
+          "origin": "Newark, NJ",
+          "destination": "Portland, OR",
+          "pieces": "88",
+          "weight": "4,920"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "freight-manifest.data.json"
+  }
+}

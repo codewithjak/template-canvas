@@ -246,6 +246,14 @@ export interface TemplateMeta {
   name       : string;
   createdAt  : string;
   updatedAt  : string;
+  /**
+   * Built-in templates declare how their bundled sample data renders, so the
+   * loader doesn't hardcode per-template behaviour. Omitted by user templates.
+   *   'single'     — one complete document, all rows render inside it (e.g. invoice)
+   *   'per-row'    — one document per row
+   *   'relational' — driver collection + linked children
+   */
+  executionMode?: 'single' | 'per-row' | 'relational';
 }
 
 export interface TemplateDocument {

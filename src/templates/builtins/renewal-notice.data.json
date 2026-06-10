@@ -1,0 +1,66 @@
+{
+  "fields": {
+    "brand_name": "Summit Assurance",
+    "brand_sub": "Renewals Team",
+    "policyholder_0": "Acme Retail Group",
+    "policyholder_1": "456 Oak Avenue",
+    "policyholder_2": "Portland, OR 97201",
+    "broker_0": "Pinnacle Risk Partners",
+    "broker_1": "PRP-7741",
+    "policy_no": "P-558210",
+    "product": "Commercial Property",
+    "expiry": "Jun 30, 2026",
+    "renewal_date": "Jul 1, 2026",
+    "pay_by": "Jun 24, 2026",
+    "renewal_premium": "$29,334",
+    "taxes_levies": "$1,760",
+    "total_due": "$31,094",
+    "sign_name_0": "Renewals Team",
+    "sign_title_0": "Summit Assurance"
+  },
+  "collections": {
+    "terms": {
+      "columns": [
+        "section",
+        "coverage",
+        "expiring",
+        "renewal",
+        "change"
+      ],
+      "rows": [
+        {
+          "section": "I",
+          "coverage": "Buildings",
+          "expiring": "$9,800",
+          "renewal": "$10,290",
+          "change": "+5.0%"
+        },
+        {
+          "section": "II",
+          "coverage": "Contents & stock",
+          "expiring": "$7,600",
+          "renewal": "$7,980",
+          "change": "+5.0%"
+        },
+        {
+          "section": "III",
+          "coverage": "Business interruption",
+          "expiring": "$6,400",
+          "renewal": "$6,464",
+          "change": "+1.0%"
+        },
+        {
+          "section": "IV",
+          "coverage": "Public liability",
+          "expiring": "$4,600",
+          "renewal": "$4,600",
+          "change": "0.0%"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "renewal-notice.data.json"
+  }
+}

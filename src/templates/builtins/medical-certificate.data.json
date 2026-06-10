@@ -1,0 +1,25 @@
+{
+  "fields": {
+    "brand_name": "Riverside Medical Center",
+    "brand_sub": "Department of Internal Medicine",
+    "patient_0": "John A. Whitfield",
+    "patient_1": "MRN-558210",
+    "patient_2": "DOB Mar 14, 1981 (45)",
+    "employer_recipient_0": "Acme Retail Group",
+    "employer_recipient_1": "HR Department",
+    "certificate_no": "MC-7741",
+    "examined_on": "Jun 9, 2026",
+    "physician": "Dr. Elena Marsh, MD",
+    "license": "ST-44120",
+    "valid_until": "Jun 23, 2026",
+    "sign_name_0": "Dr. Elena Marsh, MD",
+    "sign_title_0": "Attending Physician",
+    "sign_name_1": "Records",
+    "sign_title_1": "Countersigned"
+  },
+  "collections": {},
+  "source": {
+    "type": "json",
+    "fileName": "medical-certificate.data.json"
+  }
+}

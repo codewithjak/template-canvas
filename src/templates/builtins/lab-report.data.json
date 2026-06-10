@@ -1,0 +1,72 @@
+{
+  "fields": {
+    "brand_name": "Riverside Diagnostics",
+    "brand_sub": "Clinical Laboratory \u00b7 CLIA 33D2041188",
+    "patient_0": "John A. Whitfield",
+    "patient_1": "MRN-558210",
+    "patient_2": "DOB Mar 14, 1981 (45) \u00b7 Male",
+    "ordering_provider_0": "Dr. Elena Marsh, MD",
+    "ordering_provider_1": "Riverside Internal Medicine",
+    "accession": "LAB-2206-9981",
+    "collected": "Jun 8, 2026 08:12",
+    "received": "Jun 8, 2026 09:40",
+    "reported": "Jun 9, 2026",
+    "specimen": "Serum / EDTA",
+    "sign_name_0": "Dr. P. Nguyen",
+    "sign_title_0": "Laboratory Director",
+    "sign_name_1": "Verified",
+    "sign_title_1": "Medical Technologist"
+  },
+  "collections": {
+    "results": {
+      "columns": [
+        "test",
+        "result",
+        "units",
+        "reference",
+        "flag"
+      ],
+      "rows": [
+        {
+          "test": "Hemoglobin",
+          "result": "13.9",
+          "units": "g/dL",
+          "reference": "13.5\u201317.5",
+          "flag": "\u2014"
+        },
+        {
+          "test": "WBC",
+          "result": "11.8",
+          "units": "10\u2079/L",
+          "reference": "4.0\u201311.0",
+          "flag": "H"
+        },
+        {
+          "test": "Glucose, fasting",
+          "result": "108",
+          "units": "mg/dL",
+          "reference": "70\u201399",
+          "flag": "H"
+        },
+        {
+          "test": "Total cholesterol",
+          "result": "214",
+          "units": "mg/dL",
+          "reference": "<200",
+          "flag": "H"
+        },
+        {
+          "test": "Creatinine",
+          "result": "0.96",
+          "units": "mg/dL",
+          "reference": "0.7\u20131.3",
+          "flag": "\u2014"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "lab-report.data.json"
+  }
+}

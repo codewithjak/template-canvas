@@ -1,0 +1,68 @@
+{
+  "fields": {
+    "brand_name": "Summit Assurance",
+    "brand_sub": "Commercial Lines",
+    "policyholder_0": "Acme Retail Group",
+    "policyholder_1": "456 Oak Avenue",
+    "policyholder_2": "Portland, OR 97201",
+    "broker_0": "Pinnacle Risk Partners",
+    "broker_1": "Ref: PRP-7741",
+    "policy_no": "P-558210",
+    "product": "Commercial Property",
+    "effective": "Jul 1, 2026",
+    "expiry": "Jun 30, 2027",
+    "annual_premium": "$28,400",
+    "total_premium": "$28,400",
+    "taxes_levies": "$1,704",
+    "total_payable": "$30,104",
+    "sign_name_0": "Underwriter",
+    "sign_title_0": "Summit Assurance",
+    "sign_name_1": "Authorized",
+    "sign_title_1": "Countersignature"
+  },
+  "collections": {
+    "coverages": {
+      "columns": [
+        "section",
+        "coverage",
+        "limit",
+        "deductible",
+        "premium"
+      ],
+      "rows": [
+        {
+          "section": "I",
+          "coverage": "Buildings",
+          "limit": "$2,400,000",
+          "deductible": "$5,000",
+          "premium": "$9,800"
+        },
+        {
+          "section": "II",
+          "coverage": "Contents & stock",
+          "limit": "$850,000",
+          "deductible": "$5,000",
+          "premium": "$7,600"
+        },
+        {
+          "section": "III",
+          "coverage": "Business interruption",
+          "limit": "$600,000",
+          "deductible": "72 hrs",
+          "premium": "$6,400"
+        },
+        {
+          "section": "IV",
+          "coverage": "Public liability",
+          "limit": "$2,000,000",
+          "deductible": "$2,500",
+          "premium": "$4,600"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "policy-document.data.json"
+  }
+}

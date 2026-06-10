@@ -1,0 +1,58 @@
+{
+  "fields": {
+    "brand_name": "Northgate Industries",
+    "brand_sub": "Distribution Center \u00b7 Newark, NJ",
+    "deliver_to_0": "Acme Retail Group",
+    "deliver_to_1": "456 Oak Avenue",
+    "deliver_to_2": "Portland, OR 97201",
+    "ship_from_0": "Northgate DC-3",
+    "ship_from_1": "120 Harbor Rd, Newark, NJ",
+    "delivery_no": "DN-66120",
+    "order_ref": "SO-90412",
+    "carrier": "Meridian Freight",
+    "tracking": "MFL-883120045",
+    "date": "Jun 9, 2026",
+    "sign_name_0": "Warehouse",
+    "sign_title_0": "Dispatched by",
+    "sign_name_1": "Receiver",
+    "sign_title_1": "Received by"
+  },
+  "collections": {
+    "lines": {
+      "columns": [
+        "sku",
+        "description",
+        "ordered",
+        "delivered",
+        "uom"
+      ],
+      "rows": [
+        {
+          "sku": "VAL-2200",
+          "description": "Industrial gate valve 2\"",
+          "ordered": "40",
+          "delivered": "40",
+          "uom": "EA"
+        },
+        {
+          "sku": "FIT-1180",
+          "description": "Ductile iron elbow 90\u00b0",
+          "ordered": "120",
+          "delivered": "118",
+          "uom": "EA"
+        },
+        {
+          "sku": "KIT-0450",
+          "description": "Valve seal kit",
+          "ordered": "30",
+          "delivered": "30",
+          "uom": "SET"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "delivery-note.data.json"
+  }
+}

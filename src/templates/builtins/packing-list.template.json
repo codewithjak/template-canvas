@@ -1,8 +1,8 @@
 {
   "version": "2.0",
   "meta": {
-    "templateId": "builtin-quotation",
-    "name": "Quotation",
+    "templateId": "builtin-packing-list",
+    "name": "Packing List",
     "createdAt": "2026-01-01T00:00:00.000Z",
     "updatedAt": "2026-01-01T00:00:00.000Z",
     "executionMode": "single"
@@ -18,7 +18,7 @@
   "pages": [
     {
       "pageId": "page-1",
-      "label": "Quotation",
+      "label": "Packing List",
       "repeatHeader": false,
       "headerElementIds": [],
       "header": {
@@ -47,7 +47,7 @@
       },
       "elements": [
         {
-          "id": "qt-band",
+          "id": "b-1",
           "type": "box",
           "position": {
             "x": 0,
@@ -55,424 +55,509 @@
           },
           "style": {
             "width": 794,
-            "height": 150,
+            "height": 128,
             "borderWidth": 0,
-            "borderColor": "#0d9488",
+            "borderColor": "#334155",
             "borderStyle": "solid",
-            "backgroundColor": "#0d9488",
+            "backgroundColor": "#334155",
             "borderRadius": 0,
             "opacity": 100
           }
         },
         {
-          "id": "qt-band-accent",
+          "id": "b-2",
           "type": "box",
           "position": {
             "x": 0,
-            "y": 150
+            "y": 128
           },
           "style": {
             "width": 794,
             "height": 6,
             "borderWidth": 0,
-            "borderColor": "#f59e0b",
+            "borderColor": "#ef4444",
             "borderStyle": "solid",
-            "backgroundColor": "#f59e0b",
+            "backgroundColor": "#ef4444",
             "borderRadius": 0,
             "opacity": 100
           }
         },
         {
-          "id": "qt-logo-mark",
-          "type": "box",
-          "position": {
-            "x": 60,
-            "y": 44
-          },
-          "style": {
-            "width": 48,
-            "height": 48,
-            "borderWidth": 0,
-            "borderColor": "#ffffff",
-            "borderStyle": "solid",
-            "backgroundColor": "#ffffff",
-            "borderRadius": 12,
-            "opacity": 100
-          }
-        },
-        {
-          "id": "qt-logo-glyph",
+          "id": "t-3",
           "type": "text",
-          "content": "N",
+          "content": "V",
           "position": {
-            "x": 76,
-            "y": 50
+            "x": 72,
+            "y": 40
           },
           "style": {
             "fontSize": 26,
             "fontWeight": "bold",
-            "color": "#0d9488",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-brand-name",
-          "type": "text",
-          "content": "{{company_name}}",
-          "position": {
-            "x": 124,
-            "y": 48
-          },
-          "style": {
-            "fontSize": 22,
-            "fontWeight": "bold",
             "color": "#ffffff",
             "fontFamily": "Arial, sans-serif"
           }
         },
         {
-          "id": "qt-brand-sub",
+          "id": "t-4",
           "type": "text",
-          "content": "{{company_address}}",
+          "content": "{{brand_name}}",
           "position": {
-            "x": 124,
-            "y": 80
+            "x": 108,
+            "y": 42
           },
           "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#ccfbf1",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-title",
-          "type": "text",
-          "content": "QUOTATION",
-          "position": {
-            "x": 434,
-            "y": 46
-          },
-          "style": {
-            "fontSize": 32,
+            "fontSize": 19,
             "fontWeight": "bold",
             "color": "#ffffff",
             "fontFamily": "Arial, sans-serif",
-            "width": 300,
+            "width": 340,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-5",
+          "type": "text",
+          "content": "{{brand_sub}}",
+          "position": {
+            "x": 108,
+            "y": 74
+          },
+          "style": {
+            "fontSize": 10.5,
+            "fontWeight": "normal",
+            "color": "#dbeafe",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-6",
+          "type": "text",
+          "content": "PACKING LIST",
+          "position": {
+            "x": 394,
+            "y": 38
+          },
+          "style": {
+            "fontSize": 30,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 340,
             "textAlign": "right"
           }
         },
         {
-          "id": "qt-title-sub",
+          "id": "t-7",
           "type": "text",
-          "content": "Valid for 30 days",
+          "content": "Carton & contents detail",
           "position": {
-            "x": 434,
-            "y": 92
+            "x": 394,
+            "y": 82
           },
           "style": {
             "fontSize": 11,
             "fontWeight": "normal",
-            "color": "#ccfbf1",
+            "color": "#dbeafe",
             "fontFamily": "Arial, sans-serif",
-            "width": 300,
+            "width": 340,
             "textAlign": "right"
           }
         },
         {
-          "id": "qt-billto-label",
+          "id": "t-8",
           "type": "text",
-          "content": "PREPARED FOR",
+          "content": "SHIP TO",
           "position": {
             "x": 60,
-            "y": 190
+            "y": 158
           },
           "style": {
             "fontSize": 10,
             "fontWeight": "bold",
-            "color": "#0d9488",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-billto-name",
-          "type": "text",
-          "content": "{{customer_name}}",
-          "position": {
-            "x": 60,
-            "y": 208
-          },
-          "style": {
-            "fontSize": 15,
-            "fontWeight": "bold",
-            "color": "#0f172a",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-billto-line1",
-          "type": "text",
-          "content": "{{customer_contact}}",
-          "position": {
-            "x": 60,
-            "y": 232
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#475569",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-billto-line2",
-          "type": "text",
-          "content": "{{customer_address}}",
-          "position": {
-            "x": 60,
-            "y": 250
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#475569",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-billto-line3",
-          "type": "text",
-          "content": "{{customer_email}}",
-          "position": {
-            "x": 60,
-            "y": 268
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#475569",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-meta-box",
-          "type": "box",
-          "position": {
-            "x": 474,
-            "y": 184
-          },
-          "style": {
-            "width": 260,
-            "height": 116,
-            "borderWidth": 1,
-            "borderColor": "#99f6e4",
-            "borderStyle": "solid",
-            "backgroundColor": "#f0fdfa",
-            "borderRadius": 10,
-            "opacity": 100
-          }
-        },
-        {
-          "id": "qt-meta-no-l",
-          "type": "text",
-          "content": "Quote No.",
-          "position": {
-            "x": 490,
-            "y": 198
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
             "color": "#64748b",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-meta-no-v",
-          "type": "text",
-          "content": "{{quote_number}}",
-          "position": {
-            "x": 590,
-            "y": 198
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "bold",
-            "color": "#0f172a",
             "fontFamily": "Arial, sans-serif",
-            "width": 128,
-            "textAlign": "right"
+            "width": 300,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-meta-date-l",
+          "id": "t-9",
           "type": "text",
-          "content": "Date",
-          "position": {
-            "x": 490,
-            "y": 222
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#64748b",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-meta-date-v",
-          "type": "text",
-          "content": "{{quote_date}}",
-          "position": {
-            "x": 590,
-            "y": 222
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "bold",
-            "color": "#0f172a",
-            "fontFamily": "Arial, sans-serif",
-            "width": 128,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-meta-exp-l",
-          "type": "text",
-          "content": "Expires",
-          "position": {
-            "x": 490,
-            "y": 246
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#64748b",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-meta-exp-v",
-          "type": "text",
-          "content": "{{expiry_date}}",
-          "position": {
-            "x": 590,
-            "y": 246
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "bold",
-            "color": "#0f172a",
-            "fontFamily": "Arial, sans-serif",
-            "width": 128,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-meta-rep-l",
-          "type": "text",
-          "content": "Prepared by",
-          "position": {
-            "x": 490,
-            "y": 270
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "normal",
-            "color": "#64748b",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-meta-rep-v",
-          "type": "text",
-          "content": "{{prepared_by}}",
-          "position": {
-            "x": 590,
-            "y": 270
-          },
-          "style": {
-            "fontSize": 11,
-            "fontWeight": "bold",
-            "color": "#0f172a",
-            "fontFamily": "Arial, sans-serif",
-            "width": 128,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-items-table",
-          "type": "table",
-          "schemaVersion": 2,
+          "content": "{{ship_to_0}}",
           "position": {
             "x": 60,
-            "y": 336
-          },
-          "size": {
-            "width": 674,
-            "height": 220
+            "y": 176
           },
           "style": {
             "fontSize": 12,
             "fontWeight": "normal",
             "color": "#334155",
             "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-10",
+          "type": "text",
+          "content": "{{ship_to_1}}",
+          "position": {
+            "x": 60,
+            "y": 193
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-11",
+          "type": "text",
+          "content": "{{ship_to_2}}",
+          "position": {
+            "x": 60,
+            "y": 210
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-12",
+          "type": "text",
+          "content": "SHIP FROM",
+          "position": {
+            "x": 60,
+            "y": 239
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 300,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-13",
+          "type": "text",
+          "content": "{{ship_from_0}}",
+          "position": {
+            "x": 60,
+            "y": 257
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-14",
+          "type": "text",
+          "content": "{{ship_from_1}}",
+          "position": {
+            "x": 60,
+            "y": 274
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "width": 320,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-15",
+          "type": "text",
+          "content": "Packing List",
+          "position": {
+            "x": 430,
+            "y": 158
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-16",
+          "type": "text",
+          "content": "{{packing_list}}",
+          "position": {
+            "x": 566,
+            "y": 158
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-17",
+          "type": "text",
+          "content": "Order Ref.",
+          "position": {
+            "x": 430,
+            "y": 179
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-18",
+          "type": "text",
+          "content": "{{order_ref}}",
+          "position": {
+            "x": 566,
+            "y": 179
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-19",
+          "type": "text",
+          "content": "Carrier",
+          "position": {
+            "x": 430,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-20",
+          "type": "text",
+          "content": "{{carrier}}",
+          "position": {
+            "x": 566,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-21",
+          "type": "text",
+          "content": "Cartons",
+          "position": {
+            "x": 430,
+            "y": 221
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-22",
+          "type": "text",
+          "content": "{{cartons}}",
+          "position": {
+            "x": 566,
+            "y": 221
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-23",
+          "type": "text",
+          "content": "Date",
+          "position": {
+            "x": 430,
+            "y": 242
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 130,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-24",
+          "type": "text",
+          "content": "{{date}}",
+          "position": {
+            "x": 566,
+            "y": 242
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 168,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-25",
+          "type": "text",
+          "content": "CARTON CONTENTS",
+          "position": {
+            "x": 60,
+            "y": 321
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "tbl-26",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": {
+            "x": 60,
+            "y": 341
+          },
+          "size": {
+            "width": 674,
+            "height": 152
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
             "borderColor": "#e2e8f0",
             "borderWidth": 1,
-            "showBorders": false
+            "showBorders": true
           },
           "binding": {
             "enabled": true,
-            "collectionKey": "items",
+            "collectionKey": "cartons",
             "itemAlias": "item"
           },
           "columns": [
             {
-              "id": "col-item",
-              "width": 64,
-              "alignment": "center"
+              "id": "col-carton",
+              "width": 138,
+              "alignment": "left"
             },
             {
-              "id": "col-desc",
-              "width": 286,
+              "id": "col-part",
+              "width": 134,
+              "alignment": "left"
+            },
+            {
+              "id": "col-description",
+              "width": 134,
               "alignment": "left"
             },
             {
               "id": "col-qty",
-              "width": 64,
+              "width": 134,
               "alignment": "center"
             },
             {
-              "id": "col-price",
-              "width": 130,
-              "alignment": "right"
-            },
-            {
-              "id": "col-amount",
-              "width": 130,
+              "id": "col-net",
+              "width": 134,
               "alignment": "right"
             }
           ],
           "headerRow": {
             "id": "row-head",
-            "height": 36,
+            "height": 32,
             "cells": [
               {
-                "id": "h-item",
+                "id": "h-carton",
                 "content": {
                   "type": "text",
-                  "value": "#"
+                  "value": "CARTON"
                 },
                 "style": {
                   "fontSize": 10,
                   "fontWeight": "bold",
                   "color": "#ffffff",
-                  "textAlign": "center",
-                  "backgroundColor": "#0d9488"
+                  "textAlign": "left",
+                  "backgroundColor": "#334155"
                 }
               },
               {
-                "id": "h-desc",
+                "id": "h-part",
+                "content": {
+                  "type": "text",
+                  "value": "PART"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "left",
+                  "backgroundColor": "#334155"
+                }
+              },
+              {
+                "id": "h-description",
                 "content": {
                   "type": "text",
                   "value": "DESCRIPTION"
@@ -482,7 +567,7 @@
                   "fontWeight": "bold",
                   "color": "#ffffff",
                   "textAlign": "left",
-                  "backgroundColor": "#0d9488"
+                  "backgroundColor": "#334155"
                 }
               },
               {
@@ -496,35 +581,21 @@
                   "fontWeight": "bold",
                   "color": "#ffffff",
                   "textAlign": "center",
-                  "backgroundColor": "#0d9488"
+                  "backgroundColor": "#334155"
                 }
               },
               {
-                "id": "h-price",
+                "id": "h-net",
                 "content": {
                   "type": "text",
-                  "value": "UNIT PRICE"
+                  "value": "NET KG"
                 },
                 "style": {
                   "fontSize": 10,
                   "fontWeight": "bold",
                   "color": "#ffffff",
                   "textAlign": "right",
-                  "backgroundColor": "#0d9488"
-                }
-              },
-              {
-                "id": "h-amount",
-                "content": {
-                  "type": "text",
-                  "value": "AMOUNT"
-                },
-                "style": {
-                  "fontSize": 10,
-                  "fontWeight": "bold",
-                  "color": "#ffffff",
-                  "textAlign": "right",
-                  "backgroundColor": "#0d9488"
+                  "backgroundColor": "#334155"
                 }
               }
             ]
@@ -532,21 +603,32 @@
           "rows": [
             {
               "id": "row-1",
-              "height": 36,
+              "height": 30,
               "cells": [
                 {
-                  "id": "r1-item",
+                  "id": "r-carton",
                   "content": {
                     "type": "text",
-                    "value": "{{line}}"
+                    "value": "{{carton}}"
                   },
                   "style": {
-                    "textAlign": "center",
-                    "color": "#64748b"
+                    "textAlign": "left",
+                    "color": "#334155"
                   }
                 },
                 {
-                  "id": "r1-desc",
+                  "id": "r-part",
+                  "content": {
+                    "type": "text",
+                    "value": "{{part}}"
+                  },
+                  "style": {
+                    "textAlign": "left",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "r-description",
                   "content": {
                     "type": "text",
                     "value": "{{description}}"
@@ -557,7 +639,7 @@
                   }
                 },
                 {
-                  "id": "r1-qty",
+                  "id": "r-qty",
                   "content": {
                     "type": "text",
                     "value": "{{qty}}"
@@ -568,26 +650,14 @@
                   }
                 },
                 {
-                  "id": "r1-price",
+                  "id": "r-net",
                   "content": {
                     "type": "text",
-                    "value": "{{unit_price}}"
+                    "value": "{{net}}"
                   },
                   "style": {
                     "textAlign": "right",
                     "color": "#334155"
-                  }
-                },
-                {
-                  "id": "r1-amount",
-                  "content": {
-                    "type": "text",
-                    "value": "{{amount}}"
-                  },
-                  "style": {
-                    "textAlign": "right",
-                    "color": "#0f172a",
-                    "fontWeight": "bold"
                   }
                 }
               ]
@@ -595,226 +665,168 @@
           ]
         },
         {
-          "id": "qt-notes-label",
+          "id": "t-27",
           "type": "text",
-          "content": "NOTES & SCOPE",
+          "content": "Total cartons",
           "position": {
-            "x": 60,
-            "y": 600
-          },
-          "style": {
-            "fontSize": 10,
-            "fontWeight": "bold",
-            "color": "#0d9488",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-notes-body",
-          "type": "paragraph",
-          "content": "Pricing covers the deliverables listed above.\nThird-party licenses and hosting are billed\nseparately. A 50% deposit is required to begin\nwork, with the balance due on delivery.",
-          "position": {
-            "x": 60,
-            "y": 620
+            "x": 474,
+            "y": 515
           },
           "style": {
             "fontSize": 11,
             "fontWeight": "normal",
             "color": "#475569",
-            "fontFamily": "Arial, sans-serif"
+            "fontFamily": "Arial, sans-serif",
+            "width": 120,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-sub-label",
+          "id": "t-28",
           "type": "text",
-          "content": "Subtotal",
+          "content": "{{total_cartons}}",
           "position": {
-            "x": 434,
-            "y": 600
+            "x": 594,
+            "y": 515
           },
           "style": {
-            "fontSize": 12,
-            "fontWeight": "normal",
-            "color": "#64748b",
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
             "fontFamily": "Arial, sans-serif",
-            "width": 190,
+            "width": 140,
             "textAlign": "right"
           }
         },
         {
-          "id": "qt-sub-value",
+          "id": "t-29",
           "type": "text",
-          "content": "{{subtotal}}",
+          "content": "Total units",
           "position": {
-            "x": 634,
-            "y": 600
+            "x": 474,
+            "y": 537
           },
           "style": {
-            "fontSize": 12,
+            "fontSize": 11,
             "fontWeight": "normal",
-            "color": "#334155",
+            "color": "#475569",
             "fontFamily": "Arial, sans-serif",
-            "width": 100,
+            "width": 120,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-30",
+          "type": "text",
+          "content": "{{total_units}}",
+          "position": {
+            "x": 594,
+            "y": 537
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 140,
             "textAlign": "right"
           }
         },
         {
-          "id": "qt-disc-label",
-          "type": "text",
-          "content": "Discount (10%)",
-          "position": {
-            "x": 434,
-            "y": 624
-          },
-          "style": {
-            "fontSize": 12,
-            "fontWeight": "normal",
-            "color": "#64748b",
-            "fontFamily": "Arial, sans-serif",
-            "width": 190,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-disc-value",
-          "type": "text",
-          "content": "{{discount}}",
-          "position": {
-            "x": 634,
-            "y": 624
-          },
-          "style": {
-            "fontSize": 12,
-            "fontWeight": "normal",
-            "color": "#dc2626",
-            "fontFamily": "Arial, sans-serif",
-            "width": 100,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-tax-label",
-          "type": "text",
-          "content": "Tax (8%)",
-          "position": {
-            "x": 434,
-            "y": 648
-          },
-          "style": {
-            "fontSize": 12,
-            "fontWeight": "normal",
-            "color": "#64748b",
-            "fontFamily": "Arial, sans-serif",
-            "width": 190,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-tax-value",
-          "type": "text",
-          "content": "{{tax}}",
-          "position": {
-            "x": 634,
-            "y": 648
-          },
-          "style": {
-            "fontSize": 12,
-            "fontWeight": "normal",
-            "color": "#334155",
-            "fontFamily": "Arial, sans-serif",
-            "width": 100,
-            "textAlign": "right"
-          }
-        },
-        {
-          "id": "qt-total-box",
+          "id": "b-31",
           "type": "box",
           "position": {
-            "x": 434,
-            "y": 678
+            "x": 474,
+            "y": 557
           },
           "style": {
-            "width": 300,
-            "height": 48,
+            "width": 260,
+            "height": 26,
             "borderWidth": 0,
-            "borderColor": "#0d9488",
+            "borderColor": "#334155",
             "borderStyle": "solid",
-            "backgroundColor": "#0d9488",
-            "borderRadius": 10,
+            "backgroundColor": "#334155",
+            "borderRadius": 4,
             "opacity": 100
           }
         },
         {
-          "id": "qt-total-label",
+          "id": "t-32",
           "type": "text",
-          "content": "TOTAL",
+          "content": "Total net weight (kg)",
           "position": {
-            "x": 450,
-            "y": 694
+            "x": 486,
+            "y": 563
           },
           "style": {
-            "fontSize": 14,
-            "fontWeight": "bold",
-            "color": "#ffffff",
-            "fontFamily": "Arial, sans-serif"
-          }
-        },
-        {
-          "id": "qt-total-value",
-          "type": "text",
-          "content": "{{total}}",
-          "position": {
-            "x": 564,
-            "y": 692
-          },
-          "style": {
-            "fontSize": 18,
+            "fontSize": 11,
             "fontWeight": "bold",
             "color": "#ffffff",
             "fontFamily": "Arial, sans-serif",
-            "width": 154,
+            "width": 120,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-33",
+          "type": "text",
+          "content": "{{total_net_weight_kg}}",
+          "position": {
+            "x": 594,
+            "y": 563
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 128,
             "textAlign": "right"
           }
         },
         {
-          "id": "qt-accept-label",
+          "id": "t-34",
           "type": "text",
-          "content": "ACCEPTANCE",
+          "content": "HANDLING",
           "position": {
             "x": 60,
-            "y": 800
+            "y": 603
           },
           "style": {
             "fontSize": 10,
             "fontWeight": "bold",
-            "color": "#0d9488",
-            "fontFamily": "Arial, sans-serif"
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-accept-body",
+          "id": "t-35",
           "type": "text",
-          "content": "To accept this quotation, please sign below and return a copy.",
+          "content": "Stack no more than 3 high. Keep dry. Inspect seals on receipt.",
           "position": {
             "x": 60,
-            "y": 818
+            "y": 621
           },
           "style": {
             "fontSize": 11,
             "fontWeight": "normal",
             "color": "#475569",
-            "fontFamily": "Arial, sans-serif"
+            "fontFamily": "Arial, sans-serif",
+            "width": 400,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-sign-line",
+          "id": "l-36",
           "type": "line",
           "position": {
             "x": 60,
-            "y": 882
+            "y": 940
           },
           "style": {
-            "length": 260,
+            "length": 180,
             "thickness": 1,
             "direction": "horizontal",
             "color": "#94a3b8",
@@ -822,29 +834,48 @@
           }
         },
         {
-          "id": "qt-sign-label",
+          "id": "t-37",
           "type": "text",
-          "content": "Authorized signature",
+          "content": "{{sign_name_0}}",
           "position": {
             "x": 60,
-            "y": 890
+            "y": 948
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-38",
+          "type": "text",
+          "content": "{{sign_title_0}}",
+          "position": {
+            "x": 60,
+            "y": 966
           },
           "style": {
             "fontSize": 10,
             "fontWeight": "normal",
-            "color": "#94a3b8",
-            "fontFamily": "Arial, sans-serif"
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-date-line",
+          "id": "l-39",
           "type": "line",
           "position": {
-            "x": 474,
-            "y": 882
+            "x": 270,
+            "y": 940
           },
           "style": {
-            "length": 260,
+            "length": 180,
             "thickness": 1,
             "direction": "horizontal",
             "color": "#94a3b8",
@@ -852,26 +883,45 @@
           }
         },
         {
-          "id": "qt-date-label",
+          "id": "t-40",
           "type": "text",
-          "content": "Date",
+          "content": "{{sign_name_1}}",
           "position": {
-            "x": 474,
-            "y": 890
+            "x": 270,
+            "y": 948
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#0f172a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
+          }
+        },
+        {
+          "id": "t-41",
+          "type": "text",
+          "content": "{{sign_title_1}}",
+          "position": {
+            "x": 270,
+            "y": 966
           },
           "style": {
             "fontSize": 10,
             "fontWeight": "normal",
-            "color": "#94a3b8",
-            "fontFamily": "Arial, sans-serif"
+            "color": "#64748b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 190,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-foot-divider",
+          "id": "l-42",
           "type": "line",
           "position": {
             "x": 60,
-            "y": 1000
+            "y": 1044
           },
           "style": {
             "length": 674,
@@ -882,33 +932,37 @@
           }
         },
         {
-          "id": "qt-foot-note1",
+          "id": "t-43",
           "type": "text",
-          "content": "Nimbus Solutions \u00b7 123 Market Street, City, ST 12345",
+          "content": "Vanguard Manufacturing \u00b7 Packing List",
           "position": {
             "x": 60,
-            "y": 1016
+            "y": 1054
           },
           "style": {
-            "fontSize": 10,
+            "fontSize": 9,
             "fontWeight": "normal",
             "color": "#94a3b8",
-            "fontFamily": "Arial, sans-serif"
+            "fontFamily": "Arial, sans-serif",
+            "width": 674,
+            "textAlign": "left"
           }
         },
         {
-          "id": "qt-foot-note2",
+          "id": "t-44",
           "type": "text",
-          "content": "hello@nimbus.example \u00b7 (555) 010-2040 \u00b7 nimbus.example",
+          "content": "Not an invoice \u2014 for receiving reconciliation",
           "position": {
             "x": 60,
-            "y": 1032
+            "y": 1068
           },
           "style": {
-            "fontSize": 10,
+            "fontSize": 9,
             "fontWeight": "normal",
             "color": "#94a3b8",
-            "fontFamily": "Arial, sans-serif"
+            "fontFamily": "Arial, sans-serif",
+            "width": 674,
+            "textAlign": "left"
           }
         }
       ]

@@ -1,16 +1,17 @@
 /**
  * src/auth/ProtectedRoute.tsx
  * Gates a route behind authentication. While the session is hydrating we
- * show a spinner; if there's no session we render the sign-in gate
- * (remembering the attempted path); otherwise we render the page.
+ * show a spinner; if there's no session we redirect to the dedicated /login
+ * page (remembering the attempted path via ?next=); otherwise we render the
+ * page.
  *
  * Gating the destination (not just the "Launch App" button) means deep
  * links, refreshes, and bookmarks to /canvas all require sign-in too.
  */
 import type { ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import AuthModal from './AuthModal'
+import './AuthModal.css'
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth()
@@ -25,7 +26,8 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   }
 
   if (!session) {
-    return <AuthModal redirectPath={location.pathname} />
+    const next = encodeURIComponent(location.pathname + location.search)
+    return <Navigate to={`/login?next=${next}`} replace />
   }
 
   return <>{children}</>

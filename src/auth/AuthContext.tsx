@@ -24,6 +24,11 @@ interface AuthContextValue {
   user: User | null
   loading: boolean
   signInWithGoogle: (redirectPath?: string) => Promise<void>
+  signInWithEmail: (
+    email: string,
+    redirectPath?: string,
+    createUser?: boolean,
+  ) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -61,6 +66,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
+  const signInWithEmail = async (
+    email: string,
+    redirectPath = '/canvas',
+    createUser = true,
+  ) => {
+    // Magic-link (passwordless) sign-in. Same as Google, we stash the
+    // post-login destination so /auth/callback can forward there once the
+    // client exchanges the token from the emailed link.
+    sessionStorage.setItem(POST_LOGIN_KEY, redirectPath)
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        // Login mode won't provision a brand-new account (returns an error
+        // the UI can surface); signup mode creates it on first link click.
+        shouldCreateUser: createUser,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  }
+
   const signOut = async () => {
     clearTeamCache()
     await supabase.auth.signOut()
@@ -73,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         loading,
         signInWithGoogle,
+        signInWithEmail,
         signOut,
       }}
     >

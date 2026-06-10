@@ -7,6 +7,7 @@ import Careers from './pages/Careers'
 import Canvas from './pages/Canvas'
 import Settings from './pages/Settings'
 import Pricing from './pages/Pricing'
+import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import { PlanProvider } from './plan/PlanProvider'
 import './App.css'
@@ -21,6 +22,7 @@ function App() {
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/careers" element={<Careers />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route
             path="/canvas"

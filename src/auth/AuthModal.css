@@ -6,94 +6,368 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
+  font-family: var(--font-body, system-ui, sans-serif);
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, var(--blue-soft, rgba(35, 85, 244, 0.08)) 0%, transparent 65%),
+    var(--canvas, #f8faff);
 }
 
 .authgate__card {
   width: 100%;
-  max-width: 380px;
-  background: #ffffff;
-  border: 1px solid #e5e9f1;
-  border-radius: 16px;
-  padding: 32px 28px;
+  max-width: 400px;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, rgba(15, 23, 64, 0.09));
+  border-radius: var(--radius-md, 20px);
+  padding: 40px 34px 32px;
   text-align: center;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  box-shadow: var(--shadow-lg, 0 24px 64px rgba(10, 15, 30, 0.13));
 }
 
-.authgate__brand {
-  font-weight: 700;
-  font-size: 18px;
+/* ── Split layout (sign-in gate) ──────────────────────────────────────
+   Two columns: a branded feature panel + the auth card panel. The base
+   .authgate (centered card) is still used as-is by the OAuth callback. */
+.authgate--split {
+  padding: 0;
+  align-items: stretch;
+  background: var(--canvas, #f8faff);
+}
+
+.authgate__feature {
+  position: relative;
+  flex: 1 1 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 56px clamp(40px, 6vw, 88px);
+  color: #fff;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 15%, rgba(255, 255, 255, 0.16) 0%, transparent 55%),
+    linear-gradient(150deg, var(--blue, #2355f4) 0%, var(--blue-dark, #1740d0) 100%);
+}
+
+.authgate__feature-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 40% 36% at 88% 88%, var(--gold, #f5a623) 0%, transparent 60%);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.authgate__feature-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 460px;
+}
+
+.authgate__feature-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 26px;
   letter-spacing: -0.01em;
-  color: #2563eb;
-  margin-bottom: 18px;
+}
+
+.authgate__feature-brand .authgate__logo {
+  margin: 0;
+}
+
+.authgate__feature-headline {
+  margin: 0 0 18px;
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: clamp(34px, 3.4vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.authgate__feature-sub {
+  margin: 0 0 32px;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.authgate__feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.authgate__feature-list li {
+  position: relative;
+  padding-left: 30px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.authgate__feature-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.authgate__panel {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  background: var(--canvas, #f8faff);
+}
+
+.authgate--split .authgate__card {
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  max-width: 380px;
+  padding: 0;
+}
+
+@media (max-width: 860px) {
+  .authgate__feature {
+    display: none;
+  }
+  .authgate--split .authgate__card {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, rgba(15, 23, 64, 0.09));
+    border-radius: var(--radius-md, 20px);
+    padding: 40px 34px 32px;
+    box-shadow: var(--shadow-lg, 0 24px 64px rgba(10, 15, 30, 0.13));
+  }
+}
+
+.authgate__logo {
+  display: block;
+  margin: 0 auto 20px;
+}
+
+/* Legacy text brand — still used by the OAuth callback screen. */
+.authgate__brand {
+  font-family: var(--font-display, Georgia, serif);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--blue, #2355f4);
+  margin-bottom: 16px;
 }
 
 .authgate__title {
-  margin: 0 0 8px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #0f172a;
+  margin: 0 0 24px;
+  font-family: var(--font-display, Georgia, serif);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--ink, #0a0f1e);
 }
 
 .authgate__sub {
-  margin: 0 0 22px;
+  margin: 0 0 20px;
   font-size: 14px;
-  line-height: 1.5;
-  color: #64748b;
+  line-height: 1.55;
+  color: var(--ink-2, #3d4a63);
 }
 
+.authgate__sub strong {
+  color: var(--ink, #0a0f1e);
+  font-weight: 600;
+}
+
+.authgate__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.authgate__input {
+  width: 100%;
+  padding: 14px 18px;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--ink, #0a0f1e);
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--border, rgba(15, 23, 64, 0.12));
+  border-radius: 999px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.authgate__input::placeholder {
+  color: var(--ink-3, #8896b0);
+}
+
+.authgate__input:focus {
+  border-color: var(--blue, #2355f4);
+  box-shadow: 0 0 0 4px var(--blue-glow, rgba(35, 85, 244, 0.18));
+}
+
+.authgate__input:disabled {
+  opacity: 0.6;
+}
+
+.authgate__continue {
+  width: 100%;
+  padding: 14px 18px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+  background: var(--blue, #2355f4);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px var(--blue-glow, rgba(35, 85, 244, 0.18));
+  transition: background 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.authgate__continue:hover:not(:disabled) {
+  background: var(--blue-dark, #1740d0);
+  box-shadow: 0 8px 28px var(--blue-glow, rgba(35, 85, 244, 0.18));
+}
+
+.authgate__continue:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.authgate__switch {
+  margin: 16px 0 0;
+  font-size: 14px;
+  color: var(--ink-2, #3d4a63);
+}
+
+.authgate__switchbtn {
+  padding: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue, #2355f4);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.authgate__switchbtn:hover {
+  text-decoration: underline;
+}
+
+.authgate__divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0;
+  color: var(--ink-3, #8896b0);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.authgate__divider::before,
+.authgate__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border, rgba(15, 23, 64, 0.12));
+}
+
+/* OAuth button. .authgate__google kept for the callback screen. */
+.authgate__oauth,
 .authgate__google {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   width: 100%;
-  padding: 11px 16px;
-  font-size: 14px;
+  padding: 13px 16px;
+  font-family: inherit;
+  font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
-  background: #ffffff;
-  border: 1px solid #d6dbe6;
-  border-radius: 10px;
+  color: var(--ink-2, #3d4a63);
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--border, rgba(15, 23, 64, 0.12));
+  border-radius: 999px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
+.authgate__oauth:hover:not(:disabled),
 .authgate__google:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #c2c9d6;
+  border-color: var(--blue, #2355f4);
+  color: var(--blue, #2355f4);
+  background: var(--blue-soft, rgba(35, 85, 244, 0.08));
 }
 
+.authgate__oauth:disabled,
 .authgate__google:disabled {
   opacity: 0.65;
   cursor: default;
 }
 
+.authgate__textbtn {
+  margin-top: 6px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue, #2355f4);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.authgate__textbtn:hover {
+  text-decoration: underline;
+}
+
 .authgate__error {
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   font-size: 13px;
-  color: #dc2626;
+  color: var(--color-danger, #dc2626);
 }
 
 .authgate__legal {
-  margin: 18px 0 0;
-  font-size: 11px;
-  line-height: 1.5;
-  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 28px 0 0;
+  font-size: 12px;
+  color: var(--ink-3, #8896b0);
+}
+
+.authgate__legal a {
+  color: var(--ink-3, #8896b0);
+  text-decoration: underline;
+}
+
+.authgate__legal a:hover {
+  color: var(--blue, #2355f4);
 }
 
 /* Loading state (initial session hydration / OAuth callback) */
 .authgate--loading {
-  background: #f8fafc;
-  backdrop-filter: none;
+  background: var(--canvas, #f8faff);
 }
 
 .authgate__spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid #dbe2ef;
-  border-top-color: #2563eb;
+  border: 3px solid var(--border, rgba(15, 23, 64, 0.12));
+  border-top-color: var(--blue, #2355f4);
   border-radius: 50%;
   animation: authgate-spin 0.8s linear infinite;
 }

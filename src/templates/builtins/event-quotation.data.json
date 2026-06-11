@@ -1,0 +1,222 @@
+{
+  "fields": {
+    "company_name": "Global Event Management",
+    "company_tagline": "Conferences · Exhibitions · Corporate Events",
+    "company_address": "Pavilion House, 142 Riverside Quay",
+    "company_city": "Manchester M3 4JD, United Kingdom",
+    "company_phone": "+44 161 555 0420",
+    "company_email": "proposals@globaleventmgmt.example",
+    "company_website": "www.globaleventmgmt.example",
+    "company_reg_no": "Reg. 08842217 · VAT GB 214 558 03",
+    "company_contact_person": "Daniel Whitfield, Account Director",
+    "doc_subtitle": "Event Proposal & Cost Quotation",
+    "quote_number": "GEM-Q-2026-0488",
+    "quote_date": "11 Jun 2026",
+    "expiry_date": "11 Jul 2026",
+    "prepared_by": "Daniel Whitfield",
+    "client_company": "Northwind Technologies Ltd",
+    "client_name": "Sarah Bennett",
+    "client_title": "Head of Marketing & Events",
+    "client_address": "Cosmo Building, 88 Deansgate",
+    "client_city": "Manchester M3 2EH, United Kingdom",
+    "client_phone": "+44 161 555 0199",
+    "client_email": "sarah.bennett@northwind.example",
+    "event_ref": "Annual Conference 2026",
+    "event_name": "Northwind Annual Conference & Gala 2026",
+    "event_type": "Corporate Conference + Awards Gala",
+    "event_dates": "14–16 September 2026",
+    "event_venue": "Manchester Central Convention Complex",
+    "event_attendees": "450 delegates",
+    "event_duration": "3 days (2 nights)",
+    "scope_intro": "Global Event Management is pleased to present this proposal for the delivery of the Northwind Annual Conference & Gala 2026. The scope below covers end-to-end planning, technical production, venue management and on-site delivery across the three-day programme. Detailed pricing follows in the Equipment & Services and Rooms & Venue sections of this document.",
+    "scope_notes": "Scope assumes venue access from 13 September for build, with de-rig completed by 17 September. Services requested after sign-off are quoted separately. Crew welfare, parking and accommodation (where required) are included in the rates shown.",
+    "equip_subtotal": "£20,860.00",
+    "equip_discount": "-£2,086.00",
+    "equip_vat": "£3,754.80",
+    "equip_total": "£22,528.80",
+    "rooms_subtotal": "£20,800.00",
+    "rooms_vat": "£4,160.00",
+    "rooms_total": "£24,960.00",
+    "summary_equipment_net": "£18,774.00",
+    "summary_rooms_net": "£20,800.00",
+    "summary_subtotal_net": "£39,574.00",
+    "summary_vat": "£7,914.80",
+    "grand_total": "£47,488.80",
+    "terms_payment": "A 40% deposit is payable to confirm the booking. A further 35% falls due 30 days before the event, with the 25% balance due within 14 days of the event date. All amounts are quoted in GBP and are subject to VAT at 20%.",
+    "terms_cancellation": "Cancellation more than 90 days before the event: deposit retained. 60–90 days: 50% of contract value. Under 60 days: 100% of contract value. Postponement is subject to venue and supplier availability and may incur re-booking charges.",
+    "terms_general": "This quotation is valid for 30 days from the date of issue. Rates are based on the information provided and may be revised should the brief, delegate numbers or schedule change materially. Public liability insurance to £10m and full method statements are available on request."
+  },
+  "collections": {
+    "scope_items": {
+      "columns": [
+        "area",
+        "description",
+        "deliverable"
+      ],
+      "rows": [
+        {
+          "area": "Pre-Event Planning",
+          "description": "Dedicated project manager, run-of-show, supplier coordination and site visits.",
+          "deliverable": "Project plan + RACI"
+        },
+        {
+          "area": "Venue & Logistics",
+          "description": "Room booking, floor plans, rigging, H&S risk assessment and access scheduling.",
+          "deliverable": "Floor plans + RAMS"
+        },
+        {
+          "area": "Technical Production",
+          "description": "Stage, AV, lighting, sound, video and live-streaming design and operation.",
+          "deliverable": "AV spec + crew rota"
+        },
+        {
+          "area": "Delegate Management",
+          "description": "Registration website, badging, on-site check-in and delegate mobile app.",
+          "deliverable": "Reg system + reports"
+        },
+        {
+          "area": "Catering & Hospitality",
+          "description": "Day catering, gala dinner service and full dietary management.",
+          "deliverable": "Catering schedule"
+        },
+        {
+          "area": "On-Site Delivery",
+          "description": "Full crew, show-calling, rehearsals and live event management.",
+          "deliverable": "Show file + debrief"
+        }
+      ]
+    },
+    "equipment": {
+      "columns": [
+        "line",
+        "item",
+        "spec",
+        "qty",
+        "days",
+        "rate",
+        "amount"
+      ],
+      "rows": [
+        {
+          "line": "1",
+          "item": "Main Stage & Set",
+          "spec": "12m modular stage, branded backdrop, lectern",
+          "qty": "1",
+          "days": "3",
+          "rate": "£1,850.00",
+          "amount": "£5,550.00"
+        },
+        {
+          "line": "2",
+          "item": "LED Video Wall",
+          "spec": "6m × 3m P3.9 indoor LED with processor",
+          "qty": "1",
+          "days": "3",
+          "rate": "£1,200.00",
+          "amount": "£3,600.00"
+        },
+        {
+          "line": "3",
+          "item": "Audio System",
+          "spec": "L/R line array, 4× monitors, 8-ch radio mics",
+          "qty": "1",
+          "days": "3",
+          "rate": "£680.00",
+          "amount": "£2,040.00"
+        },
+        {
+          "line": "4",
+          "item": "Lighting Rig",
+          "spec": "24× moving heads, 12× wash, haze, DMX desk",
+          "qty": "1",
+          "days": "3",
+          "rate": "£540.00",
+          "amount": "£1,620.00"
+        },
+        {
+          "line": "5",
+          "item": "Conference AV (Breakouts)",
+          "spec": "Projector + screen, PA and laptop per room",
+          "qty": "3",
+          "days": "2",
+          "rate": "£320.00",
+          "amount": "£1,920.00"
+        },
+        {
+          "line": "6",
+          "item": "Live Streaming & Recording",
+          "spec": "4-camera multicam, vision mixer, encoder",
+          "qty": "1",
+          "days": "1",
+          "rate": "£1,450.00",
+          "amount": "£1,450.00"
+        },
+        {
+          "line": "7",
+          "item": "Technical Crew",
+          "spec": "Project manager, 4× technicians, rigger",
+          "qty": "6",
+          "days": "3",
+          "rate": "£260.00",
+          "amount": "£4,680.00"
+        }
+      ]
+    },
+    "rooms": {
+      "columns": [
+        "room",
+        "config",
+        "capacity",
+        "hours",
+        "rate",
+        "subtotal"
+      ],
+      "rows": [
+        {
+          "room": "Exchange Auditorium (Plenary)",
+          "config": "Theatre style",
+          "capacity": "460",
+          "hours": "08:00–18:00",
+          "rate": "£3,200 / day",
+          "subtotal": "£9,600.00"
+        },
+        {
+          "room": "Charter Room (Breakout)",
+          "config": "Cabaret",
+          "capacity": "80",
+          "hours": "09:00–17:00",
+          "rate": "£650 / day",
+          "subtotal": "£1,300.00"
+        },
+        {
+          "room": "Exchange Room (Breakout)",
+          "config": "Boardroom",
+          "capacity": "40",
+          "hours": "09:00–17:00",
+          "rate": "£450 / day",
+          "subtotal": "£900.00"
+        },
+        {
+          "room": "Gallery Foyer (Exhibition)",
+          "config": "Open · 20 stands",
+          "capacity": "250",
+          "hours": "08:00–20:00",
+          "rate": "£1,400 / day",
+          "subtotal": "£4,200.00"
+        },
+        {
+          "room": "Riverside Hall (Gala Dinner)",
+          "config": "Banquet rounds",
+          "capacity": "450",
+          "hours": "18:00–01:00",
+          "rate": "£4,800 / eve",
+          "subtotal": "£4,800.00"
+        }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "event-quotation.data.json"
+  }
+}

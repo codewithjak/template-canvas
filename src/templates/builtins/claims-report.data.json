@@ -1,7 +1,7 @@
 {
   "fields": {
     "brand_name": "Summit Assurance",
-    "brand_sub": "Claims Division \u00b7 summit-assure.example",
+    "brand_sub": "Claims Division · summit-assure.example",
     "insured_0": "Acme Retail Group",
     "insured_1": "Policy P-558210",
     "insured_2": "456 Oak Avenue, Portland, OR",
@@ -37,7 +37,7 @@
       "rows": [
         {
           "item": "1",
-          "description": "Stock \u2014 water damaged inventory",
+          "description": "Stock — water damaged inventory",
           "claimed": "$52,000",
           "assessed": "$44,800",
           "status": "Approved"

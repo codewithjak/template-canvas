@@ -62,6 +62,8 @@ import productionReportDoc from './builtins/production-report.template.json'
 import productionReportData from './builtins/production-report.data.json'
 import packingListDoc from './builtins/packing-list.template.json'
 import packingListData from './builtins/packing-list.data.json'
+import eventQuotationDoc from './builtins/event-quotation.template.json'
+import eventQuotationData from './builtins/event-quotation.data.json'
 
 export type BuiltinCategory =
   | 'Logistics & Freight'
@@ -69,6 +71,7 @@ export type BuiltinCategory =
   | 'Insurance'
   | 'Healthcare'
   | 'Manufacturing'
+  | 'Events & Hospitality'
 
 export interface BuiltinTemplate {
   /** Stable id — used as React key and for "currently open" comparisons. */
@@ -305,5 +308,15 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: packingListDoc as unknown as TemplateDocument,
     data: packingListData as unknown as CanonicalDocument,
+  },
+  // ── Events & Hospitality ──
+  {
+    id: 'builtin-event-quotation',
+    name: 'Event Quotation',
+    description: 'Multi-page event proposal: cover, company & client details, scope, equipment, rooms and terms.',
+    category: 'Events & Hospitality',
+    sizeLabel: 'A4',
+    doc: eventQuotationDoc as unknown as TemplateDocument,
+    data: eventQuotationData as unknown as CanonicalDocument,
   },
 ]

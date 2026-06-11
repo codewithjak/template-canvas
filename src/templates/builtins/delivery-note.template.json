@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -701,7 +701,7 @@
         {
           "id": "t-29",
           "type": "text",
-          "content": "Two units of FIT-1180 backordered \u2014 to follow on next dispatch.",
+          "content": "Two units of FIT-1180 backordered — to follow on next dispatch.",
           "position": {
             "x": 60,
             "y": 519
@@ -831,7 +831,7 @@
         {
           "id": "t-37",
           "type": "text",
-          "content": "Northgate Industries \u00b7 Delivery Note",
+          "content": "Northgate Industries · Delivery Note",
           "position": {
             "x": 60,
             "y": 1054

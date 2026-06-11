@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 996,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -666,7 +666,7 @@
         {
           "id": "inv-pay-line1",
           "type": "text",
-          "content": "Bank   First National \u00b7 Acct 0123 4567 \u00b7 Routing 021000021",
+          "content": "Bank   First National · Acct 0123 4567 · Routing 021000021",
           "position": {
             "x": 60,
             "y": 718
@@ -711,7 +711,7 @@
         {
           "id": "inv-foot-note1",
           "type": "text",
-          "content": "{{company_name}} \u00b7 {{company_address}}",
+          "content": "{{company_name}} · {{company_address}}",
           "position": {
             "x": 60,
             "y": 1016
@@ -726,7 +726,7 @@
         {
           "id": "inv-foot-note2",
           "type": "text",
-          "content": "Questions? billing@yourcompany.com \u00b7 (555) 010-2040",
+          "content": "Questions? billing@yourcompany.com · (555) 010-2040",
           "position": {
             "x": 60,
             "y": 1032

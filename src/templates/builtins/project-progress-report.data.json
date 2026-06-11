@@ -2,7 +2,7 @@
   "fields": {
     "brand_name": "Apex Engineering Group",
     "brand_sub": "Project Controls",
-    "project_0": "Riverside Tower \u2014 Phase 2",
+    "project_0": "Riverside Tower — Phase 2",
     "project_1": "Contract C-2024-118",
     "client_0": "Riverfront Holdings",
     "client_1": "PM: L. Tanaka",
@@ -39,7 +39,7 @@
         },
         {
           "wbs": "2.2",
-          "package": "Superstructure L1\u2013L8",
+          "package": "Superstructure L1–L8",
           "planned": "60%",
           "actual": "55%",
           "status": "In progress"

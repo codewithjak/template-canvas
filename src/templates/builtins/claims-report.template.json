@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -1261,7 +1261,7 @@
         {
           "id": "t-62",
           "type": "text",
-          "content": "Summit Assurance \u00b7 Claims Report",
+          "content": "Summit Assurance · Claims Report",
           "position": {
             "x": 60,
             "y": 1054
@@ -1278,7 +1278,7 @@
         {
           "id": "t-63",
           "type": "text",
-          "content": "Confidential \u2014 claims handling use only",
+          "content": "Confidential — claims handling use only",
           "position": {
             "x": 60,
             "y": 1068

@@ -1,9 +1,9 @@
 {
   "fields": {
     "brand_name": "Vanguard Manufacturing",
-    "brand_sub": "Quality Assurance \u00b7 ISO 9001:2015",
+    "brand_sub": "Quality Assurance · ISO 9001:2015",
     "supplier_line_0": "Apex Components",
-    "supplier_line_1": "PO-2041 \u00b7 Lot L-7741",
+    "supplier_line_1": "PO-2041 · Lot L-7741",
     "part_0": "Precision bearing housing",
     "part_1": "PN VG-2200-A",
     "report_no": "QIR-8841",
@@ -33,29 +33,29 @@
       ],
       "rows": [
         {
-          "char": "Bore \u00d8",
-          "spec": "50.00 \u00b10.02 mm",
+          "char": "Bore Ø",
+          "spec": "50.00 ±0.02 mm",
           "method": "CMM",
           "measured": "50.01",
           "result": "PASS"
         },
         {
           "char": "Surface finish",
-          "spec": "Ra \u2264 0.8 \u00b5m",
+          "spec": "Ra <= 0.8 µm",
           "method": "Profilometer",
           "measured": "0.6",
           "result": "PASS"
         },
         {
           "char": "Hardness",
-          "spec": "58\u201362 HRC",
+          "spec": "58–62 HRC",
           "method": "Rockwell",
           "measured": "60",
           "result": "PASS"
         },
         {
           "char": "Concentricity",
-          "spec": "\u2264 0.03 mm",
+          "spec": "<= 0.03 mm",
           "method": "CMM",
           "measured": "0.041",
           "result": "FAIL"

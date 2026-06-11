@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 996,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -884,7 +884,7 @@
         {
           "id": "qt-foot-note1",
           "type": "text",
-          "content": "Nimbus Solutions \u00b7 123 Market Street, City, ST 12345",
+          "content": "Nimbus Solutions · 123 Market Street, City, ST 12345",
           "position": {
             "x": 60,
             "y": 1016
@@ -899,7 +899,7 @@
         {
           "id": "qt-foot-note2",
           "type": "text",
-          "content": "hello@nimbus.example \u00b7 (555) 010-2040 \u00b7 nimbus.example",
+          "content": "hello@nimbus.example · (555) 010-2040 · nimbus.example",
           "position": {
             "x": 60,
             "y": 1032

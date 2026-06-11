@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -525,7 +525,7 @@
         {
           "id": "t-29",
           "type": "text",
-          "content": "thereafter. This certificate is issued at the patient\u2019s request for the stated purpose.",
+          "content": "thereafter. This certificate is issued at the patient’s request for the stated purpose.",
           "position": {
             "x": 60,
             "y": 387
@@ -655,7 +655,7 @@
         {
           "id": "t-37",
           "type": "text",
-          "content": "Riverside Medical Center \u00b7 Medical Certificate",
+          "content": "Riverside Medical Center · Medical Certificate",
           "position": {
             "x": 60,
             "y": 1054

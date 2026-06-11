@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -960,7 +960,7 @@
         {
           "id": "t-44",
           "type": "text",
-          "content": "Facade procurement ahead \u2014 early delivery negotiated for L1\u2013L4 units.",
+          "content": "Facade procurement ahead — early delivery negotiated for L1–L4 units.",
           "position": {
             "x": 60,
             "y": 632
@@ -1090,7 +1090,7 @@
         {
           "id": "t-52",
           "type": "text",
-          "content": "Apex Engineering Group \u00b7 Monthly Progress Report",
+          "content": "Apex Engineering Group · Monthly Progress Report",
           "position": {
             "x": 60,
             "y": 1054

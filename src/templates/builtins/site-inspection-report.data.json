@@ -2,13 +2,13 @@
   "fields": {
     "brand_name": "Apex Engineering Group",
     "brand_sub": "Civil & Structural Consultants",
-    "project_0": "Riverside Tower \u2014 Phase 2",
+    "project_0": "Riverside Tower — Phase 2",
     "project_1": "1200 Riverfront Dr, Austin, TX",
     "contractor_0": "Turner-Cole Construction",
     "contractor_1": "License TX-CC-44821",
     "report_no": "SIR-3041",
     "inspector": "D. Marsh, PE",
-    "weather": "Clear, 31\u00b0C",
+    "weather": "Clear, 31°C",
     "discipline": "Structural",
     "date": "Jun 9, 2026",
     "items_checked": "24",
@@ -42,7 +42,7 @@
         {
           "ref": "L4-SLB",
           "area": "Slab formwork",
-          "criteria": "Level \u00b15mm",
+          "criteria": "Level ±5mm",
           "result": "PASS",
           "action": "None"
         },

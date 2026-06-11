@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -1073,7 +1073,7 @@
         {
           "id": "t-51",
           "type": "text",
-          "content": "Meridian Freight Lines \u00b7 Manifest",
+          "content": "Meridian Freight Lines · Manifest",
           "position": {
             "x": 60,
             "y": 1054
@@ -1090,7 +1090,7 @@
         {
           "id": "t-52",
           "type": "text",
-          "content": "Confidential \u2014 for carrier and consignee use only",
+          "content": "Confidential — for carrier and consignee use only",
           "position": {
             "x": 60,
             "y": 1068

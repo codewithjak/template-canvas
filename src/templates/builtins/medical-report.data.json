@@ -1,17 +1,17 @@
 {
   "fields": {
     "clinic_name": "Riverside Medical Center",
-    "clinic_subtitle": "Department of Internal Medicine \u00b7 789 Health Blvd, City, ST 12345 \u00b7 (555) 030-1100",
+    "clinic_subtitle": "Department of Internal Medicine · 789 Health Blvd, City, ST 12345 · (555) 030-1100",
     "patient_name": "John A. Whitfield",
     "patient_id": "MRN-558210",
     "patient_dob": "Mar 14, 1981 (45)",
     "patient_sex": "Male",
     "exam_date": "Jun 9, 2026",
     "physician": "Dr. Elena Marsh, MD",
-    "physician_license": "Attending Physician \u00b7 License #ST-44120",
+    "physician_license": "Attending Physician · License #ST-44120",
     "chief_complaint": "Patient presents with intermittent chest tightness and shortness of breath on\nexertion over the past three weeks. No prior cardiac history reported.",
     "findings": "General: Alert and oriented, in no acute distress.\nCardiovascular: Regular rate and rhythm; soft systolic murmur at the left sternal border.\nRespiratory: Clear to auscultation bilaterally; no wheezes or crackles.\nECG: Mild ST-segment changes; recommend follow-up stress testing.",
-    "assessment": "1. Stage 1 hypertension \u2014 begin lifestyle modification and low-dose\n    antihypertensive; recheck blood pressure in 4 weeks.\n2. Exertional chest discomfort \u2014 schedule cardiac stress test and lipid panel.\n3. Patient advised on warning signs requiring immediate care."
+    "assessment": "1. Stage 1 hypertension — begin lifestyle modification and low-dose\n    antihypertensive; recheck blood pressure in 4 weeks.\n2. Exertional chest discomfort — schedule cardiac stress test and lipid panel.\n3. Patient advised on warning signs requiring immediate care."
   },
   "collections": {
     "vitals": {
@@ -29,17 +29,17 @@
         {
           "measurement": "Heart Rate",
           "result": "82 bpm",
-          "reference_range": "60 \u2013 100 bpm"
+          "reference_range": "60 – 100 bpm"
         },
         {
           "measurement": "Temperature",
-          "result": "98.6 \u00b0F",
-          "reference_range": "97.0 \u2013 99.0 \u00b0F"
+          "result": "98.6 °F",
+          "reference_range": "97.0 – 99.0 °F"
         },
         {
           "measurement": "Oxygen Saturation",
           "result": "97 %",
-          "reference_range": "95 \u2013 100 %"
+          "reference_range": "95 – 100 %"
         }
       ]
     }

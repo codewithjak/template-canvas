@@ -1,7 +1,7 @@
 {
   "fields": {
     "brand_name": "Northgate Industries",
-    "brand_sub": "Distribution Center \u00b7 Newark, NJ",
+    "brand_sub": "Distribution Center · Newark, NJ",
     "deliver_to_0": "Acme Retail Group",
     "deliver_to_1": "456 Oak Avenue",
     "deliver_to_2": "Portland, OR 97201",
@@ -36,7 +36,7 @@
         },
         {
           "sku": "FIT-1180",
-          "description": "Ductile iron elbow 90\u00b0",
+          "description": "Ductile iron elbow 90°",
           "ordered": "120",
           "delivered": "118",
           "uom": "EA"

@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -151,7 +151,7 @@
         {
           "id": "t-7",
           "type": "text",
-          "content": "Negotiable \u00b7 B/L No. below",
+          "content": "Negotiable · B/L No. below",
           "position": {
             "x": 394,
             "y": 82
@@ -1051,7 +1051,7 @@
         {
           "id": "t-50",
           "type": "text",
-          "content": "Meridian Freight Lines \u00b7 Bill of Lading \u00b7 Confidential",
+          "content": "Meridian Freight Lines · Bill of Lading · Confidential",
           "position": {
             "x": 60,
             "y": 1054
@@ -1068,7 +1068,7 @@
         {
           "id": "t-51",
           "type": "text",
-          "content": "meridianfreight.example \u00b7 ops@meridianfreight.example",
+          "content": "meridianfreight.example · ops@meridianfreight.example",
           "position": {
             "x": 60,
             "y": 1068

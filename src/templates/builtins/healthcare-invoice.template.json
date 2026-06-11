@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -821,7 +821,7 @@
         {
           "id": "t-36",
           "type": "text",
-          "content": "Financial assistance options available \u2014 contact Patient Financial Services.",
+          "content": "Financial assistance options available — contact Patient Financial Services.",
           "position": {
             "x": 60,
             "y": 637
@@ -853,7 +853,7 @@
         {
           "id": "t-38",
           "type": "text",
-          "content": "Riverside Medical Center \u00b7 Patient Financial Services",
+          "content": "Riverside Medical Center · Patient Financial Services",
           "position": {
             "x": 60,
             "y": 1054
@@ -870,7 +870,7 @@
         {
           "id": "t-39",
           "type": "text",
-          "content": "billing@riverside.example \u00b7 (555) 030-1180",
+          "content": "billing@riverside.example · (555) 030-1180",
           "position": {
             "x": 60,
             "y": 1068

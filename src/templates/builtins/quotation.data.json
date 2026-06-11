@@ -1,7 +1,7 @@
 {
   "fields": {
     "company_name": "Nimbus Solutions",
-    "company_address": "123 Market Street \u00b7 City, ST 12345 \u00b7 nimbus.example",
+    "company_address": "123 Market Street · City, ST 12345 · nimbus.example",
     "customer_name": "Acme Retail Group",
     "customer_contact": "Attn: Mark Reyes, Operations",
     "customer_address": "456 Oak Avenue, Portland, OR 97201",

@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -943,7 +943,7 @@
         {
           "id": "t-43",
           "type": "text",
-          "content": "Membrane laps at L4 core wall below 75mm minimum \u2014 NCR-118 raised.",
+          "content": "Membrane laps at L4 core wall below 75mm minimum — NCR-118 raised.",
           "position": {
             "x": 60,
             "y": 616
@@ -1139,7 +1139,7 @@
         {
           "id": "t-55",
           "type": "text",
-          "content": "Apex Engineering Group \u00b7 Site Inspection Report",
+          "content": "Apex Engineering Group · Site Inspection Report",
           "position": {
             "x": 60,
             "y": 1054
@@ -1156,7 +1156,7 @@
         {
           "id": "t-56",
           "type": "text",
-          "content": "apex-eng.example \u00b7 Controlled document",
+          "content": "apex-eng.example · Controlled document",
           "position": {
             "x": 60,
             "y": 1068

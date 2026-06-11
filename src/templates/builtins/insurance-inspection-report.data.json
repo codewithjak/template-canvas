@@ -34,13 +34,13 @@
           "ref": "F-01",
           "area": "Sprinkler system",
           "finding": "Annual cert current",
-          "priority": "\u2014",
+          "priority": "—",
           "status": "OK"
         },
         {
           "ref": "F-02",
           "area": "Electrical",
-          "finding": "Therm\u043e\u0433\u0440\u0430\u0444ic scan due",
+          "finding": "Thermographic scan due",
           "priority": "Medium",
           "status": "Open"
         },

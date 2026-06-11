@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 996,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -875,7 +875,7 @@
         {
           "id": "pr-foot-note1",
           "type": "text",
-          "content": "Northgate Industries \u00b7 Procurement Department \u00b7 Confidential",
+          "content": "Northgate Industries · Procurement Department · Confidential",
           "position": {
             "x": 60,
             "y": 1016
@@ -890,7 +890,7 @@
         {
           "id": "pr-foot-note2",
           "type": "text",
-          "content": "Generated Jun 9, 2026 \u00b7 procurement@northgate.example",
+          "content": "Generated Jun 9, 2026 · procurement@northgate.example",
           "position": {
             "x": 60,
             "y": 1032

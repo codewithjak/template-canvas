@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -951,7 +951,7 @@
         {
           "id": "t-44",
           "type": "text",
-          "content": "Summit Assurance \u00b7 Policy Schedule",
+          "content": "Summit Assurance · Policy Schedule",
           "position": {
             "x": 60,
             "y": 1054

@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -934,7 +934,7 @@
         {
           "id": "t-43",
           "type": "text",
-          "content": "Vanguard Manufacturing \u00b7 Packing List",
+          "content": "Vanguard Manufacturing · Packing List",
           "position": {
             "x": 60,
             "y": 1054
@@ -951,7 +951,7 @@
         {
           "id": "t-44",
           "type": "text",
-          "content": "Not an invoice \u2014 for receiving reconciliation",
+          "content": "Not an invoice — for receiving reconciliation",
           "position": {
             "x": 60,
             "y": 1068

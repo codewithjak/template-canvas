@@ -1,8 +1,8 @@
 {
   "fields": {
     "company_name": "Northgate Industries",
-    "department_line": "Procurement Department \u00b7 procurement@northgate.example",
-    "period": "Q2 2026 (Apr \u2013 Jun)",
+    "department_line": "Procurement Department · procurement@northgate.example",
+    "period": "Q2 2026 (Apr – Jun)",
     "total_spend": "$248,900",
     "purchase_orders": "42",
     "suppliers": "18",

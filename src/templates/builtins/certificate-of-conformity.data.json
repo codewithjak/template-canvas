@@ -5,7 +5,7 @@
     "supplied_to_0": "Northgate Industries",
     "supplied_to_1": "PO-2041",
     "product_0": "Precision bearing housing",
-    "product_1": "PN VG-2200-A \u00b7 Lot L-7741",
+    "product_1": "PN VG-2200-A · Lot L-7741",
     "certificate_no": "CoC-5521",
     "quantity": "500 units",
     "standard": "ISO 9001:2015",
@@ -39,7 +39,7 @@
         },
         {
           "requirement": "Heat treatment",
-          "spec": "58\u201362 HRC",
+          "spec": "58–62 HRC",
           "result": "CONFORMS",
           "evidence": "HT log 7741"
         },

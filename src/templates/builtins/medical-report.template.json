@@ -34,14 +34,14 @@
         }
       },
       "footer": {
-        "enabled": false,
-        "scope": "first-page-only",
-        "repeatOnOverflow": false,
-        "boundaryY": 1043,
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 996,
         "style": {
           "backgroundColor": "transparent",
           "borderColor": "#e2e8f0",
-          "borderWidth": 1,
+          "borderWidth": 0,
           "opacity": 1
         }
       },
@@ -776,7 +776,7 @@
         {
           "id": "mr-foot-note2",
           "type": "text",
-          "content": "Riverside Medical Center \u00b7 789 Health Blvd, City, ST 12345 \u00b7 records@riverside.example",
+          "content": "Riverside Medical Center · 789 Health Blvd, City, ST 12345 · records@riverside.example",
           "position": {
             "x": 60,
             "y": 1030

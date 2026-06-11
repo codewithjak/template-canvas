@@ -1,13 +1,13 @@
 {
   "fields": {
     "brand_name": "Vanguard Manufacturing",
-    "brand_sub": "Operations \u00b7 Plant 2",
-    "plant_line_0": "Plant 2 \u2014 CNC Cell 4",
+    "brand_sub": "Operations · Plant 2",
+    "plant_line_0": "Plant 2 — CNC Cell 4",
     "plant_line_1": "Shift A",
     "supervisor_0": "M. Alvarez",
     "supervisor_1": "Production Lead",
     "report_no": "PRD-6612",
-    "shift": "A (06:00\u201314:00)",
+    "shift": "A (06:00–14:00)",
     "operators": "6",
     "date": "Jun 9, 2026",
     "work_order": "WO-44821",

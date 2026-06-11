@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import BookDemo from '../components/BookDemo'
 import '../App.css'
 
 /* ── Inline SVG icons ─────────────────────────────────────── */
@@ -51,6 +52,12 @@ const Icon = {
   Play: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M5 3.5 13 8 5 12.5V3.5Z" fill="currentColor"/>
+    </svg>
+  ),
+  Calendar: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2.5" y="3" width="11" height="10.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M2.5 6h11M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   ),
 }
@@ -134,7 +141,10 @@ export default function Home() {
             <Link to="/pricing" className="topbar__link">Pricing</Link>
             <Link to="/careers" className="topbar__link">Careers</Link>
           </nav>
-          <Link to="/canvas" className="btn btn--primary btn--sm">Launch App</Link>
+          <div className="topbar__cta">
+            <BookDemo className="btn btn--ghost btn--sm"><Icon.Calendar /> Book a demo</BookDemo>
+            <Link to="/canvas" className="btn btn--primary btn--sm">Launch App</Link>
+          </div>
         </div>
       </header>
 

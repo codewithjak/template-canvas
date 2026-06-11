@@ -94,6 +94,12 @@ h1, h2, h3 { margin: 0; }
 
 .topbar__link:hover { background: var(--blue-soft); color: var(--blue); }
 
+.topbar__cta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* ── Buttons ───────────────────────────────────────────────── */
 .btn {
   display: inline-flex;

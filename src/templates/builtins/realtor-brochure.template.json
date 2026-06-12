@@ -1,0 +1,1453 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-realtor-brochure",
+    "name": "Realtor Brochure",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Cover",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e7e2da",
+          "borderWidth": 0,
+          "opacity": 1
+        }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 1043,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e7e2da",
+          "borderWidth": 0,
+          "opacity": 1
+        }
+      },
+      "elements": [
+        {
+          "id": "b-1",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "style": {
+            "width": 18,
+            "height": 1123,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-2",
+          "type": "box",
+          "position": {
+            "x": 18,
+            "y": 0
+          },
+          "style": {
+            "width": 776,
+            "height": 700,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#14181f",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "img-3",
+          "type": "image",
+          "src": "{{hero_image}}",
+          "position": {
+            "x": 18,
+            "y": 0
+          },
+          "style": {
+            "width": 776,
+            "height": 700,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-4",
+          "type": "box",
+          "position": {
+            "x": 18,
+            "y": 700
+          },
+          "style": {
+            "width": 776,
+            "height": 8,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-5",
+          "type": "text",
+          "content": "{{agency_name}}",
+          "position": {
+            "x": 52,
+            "y": 40
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-6",
+          "type": "text",
+          "content": "{{agency_tagline}}",
+          "position": {
+            "x": 52,
+            "y": 63
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#c9cdd4",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b-7",
+          "type": "box",
+          "position": {
+            "x": 636,
+            "y": 40
+          },
+          "style": {
+            "width": 140,
+            "height": 34,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-8",
+          "type": "text",
+          "content": "{{listing_status}}",
+          "position": {
+            "x": 636,
+            "y": 49
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 140,
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "t-9",
+          "type": "text",
+          "content": "{{property_type}}  ·  {{beds}} BED  ·  {{baths}} BATH  ·  {{sqft}} SQ FT",
+          "position": {
+            "x": 52,
+            "y": 740
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-10",
+          "type": "text",
+          "content": "{{property_headline}}",
+          "position": {
+            "x": 52,
+            "y": 760
+          },
+          "style": {
+            "fontSize": 34,
+            "fontWeight": "bold",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-11",
+          "type": "text",
+          "content": "{{property_address}}, {{property_city}}",
+          "position": {
+            "x": 52,
+            "y": 808
+          },
+          "style": {
+            "fontSize": 14,
+            "fontWeight": "normal",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b-12",
+          "type": "box",
+          "position": {
+            "x": 540,
+            "y": 730
+          },
+          "style": {
+            "width": 198,
+            "height": 72,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#14181f",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-13",
+          "type": "text",
+          "content": "{{price}}",
+          "position": {
+            "x": 540,
+            "y": 746
+          },
+          "style": {
+            "fontSize": 24,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 182,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-14",
+          "type": "text",
+          "content": "{{mls_number}}",
+          "position": {
+            "x": 540,
+            "y": 780
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#8b919b",
+            "fontFamily": "Arial, sans-serif",
+            "width": 182,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "l-15",
+          "type": "line",
+          "position": {
+            "x": 52,
+            "y": 876
+          },
+          "style": {
+            "length": 686,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e7e2da",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "b-16",
+          "type": "box",
+          "position": {
+            "x": 214,
+            "y": 890
+          },
+          "style": {
+            "width": 1,
+            "height": 46,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#e7e2da",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-17",
+          "type": "box",
+          "position": {
+            "x": 388,
+            "y": 890
+          },
+          "style": {
+            "width": 1,
+            "height": 46,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#e7e2da",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-18",
+          "type": "box",
+          "position": {
+            "x": 562,
+            "y": 890
+          },
+          "style": {
+            "width": 1,
+            "height": 46,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#e7e2da",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-19",
+          "type": "text",
+          "content": "{{beds}}",
+          "position": {
+            "x": 52,
+            "y": 888
+          },
+          "style": {
+            "fontSize": 24,
+            "fontWeight": "bold",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-20",
+          "type": "text",
+          "content": "BEDROOMS",
+          "position": {
+            "x": 52,
+            "y": 922
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-21",
+          "type": "text",
+          "content": "{{baths}}",
+          "position": {
+            "x": 226,
+            "y": 888
+          },
+          "style": {
+            "fontSize": 24,
+            "fontWeight": "bold",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-22",
+          "type": "text",
+          "content": "BATHROOMS",
+          "position": {
+            "x": 226,
+            "y": 922
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-23",
+          "type": "text",
+          "content": "{{sqft}}",
+          "position": {
+            "x": 400,
+            "y": 888
+          },
+          "style": {
+            "fontSize": 24,
+            "fontWeight": "bold",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-24",
+          "type": "text",
+          "content": "SQ FT",
+          "position": {
+            "x": 400,
+            "y": 922
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-25",
+          "type": "text",
+          "content": "{{year_built}}",
+          "position": {
+            "x": 574,
+            "y": 888
+          },
+          "style": {
+            "fontSize": 24,
+            "fontWeight": "bold",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-26",
+          "type": "text",
+          "content": "YEAR BUILT",
+          "position": {
+            "x": 574,
+            "y": 922
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "l-27",
+          "type": "line",
+          "position": {
+            "x": 52,
+            "y": 1052
+          },
+          "style": {
+            "length": 686,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e7e2da",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "t-28",
+          "type": "text",
+          "content": "{{agency_name}}  ·  {{agency_phone}}  ·  {{agency_email}}",
+          "position": {
+            "x": 52,
+            "y": 1066
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-29",
+          "type": "text",
+          "content": "{{agency_website}}",
+          "position": {
+            "x": 540,
+            "y": 1066
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif",
+            "width": 198,
+            "textAlign": "right"
+          }
+        }
+      ]
+    },
+    {
+      "pageId": "page-2",
+      "label": "Property Details",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e7e2da",
+          "borderWidth": 0,
+          "opacity": 1
+        }
+      },
+      "footer": {
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e7e2da",
+          "borderWidth": 0,
+          "opacity": 1
+        }
+      },
+      "elements": [
+        {
+          "id": "b-48",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "style": {
+            "width": 18,
+            "height": 1123,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-49",
+          "type": "box",
+          "position": {
+            "x": 18,
+            "y": 0
+          },
+          "style": {
+            "width": 776,
+            "height": 96,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#14181f",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-50",
+          "type": "box",
+          "position": {
+            "x": 18,
+            "y": 96
+          },
+          "style": {
+            "width": 776,
+            "height": 6,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-51",
+          "type": "text",
+          "content": "{{agency_name}}",
+          "position": {
+            "x": 52,
+            "y": 30
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-52",
+          "type": "text",
+          "content": "{{agency_tagline}}",
+          "position": {
+            "x": 52,
+            "y": 54
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#c9cdd4",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-53",
+          "type": "text",
+          "content": "PROPERTY DETAILS",
+          "position": {
+            "x": 440,
+            "y": 34
+          },
+          "style": {
+            "fontSize": 14,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 298,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-54",
+          "type": "text",
+          "content": "{{mls_number}}",
+          "position": {
+            "x": 440,
+            "y": 58
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#c9cdd4",
+            "fontFamily": "Arial, sans-serif",
+            "width": 298,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "t-55",
+          "type": "text",
+          "content": "ABOUT THIS HOME",
+          "position": {
+            "x": 52,
+            "y": 122
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "p-56",
+          "type": "paragraph",
+          "content": "{{description}}",
+          "position": {
+            "x": 52,
+            "y": 144
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif",
+            "width": 686
+          }
+        },
+        {
+          "id": "t-57",
+          "type": "text",
+          "content": "PROPERTY FACTS",
+          "position": {
+            "x": 52,
+            "y": 234
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b-30",
+          "type": "box",
+          "position": {
+            "x": 52,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 104,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#f4f0ea",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-31",
+          "type": "box",
+          "position": {
+            "x": 52,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 5,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-32",
+          "type": "text",
+          "content": "PROPERTY TYPE",
+          "position": {
+            "x": 68,
+            "y": 282
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-33",
+          "type": "text",
+          "content": "{{property_type}}",
+          "position": {
+            "x": 68,
+            "y": 296
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-34",
+          "type": "text",
+          "content": "YEAR BUILT",
+          "position": {
+            "x": 68,
+            "y": 326
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-35",
+          "type": "text",
+          "content": "{{year_built}}",
+          "position": {
+            "x": 68,
+            "y": 340
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b-36",
+          "type": "box",
+          "position": {
+            "x": 286,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 104,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#f4f0ea",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-37",
+          "type": "box",
+          "position": {
+            "x": 286,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 5,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-38",
+          "type": "text",
+          "content": "LOT SIZE",
+          "position": {
+            "x": 302,
+            "y": 282
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-39",
+          "type": "text",
+          "content": "{{lot_size}}",
+          "position": {
+            "x": 302,
+            "y": 296
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-40",
+          "type": "text",
+          "content": "GARAGE",
+          "position": {
+            "x": 302,
+            "y": 326
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-41",
+          "type": "text",
+          "content": "{{garage}}",
+          "position": {
+            "x": 302,
+            "y": 340
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b-42",
+          "type": "box",
+          "position": {
+            "x": 520,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 104,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#f4f0ea",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-43",
+          "type": "box",
+          "position": {
+            "x": 520,
+            "y": 258
+          },
+          "style": {
+            "width": 218,
+            "height": 5,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-44",
+          "type": "text",
+          "content": "HEATING / COOLING",
+          "position": {
+            "x": 536,
+            "y": 282
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-45",
+          "type": "text",
+          "content": "{{hvac}}",
+          "position": {
+            "x": 536,
+            "y": 296
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-46",
+          "type": "text",
+          "content": "HOA",
+          "position": {
+            "x": 536,
+            "y": 326
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#6b7280",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-47",
+          "type": "text",
+          "content": "{{hoa}}",
+          "position": {
+            "x": 536,
+            "y": 340
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#14181f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-58",
+          "type": "text",
+          "content": "FEATURES & HIGHLIGHTS",
+          "position": {
+            "x": 52,
+            "y": 392
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "feat-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": {
+            "x": 52,
+            "y": 416
+          },
+          "size": {
+            "width": 686,
+            "height": 120
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "borderColor": "#e7e2da",
+            "borderWidth": 1,
+            "showBorders": false,
+            "headerBg": "#14181f",
+            "headerColor": "#ffffff"
+          },
+          "binding": {
+            "enabled": true,
+            "collectionKey": "features",
+            "itemAlias": "feature"
+          },
+          "columns": [
+            {
+              "id": "feat-table-col-feature",
+              "width": 210,
+              "alignment": "left"
+            },
+            {
+              "id": "feat-table-col-detail",
+              "width": 476,
+              "alignment": "left"
+            }
+          ],
+          "headerRow": {
+            "id": "feat-table-head",
+            "height": 34,
+            "cells": [
+              {
+                "id": "feat-table-h-feature",
+                "content": {
+                  "type": "text",
+                  "value": "FEATURE"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "left",
+                  "backgroundColor": "#14181f"
+                }
+              },
+              {
+                "id": "feat-table-h-detail",
+                "content": {
+                  "type": "text",
+                  "value": "DESCRIPTION"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "left",
+                  "backgroundColor": "#14181f"
+                }
+              }
+            ]
+          },
+          "rows": [
+            {
+              "id": "feat-table-row",
+              "height": 34,
+              "cells": [
+                {
+                  "id": "feat-table-r-feature",
+                  "content": {
+                    "type": "text",
+                    "value": "{{feature}}"
+                  },
+                  "style": {
+                    "textAlign": "left",
+                    "color": "#14181f",
+                    "fontWeight": "bold"
+                  }
+                },
+                {
+                  "id": "feat-table-r-detail",
+                  "content": {
+                    "type": "text",
+                    "value": "{{detail}}"
+                  },
+                  "style": {
+                    "textAlign": "left",
+                    "color": "#334155"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "t-59",
+          "type": "text",
+          "content": "ROOM DIMENSIONS",
+          "position": {
+            "x": 52,
+            "y": 504
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "rooms-table",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": {
+            "x": 52,
+            "y": 528
+          },
+          "size": {
+            "width": 686,
+            "height": 120
+          },
+          "style": {
+            "fontSize": 11,
+            "fontWeight": "normal",
+            "color": "#334155",
+            "fontFamily": "Arial, sans-serif",
+            "borderColor": "#e7e2da",
+            "borderWidth": 1,
+            "showBorders": false,
+            "headerBg": "#14181f",
+            "headerColor": "#ffffff"
+          },
+          "binding": {
+            "enabled": true,
+            "collectionKey": "rooms",
+            "itemAlias": "room"
+          },
+          "columns": [
+            {
+              "id": "rooms-table-col-room",
+              "width": 300,
+              "alignment": "left"
+            },
+            {
+              "id": "rooms-table-col-dimensions",
+              "width": 200,
+              "alignment": "center"
+            },
+            {
+              "id": "rooms-table-col-level",
+              "width": 186,
+              "alignment": "center"
+            }
+          ],
+          "headerRow": {
+            "id": "rooms-table-head",
+            "height": 34,
+            "cells": [
+              {
+                "id": "rooms-table-h-room",
+                "content": {
+                  "type": "text",
+                  "value": "ROOM"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "left",
+                  "backgroundColor": "#14181f"
+                }
+              },
+              {
+                "id": "rooms-table-h-dimensions",
+                "content": {
+                  "type": "text",
+                  "value": "DIMENSIONS"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#14181f"
+                }
+              },
+              {
+                "id": "rooms-table-h-level",
+                "content": {
+                  "type": "text",
+                  "value": "LEVEL"
+                },
+                "style": {
+                  "fontSize": 10,
+                  "fontWeight": "bold",
+                  "color": "#ffffff",
+                  "textAlign": "center",
+                  "backgroundColor": "#14181f"
+                }
+              }
+            ]
+          },
+          "rows": [
+            {
+              "id": "rooms-table-row",
+              "height": 34,
+              "cells": [
+                {
+                  "id": "rooms-table-r-room",
+                  "content": {
+                    "type": "text",
+                    "value": "{{room}}"
+                  },
+                  "style": {
+                    "textAlign": "left",
+                    "color": "#14181f",
+                    "fontWeight": "bold"
+                  }
+                },
+                {
+                  "id": "rooms-table-r-dimensions",
+                  "content": {
+                    "type": "text",
+                    "value": "{{dimensions}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                },
+                {
+                  "id": "rooms-table-r-level",
+                  "content": {
+                    "type": "text",
+                    "value": "{{level}}"
+                  },
+                  "style": {
+                    "textAlign": "center",
+                    "color": "#334155"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b-60",
+          "type": "box",
+          "position": {
+            "x": 52,
+            "y": 616
+          },
+          "style": {
+            "width": 686,
+            "height": 86,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#14181f",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-61",
+          "type": "box",
+          "position": {
+            "x": 52,
+            "y": 616
+          },
+          "style": {
+            "width": 6,
+            "height": 86,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#c8603a",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b-62",
+          "type": "box",
+          "position": {
+            "x": 74,
+            "y": 630
+          },
+          "style": {
+            "width": 58,
+            "height": 58,
+            "borderWidth": 0,
+            "borderColor": "#e7e2da",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "img-63",
+          "type": "image",
+          "src": "{{agent_photo}}",
+          "position": {
+            "x": 74,
+            "y": 630
+          },
+          "style": {
+            "width": 58,
+            "height": 58,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "t-64",
+          "type": "text",
+          "content": "{{agent_name}}",
+          "position": {
+            "x": 152,
+            "y": 632
+          },
+          "style": {
+            "fontSize": 15,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-65",
+          "type": "text",
+          "content": "{{agent_title}}",
+          "position": {
+            "x": 152,
+            "y": 656
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#c9cdd4",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-66",
+          "type": "text",
+          "content": "{{agent_phone}}  ·  {{agent_email}}",
+          "position": {
+            "x": 152,
+            "y": 676
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#c9cdd4",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-67",
+          "type": "text",
+          "content": "PRESENTED BY",
+          "position": {
+            "x": 440,
+            "y": 632
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "bold",
+            "color": "#c8603a",
+            "fontFamily": "Arial, sans-serif",
+            "width": 282,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "l-68",
+          "type": "line",
+          "position": {
+            "x": 52,
+            "y": 1050
+          },
+          "style": {
+            "length": 686,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e7e2da",
+            "style": "solid"
+          }
+        },
+        {
+          "id": "t-69",
+          "type": "text",
+          "content": "{{agency_name}}  ·  {{agency_phone}}  ·  {{agency_website}}",
+          "position": {
+            "x": 52,
+            "y": 1064
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "normal",
+            "color": "#9aa3af",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "t-70",
+          "type": "text",
+          "content": "{{property_address}}",
+          "position": {
+            "x": 540,
+            "y": 1064
+          },
+          "style": {
+            "fontSize": 9,
+            "fontWeight": "normal",
+            "color": "#9aa3af",
+            "fontFamily": "Arial, sans-serif",
+            "width": 198,
+            "textAlign": "right"
+          }
+        }
+      ]
+    }
+  ]
+}

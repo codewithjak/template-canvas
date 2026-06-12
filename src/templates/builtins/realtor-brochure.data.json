@@ -1,0 +1,58 @@
+{
+  "fields": {
+    "agency_name": "Hearthstone Realty",
+    "agency_tagline": "Distinctive Homes · Trusted Advice",
+    "agency_phone": "(503) 555-0142",
+    "agency_email": "hello@hearthstonerealty.example",
+    "agency_website": "www.hearthstonerealty.example",
+    "agency_address": "27 Lakeview Plaza, Lakemont, OR 97041",
+    "listing_status": "FOR SALE",
+    "property_headline": "Modern Lakeside Retreat",
+    "property_address": "1428 Birchwood Lane",
+    "property_city": "Lakemont, OR 97041",
+    "price": "$1,295,000",
+    "beds": "4",
+    "baths": "3.5",
+    "sqft": "3,420",
+    "lot_size": "0.62 acres",
+    "year_built": "2019",
+    "property_type": "Single-Family",
+    "garage": "2-car attached",
+    "hvac": "Forced air · A/C",
+    "hoa": "$120 / month",
+    "mls_number": "MLS# 4488210",
+    "hero_image": "",
+    "agent_photo": "",
+    "description": "Set on a quiet stretch of the lakefront, this architect-designed residence pairs walls of glass with warm natural materials. An open great room flows to a chef's kitchen and a covered terrace built for entertaining, while the upper level is devoted to a private primary suite with sweeping lake views. Minutes from the village, marina and award-winning schools.",
+    "agent_name": "Olivia Hartman",
+    "agent_title": "Principal Broker · Lic. #200458",
+    "agent_phone": "(503) 555-0188",
+    "agent_email": "olivia@hearthstonerealty.example"
+  },
+  "collections": {
+    "features": {
+      "columns": ["feature", "detail"],
+      "rows": [
+        { "feature": "Chef's Kitchen", "detail": "Quartz islands, paneled appliances and a walk-in pantry" },
+        { "feature": "Primary Suite", "detail": "Lake views, spa-inspired bath and custom walk-in closet" },
+        { "feature": "Great Room", "detail": "Floor-to-ceiling windows and a gas fireplace" },
+        { "feature": "Outdoor Living", "detail": "Covered terrace, fire pit and level lawn to the shore" },
+        { "feature": "Smart Home", "detail": "Integrated lighting, climate and security systems" },
+        { "feature": "Energy Efficient", "detail": "Solar-ready, high-performance windows and EV charger" }
+      ]
+    },
+    "rooms": {
+      "columns": ["room", "dimensions", "level"],
+      "rows": [
+        { "room": "Primary Suite", "dimensions": "18 x 16", "level": "Upper" },
+        { "room": "Great Room", "dimensions": "24 x 20", "level": "Main" },
+        { "room": "Kitchen / Dining", "dimensions": "22 x 18", "level": "Main" },
+        { "room": "Bedroom 2", "dimensions": "14 x 12", "level": "Upper" }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "realtor-brochure.data.json"
+  }
+}

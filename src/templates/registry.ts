@@ -64,6 +64,8 @@ import packingListDoc from './builtins/packing-list.template.json'
 import packingListData from './builtins/packing-list.data.json'
 import eventQuotationDoc from './builtins/event-quotation.template.json'
 import eventQuotationData from './builtins/event-quotation.data.json'
+import realtorBrochureDoc from './builtins/realtor-brochure.template.json'
+import realtorBrochureData from './builtins/realtor-brochure.data.json'
 
 export type BuiltinCategory =
   | 'Logistics & Freight'
@@ -72,6 +74,7 @@ export type BuiltinCategory =
   | 'Healthcare'
   | 'Manufacturing'
   | 'Events & Hospitality'
+  | 'Real Estate'
 
 export interface BuiltinTemplate {
   /** Stable id — used as React key and for "currently open" comparisons. */
@@ -318,5 +321,15 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: eventQuotationDoc as unknown as TemplateDocument,
     data: eventQuotationData as unknown as CanonicalDocument,
+  },
+  // ── Real Estate ──
+  {
+    id: 'builtin-realtor-brochure',
+    name: 'Realtor Brochure',
+    description: 'Two-page property listing brochure with hero cover, features, room dimensions and agent card.',
+    category: 'Real Estate',
+    sizeLabel: 'A4',
+    doc: realtorBrochureDoc as unknown as TemplateDocument,
+    data: realtorBrochureData as unknown as CanonicalDocument,
   },
 ]

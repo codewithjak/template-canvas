@@ -161,6 +161,15 @@ const Icons = {
       <rect x="13" y="2" width="2" height="12" fill="currentColor"/>
     </svg>
   ),
+  Chart: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 14V2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M2 14h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <rect x="4" y="8" width="2.2" height="4" fill="currentColor"/>
+      <rect x="7.4" y="5" width="2.2" height="7" fill="currentColor"/>
+      <rect x="10.8" y="9.5" width="2.2" height="2.5" fill="currentColor"/>
+    </svg>
+  ),
   PageSize: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -444,6 +453,7 @@ export interface ToolbarProps {
   onAddTable     ?: () => void;
   onAddImage     ?: () => void;
   onAddBarcode   ?: () => void;
+  onAddChart     ?: () => void;
   onAddWatermark ?: () => void;
   onAddSignature ?: () => void;
   onAddLine      ?: () => void;
@@ -473,7 +483,7 @@ export interface ToolbarProps {
 
 export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
-  onAddText, onAddTable, onAddImage, onAddBarcode, onAddWatermark, onAddSignature,
+  onAddText, onAddTable, onAddImage, onAddBarcode, onAddChart, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
   onDelete, onSave, onOpenTemplates, onLoad, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
@@ -510,6 +520,7 @@ export default function Toolbar({
         {onAddTable && <IconBtn icon={<Icons.Table />} label="Table" shortcut="G" onClick={onAddTable} />}
         {onAddImage && <IconBtn icon={<Icons.Image />} label="Image" shortcut="I" onClick={onAddImage} />}
         {onAddBarcode && <IconBtn icon={<Icons.Barcode />} label="Barcode / QR" shortcut="B" onClick={onAddBarcode} />}
+        {onAddChart && <IconBtn icon={<Icons.Chart />} label="Chart" shortcut="C" onClick={onAddChart} />}
         {onAddWatermark && <IconBtn icon={<Icons.Watermark />} label="Watermark" shortcut="W" onClick={onAddWatermark} />}
         {onAddSignature && <IconBtn icon={<Icons.Signature />} label="Digital signature" shortcut="S" onClick={onAddSignature} />}
       </div>

@@ -225,6 +225,13 @@
   cursor: not-allowed;
 }
 
+.chart-data-remove {
+  flex: 0 0 auto;
+  width: 28px;
+  padding: 6px 0;
+  line-height: 1;
+}
+
 .property-textarea {
   width: 100%;
   min-height: 72px;

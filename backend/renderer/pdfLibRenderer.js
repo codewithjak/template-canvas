@@ -28,7 +28,7 @@ const { PDFDocument, rgb, StandardFonts, degrees } = require('pdf-lib');
 const https = require('https');
 const http  = require('http');
 
-const { replacePlaceholders, resolveCellValue } = require('../utils/resolver');
+const { replacePlaceholders, resolveCellValue, resolve } = require('../utils/resolver');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -341,6 +341,28 @@ function resolveTableEl(tableEl, collRows, irFields, fm, colMap) {
   return el;
 }
 
+/**
+ * Resolve a chart element's data series from a bound collection.
+ * Falls back to the statically-authored `chart.data` when the collection is
+ * missing/empty, so the chart always renders something.
+ */
+function resolveChartEl(chartEl, irCollections, collectionMappings) {
+  const el = JSON.parse(JSON.stringify(chartEl));
+  const b  = el.chart?.binding || {};
+  const collKey = (b.collectionKey || '').trim().toLowerCase();
+  const collData = irCollections[collKey] || {};
+  const rows = Array.isArray(collData) ? collData : (collData.rows || []);
+  const colMap = collectionMappings[collKey] || {};
+
+  if (rows.length && b.valueField) {
+    el._series = rows.map(row => ({
+      label: String(resolve(row, colMap[b.labelField] || b.labelField) ?? ''),
+      value: Number(resolve(row, colMap[b.valueField] || b.valueField)) || 0,
+    }));
+  }
+  return el;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Image preload
 // ─────────────────────────────────────────────────────────────────────────────
@@ -606,6 +628,7 @@ function measureElementBlock(el, fonts, dim) {
     case 'image':
     case 'box':
     case 'barcode':
+    case 'chart':
       return { height: s.height || 0, lineHeight: s.height || 0 };
     default:
       return { height: 0, lineHeight: 0 };
@@ -698,6 +721,13 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
       const wPt = (s.width || 0) * SCALE;
       const hPt = (s.height || 0) * SCALE;
       await drawBarcode(page, pdfDoc, el, xPt, pdfY, wPt, hPt);
+      break;
+    }
+    case 'chart': {
+      const { drawChart } = require('./elementDrawers');
+      const wPt = (s.width || 0) * SCALE;
+      const hPt = (s.height || 0) * SCALE;
+      drawChart(page, fonts, el, xPt, pdfY, wPt, hPt);
       break;
     }
     case 'line': {
@@ -1013,6 +1043,8 @@ async function generatePdfBuffer({
       const colMap   = collectionMappings[collKey] || {};
 
       resolved.push(resolveTableEl(el, rows, irFields, fieldMapping, colMap));
+    } else if (el.type === 'chart' && el.chart?.binding?.enabled) {
+      resolved.push(resolveChartEl(el, irCollections, collectionMappings));
     } else {
       resolved.push(resolveStatic(el, irFields, fieldMapping));
     }

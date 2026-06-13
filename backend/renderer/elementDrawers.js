@@ -399,4 +399,122 @@ async function drawBarcode(page, pdfDoc, el, x, y, wPt, hPt) {
   return hPt;
 }
 
-module.exports = { drawBox, drawLine, drawText, drawImage, drawTable, drawBarcode };
+// ── CHART ──────────────────────────────────────────────────────────────────
+
+const CHART_PALETTE = [
+  '#4f46e5', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#14b8a6',
+];
+
+/**
+ * Draw a bar / line / pie chart to the page.
+ *
+ * @param {import('pdf-lib').PDFPage} page
+ * @param {object} fonts  { normal, bold } embedded fonts
+ * @param {object} el     chart canvas element (may carry resolved `_series`)
+ * @param {number} x      left edge in pt
+ * @param {number} yTop   top edge in pt (pdf-lib bottom-left origin)
+ * @param {number} wPt    width in pt
+ * @param {number} hPt    height in pt
+ */
+function drawChart(page, fonts, el, x, yTop, wPt, hPt) {
+  const chart  = el.chart || {};
+  const raw    = (Array.isArray(el._series) && el._series.length) ? el._series : (chart.data || []);
+  const data   = (raw.length ? raw : [{ label: '', value: 1 }])
+    .map(d => ({ label: String(d.label ?? ''), value: Number(d.value) || 0 }));
+  const palette = (chart.palette && chart.palette.length) ? chart.palette : CHART_PALETTE;
+  const colAt   = i => colorOf(palette[i % palette.length]);
+  const font    = fonts && fonts.normal;
+  const fontB   = (fonts && fonts.bold) || font;
+  const white   = rgb(1, 1, 1);
+  const ink     = rgb(0.2, 0.22, 0.28);
+  const axisCol = rgb(0.8, 0.84, 0.88);
+
+  const yBottom  = yTop - hPt;
+  const padTop   = chart.title ? 18 : 6;
+  const padBot   = 14;
+  const padSide  = 6;
+
+  // Title
+  if (chart.title && fontB) {
+    const size = 9;
+    const tw   = fontB.widthOfTextAtSize(String(chart.title), size);
+    page.drawText(String(chart.title), {
+      x: x + Math.max(0, (wPt - tw) / 2), y: yTop - size - 3, size, font: fontB, color: rgb(0.12, 0.16, 0.22),
+    });
+  }
+
+  // ── Pie ──────────────────────────────────────────────────────────────────
+  if (chart.kind === 'pie') {
+    const total = data.reduce((s, d) => s + Math.max(0, d.value), 0) || 1;
+    const cx = wPt / 2;
+    const cy = padTop + (hPt - padTop) / 2;            // svg-space (y-down from yTop)
+    const r  = Math.max(6, Math.min(wPt, hPt - padTop) / 2 - 6);
+    let a0 = -Math.PI / 2;
+    for (let i = 0; i < data.length; i++) {
+      const frac = Math.max(0, data[i].value) / total;
+      if (frac <= 0) continue;
+      const a1   = a0 + frac * Math.PI * 2;
+      const segs = Math.max(2, Math.ceil((a1 - a0) / (Math.PI / 30)));
+      let path = `M ${cx} ${cy}`;
+      for (let sIdx = 0; sIdx <= segs; sIdx++) {
+        const a = a0 + (a1 - a0) * (sIdx / segs);
+        path += ` L ${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
+      }
+      path += ' Z';
+      // drawSvgPath maps svg-(0,0) → (x, yTop) with svg +y going down the page.
+      page.drawSvgPath(path, { x, y: yTop, color: colAt(i), borderColor: white, borderWidth: 0.75 });
+      a0 = a1;
+    }
+    return hPt;
+  }
+
+  // ── Bar / Line plot area (native pdf coords, y-up) ─────────────────────────
+  const plotLeft   = x + padSide;
+  const plotRight  = x + wPt - padSide;
+  const plotTop    = yTop - padTop;
+  const plotBottom = yBottom + padBot;
+  const plotW      = Math.max(1, plotRight - plotLeft);
+  const plotH      = Math.max(1, plotTop - plotBottom);
+  const max        = Math.max(1, ...data.map(d => d.value));
+
+  page.drawLine({ start: { x: plotLeft, y: plotBottom }, end: { x: plotRight, y: plotBottom }, thickness: 0.5, color: axisCol });
+
+  if (chart.kind === 'line') {
+    const step = data.length > 1 ? plotW / (data.length - 1) : 0;
+    const pts  = data.map((d, i) => ({ x: plotLeft + step * i, y: plotBottom + (d.value / max) * plotH }));
+    for (let i = 1; i < pts.length; i++)
+      page.drawLine({ start: pts[i - 1], end: pts[i], thickness: 1.2, color: colAt(0) });
+    pts.forEach(p => page.drawCircle({ x: p.x, y: p.y, size: 1.8, color: colAt(0) }));
+    if (chart.showValues && font)
+      pts.forEach((p, i) => {
+        const t = String(data[i].value), sz = 6.5;
+        page.drawText(t, { x: p.x - font.widthOfTextAtSize(t, sz) / 2, y: p.y + 3, size: sz, font, color: ink });
+      });
+    if (font)
+      data.forEach((d, i) => {
+        const lbl = String(d.label).slice(0, 8), sz = 6.5;
+        page.drawText(lbl, { x: plotLeft + step * i - font.widthOfTextAtSize(lbl, sz) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
+      });
+    return hPt;
+  }
+
+  // bar
+  const slot = plotW / data.length;
+  const bw   = slot * 0.62;
+  data.forEach((d, i) => {
+    const bh = (d.value / max) * plotH;
+    const bx = plotLeft + slot * i + (slot - bw) / 2;
+    page.drawRectangle({ x: bx, y: plotBottom, width: bw, height: Math.max(0, bh), color: colAt(i) });
+    if (chart.showValues && font) {
+      const t = String(d.value), sz = 6.5;
+      page.drawText(t, { x: bx + (bw - font.widthOfTextAtSize(t, sz)) / 2, y: plotBottom + bh + 2, size: sz, font, color: ink });
+    }
+    if (font) {
+      const lbl = String(d.label).slice(0, 8), sz = 6.5;
+      page.drawText(lbl, { x: bx + (bw - font.widthOfTextAtSize(lbl, sz)) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
+    }
+  });
+  return hPt;
+}
+
+module.exports = { drawBox, drawLine, drawText, drawImage, drawTable, drawBarcode, drawChart };

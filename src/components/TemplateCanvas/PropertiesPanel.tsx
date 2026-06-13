@@ -136,6 +136,24 @@ interface BarcodeElementType {
   };
 }
 
+interface ChartDatum { label: string; value: number }
+
+interface ChartElementType {
+  id: string;
+  type: 'chart';
+  position: { x: number; y: number };
+  style: { width: number; height: number; opacity?: number };
+  chart: {
+    kind: 'bar' | 'line' | 'pie';
+    title?: string;
+    data: ChartDatum[];
+    palette: string[];
+    showValues?: boolean;
+    showLegend?: boolean;
+    binding?: { enabled: boolean; collectionKey: string; labelField: string; valueField: string };
+  };
+}
+
 type CanvasElement =
   | TextElementType
   | ImageElementType
@@ -146,6 +164,7 @@ type CanvasElement =
   | CheckboxElementType
   | DateElementType
   | BarcodeElementType
+  | ChartElementType
   | LayoutTableElement;
 
 interface PropertiesPanelProps {
@@ -1697,6 +1716,166 @@ function PropertiesPanel({
                   className="property-input"
                 />
               </div>
+            </div>
+          );
+        })()}
+
+        {selectedElement.type === 'chart' && (() => {
+          const el = selectedElement as ChartElementType;
+          const c = el.chart;
+          const patch = (next: Partial<ChartElementType['chart']>) =>
+            onUpdate(el.id, { chart: { ...c, ...next } } as Partial<CanvasElement>);
+          const bind = c.binding ?? { enabled: false, collectionKey: '', labelField: '', valueField: '' };
+          const patchBind = (next: Partial<typeof bind>) => patch({ binding: { ...bind, ...next } });
+
+          return (
+            <div className="property-section">
+              <div className="property-section-title">Chart Properties</div>
+
+              <div className="property-group">
+                <label className="property-label">Type</label>
+                <select
+                  className="property-select"
+                  value={c.kind}
+                  onChange={(e) => patch({ kind: e.target.value as ChartElementType['chart']['kind'] })}
+                >
+                  <option value="bar">Bar</option>
+                  <option value="line">Line</option>
+                  <option value="pie">Pie</option>
+                </select>
+              </div>
+
+              <div className="property-group">
+                <label className="property-label">Title</label>
+                <input
+                  type="text"
+                  className="property-input"
+                  value={c.title ?? ''}
+                  placeholder="(none)"
+                  onChange={(e) => patch({ title: e.target.value })}
+                />
+              </div>
+
+              <div className="property-group">
+                <label className="property-label">Show values</label>
+                <input
+                  type="checkbox"
+                  className="property-checkbox"
+                  checked={!!c.showValues}
+                  onChange={(e) => patch({ showValues: e.target.checked })}
+                />
+              </div>
+
+              <div className="property-group">
+                <label className="property-label">Show legend (pie)</label>
+                <input
+                  type="checkbox"
+                  className="property-checkbox"
+                  checked={!!c.showLegend}
+                  onChange={(e) => patch({ showLegend: e.target.checked })}
+                />
+              </div>
+
+              <div className="property-grid-two">
+                <div className="property-group">
+                  <label className="property-label">Width</label>
+                  <input
+                    type="number" min={120} max={1000} className="property-input"
+                    value={el.style.width}
+                    onChange={(e) => onUpdate(el.id, { style: { ...el.style, width: Number(e.target.value) } })}
+                  />
+                </div>
+                <div className="property-group">
+                  <label className="property-label">Height</label>
+                  <input
+                    type="number" min={90} max={1000} className="property-input"
+                    value={el.style.height}
+                    onChange={(e) => onUpdate(el.id, { style: { ...el.style, height: Number(e.target.value) } })}
+                  />
+                </div>
+              </div>
+
+              {/* ── Data binding ───────────────────────────────────────── */}
+              <div className="property-section-title property-subtitle">Data binding</div>
+              <div className="property-group">
+                <label className="property-label">Bind to collection</label>
+                <input
+                  type="checkbox"
+                  className="property-checkbox"
+                  checked={bind.enabled}
+                  onChange={(e) => patchBind({ enabled: e.target.checked })}
+                />
+              </div>
+              <div className="property-group">
+                <label className="property-label">Collection key</label>
+                <input
+                  type="text" className="property-input" disabled={!bind.enabled}
+                  placeholder="e.g. sales"
+                  value={bind.collectionKey}
+                  onChange={(e) => patchBind({ collectionKey: e.target.value })}
+                />
+              </div>
+              <div className="property-grid-two">
+                <div className="property-group">
+                  <label className="property-label">Label field</label>
+                  <input
+                    type="text" className="property-input" disabled={!bind.enabled}
+                    placeholder="e.g. month"
+                    value={bind.labelField}
+                    onChange={(e) => patchBind({ labelField: e.target.value })}
+                  />
+                </div>
+                <div className="property-group">
+                  <label className="property-label">Value field</label>
+                  <input
+                    type="text" className="property-input" disabled={!bind.enabled}
+                    placeholder="e.g. revenue"
+                    value={bind.valueField}
+                    onChange={(e) => patchBind({ valueField: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* ── Sample data (used when not bound) ──────────────────── */}
+              <div className="property-section-title property-subtitle">
+                {bind.enabled ? 'Sample data (preview only)' : 'Data'}
+              </div>
+              {c.data.map((d, i) => (
+                <div className="property-grid-two" key={i}>
+                  <div className="property-group">
+                    <input
+                      type="text" className="property-input"
+                      value={d.label}
+                      onChange={(e) => {
+                        const data = c.data.map((row, idx) => idx === i ? { ...row, label: e.target.value } : row);
+                        patch({ data });
+                      }}
+                    />
+                  </div>
+                  <div className="property-group" style={{ display: 'flex', gap: 4 }}>
+                    <input
+                      type="number" className="property-input"
+                      value={d.value}
+                      onChange={(e) => {
+                        const data = c.data.map((row, idx) => idx === i ? { ...row, value: Number(e.target.value) } : row);
+                        patch({ data });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="property-button-secondary chart-data-remove"
+                      title="Remove row"
+                      disabled={c.data.length <= 1}
+                      onClick={() => patch({ data: c.data.filter((_, idx) => idx !== i) })}
+                    >×</button>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="property-button"
+                onClick={() => patch({ data: [...c.data, { label: `Item ${c.data.length + 1}`, value: 0 }] })}
+              >+ Add data point</button>
             </div>
           );
         })()}

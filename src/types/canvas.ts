@@ -141,10 +141,52 @@ export interface BarcodeElementType {
   };
 }
 
+/**
+ * A single category/value pair in a chart's data series. Used for the
+ * statically-authored "sample" series; at export the series may instead be
+ * resolved from a bound data collection (see `ChartElementType.chart.binding`).
+ */
+export interface ChartDatum {
+  label: string;
+  value: number;
+}
+
+export interface ChartElementType {
+  id: string;
+  type: 'chart';
+  position: { x: number; y: number };
+  style: { width: number; height: number; opacity?: number };
+  chart: {
+    kind: 'bar' | 'line' | 'pie';
+    title?: string;
+    /** Statically authored series — always present so the chart renders without data. */
+    data: ChartDatum[];
+    /** Slice/series colors, cycled in order. */
+    palette: string[];
+    showValues?: boolean;
+    showLegend?: boolean;
+    /**
+     * Optional binding to a data collection. When enabled and the collection
+     * exists at export time, the series is built from the collection rows by
+     * reading `labelField` / `valueField` from each row, replacing `data`.
+     */
+    binding?: {
+      enabled: boolean;
+      collectionKey: string;
+      labelField: string;
+      valueField: string;
+    };
+  };
+}
+
+export const DEFAULT_CHART_PALETTE = [
+  '#4f46e5', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#14b8a6',
+];
+
 export type CanvasElement =
   | TextElementType | ImageElementType | LineElementType | BoxElementType
   | ParagraphElementType | RadioElementType | CheckboxElementType | DateElementType
-  | BarcodeElementType
+  | BarcodeElementType | ChartElementType
   | import('../model/layoutTable').LayoutTableElement;
 
 // ── Header / Footer config ────────────────────────────────────────────────────

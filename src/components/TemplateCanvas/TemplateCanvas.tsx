@@ -50,8 +50,9 @@ import PageRulers, { type PageRulerSelection } from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
 import { usePlan } from '../../plan/PlanProvider';
 import BarcodeElement from './BarcodeElement';
-import type { BarcodeElementType, PageSizeConfig } from '../../types/canvas';
-import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize } from '../../types/canvas';
+import ChartElement from './ChartElement';
+import type { BarcodeElementType, ChartElementType, PageSizeConfig } from '../../types/canvas';
+import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize, DEFAULT_CHART_PALETTE } from '../../types/canvas';
 
 import type {
   CanonicalDocument,
@@ -164,7 +165,7 @@ function getElementRulerSelection(element: CanvasElement | null): PageRulerSelec
   } else if (element.type === 'text' && element.style.width) {
     selection.width  = element.style.width;
     selection.height = element.style.fontSize * 1.3;
-  } else if (element.type === 'barcode') {
+  } else if (element.type === 'barcode' || element.type === 'chart') {
     selection.width  = element.style.width;
     selection.height = element.style.height;
   } else if (element.type === 'line') {
@@ -472,6 +473,25 @@ function TemplateCanvas() {
   const handleAddCheckbox  = () => addEl({ id: `checkbox-${Date.now()}`,  type: 'checkbox',  count: 1, checkedValues: [], orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
   const handleAddDate      = () => addEl({ id: `date-${Date.now()}`,      type: 'date',      value: '', time: '', includeTime: false, format: 'MM/DD/YYYY', position: { x: 50, y: 50 }, style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
   const handleAddBarcode   = () => addEl({ id: `barcode-${Date.now()}`,   type: 'barcode',   content: '{{tracking_no}}', position: { x: 50, y: 50 }, style: { width: 200, height: 100 }, barcode: { format: 'code128', showText: true } } as BarcodeElementType);
+  const handleAddChart     = () => addEl({
+    id: `chart-${Date.now()}`,
+    type: 'chart',
+    position: { x: 50, y: 50 },
+    style: { width: 320, height: 220, opacity: 100 },
+    chart: {
+      kind: 'bar',
+      title: 'Chart title',
+      data: [
+        { label: 'Q1', value: 42 },
+        { label: 'Q2', value: 58 },
+        { label: 'Q3', value: 35 },
+        { label: 'Q4', value: 71 },
+      ],
+      palette: [...DEFAULT_CHART_PALETTE],
+      showValues: true,
+      showLegend: true,
+    },
+  } as ChartElementType);
 
   // ── Element update ────────────────────────────────────────────────────────
 
@@ -496,6 +516,7 @@ function TemplateCanvas() {
         if ('format'      in updates) updated.format      = updates.format;
         if ('pageNumber'  in updates) updated.pageNumber  = updates.pageNumber;
         if ('barcode'     in updates) updated.barcode     = updates.barcode;
+        if ('chart'       in updates) updated.chart       = updates.chart;
         if (isLayoutTable(updated)) {
           if (updates.columns   !== undefined) updated.columns   = updates.columns;
           if (updates.headerRow !== undefined) updated.headerRow = updates.headerRow;
@@ -1011,6 +1032,22 @@ function TemplateCanvas() {
         );
       }
 
+      if (element.type === 'chart') {
+        const chartEl = element as ChartElementType;
+        return (
+          <ChartElement
+            key={chartEl.id}
+            id={chartEl.id}
+            position={chartEl.position}
+            style={chartEl.style}
+            chart={chartEl.chart}
+            isSelected={isSelected}
+            onSelect={select}
+            onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...chartEl.style, ...s } })}
+          />
+        );
+      }
+
       return null;
     });
 
@@ -1047,6 +1084,7 @@ function TemplateCanvas() {
           hasSelection={!!selectedElementId}
           hasElements={allElements.length > 0}
           onAddBarcode={handleAddBarcode}
+          onAddChart={handleAddChart}
           onPageSizeChange={handlePageSizeChange}
           onCustomPageSize={handleCustomPageSize}
           currentPageSize={pageSize.preset}

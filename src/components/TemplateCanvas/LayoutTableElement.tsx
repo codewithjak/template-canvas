@@ -131,6 +131,27 @@ function LayoutTableElement({
     );
   };
 
+  // Drag the right edge of a header cell to resize that column. Uses window-level
+  // listeners and stops propagation so it never starts a cell selection or a
+  // table drag.
+  const handleColResizeStart = (e: React.PointerEvent, colIndex: number) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = element.columns[colIndex]?.width ?? 96;
+    const onMove = (ev: PointerEvent) => {
+      const w = Math.max(40, Math.round(startWidth + (ev.clientX - startX)));
+      const columns = element.columns.map((c, i) => (i === colIndex ? { ...c, width: w } : c));
+      onUpdate(element.id, { columns });
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   const { position, style: tableStyle, columns, rows } = element;
   const border =
     tableStyle.showBorders !== false
@@ -283,6 +304,14 @@ function LayoutTableElement({
                       ) : (
                         <span key={index}>{part.text}</span>
                       )
+                    )}
+                    {isSelected && (
+                      <span
+                        className="layout-table-col-resize"
+                        title="Drag to resize column"
+                        onPointerDown={(e) => handleColResizeStart(e, colIndex + cs - 1)}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      />
                     )}
                   </th>
                 );

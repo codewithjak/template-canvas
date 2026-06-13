@@ -303,6 +303,79 @@ function makeRow(columnCount: number, cellValues: string[]): TableRow {
   return { id: newStableId(), cells };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Column structural operations
+//
+// Insert / remove / move operate on the whole table (columns + header + rows) so
+// indices stay aligned. Because remapping merge anchors across a structural shift
+// is error-prone, these strip merges first — a table with merged cells loses the
+// merges when its column count/order changes, but never ends up with dangling
+// merge pointers. Tables without merges are preserved exactly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function insertIntoArray<T>(arr: T[], index: number, item: T): T[] {
+  const copy = arr.slice();
+  copy.splice(Math.max(0, Math.min(index, copy.length)), 0, item);
+  return copy;
+}
+
+function makeColumn(): TableColumn {
+  return { id: newStableId(), width: 96, widthMode: 'fixed', alignment: 'left' };
+}
+
+function makeCell(value = ''): TableCell {
+  const c = emptyCell();
+  c.content = { type: 'text', value };
+  return c;
+}
+
+/** Insert a new blank column at `index` (clamped). Returns a table patch. */
+export function insertColumnAt(table: LayoutTableElement, index: number): Partial<LayoutTableElement> {
+  const at = Math.max(0, Math.min(index, table.columns.length));
+  const columns = insertIntoArray(table.columns, at, makeColumn());
+  const header = table.headerRow ? stripMergesFromRow(table.headerRow) : undefined;
+  const headerRow = header
+    ? { ...header, cells: insertIntoArray(header.cells, at, makeCell(`Header ${table.columns.length + 1}`)) }
+    : undefined;
+  const rows = stripAllMerges(table.rows).map((r) => ({ ...r, cells: insertIntoArray(r.cells, at, makeCell()) }));
+  return { columns, headerRow, rows };
+}
+
+/** Remove the column at `index`. No-op (empty patch) if only one column remains. */
+export function removeColumnAt(table: LayoutTableElement, index: number): Partial<LayoutTableElement> {
+  if (table.columns.length <= 1) return {};
+  const at = Math.max(0, Math.min(index, table.columns.length - 1));
+  const columns = table.columns.filter((_, i) => i !== at);
+  const header = table.headerRow ? stripMergesFromRow(table.headerRow) : undefined;
+  const headerRow = header ? { ...header, cells: header.cells.filter((_, i) => i !== at) } : undefined;
+  const rows = stripAllMerges(table.rows).map((r) => ({ ...r, cells: r.cells.filter((_, i) => i !== at) }));
+  return { columns, headerRow, rows };
+}
+
+/** Move the column at `from` to `to`. No-op (empty patch) if indices are invalid/equal. */
+export function moveColumn(table: LayoutTableElement, from: number, to: number): Partial<LayoutTableElement> {
+  const n = table.columns.length;
+  if (from < 0 || from >= n || to < 0 || to >= n || from === to) return {};
+  const reorder = <T,>(arr: T[]): T[] => {
+    const copy = arr.slice();
+    const [item] = copy.splice(from, 1);
+    copy.splice(to, 0, item);
+    return copy;
+  };
+  const columns = reorder(table.columns);
+  const header = table.headerRow ? stripMergesFromRow(table.headerRow) : undefined;
+  const headerRow = header ? { ...header, cells: reorder(header.cells) } : undefined;
+  const rows = stripAllMerges(table.rows).map((r) => ({ ...r, cells: reorder(r.cells) }));
+  return { columns, headerRow, rows };
+}
+
+/** Set a single column's width (px), leaving everything else untouched. */
+export function setColumnWidth(table: LayoutTableElement, index: number, width: number): Partial<LayoutTableElement> {
+  const w = Math.max(40, Math.round(width));
+  const columns = table.columns.map((c, i) => (i === index ? { ...c, width: w } : c));
+  return { columns };
+}
+
 /** Single template row on canvas; iteration adds rows at render time. */
 export function createDefaultLayoutTable(idPrefix: string): LayoutTableElement {
   const colWidths = [120, 120, 120];

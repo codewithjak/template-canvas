@@ -39,6 +39,42 @@ export interface UsageSummary {
   exportsThisMonth: { used: number; limit: number | null };
 }
 
+export interface TeamMember {
+  user_id:    string;
+  role:       string;
+  created_at: string;
+  name:       string | null;
+  email:      string | null;
+}
+
+export interface TeamInvite {
+  id:         string;
+  email:      string;
+  role:       string;
+  created_at?: string;
+  expires_at: string | null;
+  /** Present on the create response so the UI can build a shareable link. */
+  token?:     string;
+}
+
+export interface TeamSummary {
+  team:    { id: string; name: string; plan: string } | null;
+  members: TeamMember[];
+  invites: TeamInvite[];
+  seats:   { used: number; pending: number; limit: number | null };
+  /** The requesting user's role + id, for gating management controls. */
+  role:          string;
+  currentUserId: string;
+}
+
+export interface InviteInfo {
+  email:    string;
+  role:     string;
+  teamName: string;
+  accepted: boolean;
+  expired:  boolean;
+}
+
 export interface TemplateBinding {
   field_mapping:             FieldMapping;
   collection_mappings:       CollectionMappings;
@@ -88,6 +124,38 @@ export async function revokeApiKey(): Promise<void> {
 
 export async function getUsage(): Promise<UsageSummary> {
   return getJson('/v1/usage');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team management (JWT-authenticated; owner/admin for mutations)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Active team + members + pending invites + seat usage. */
+export async function getTeam(): Promise<TeamSummary> {
+  return getJson('/v1/team');
+}
+
+/** Invite someone by email. Returns the invite incl. its token for the link. */
+export async function inviteMember(email: string, role: string): Promise<{ invite: TeamInvite }> {
+  return postJson('/v1/team/invites', { email, role });
+}
+
+export async function revokeTeamInvite(inviteId: string): Promise<void> {
+  await postJson('/v1/team/invites/revoke', { inviteId });
+}
+
+export async function removeTeamMember(userId: string): Promise<void> {
+  await postJson('/v1/team/members/remove', { userId });
+}
+
+/** Public invite details for the acceptance screen (no auth required). */
+export async function lookupInvite(token: string): Promise<InviteInfo> {
+  return getJson(`/v1/invites/${encodeURIComponent(token)}`);
+}
+
+/** Accept an invite as the signed-in user; joins the team + makes it active. */
+export async function acceptInvite(token: string): Promise<{ ok: boolean; teamId: string }> {
+  return postJson('/v1/invites/accept', { token });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -52,8 +52,14 @@ function bearerToken(authHeader) {
 }
 
 /**
- * Resolve { teamId, userId } from a verified user JWT. Used by the key
- * management endpoints (browser → backend). Returns null when unauthenticated.
+ * Resolve { teamId, userId, userEmail, role } from a verified user JWT — for the
+ * ACTIVE team. A user may belong to several teams (once invites are accepted),
+ * so we honour profiles.active_team_id when it still points at a team they
+ * belong to, and otherwise fall back deterministically (owner role first, then
+ * earliest joined) and back-fill the choice so it stays stable.
+ *
+ * Used by every JWT-authenticated backend endpoint. Returns null when
+ * unauthenticated or the user has no membership at all.
  */
 async function resolveTeamFromJwt(authHeader) {
   const sb = getAdmin();
@@ -65,16 +71,30 @@ async function resolveTeamFromJwt(authHeader) {
   const { data: userData, error: userErr } = await sb.auth.getUser(token);
   if (userErr || !userData?.user) return null;
   const userId = userData.user.id;
+  const userEmail = userData.user.email || null;
 
-  const { data: membership, error: memErr } = await sb
+  const { data: memberships, error: memErr } = await sb
     .from('memberships')
-    .select('team_id')
+    .select('team_id, role, created_at')
     .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle();
-  if (memErr || !membership) return null;
+    .order('created_at', { ascending: true });
+  if (memErr || !memberships || memberships.length === 0) return null;
 
-  return { teamId: membership.team_id, userId };
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('active_team_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  let active = memberships.find(m => m.team_id === profile?.active_team_id);
+  if (!active) {
+    active = memberships.find(m => m.role === 'owner') || memberships[0];
+    // Best-effort back-fill; never block the request on it.
+    sb.from('profiles').update({ active_team_id: active.team_id }).eq('id', userId)
+      .then(() => {}, () => {});
+  }
+
+  return { teamId: active.team_id, userId, userEmail, role: active.role };
 }
 
 /**
@@ -154,6 +174,8 @@ async function resolveTeamFromApiKey(rawKey) {
 module.exports = {
   extractApiKey,
   resolveTeamFromJwt,
+  // Alias: same active-team resolver, named for team-management call sites.
+  resolveActiveTeam: resolveTeamFromJwt,
   resolveTeamFromApiKey,
   issueKeyForTeam,
   getKeyMeta,

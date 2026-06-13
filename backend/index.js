@@ -614,7 +614,18 @@ const {
   getKeyMeta,
   revokeKeyForTeam,
 } = require('./apiKeys');
+const {
+  listTeam,
+  createInvite,
+  revokeInvite,
+  removeMember,
+  lookupInvite,
+  acceptInvite,
+} = require('./teams');
 const { getUsageSummary, getTeamPlan } = require('./usage');
+
+// Owner/admin may manage the team; members/viewers may not.
+const isManager = (role) => role === 'owner' || role === 'admin';
 const { PLAN_ORDER, getPlan } = require('./plans');
 const { getAdmin: getSupabaseAdmin } = require('./supabaseAdmin');
 
@@ -674,6 +685,116 @@ app.get('/v1/usage', async (req, res) => {
   } catch (err) {
     console.error('[v1/usage]', err);
     return res.status(500).json({ error: err.message || 'Could not load usage.' });
+  }
+});
+
+// ── Team management (JWT-scoped) ──────────────────────────────────────────────
+//
+//   GET  /v1/team                team + members + invites + seats (any member)
+//   POST /v1/team/invites        create an invite             (owner/admin)
+//   POST /v1/team/invites/revoke revoke a pending invite      (owner/admin)
+//   POST /v1/team/members/remove remove a member              (owner/admin)
+//   GET  /v1/invites/:token      public invite details for the accept screen
+//   POST /v1/invites/accept      accept an invite             (the invitee)
+//
+// Team workspaces are a Business-tier capability; every team route below
+// re-checks it server-side (a downgrade must stop further management).
+
+// Map a thrown error to its HTTP status; log only true server faults.
+function sendTeamError(res, tag, err, fallback) {
+  const status = err.status || 500;
+  if (status >= 500) console.error(tag, err);
+  return res.status(status).json({ error: err.message || fallback });
+}
+
+app.get('/v1/team', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    if (!planAllows(await getTeamPlan(ctx.teamId), 'teams')) {
+      return res.status(403).json({ error: 'Team workspaces require the Business plan.' });
+    }
+    const data = await listTeam(ctx.teamId);
+    return res.json({ ...data, role: ctx.role, currentUserId: ctx.userId });
+  } catch (err) {
+    return sendTeamError(res, '[v1/team GET]', err, 'Could not load team.');
+  }
+});
+
+app.post('/v1/team/invites', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    if (!planAllows(await getTeamPlan(ctx.teamId), 'teams')) {
+      return res.status(403).json({ error: 'Team workspaces require the Business plan.' });
+    }
+    if (!isManager(ctx.role)) {
+      return res.status(403).json({ error: 'Only owners and admins can invite members.' });
+    }
+    const { email, role } = req.body || {};
+    const invite = await createInvite(ctx.teamId, email, role, ctx.userId);
+    // The token is returned so the UI can build a shareable accept link
+    // (no email is sent server-side yet).
+    return res.json({ invite });
+  } catch (err) {
+    return sendTeamError(res, '[v1/team/invites]', err, 'Could not create invite.');
+  }
+});
+
+app.post('/v1/team/invites/revoke', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    if (!isManager(ctx.role)) {
+      return res.status(403).json({ error: 'Only owners and admins can manage invites.' });
+    }
+    const { inviteId } = req.body || {};
+    if (!inviteId) return res.status(400).json({ error: '"inviteId" is required.' });
+    await revokeInvite(ctx.teamId, inviteId);
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendTeamError(res, '[v1/team/invites/revoke]', err, 'Could not revoke invite.');
+  }
+});
+
+app.post('/v1/team/members/remove', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Authentication required.' });
+    if (!isManager(ctx.role)) {
+      return res.status(403).json({ error: 'Only owners and admins can remove members.' });
+    }
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: '"userId" is required.' });
+    await removeMember(ctx.teamId, userId);
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendTeamError(res, '[v1/team/members/remove]', err, 'Could not remove member.');
+  }
+});
+
+// Unauthenticated — the token itself is the capability. Lets the accept page
+// show "you've been invited to X" before the user signs in.
+app.get('/v1/invites/:token', async (req, res) => {
+  try {
+    const info = await lookupInvite(req.params.token);
+    if (!info) return res.status(404).json({ error: 'This invite link is invalid.' });
+    return res.json(info);
+  } catch (err) {
+    return sendTeamError(res, '[v1/invites GET]', err, 'Could not load invite.');
+  }
+});
+
+app.post('/v1/invites/accept', async (req, res) => {
+  try {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization);
+    if (!ctx) return res.status(401).json({ error: 'Sign in to accept this invite.' });
+    const { token } = req.body || {};
+    if (!token) return res.status(400).json({ error: '"token" is required.' });
+    const result = await acceptInvite(ctx.userId, ctx.userEmail, token);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return sendTeamError(res, '[v1/invites/accept]', err, 'Could not accept invite.');
   }
 });
 

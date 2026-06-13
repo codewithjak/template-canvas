@@ -9,6 +9,7 @@ import Settings from './pages/Settings'
 import Pricing from './pages/Pricing'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
+import AcceptInvite from './pages/AcceptInvite'
 import { PlanProvider } from './plan/PlanProvider'
 import './App.css'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/careers" element={<Careers />} />
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/invite" element={<AcceptInvite />} />
           <Route
             path="/canvas"
             element={

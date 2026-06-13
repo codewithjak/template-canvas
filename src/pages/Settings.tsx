@@ -13,9 +13,15 @@ import {
   getApiKeyMeta,
   revokeApiKey,
   getUsage,
+  getTeam,
+  inviteMember,
+  revokeTeamInvite,
+  removeTeamMember,
   type ApiKeyMeta,
   type UsageSummary,
+  type TeamSummary,
 } from '../services/apiIntegration'
+import { listMyTeams, setActiveTeam, getActiveTeamId } from '../services/teamService'
 import { API_BASE } from '../services/config'
 import { usePlan } from '../plan/PlanProvider'
 import { getPlan, minPlanFor } from '../config/plans'
@@ -45,6 +51,194 @@ function Card({ title, subtitle, children }: { title: string; subtitle?: string;
       {subtitle && <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 18px' }}>{subtitle}</p>}
       {children}
     </section>
+  )
+}
+
+const ROLE_OPTIONS = [
+  { value: 'admin',  label: 'Admin' },
+  { value: 'member', label: 'Member' },
+  { value: 'viewer', label: 'Viewer' },
+]
+
+/**
+ * Team management: switcher + members + invites + seats. The switcher is shown
+ * whenever the user belongs to more than one team (e.g. their personal team + a
+ * Business team they were invited to). Member/invite management only appears
+ * when the ACTIVE team is on a plan with the teams capability.
+ */
+function TeamCard() {
+  const { can } = usePlan()
+  const [data, setData] = useState<TeamSummary | null>(null)
+  const [teams, setTeams] = useState<{ teamId: string; name: string; role: string }[]>([])
+  const [activeId, setActiveId] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('member')
+  const [busy, setBusy] = useState(false)
+  const [freshLink, setFreshLink] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const canTeams = can('teams')
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr(null)
+    try {
+      const [myTeams, active] = await Promise.all([listMyTeams(), getActiveTeamId()])
+      setTeams(myTeams)
+      setActiveId(active)
+      setData(canTeams ? await getTeam() : null)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [canTeams])
+
+  useEffect(() => { void load() }, [load])
+
+  // Switching changes the whole app's team scope (templates, usage, plan), so a
+  // full reload is the simplest way to re-resolve everything cleanly.
+  const switchTeam = async (teamId: string) => {
+    if (teamId === activeId) return
+    setBusy(true); setErr(null)
+    try {
+      await setActiveTeam(teamId)
+      window.location.reload()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e)); setBusy(false)
+    }
+  }
+
+  const invite = async () => {
+    setBusy(true); setErr(null); setFreshLink(null)
+    try {
+      const { invite } = await inviteMember(email.trim(), role)
+      setFreshLink(`${window.location.origin}/invite?token=${invite.token}`)
+      setEmail('')
+      await load()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    } finally { setBusy(false) }
+  }
+
+  const revoke = async (id: string) => {
+    if (!window.confirm('Revoke this invite? The link will stop working.')) return
+    setBusy(true); setErr(null)
+    try { await revokeTeamInvite(id); await load() }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
+    finally { setBusy(false) }
+  }
+
+  const remove = async (userId: string, name: string | null) => {
+    if (!window.confirm(`Remove ${name || 'this member'} from the team?`)) return
+    setBusy(true); setErr(null)
+    try { await removeTeamMember(userId); await load() }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
+    finally { setBusy(false) }
+  }
+
+  const copyLink = async () => {
+    if (!freshLink) return
+    try {
+      await navigator.clipboard.writeText(freshLink)
+      setCopied(true); setTimeout(() => setCopied(false), 1500)
+    } catch { /* clipboard blocked — select manually */ }
+  }
+
+  if (loading) {
+    return <Card title="Team"><div style={{ color: '#64748b', fontSize: 14 }}>Loading…</div></Card>
+  }
+
+  const manager = data ? (data.role === 'owner' || data.role === 'admin') : false
+  const seats = data?.seats
+  const atCap = !!seats && seats.limit != null && seats.used + seats.pending >= seats.limit
+  const selectStyle = { border: '1px solid #cbd5e1', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#0f172a', background: '#fff' }
+
+  return (
+    <Card title="Team" subtitle="Members share this workspace's templates, usage and plan.">
+      {err && (
+        <div style={{ background: '#fef2f2', color: '#b91c1c', padding: '9px 12px', borderRadius: 8, fontSize: 13, marginBottom: 14 }}>{err}</div>
+      )}
+
+      {teams.length > 1 && (
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 6 }}>Active team</label>
+          <select value={activeId} disabled={busy} onChange={e => switchTeam(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
+            {teams.map(t => <option key={t.teamId} value={t.teamId}>{t.name} · {t.role}</option>)}
+          </select>
+        </div>
+      )}
+
+      {!canTeams ? (
+        <div style={{ fontSize: 14, color: '#64748b' }}>
+          Team workspaces — invite up to 5 members who share this plan — are included in the <strong>Business</strong> plan.
+        </div>
+      ) : data ? (
+        <>
+          <div style={{ fontSize: 13, color: '#475569', marginBottom: 14 }}>
+            <strong style={{ color: '#0f172a' }}>{seats!.used}</strong> of {seats!.limit ?? '∞'} seats used
+            {seats!.pending > 0 && <span style={{ color: '#94a3b8' }}> · {seats!.pending} pending</span>}
+          </div>
+
+          <div style={{ marginBottom: 18 }}>
+            {data.members.map(m => (
+              <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div>
+                  <div style={{ fontSize: 14, color: '#0f172a' }}>{m.name || m.email || m.user_id}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>{m.email ? `${m.email} · ` : ''}{m.role}</div>
+                </div>
+                {manager && m.user_id !== data.currentUserId && (
+                  <button disabled={busy} onClick={() => remove(m.user_id, m.name)} style={{ border: '1px solid #fecaca', background: '#fff', color: '#dc2626', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {data.invites.length > 0 && (
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>Pending invites</div>
+              {data.invites.map(i => (
+                <div key={i.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
+                  <div style={{ fontSize: 13, color: '#475569' }}>{i.email}<span style={{ color: '#94a3b8' }}> · {i.role}</span></div>
+                  {manager && (
+                    <button disabled={busy} onClick={() => revoke(i.id)} style={{ border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: busy ? 'default' : 'pointer' }}>Revoke</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {freshLink && (
+            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#065f46', marginBottom: 6 }}>Invite created — share this link with your teammate:</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <code style={{ flex: 1, fontSize: 12, background: '#fff', border: '1px solid #d1fae5', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all' }}>{freshLink}</code>
+                <button onClick={copyLink} style={{ border: '1px solid #10b981', background: copied ? '#10b981' : '#fff', color: copied ? '#fff' : '#059669', borderRadius: 6, padding: '0 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{copied ? 'Copied' : 'Copy'}</button>
+              </div>
+            </div>
+          )}
+
+          {manager && (
+            atCap ? (
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>All seats are in use. Remove a member or revoke a pending invite to add someone new.</div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="teammate@company.com"
+                  style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: 8, padding: '9px 12px', fontSize: 13 }}
+                />
+                <select value={role} onChange={e => setRole(e.target.value)} style={selectStyle}>
+                  {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <button disabled={busy || !email.trim()} onClick={invite} style={{ border: 'none', background: '#2563eb', color: '#fff', borderRadius: 8, padding: '9px 18px', fontSize: 13, fontWeight: 600, cursor: busy || !email.trim() ? 'default' : 'pointer', opacity: busy || !email.trim() ? 0.6 : 1 }}>Invite</button>
+              </div>
+            )
+          )}
+        </>
+      ) : null}
+    </Card>
   )
 }
 
@@ -149,6 +343,8 @@ export default function Settings() {
                 </button>
               </div>
             </Card>
+
+            <TeamCard />
 
             <Card title="API access" subtitle="Push data into your templates from any system using a team API key.">
               {!can('api') ? (

@@ -26,6 +26,8 @@ export interface PlanLimits {
   maxTemplates: number | null
   maxExportsPerMonth: number | null
   maxBulkRowsPerJob: number | null
+  /** Max members in a team (seats). 1 = personal team only. */
+  maxMembers: number | null
 }
 
 export interface Plan {
@@ -47,7 +49,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Free',
     price: 0,
     tagline: 'Design and try it out.',
-    limits: { maxTemplates: 3, maxExportsPerMonth: 50, maxBulkRowsPerJob: 0 },
+    limits: { maxTemplates: 3, maxExportsPerMonth: 50, maxBulkRowsPerJob: 0, maxMembers: 1 },
     capabilities: {
       cleanExport: false,
       bulk: false,
@@ -70,7 +72,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Pro',
     price: 15,
     tagline: 'For individuals shipping real documents.',
-    limits: { maxTemplates: null, maxExportsPerMonth: 2000, maxBulkRowsPerJob: 500 },
+    limits: { maxTemplates: null, maxExportsPerMonth: 2000, maxBulkRowsPerJob: 500, maxMembers: 1 },
     capabilities: {
       cleanExport: true,
       bulk: true,
@@ -96,7 +98,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Business',
     price: 49,
     tagline: 'For teams automating at scale.',
-    limits: { maxTemplates: null, maxExportsPerMonth: 25000, maxBulkRowsPerJob: 5000 },
+    limits: { maxTemplates: null, maxExportsPerMonth: 25000, maxBulkRowsPerJob: 5000, maxMembers: 5 },
     capabilities: {
       cleanExport: true,
       bulk: true,
@@ -111,7 +113,7 @@ export const PLANS: Record<PlanId, Plan> = {
       '25,000 documents / month',
       'Bulk generation (up to 5,000 rows/job)',
       'API access & programmatic ingestion',
-      'Team workspaces, roles & invites',
+      'Team workspaces, roles & invites (up to 5 members)',
       'Priority support',
     ],
   },

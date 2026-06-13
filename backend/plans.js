@@ -30,6 +30,7 @@ const PLANS = {
       maxTemplates:      3,
       maxExportsPerMonth: 50,
       maxBulkRowsPerJob:  0, // bulk disabled entirely on free
+      maxMembers:         1, // personal team only — no invites
     },
     capabilities: {
       cleanExport:    false, // free exports are watermarked
@@ -50,6 +51,7 @@ const PLANS = {
       maxTemplates:      null,
       maxExportsPerMonth: 2000,
       maxBulkRowsPerJob:  500,
+      maxMembers:         1, // teams capability is Business-only
     },
     capabilities: {
       cleanExport:    true,
@@ -70,6 +72,7 @@ const PLANS = {
       maxTemplates:      null,
       maxExportsPerMonth: 25000,
       maxBulkRowsPerJob:  5000,
+      maxMembers:         5, // 1 owner + up to 4 invited members
     },
     capabilities: {
       cleanExport:    true,

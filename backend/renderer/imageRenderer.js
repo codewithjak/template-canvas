@@ -63,51 +63,51 @@ async function transcodeToJpeg(pngBuffer, quality) {
 }
 
 /**
- * generateImageBuffers
+ * rasterizePdfBuffer
  *
- * Same parameter bag as generatePdfBuffer, plus image options. Returns one entry
- * per page (a multi-page document yields multiple images — callers decide whether
- * to zip them).
+ * Rasterize an already-built vector PDF buffer into per-page image entries. Kept
+ * separate from generateImageBuffers so callers that already hold a PDF buffer
+ * (e.g. the single-export endpoint, or a watermarked buffer) don't render twice.
+ * Watermark first, then rasterize, so branding is baked into the pixels.
  *
- * @param {{
- *   ir:                       object,
- *   templateElements?:        object[],
- *   fieldMapping?:            Record<string,string>,
- *   tableCollectionBindings?: Record<string,string>,
- *   collectionMappings?:      Record<string,Record<string,string>>,
- *   pageConfigs?:             object[],
- *   pageSize?:                object|null,
- *   imageFormat?:             'png'|'jpeg',
- *   dpi?:                     number,
- *   jpegQuality?:             number,   // 0..1, JPEG only
- * }} params
+ * @param {Buffer} pdfBuffer
+ * @param {{ imageFormat?: 'png'|'jpeg'|'jpg', dpi?: number, jpegQuality?: number }} [opts]
  * @returns {Promise<Array<{ buffer: Buffer, pageIndex: number, ext: string, contentType: string }>>}
  */
-async function generateImageBuffers({
-  imageFormat = 'png',
-  dpi         = DEFAULT_DPI,
-  jpegQuality = 0.92,
-  ...pdfParams
-}) {
-  const format = String(imageFormat).toLowerCase() === 'jpeg' || String(imageFormat).toLowerCase() === 'jpg'
-    ? 'jpeg' : 'png';
+async function rasterizePdfBuffer(pdfBuffer, { imageFormat = 'png', dpi = DEFAULT_DPI, jpegQuality = 0.92 } = {}) {
+  const fmt     = ['jpeg', 'jpg'].includes(String(imageFormat).toLowerCase()) ? 'jpeg' : 'png';
   const safeDpi = Math.max(DPI_MIN, Math.min(DPI_MAX, Math.round(Number(dpi) || DEFAULT_DPI)));
 
-  // 1. Vector PDF — reuse the entire existing pipeline.
-  const pdfBuffer = await generatePdfBuffer(pdfParams);
+  const pngPages    = await rasterizePdf(pdfBuffer, safeDpi);
+  const ext         = fmt === 'jpeg' ? 'jpg' : 'png';
+  const contentType = fmt === 'jpeg' ? 'image/jpeg' : 'image/png';
 
-  // 2. Rasterize every page at the requested density.
-  const pngPages = await rasterizePdf(pdfBuffer, safeDpi);
-
-  // 3. Optional transcode + tag each page with its mime/extension.
-  const ext         = format === 'jpeg' ? 'jpg' : 'png';
-  const contentType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
   const out = [];
   for (let i = 0; i < pngPages.length; i++) {
-    const buffer = format === 'jpeg' ? await transcodeToJpeg(pngPages[i], jpegQuality) : pngPages[i];
+    const buffer = fmt === 'jpeg' ? await transcodeToJpeg(pngPages[i], jpegQuality) : pngPages[i];
     out.push({ buffer, pageIndex: i, ext, contentType });
   }
   return out;
 }
 
-module.exports = { generateImageBuffers };
+/**
+ * generateImageBuffers
+ *
+ * Same parameter bag as generatePdfBuffer, plus image options. Builds the vector
+ * PDF then rasterizes it. Returns one entry per page (a multi-page document yields
+ * multiple images — callers decide whether to zip them). Used by the bulk path,
+ * which renders a fresh PDF per row.
+ *
+ * @param {{ imageFormat?: 'png'|'jpeg', dpi?: number, jpegQuality?: number, [k:string]: any }} params
+ * @returns {Promise<Array<{ buffer: Buffer, pageIndex: number, ext: string, contentType: string }>>}
+ */
+async function generateImageBuffers({ imageFormat = 'png', dpi = DEFAULT_DPI, jpegQuality = 0.92, ...pdfParams }) {
+  const pdfBuffer = await generatePdfBuffer(pdfParams);   // reuse the entire existing pipeline
+  return rasterizePdfBuffer(pdfBuffer, { imageFormat, dpi, jpegQuality });
+}
+
+/** Image format keys this emitter handles (lower-cased). */
+const IMAGE_FORMATS = ['png', 'jpeg', 'jpg'];
+const isImageFormat = (f) => IMAGE_FORMATS.includes(String(f || '').toLowerCase());
+
+module.exports = { generateImageBuffers, rasterizePdfBuffer, isImageFormat, IMAGE_FORMATS };

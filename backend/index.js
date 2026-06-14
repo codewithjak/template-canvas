@@ -89,6 +89,41 @@ function uniqueFileName(name, used) {
   return candidate;
 }
 
+/** File extension for an export format (image formats included). */
+function extForFormat(format) {
+  if (format === 'zpl') return '.zpl';
+  if (format === 'png') return '.png';
+  if (format === 'jpeg' || format === 'jpg') return '.jpg';
+  return '.pdf';
+}
+
+/** Insert a `-p{n}` page marker before the extension, only for multi-page docs. */
+function withPageSuffix(safeName, ext, pageIndex, multi) {
+  if (!multi) return safeName;
+  const stem = safeName.toLowerCase().endsWith(ext.toLowerCase()) ? safeName.slice(0, -ext.length) : safeName;
+  return `${stem}-p${pageIndex + 1}${ext}`;
+}
+
+/**
+ * Render one bulk document into ready-to-append archive entries.
+ *   pdf / zpl  -> 1 entry
+ *   png / jpeg -> one entry per page (PDF is watermarked FIRST, then rasterized,
+ *                 so free-tier branding is baked into the pixels)
+ * @returns {Promise<Array<{ buffer: Buffer, ext: string, pageIndex: number, multi: boolean }>>}
+ */
+async function renderDocEntries({ format, genArgs, gate, dpi, jpegQuality }) {
+  if (isImageFormat(format)) {
+    let pdf = await generatePdfBuffer(genArgs);
+    if (gate.watermark) pdf = await stampWatermark(pdf);
+    const pages = await rasterizePdfBuffer(pdf, { imageFormat: format, dpi, jpegQuality });
+    const multi = pages.length > 1;
+    return pages.map(p => ({ buffer: p.buffer, ext: `.${p.ext}`, pageIndex: p.pageIndex, multi }));
+  }
+  const raw    = await (format === 'zpl' ? generateZplBuffer : generatePdfBuffer)(genArgs);
+  const buffer = (gate.watermark && format !== 'zpl') ? await stampWatermark(raw) : raw;
+  return [{ buffer, ext: extForFormat(format), pageIndex: 0, multi: false }];
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Key normalisation
 // ─────────────────────────────────────────────────────────────────────────────
@@ -399,11 +434,12 @@ app.post('/generate-bulk-documents', async (req, res) => {
     const rows             = driverCollection.rows;
     const total            = rows.length;
     const format           = String(req.body.format || req.body.bulk?.format || 'pdf').toLowerCase();
-    const fileExt          = format === 'zpl' ? '.zpl' : '.pdf';
+    const fileExt          = extForFormat(format);
+    const dpi              = parseInt(req.body.dpi, 10) || undefined;   // image formats; emitter clamps + defaults
+    const jpegQuality      = req.body.jpegQuality;
     const fileNameTemplate = String(bulk.fileNameTemplate || `${outputFileName || 'document'}-{{__index}}${fileExt}`);
     const zipFileName      = sanitizeZipName(bulk.zipFileName || `${outputFileName || 'documents'}.zip`, 'documents.zip');
     const relatedCollections = bulk.relatedCollections || {};
-    const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
     // Entitlement gate (bulk capability + per-job rows + monthly cap). Must
     // run before any bytes are streamed so we can still return a JSON error.
@@ -442,19 +478,17 @@ app.post('/generate-bulk-documents', async (req, res) => {
       }
 
       try {
-        let buffer = await generateBuffer({
-          ir: rowIr, templateElements, fieldMapping,
-          tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
+        const entries = await renderDocEntries({
+          format, gate, dpi, jpegQuality,
+          genArgs: { ir: rowIr, templateElements, fieldMapping,
+                     tableCollectionBindings, collectionMappings, pageConfigs, pageSize },
         });
-        if (gate.watermark && format !== 'zpl') buffer = await stampWatermark(buffer);
-
         const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
-        const safeName     = uniqueFileName(
-          sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt),
-          usedNames,
-        );
-
-        archive.append(buffer, { name: safeName });
+        const safeBase     = sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt);
+        for (const e of entries) {
+          const name = uniqueFileName(withPageSuffix(safeBase, fileExt, e.pageIndex, e.multi), usedNames);
+          archive.append(e.buffer, { name });
+        }
       } catch (rowErr) {
         console.error(`[bulk] row ${i} failed:`, rowErr.message);
       }
@@ -503,11 +537,12 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const rows             = driverCollection.rows;
   const total            = rows.length;
   const format           = String(req.body.format || req.body.bulk?.format || 'pdf').toLowerCase();
-  const fileExt          = format === 'zpl' ? '.zpl' : '.pdf';
+  const fileExt          = extForFormat(format);
+  const dpi              = parseInt(req.body.dpi, 10) || undefined;   // image formats; emitter clamps + defaults
+  const jpegQuality      = req.body.jpegQuality;
   const fileNameTemplate = String(bulk.fileNameTemplate || `document-{{__index}}${fileExt}`);
   const zipFileName      = sanitizeZipName(bulk.zipFileName || 'documents.zip', 'documents.zip');
   const relatedCollections = bulk.relatedCollections || {};
-  const generateBuffer   = format === 'zpl' ? generateZplBuffer : generatePdfBuffer;
 
   // Entitlement gate (bulk capability + per-job rows + monthly cap).
   const gate = await checkExportAllowed({
@@ -541,24 +576,24 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
         const rowIr = buildRowIr(normalised.ir, driverCollectionKey, row, i, relatedCollections);
 
         try {
-          let buffer = await generateBuffer({
-            ir:                      rowIr,
-            templateElements:        normalised.templateElements,
-            fieldMapping:            normalised.fieldMapping,
-            tableCollectionBindings: normalised.tableCollectionBindings,
-            collectionMappings:      normalised.collectionMappings,
-            pageConfigs:             normalised.pageConfigs,
-            pageSize:                normalised.pageSize,
+          const entries = await renderDocEntries({
+            format, gate, dpi, jpegQuality,
+            genArgs: {
+              ir:                      rowIr,
+              templateElements:        normalised.templateElements,
+              fieldMapping:            normalised.fieldMapping,
+              tableCollectionBindings: normalised.tableCollectionBindings,
+              collectionMappings:      normalised.collectionMappings,
+              pageConfigs:             normalised.pageConfigs,
+              pageSize:                normalised.pageSize,
+            },
           });
-          if (gate.watermark && format !== 'zpl') buffer = await stampWatermark(buffer);
-
           const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
-          const safeName     = uniqueFileName(
-            sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt),
-            usedNames,
-          );
-
-          archive.append(buffer, { name: safeName });
+          const safeBase     = sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt);
+          for (const e of entries) {
+            const name = uniqueFileName(withPageSuffix(safeBase, fileExt, e.pageIndex, e.multi), usedNames);
+            archive.append(e.buffer, { name });
+          }
           job.current = i + 1;
         } catch (rowErr) {
           console.error(`[bulk-async] row ${i} failed:`, rowErr.message);

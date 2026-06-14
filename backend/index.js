@@ -15,6 +15,7 @@ const { v4: uuidv4 } = require('uuid');
 const { parseDataSource, validateBindings } = require('./parsers/index');
 const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer');
 const { generateZplBuffer }                 = require('./renderer/zplRenderer');
+const { rasterizePdfBuffer, isImageFormat } = require('./renderer/imageRenderer');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
 const { checkExportAllowed }                = require('./usage');
@@ -316,6 +317,35 @@ app.post('/generate-document', async (req, res) => {
         'Content-Disposition': `attachment; filename="${outputFileName || 'document'}.zpl"`,
       });
       return res.send(zplBuffer);
+    }
+
+    if (isImageFormat(format)) {
+      // Watermark the PDF FIRST, then rasterize — branding is baked into the pixels.
+      const wmPdf = gate.watermark ? await stampWatermark(pdfBuffer) : pdfBuffer;
+      const dpi   = parseInt(req.body.dpi, 10) || undefined;          // emitter clamps + defaults to 300
+      const pages = await rasterizePdfBuffer(wmPdf, {
+        imageFormat: format, dpi, jpegQuality: req.body.jpegQuality,
+      });
+      const base = outputFileName || 'document';
+
+      // Single page → return the image directly; multi-page → zip the pages.
+      if (pages.length === 1) {
+        res.set({
+          'Content-Type':        pages[0].contentType,
+          'Content-Disposition': `attachment; filename="${base}.${pages[0].ext}"`,
+        });
+        return res.send(pages[0].buffer);
+      }
+
+      const archive = archiver('zip', { store: true });
+      archive.on('error', err => { console.error('[generate-document] image zip error:', err); res.destroy(); });
+      res.set({
+        'Content-Type':        'application/zip',
+        'Content-Disposition': `attachment; filename="${base}.zip"`,
+      });
+      archive.pipe(res);
+      for (const p of pages) archive.append(p.buffer, { name: `${base}-p${p.pageIndex + 1}.${p.ext}` });
+      return archive.finalize();
     }
 
     // Free tier: brand the PDF server-side so it can't be stripped client-side.

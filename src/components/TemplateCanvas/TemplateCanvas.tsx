@@ -81,7 +81,7 @@ import {
   mapTemplateForPreview,
   validateBindings,
 } from '../../services/mappingEngine';
-import { generateDocument } from '../../services/dataSourceService';
+import { generateDocument, extFromBlob } from '../../services/dataSourceService';
 import {
   createTemplate as createCloudTemplate,
   updateTemplate as updateCloudTemplate,
@@ -209,7 +209,7 @@ function TemplateCanvas() {
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
   const [pageSize, setPageSize] = useState<PageSizeConfig>(defaultPageSize());
-  const [exportFormat, setExportFormat] = useState<'pdf' | 'zpl'>('pdf');
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'zpl' | 'png' | 'jpeg'>('pdf');
   const [showPageRulers, setShowPageRulers] = useState(false);
 
   const handlePageSizeChange = useCallback((preset: string) => {
@@ -827,7 +827,7 @@ function TemplateCanvas() {
           format: exportFormat,
         });
 
-        downloadBlob(blob, `${outputFileName}.${exportFormat === 'zpl' ? 'zpl' : 'pdf'}`);
+        downloadBlob(blob, `${outputFileName}.${extFromBlob(blob, exportFormat)}`);
         return;
       }
       // ── END NEW ───────────────────────────────────────────────────────────

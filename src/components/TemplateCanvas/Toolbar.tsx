@@ -477,8 +477,8 @@ export interface ToolbarProps {
   currentPageSize ?: string;
   customPageWidth ?: number;
   customPageHeight?: number;
-  exportFormat?: 'pdf' | 'zpl';
-  onExportFormatChange?: (format: 'pdf' | 'zpl') => void;
+  exportFormat?: 'pdf' | 'zpl' | 'png' | 'jpeg';
+  onExportFormatChange?: (format: 'pdf' | 'zpl' | 'png' | 'jpeg') => void;
 }
 
 export default function Toolbar({
@@ -610,18 +610,24 @@ export default function Toolbar({
         <>
           <Divider />
           <div className="tb-group tb-export-group">
-            {onExportFormatChange && currentPageSize !== 'a4' && currentPageSize !== 'letter' && (
+            {onExportFormatChange && (
               <div className="tb-format-toggle">
-                <button
-                  className={`tb-format-btn ${exportFormat === 'pdf' ? 'tb-format-btn--active' : ''}`}
-                  onClick={() => onExportFormatChange('pdf')}
-                  aria-label="PDF format"
-                >PDF</button>
-                <button
-                  className={`tb-format-btn ${exportFormat === 'zpl' ? 'tb-format-btn--active' : ''}`}
-                  onClick={() => onExportFormatChange('zpl')}
-                  aria-label="ZPL format"
-                >ZPL</button>
+                {(['pdf', 'png', 'jpeg'] as const).map(f => (
+                  <button
+                    key={f}
+                    className={`tb-format-btn ${exportFormat === f ? 'tb-format-btn--active' : ''}`}
+                    onClick={() => onExportFormatChange(f)}
+                    aria-label={`${f.toUpperCase()} format`}
+                  >{f.toUpperCase()}</button>
+                ))}
+                {/* ZPL only makes sense for thermal/label page sizes */}
+                {currentPageSize !== 'a4' && currentPageSize !== 'letter' && (
+                  <button
+                    className={`tb-format-btn ${exportFormat === 'zpl' ? 'tb-format-btn--active' : ''}`}
+                    onClick={() => onExportFormatChange('zpl')}
+                    aria-label="ZPL format"
+                  >ZPL</button>
+                )}
               </div>
             )}
             <Tooltip label={`Export ${exportFormat?.toUpperCase() || 'PDF'}`} shortcut="⌘E">

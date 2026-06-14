@@ -115,7 +115,9 @@ export interface GenerateDocumentParams {
     driverRowField: string;   // field in the driver row to match against
   }>;
   pageSize?: { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
-  format?: 'pdf' | 'zpl';
+  format?: 'pdf' | 'zpl' | 'png' | 'jpeg';
+  dpi?:         number;   // image formats only; server clamps 72–600, defaults 300
+  jpegQuality?: number;   // 0..1, jpeg only
 }
 
 export interface BulkDocumentOptions {
@@ -150,6 +152,8 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
       relatedCollections:  params.relatedCollections ?? {},
       pageSize:            params.pageSize ?? null,
       format:              params.format ?? 'pdf',
+      dpi:                 params.dpi,
+      jpegQuality:         params.jpegQuality,
     }),
   });
 
@@ -179,6 +183,9 @@ export async function generateBulkDocuments(params: GenerateBulkDocumentsParams)
       outputFileName: params.outputFileName ?? 'documents',
       bulk:           params.bulk,
       pageSize:       params.pageSize ?? null,
+      format:         params.format ?? 'pdf',
+      dpi:            params.dpi,
+      jpegQuality:    params.jpegQuality,
     }),
   });
 
@@ -198,12 +205,27 @@ export async function generateBulkDocuments(params: GenerateBulkDocumentsParams)
 // Convenience — download single document directly
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * File extension for a downloaded export blob, derived from its MIME type.
+ * Handles the multi-page image case: a single export spanning >1 page comes back
+ * as application/zip, not an image. Falls back to the requested format.
+ */
+export function extFromBlob(blob: Blob, fallbackFormat: string = 'pdf'): string {
+  const t = (blob.type || '').toLowerCase();
+  if (t.startsWith('application/pdf')) return 'pdf';
+  if (t.startsWith('application/zip')) return 'zip';
+  if (t.startsWith('image/png'))       return 'png';
+  if (t.startsWith('image/jpeg'))      return 'jpg';
+  if (t.startsWith('text/plain'))      return 'zpl';
+  return fallbackFormat === 'jpeg' ? 'jpg' : fallbackFormat === 'png' ? 'png' : fallbackFormat === 'zpl' ? 'zpl' : 'pdf';
+}
+
 export async function downloadDocument(params: GenerateDocumentParams): Promise<void> {
   const blob   = await generateDocument(params);
   const url    = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href     = url;
-  anchor.download = `${params.outputFileName ?? 'document'}.pdf`;
+  anchor.download = `${params.outputFileName ?? 'document'}.${extFromBlob(blob, params.format)}`;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);

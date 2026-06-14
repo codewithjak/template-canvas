@@ -54,7 +54,7 @@ export interface BulkExportPanelProps {
   onClose:                 () => void;
   onGlobalFieldsSave?:     (fields: Record<string, string>) => void;
   pageSize?:               { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
-  exportFormat?:           'pdf' | 'zpl';
+  exportFormat?:           'pdf' | 'zpl' | 'png' | 'jpeg';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -118,7 +118,10 @@ export function BulkExportPanel({
   const [driverKey,         setDriverKey]         = useState<string>(autoDriver);
   const [fileNameTemplate,  setFileNameTemplate]  = useState<string>(() => {
     const firstCol = Object.keys(ir.collections[collectionKeys[0]]?.rows[0] ?? {})[0] ?? 'id';
-    const ext = exportFormat === 'zpl' ? '.zpl' : '.pdf';
+    const ext = exportFormat === 'zpl' ? '.zpl'
+              : exportFormat === 'png' ? '.png'
+              : exportFormat === 'jpeg' ? '.jpg'
+              : '.pdf';
     return `document-{{${firstCol}}}${ext}`;
   });
   const [globalFieldValues, setGlobalFieldValues] = useState<Record<string, string>>(savedGlobalFields);

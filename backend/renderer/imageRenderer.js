@@ -21,9 +21,22 @@ const PT_PER_INCH = 72;           // PDF user space: 1 point = 1/72 inch
 const DEFAULT_DPI = 300;          // print-grade default
 const DPI_MIN     = 72;
 const DPI_MAX     = 600;          // guard rail: 600 DPI A4 ≈ 4961×7016px ≈ 100MB RGB
+// Hard ceiling on a single rendered page, to protect the box from a pathological
+// custom pageSize × high DPI (e.g. A0 @ 600 DPI ≈ 560 MP ≈ 2.2 GB RGBA). Normal
+// print sizes stay well under: A4 @ 600 ≈ 35 MP, Tabloid @ 600 ≈ 67 MP.
+const MAX_MEGAPIXELS = 100;
+
+/** Read [width, height] from a PNG buffer's IHDR (cheap — no decode). */
+function pngSize(buf) {
+  // 8-byte signature, 4-byte length, 4-byte "IHDR", then width@16, height@20 (big-endian).
+  if (buf.length < 24) return [0, 0];
+  return [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+}
 
 /**
- * Rasterize a vector PDF buffer into one image buffer per page.
+ * Rasterize a vector PDF buffer into one PNG buffer per page. Pages are produced
+ * lazily by pdf-to-img, so the per-page megapixel guard aborts BEFORE a runaway
+ * page is materialized in the next iterations.
  *
  * @param {Buffer} pdfBuffer
  * @param {number} dpi
@@ -34,7 +47,17 @@ async function rasterizePdf(pdfBuffer, dpi) {
   const { pdf } = await import('pdf-to-img');
   const doc   = await pdf(pdfBuffer, { scale: dpi / PT_PER_INCH });
   const pages = [];
-  for await (const pngBuffer of doc) pages.push(pngBuffer);   // doc is an async iterator of PNG buffers
+  for await (const pngBuffer of doc) {
+    const [w, h] = pngSize(pngBuffer);
+    const mp = (w * h) / 1e6;
+    if (mp > MAX_MEGAPIXELS) {
+      throw new Error(
+        `[imageRenderer] page too large to rasterize: ${w}×${h} (${mp.toFixed(0)} MP > ${MAX_MEGAPIXELS} MP cap). ` +
+        `Lower the DPI or reduce the page size.`
+      );
+    }
+    pages.push(pngBuffer);
+  }
   return pages;
 }
 

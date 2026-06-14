@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import BookDemo from '../components/BookDemo'
+import ContactForm from '../components/ContactForm'
 import '../App.css'
 
 /* ── Inline SVG icons ─────────────────────────────────────── */
@@ -58,6 +59,19 @@ const Icon = {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="2.5" y="3" width="11" height="10.5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
       <path d="M2.5 6h11M5.5 1.8v2.4M10.5 1.8v2.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  Team: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M2.5 16a4.5 4.5 0 0 1 9 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <path d="M13 5.2a2.5 2.5 0 0 1 0 4.6M14.5 16a4.5 4.5 0 0 0-2.2-3.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
+  AI: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5 11.4 7l4.5 1.4-4.5 1.4L10 14.3 8.6 9.8 4.1 8.4 8.6 7 10 2.5Z" fill="currentColor" opacity=".9"/>
+      <path d="m15.5 12.5.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9Z" fill="currentColor" opacity=".6"/>
     </svg>
   ),
 }
@@ -140,6 +154,7 @@ export default function Home() {
             <Link to="/features" className="topbar__link">Features</Link>
             <Link to="/pricing" className="topbar__link">Pricing</Link>
             <Link to="/careers" className="topbar__link">Careers</Link>
+            <a href="#contact" className="topbar__link">Contact</a>
           </nav>
           <div className="topbar__cta">
             <BookDemo className="btn btn--ghost btn--sm"><Icon.Calendar /> Book a demo</BookDemo>
@@ -267,12 +282,21 @@ export default function Home() {
               { Icon: Icon.Bolt,     title: 'Bulk generation',      body: 'Turn one template and a dataset into hundreds of personalised documents in a single run.' },
               { Icon: Icon.Export,   title: 'PDF & ZPL export',     body: 'One-click, print-ready PDFs — or ZPL output for thermal and label printers.' },
               { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
-            ].map(({ Icon: Ic, title, body }) => (
+              { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries and role-based team access, so your whole org works from the same source.' },
+              { Icon: Icon.AI,       title: 'AI template extraction', badge: 'In progress', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.' },
+            ].map(({ Icon: Ic, title, body, badge }) => (
               <article className="feat-card" key={title}>
                 <div className="feat-card__icon" style={{color:'var(--blue)'}}>
                   <Ic />
                 </div>
-                <h3>{title}</h3>
+                {badge ? (
+                  <div className="feat-card__title">
+                    <h3>{title}</h3>
+                    <span className="feat-badge feat-badge--progress">{badge}</span>
+                  </div>
+                ) : (
+                  <h3>{title}</h3>
+                )}
                 <p>{body}</p>
               </article>
             ))}
@@ -295,6 +319,21 @@ export default function Home() {
               <ProductMockup />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Contact ──────────────────────────────────────── */}
+      <section className="section" id="contact">
+        <div className="wrap contact-wrap">
+          <div className="section__head">
+            <span className="eyebrow section__eyebrow">Contact us</span>
+            <h2>Have a question or <em>suggestion?</em></h2>
+            <p className="section__lead">
+              Tell us what’s on your mind — feedback, a question, or an idea for
+              Mapdoc. We read every message and reply personally.
+            </p>
+          </div>
+          <ContactForm />
         </div>
       </section>
 
@@ -324,6 +363,7 @@ export default function Home() {
               <h4>Company</h4>
               <ul>
                 <li><Link to="/careers">Careers</Link></li>
+                <li><a href="#contact">Contact</a></li>
                 <li><button type="button" className="footer__nav-btn footer__nav-btn--dim" disabled>Privacy</button></li>
                 <li><button type="button" className="footer__nav-btn footer__nav-btn--dim" disabled>Terms</button></li>
               </ul>

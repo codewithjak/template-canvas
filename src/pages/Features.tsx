@@ -42,6 +42,13 @@ const Icons = {
       <circle cx="10" cy="10" r="2.5" fill="currentColor" opacity=".7"/>
     </svg>
   ),
+  Team: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M2.5 16a4.5 4.5 0 0 1 9 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+      <path d="M13 5.2a2.5 2.5 0 0 1 0 4.6M14.5 16a4.5 4.5 0 0 0-2.2-3.9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+  ),
   Arrow: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -79,6 +86,11 @@ const features = [
     Icon: Icons.Eye,
     title: 'Multi-page & live preview',
     body: 'Multiple pages, custom page sizes, page breaks, and page numbers — all with an accurate, real-time preview as you build.',
+  },
+  {
+    Icon: Icons.Team,
+    title: 'Team workspaces',
+    body: 'Shared template libraries and role-based access, so your whole organisation works from the same source of truth.',
   },
 ]
 
@@ -124,7 +136,7 @@ export default function Features() {
             <FeatureHighlight />
             <div className="stats">
               <div className="stat">
-                <div className="stat__num">6+</div>
+                <div className="stat__num">7+</div>
                 <div className="stat__label">Core tools</div>
               </div>
               <div className="stat">
@@ -172,16 +184,17 @@ export default function Features() {
             <span className="eyebrow eyebrow--light">Coming soon</span>
             <h2>The roadmap is <em>just getting started.</em></h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Data mapping, bulk generation, and PDF/ZPL export are already live.
-              Collaboration and cloud features are next on the roadmap.
+              Data mapping, bulk generation, PDF/ZPL export, and team workspaces
+              are already live. AI template extraction is in active development —
+              with more on the roadmap.
             </p>
           </div>
           <div className="feat-grid">
             {[
-              { title: 'Team workspaces',  body: 'Shared template libraries and role-based access so your whole org works from the same source.' },
+              { title: 'AI template extraction', badge: 'In progress', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — grounded on real template JSON so it reproduces the original’s structure accurately.' },
               { title: 'Version history',  body: 'Track every change to a template, compare revisions, and roll back to any previous version.' },
               { title: 'Cloud sync',       body: 'Save templates and data sources to the cloud and pick up where you left off on any device.' },
-            ].map(({ title, body }) => (
+            ].map(({ title, body, badge }) => (
               <article className="feat-card feat-card--dark" key={title}>
                 <div className="feat-card__icon" style={{ opacity: 0.5 }}>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -189,7 +202,14 @@ export default function Features() {
                     <path d="M10 7v3l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </div>
-                <h3>{title}</h3>
+                {badge ? (
+                  <div className="feat-card__title">
+                    <h3>{title}</h3>
+                    <span className="feat-badge feat-badge--progress">{badge}</span>
+                  </div>
+                ) : (
+                  <h3>{title}</h3>
+                )}
                 <p>{body}</p>
               </article>
             ))}
@@ -263,34 +283,41 @@ function FeatureHighlight() {
       </div>
       <div style={{ padding: '1.25rem', display: 'grid', gap: '0.75rem' }}>
         {[
-          { icon: '📝', label: 'Text, tables & images', done: true  },
-          { icon: '▦',  label: 'Barcodes & QR codes',   done: true  },
-          { icon: '⚡', label: 'Data mapping',           done: true  },
-          { icon: '📄', label: 'PDF & ZPL export',       done: true  },
-          { icon: '🗂', label: 'Bulk generation',        done: true  },
-          { icon: '👥', label: 'Team workspaces',        done: false },
-        ].map(({ icon, label, done }) => (
-          <div key={label} style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0.6rem 0.85rem',
-            borderRadius: '10px',
-            background: done ? 'rgba(35,85,244,0.06)' : 'rgba(15,23,42,0.03)',
-            border: `1px solid ${done ? 'rgba(35,85,244,0.12)' : 'rgba(15,23,42,0.06)'}`,
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem', color: done ? '#0f172a' : '#94a3b8' }}>
-              <span style={{ fontSize: '1rem' }}>{icon}</span>
-              {label}
-            </span>
-            <span style={{
-              fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em',
-              padding: '2px 8px', borderRadius: '999px',
-              background: done ? 'rgba(34,197,94,0.1)' : 'rgba(148,163,184,0.12)',
-              color: done ? '#15803d' : '#94a3b8',
+          { icon: '📝', label: 'Text, tables & images', status: 'live'     },
+          { icon: '▦',  label: 'Barcodes & QR codes',   status: 'live'     },
+          { icon: '⚡', label: 'Data mapping',           status: 'live'     },
+          { icon: '📄', label: 'PDF & ZPL export',       status: 'live'     },
+          { icon: '👥', label: 'Team workspaces',        status: 'live'     },
+          { icon: '✨', label: 'AI template extraction', status: 'progress' },
+        ].map(({ icon, label, status }) => {
+          const accent = {
+            live:     { rowBg: 'rgba(35,85,244,0.06)',  rowBorder: 'rgba(35,85,244,0.12)',  text: '#0f172a', badgeBg: 'rgba(34,197,94,0.1)',   badgeColor: '#15803d', badgeText: 'Live' },
+            progress: { rowBg: 'rgba(245,166,35,0.07)', rowBorder: 'rgba(245,166,35,0.20)', text: '#0f172a', badgeBg: 'rgba(245,166,35,0.14)', badgeColor: '#b45309', badgeText: 'In progress' },
+            soon:     { rowBg: 'rgba(15,23,42,0.03)',   rowBorder: 'rgba(15,23,42,0.06)',   text: '#94a3b8', badgeBg: 'rgba(148,163,184,0.12)', badgeColor: '#94a3b8', badgeText: 'Soon' },
+          }[status] ?? { rowBg: 'rgba(15,23,42,0.03)', rowBorder: 'rgba(15,23,42,0.06)', text: '#94a3b8', badgeBg: 'rgba(148,163,184,0.12)', badgeColor: '#94a3b8', badgeText: 'Soon' }
+          return (
+            <div key={label} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.6rem 0.85rem',
+              borderRadius: '10px',
+              background: accent.rowBg,
+              border: `1px solid ${accent.rowBorder}`,
             }}>
-              {done ? 'Live' : 'Soon'}
-            </span>
-          </div>
-        ))}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.875rem', color: accent.text }}>
+                <span style={{ fontSize: '1rem' }}>{icon}</span>
+                {label}
+              </span>
+              <span style={{
+                fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em',
+                padding: '2px 8px', borderRadius: '999px',
+                background: accent.badgeBg,
+                color: accent.badgeColor,
+              }}>
+                {accent.badgeText}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -453,6 +453,112 @@ h1, h2, h3 { margin: 0; }
   margin-bottom: 3rem;
 }
 
+/* ── Contact ───────────────────────────────────────────────── */
+.contact-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: start;
+}
+
+.contact-wrap .section__head {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .contact-wrap { grid-template-columns: 1fr; }
+}
+
+.contact-form {
+  display: grid;
+  gap: 1.1rem;
+  background: var(--surface);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.contact-field { display: grid; gap: 0.4rem; }
+
+.contact-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.contact-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.contact-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-soft);
+}
+
+.contact-input::placeholder { color: var(--ink-3); }
+
+.contact-textarea {
+  min-height: 130px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* Honeypot — kept in the DOM for bots, hidden from people. */
+.contact-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.contact-error {
+  margin: 0;
+  color: #c0341d;
+  font-size: 0.9rem;
+}
+
+.contact-form .btn { justify-self: start; }
+
+.contact-form--done {
+  text-align: center;
+  align-content: center;
+  min-height: 280px;
+}
+
+.contact-done__check {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.contact-form--done h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.contact-form--done p { color: var(--ink-2); }
+
 .section__head--center {
   margin-inline: auto;
   text-align: center;
@@ -517,6 +623,38 @@ h1, h2, h3 { margin: 0; }
   font-size: 1.05rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
+}
+
+/* Title + status badge row (e.g. "In progress" on roadmap features). */
+.feat-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.feat-card__title h3 { margin-bottom: 0; }
+
+.feat-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.feat-badge--progress {
+  background: rgba(245, 166, 35, 0.14);
+  color: #b45309;
+}
+
+.feat-card--dark .feat-badge--progress {
+  background: rgba(245, 166, 35, 0.18);
+  color: var(--gold);
 }
 
 .feat-card p {

@@ -5,11 +5,12 @@ import type { FooterConfig } from '../../types/canvas';
 import {
   applyHeaderMerge,
   applyRectMerge,
+  insertColumnAt,
   isLayoutTable,
-  newStableId,
+  moveColumn,
   normalizeRect,
-  stripAllMerges,
-  stripMergesFromRow,
+  removeColumnAt,
+  setColumnWidth,
   unmergeAt,
   unmergeHeaderAt,
 } from '../../model/layoutTable';
@@ -884,104 +885,89 @@ function PropertiesPanel({
               />
             </div>
             <div className="property-section-title property-subtitle">Columns</div>
-            {selectedElement.columns.map((col, colIndex) => (
-              <div className="property-grid-two" key={col.id}>
-                <div className="property-group">
-                  <label className="property-label">Width (px)</label>
-                  <input
-                    type="number"
-                    className="property-input"
-                    min={40}
-                    max={800}
-                    value={col.width}
-                    onChange={(e) => {
-                      const w = Math.max(40, Number(e.target.value) || 40);
-                      const columns = selectedElement.columns.map((c, i) =>
-                        i === colIndex ? { ...c, width: w } : c
-                      );
-                      onUpdate(selectedElement.id, { columns } as Partial<CanvasElement>);
-                    }}
-                  />
-                </div>
-                <div className="property-group">
-                  <label className="property-label">Align</label>
-                  <select
-                    className="property-select"
-                    value={col.alignment ?? 'left'}
-                    onChange={(e) => {
-                      const alignment = e.target.value as 'left' | 'center' | 'right';
-                      const columns = selectedElement.columns.map((c, i) =>
-                        i === colIndex ? { ...c, alignment } : c
-                      );
-                      onUpdate(selectedElement.id, { columns } as Partial<CanvasElement>);
-                    }}
-                  >
-                    <option value="left">Left</option>
-                    <option value="center">Center</option>
-                    <option value="right">Right</option>
-                  </select>
-                </div>
-              </div>
-            ))}
-            <div className="property-group property-row-buttons">
+            {(() => {
+              const table = selectedElement;
+              const applyPatch = (patch: Partial<typeof table>) => {
+                if (patch && Object.keys(patch).length) onUpdate(table.id, patch as Partial<CanvasElement>);
+              };
+              const lastIndex = table.columns.length - 1;
+              return table.columns.map((col, colIndex) => {
+                const headerCell = table.headerRow?.cells[colIndex];
+                const headerText =
+                  (headerCell && !headerCell.mergedInto && headerCell.content?.value) ||
+                  `Column ${colIndex + 1}`;
+                return (
+                  <div className="column-editor" key={col.id}>
+                    <div className="column-editor__head">
+                      <span className="column-editor__name" title={headerText}>
+                        {colIndex + 1}. {headerText}
+                      </span>
+                      <div className="column-editor__actions">
+                        <button
+                          type="button" className="column-editor__btn" title="Move left"
+                          disabled={colIndex === 0}
+                          onClick={() => applyPatch(moveColumn(table, colIndex, colIndex - 1))}
+                        >‹</button>
+                        <button
+                          type="button" className="column-editor__btn" title="Move right"
+                          disabled={colIndex === lastIndex}
+                          onClick={() => applyPatch(moveColumn(table, colIndex, colIndex + 1))}
+                        >›</button>
+                        <button
+                          type="button" className="column-editor__btn" title="Insert column after"
+                          onClick={() => applyPatch(insertColumnAt(table, colIndex + 1))}
+                        >+</button>
+                        <button
+                          type="button" className="column-editor__btn column-editor__btn--danger" title="Delete column"
+                          disabled={table.columns.length <= 1}
+                          onClick={() => applyPatch(removeColumnAt(table, colIndex))}
+                        >×</button>
+                      </div>
+                    </div>
+                    <div className="property-grid-two">
+                      <div className="property-group">
+                        <label className="property-label">Width (px)</label>
+                        <input
+                          type="number" className="property-input" min={40} max={800}
+                          value={col.width}
+                          onChange={(e) => applyPatch(setColumnWidth(table, colIndex, Number(e.target.value) || 40))}
+                        />
+                      </div>
+                      <div className="property-group">
+                        <label className="property-label">Align</label>
+                        <select
+                          className="property-select"
+                          value={col.alignment ?? 'left'}
+                          onChange={(e) => {
+                            const alignment = e.target.value as 'left' | 'center' | 'right';
+                            const columns = table.columns.map((c, i) =>
+                              i === colIndex ? { ...c, alignment } : c
+                            );
+                            applyPatch({ columns });
+                          }}
+                        >
+                          <option value="left">Left</option>
+                          <option value="center">Center</option>
+                          <option value="right">Right</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+            <div className="property-group">
               <button
                 type="button"
                 className="property-button-secondary"
-                onClick={() => {
-                  const col = {
-                    id: newStableId(),
-                    width: 96,
-                    widthMode: 'fixed' as const,
-                    alignment: 'left' as const,
-                  };
-                  const cleared = stripAllMerges(selectedElement.rows);
-                  const rows = cleared.map((r) => ({
-                    ...r,
-                    cells: [
-                      ...r.cells,
-                      { id: newStableId(), content: { type: 'text' as const, value: '' } },
-                    ],
-                  }));
-                  const headerRow = selectedElement.headerRow
-                    ? {
-                        ...stripMergesFromRow(selectedElement.headerRow),
-                        cells: [
-                          ...stripMergesFromRow(selectedElement.headerRow).cells,
-                          { id: newStableId(), content: { type: 'text' as const, value: `Header ${selectedElement.columns.length + 1}` } },
-                        ],
-                      }
-                    : undefined;
-                  onUpdate(selectedElement.id, {
-                    columns: [...selectedElement.columns, col],
-                    headerRow,
-                    rows,
-                  } as Partial<CanvasElement>);
-                }}
+                onClick={() =>
+                  onUpdate(
+                    selectedElement.id,
+                    insertColumnAt(selectedElement, selectedElement.columns.length) as Partial<CanvasElement>,
+                  )
+                }
               >
-                + Column
-              </button>
-              <button
-                type="button"
-                className="property-button-secondary"
-                disabled={selectedElement.columns.length <= 1}
-                onClick={() => {
-                  if (selectedElement.columns.length <= 1) return;
-                  const cleared = stripAllMerges(selectedElement.rows);
-                  const columns = selectedElement.columns.slice(0, -1);
-                  const rows = cleared.map((r) => ({
-                    ...r,
-                    cells: r.cells.slice(0, -1),
-                  }));
-                  const headerRow = selectedElement.headerRow
-                    ? {
-                        ...stripMergesFromRow(selectedElement.headerRow),
-                        cells: stripMergesFromRow(selectedElement.headerRow).cells.slice(0, -1),
-                      }
-                    : undefined;
-                  onUpdate(selectedElement.id, { columns, headerRow, rows } as Partial<CanvasElement>);
-                }}
-              >
-                − Column
+                + Add column
               </button>
             </div>
             <div className="property-section-title property-subtitle">Merge cells</div>

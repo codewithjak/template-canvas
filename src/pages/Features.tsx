@@ -79,8 +79,8 @@ const features = [
   },
   {
     Icon: Icons.Export,
-    title: 'PDF & ZPL export',
-    body: 'Generate pixel-perfect, print-ready PDFs — or ZPL output for thermal and label printers. What you see is what you get.',
+    title: 'PDF, image & ZPL export',
+    body: 'Generate pixel-perfect, print-ready PDFs, high-resolution PNG, JPG, and JPEG images, or ZPL output for thermal and label printers. What you see is what you get.',
   },
   {
     Icon: Icons.Eye,
@@ -118,8 +118,8 @@ export default function Features() {
             <span className="eyebrow hero__eyebrow">✦ Product features</span>
             <h1>Every tool you need to build <em>perfect documents.</em></h1>
             <p className="hero__sub">
-              From a drag-and-drop canvas to one-click PDF export and dynamic
-              data mapping — Mapdoc gives teams everything to create, reuse,
+              From a drag-and-drop canvas to one-click PDF and image export and
+              dynamic data mapping — Mapdoc gives teams everything to create, reuse,
               and automate business documents at scale.
             </p>
             <div className="hero__actions">
@@ -184,8 +184,8 @@ export default function Features() {
             <span className="eyebrow eyebrow--light">Coming soon</span>
             <h2>The roadmap is <em>just getting started.</em></h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Data mapping, bulk generation, PDF/ZPL export, and team workspaces
-              are already live. AI template extraction is in active development —
+              Data mapping, bulk generation, PDF/image/ZPL export, and team
+              workspaces are already live. AI template extraction is in active development —
               with more on the roadmap.
             </p>
           </div>
@@ -286,7 +286,7 @@ function FeatureHighlight() {
           { icon: '📝', label: 'Text, tables & images', status: 'live'     },
           { icon: '▦',  label: 'Barcodes & QR codes',   status: 'live'     },
           { icon: '⚡', label: 'Data mapping',           status: 'live'     },
-          { icon: '📄', label: 'PDF & ZPL export',       status: 'live'     },
+          { icon: '📄', label: 'PDF, image & ZPL export', status: 'live'     },
           { icon: '👥', label: 'Team workspaces',        status: 'live'     },
           { icon: '✨', label: 'AI template extraction', status: 'progress' },
         ].map(({ icon, label, status }) => {

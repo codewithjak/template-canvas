@@ -185,7 +185,7 @@ export default function Home() {
             <ul className="hero__bullets">
               <li>Create once, reuse across every document</li>
               <li>Keep formatting consistent across your team</li>
-              <li>Export polished PDFs in one click</li>
+              <li>Export polished PDFs and images in one click</li>
             </ul>
           </div>
 
@@ -245,14 +245,14 @@ export default function Home() {
             <span className="eyebrow eyebrow--light">How it works</span>
             <h2>Three steps to a <em>polished document.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              From blank canvas to mapped data and a print-ready PDF or ZPL export — Mapdoc keeps the process simple.
+              From blank canvas to mapped data and a print-ready PDF, image, or ZPL export — Mapdoc keeps the process simple.
             </p>
           </div>
           <div className="steps">
             {[
               { label: 'Design',  title: 'Build your template', body: 'Drag and drop text, tables, images, barcodes, QR codes, and shapes onto the canvas to lay out your document — no code required.' },
               { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, or connect an API. Mapdoc auto-detects fields and relationships and maps them into your template.' },
-              { label: 'Export',  title: 'Generate at scale',   body: 'Produce one polished file or bulk-generate hundreds of personalised documents — exported as print-ready PDF or ZPL in a single click.' },
+              { label: 'Export',  title: 'Generate at scale',   body: 'Produce one polished file or bulk-generate hundreds of personalised documents — exported as print-ready PDF, PNG/JPG/JPEG image, or ZPL in a single click.' },
             ].map(({ label, title, body }, i) => (
               <article className="step-card feat-card feat-card--dark" key={title}>
                 <div className="step-card__head">
@@ -280,7 +280,7 @@ export default function Home() {
               { Icon: Icon.Map,      title: 'Barcodes & QR codes',  body: 'Drop in scannable barcodes and QR codes across dozens of symbologies — perfect for labels and tracking.' },
               { Icon: Icon.Reuse,    title: 'Data mapping',         body: 'Connect CSV, Excel, or API data. Mapdoc auto-detects relationships and maps fields to your template.' },
               { Icon: Icon.Bolt,     title: 'Bulk generation',      body: 'Turn one template and a dataset into hundreds of personalised documents in a single run.' },
-              { Icon: Icon.Export,   title: 'PDF & ZPL export',     body: 'One-click, print-ready PDFs — or ZPL output for thermal and label printers.' },
+              { Icon: Icon.Export,   title: 'PDF, image & ZPL export', body: 'One-click, print-ready PDFs, high-resolution PNG, JPG, and JPEG images, or ZPL output for thermal and label printers.' },
               { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
               { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries and role-based team access, so your whole org works from the same source.' },
               { Icon: Icon.AI,       title: 'AI template extraction', badge: 'In progress', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.' },
@@ -311,7 +311,7 @@ export default function Home() {
             <span className="eyebrow">See it in action</span>
             <h2>Build a template, map your data, and <em>export polished documents.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              Template creation, element arrangement, data mapping, and PDF or ZPL export — all in a few minutes.
+              Template creation, element arrangement, data mapping, and PDF, image, or ZPL export — all in a few minutes.
             </p>
           </div>
           <div className="video-wrap" style={{ background: '#fff', padding: '2.5rem', display: 'flex', justifyContent: 'center' }}>

@@ -66,6 +66,11 @@ import {
 import type { RelationshipReviewResult } from './RelationshipReview';
 import { RelationshipReview } from './RelationshipReview';
 import { IntentCapturePanel } from './IntentCapturePanel';
+import type { Phase } from './upload/types';
+import PhaseIndicator from './upload/PhaseIndicator';
+import UploadPhase from './upload/UploadPhase';
+import MappingPhase from './upload/MappingPhase';
+import UploadFooter from './upload/UploadFooter';
 import './UploadData.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -86,12 +91,6 @@ interface UploadDataProps {
   ) => void;
 }
 
-type Phase =
-  | 'intent'      // Phase 0: ask flat or relational
-  | 'upload'      // Phase 1: dropzone
-  | 'review'      // Phase 1.5: relationship review (relational only)
-  | 'mapping';    // Phase 2: confirm mappings
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -100,12 +99,6 @@ function removeEmptyMappings(mapping: FieldMapping): FieldMapping {
   return Object.fromEntries(
     Object.entries(mapping).filter(([, v]) => v.trim() !== ''),
   );
-}
-
-function collectionSummary(collections: CanonicalDocument['collections']): string {
-  return Object.entries(collections)
-    .map(([k, c]) => `${k} (${c.rows.length})`)
-    .join(' · ');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -264,6 +257,17 @@ const UploadData: React.FC<UploadDataProps> = ({
     }
   };
 
+  // ── Mapping edits ─────────────────────────────────────────────────────────
+
+  const handleMetaChange = (placeholder: string, value: string) =>
+    setMetaValues(prev => ({ ...prev, [placeholder]: value }));
+
+  const handleColumnMapChange = (collKey: string, placeholder: string, columnName: string) =>
+    setCollectionMappings(prev => ({
+      ...prev,
+      [collKey]: { ...(prev[collKey] ?? {}), [placeholder]: columnName },
+    }));
+
   // ── Final confirm — assembles RuntimeDataStructure ────────────────────────
 
   const handleConfirm = () => {
@@ -334,33 +338,6 @@ const UploadData: React.FC<UploadDataProps> = ({
     mapping: 'Review auto-detected mappings',
   };
 
-  // ── Render helpers ────────────────────────────────────────────────────────
-
-  const renderPhaseIndicator = () => {
-    const phases: Phase[] = ['intent', 'upload', 'review', 'mapping'];
-    const labels          = ['Intent', 'Upload', 'Review', 'Map'];
-    const showReview      = intent === 'relational';
-    const visiblePhases   = showReview ? phases : phases.filter(p => p !== 'review');
-    const visibleLabels   = showReview ? labels : labels.filter((_, i) => phases[i] !== 'review');
-
-
-    return (
-      <div className="up-phase-bar">
-        {visiblePhases.map((p, i) => (
-          <React.Fragment key={p}>
-            <div className={`up-phase-step ${phase === p ? 'up-phase-step--active' : ''} ${visiblePhases.indexOf(phase) > i ? 'up-phase-step--done' : ''}`}>
-              <span className="up-phase-dot">{visiblePhases.indexOf(phase) > i ? '✓' : i + 1}</span>
-              <span className="up-phase-label">{visibleLabels[i]}</span>
-            </div>
-            {i < visiblePhases.length - 1 && (
-              <div className={`up-phase-line ${visiblePhases.indexOf(phase) > i ? 'up-phase-line--done' : ''}`} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    );
-  };
-
   // ── Phase: review ─────────────────────────────────────────────────────────
 
   if (phase === 'review' && ir && autoDriverKey && scoredRelationships) {
@@ -374,7 +351,7 @@ const UploadData: React.FC<UploadDataProps> = ({
             </div>
             <button className="upload-close" type="button" onClick={onClose} aria-label="Close">✕</button>
           </div>
-          {renderPhaseIndicator()}
+          <PhaseIndicator phase={phase} intent={intent} />
           <RelationshipReview
             ir={ir}
             driverKey={autoDriverKey}
@@ -403,7 +380,7 @@ const UploadData: React.FC<UploadDataProps> = ({
         </div>
 
         {/* Phase indicator (after intent is chosen) */}
-        {phase !== 'intent' && renderPhaseIndicator()}
+        {phase !== 'intent' && <PhaseIndicator phase={phase} intent={intent} />}
 
         {/* ── Phase 0: intent capture ──────────────────────────────── */}
         {phase === 'intent' && (
@@ -412,298 +389,70 @@ const UploadData: React.FC<UploadDataProps> = ({
 
         {/* ── Phase 1: upload ──────────────────────────────────────── */}
         {phase === 'upload' && (
-          <>
-            {/* Intent badge */}
-            <div className="up-intent-bar">
-              <span className={`up-intent-chip ${intent === 'flat' ? 'up-intent-chip--flat' : 'up-intent-chip--relational'}`}>
-                {intent === 'flat' ? '⊟ Flat — one row per PDF' : '⊞ Relational — linked sheets'}
-              </span>
-              <button
-                className="up-intent-change"
-                onClick={() => { setPhase('intent'); setIr(null); setError(null); }}
-                type="button"
-              >
-                Change
-              </button>
-            </div>
-
-            {/* File bar (if already uploaded) */}
-            {ir && (
-              <div className="upload-file-bar">
-                <div className="upload-file-icon">📄</div>
-                <div className="upload-file-info">
-                  <div className="upload-file-name">{ir.source?.fileName ?? 'Uploaded file'}</div>
-                  <div className="upload-file-meta">
-                    {collectionKeys.length} collection{collectionKeys.length !== 1 ? 's' : ''} · {collectionSummary(ir.collections)}
-                  </div>
-                </div>
-                <div className="upload-file-pills">
-                  {collectionKeys.map(k => (
-                    <span key={k} className="up-pill up-pill-green">
-                      {k} · {ir.collections[k].rows.length}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Dropzone */}
-            <div
-              {...getRootProps()}
-              className={`upload-dropzone ${isDragActive ? 'active' : ''} ${parsing ? 'parsing' : ''}`}
-            >
-              <input {...getInputProps()} ref={fileInputRef} />
-              <div className="upload-content">
-                <div className="upload-icon">📁</div>
-                <h3>{ir ? 'Replace file' : 'Drop a file here'}</h3>
-                <p>CSV, Excel (.xlsx / .xls), or JSON</p>
-                <button
-                  type="button"
-                  className="upload-browse-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Browse file
-                </button>
-              </div>
-              {parsing && (
-                <div className="upload-progress">
-                  <div className="upload-spinner" />
-                  <p style={{ fontSize: 12, color: '#64748b' }}>Parsing…</p>
-                </div>
-              )}
-            </div>
-
-            {error && <div className="upload-error" style={{ margin: '0 20px 12px' }}>{error}</div>}
-
-            {ir && intent === 'relational' && Object.keys(ir.collections).length <= 1 && (
-              <div className="upload-warning up-single-coll-warn">
-                ⚠ Only one collection found. Expected multiple sheets for relational data.
-                Is your data split across sheets in the file?
-              </div>
-            )}
-          </>
+          <UploadPhase
+            intent={intent}
+            ir={ir}
+            parsing={parsing}
+            error={error}
+            collectionKeys={collectionKeys}
+            onChangeIntent={() => { setPhase('intent'); setIr(null); setError(null); }}
+            getRootProps={getRootProps}
+            getInputProps={getInputProps}
+            isDragActive={isDragActive}
+            fileInputRef={fileInputRef}
+          />
         )}
 
         {/* ── Phase 2: mapping ─────────────────────────────────────── */}
         {phase === 'mapping' && ir && (
-          <>
-            {/* Relationship summary (if relational and review done) */}
-            {reviewResult && Object.keys(reviewResult.scopingRules).length > 0 && (
-              <div className="up-section up-rel-summary">
-                <div className="up-section-head">
-                  <span className="up-section-label">Relationships confirmed</span>
-                  <span className="up-pill up-pill-green">
-                    {Object.keys(reviewResult.scopingRules).length} linked
-                  </span>
-                </div>
-                <div className="up-rel-chips">
-                  {Object.entries(reviewResult.scopingRules).map(([collKey, rule]) => (
-                    <div key={collKey} className="up-rel-chip">
-                      <span className="up-rel-chip-driver">{autoDriverKey}</span>
-                      <span className="up-rel-chip-arrow">→</span>
-                      <span className="up-rel-chip-child">{collKey}</span>
-                      <span className="up-rel-chip-keys">
-                        via {rule.driverRowField} · {rule.filterColumn}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Section 1: collection-scalar fields */}
-            {classification && classification.collectionScalars.length > 0 && (
-              <div className="up-section">
-                <div className="up-section-head">
-                  <span className="up-section-label">Fields from data</span>
-                  <span className="up-pill up-pill-green">
-                    {classification.collectionScalars.length} auto-resolved
-                  </span>
-                </div>
-                <p className="up-section-hint">
-                  These resolve automatically per record during export — no action needed.
-                </p>
-                <div className="up-field-list">
-                  {classification.collectionScalars.map(info => (
-                    <div key={info.placeholder} className="up-field-row">
-                      <span className="up-field-key">{`{{${info.placeholder}}}`}</span>
-                      <span className="up-field-source">
-                        from <code>{info.collectionKey}.{info.columnName}</code>
-                      </span>
-                      <span className="up-badge up-badge-auto">auto</span>
-                    </div>
-                  ))}
-                  {classification.alreadyResolved.map(ph => (
-                    <div key={ph} className="up-field-row">
-                      <span className="up-field-key">{`{{${ph}}}`}</span>
-                      <span className="up-field-source">from data fields</span>
-                      <span className="up-badge up-badge-auto">auto</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Section 2: true-metadata */}
-            {classification && classification.trueMetadata.length > 0 && (
-              <div className="up-section">
-                <div className="up-section-head">
-                  <span className="up-section-label">Document-level fields</span>
-                  <span className={`up-pill ${missingMetaCount > 0 ? 'up-pill-amber' : 'up-pill-green'}`}>
-                    {missingMetaCount > 0 ? `${missingMetaCount} need values` : 'all set'}
-                  </span>
-                </div>
-                <p className="up-section-hint">
-                  Not in your data — same value across all documents. Saved to template.
-                </p>
-                <div className="up-field-list">
-                  {classification.trueMetadata.map(ph => {
-                    const v     = metaValues[ph] ?? '';
-                    const isSet = v.trim().length > 0;
-                    return (
-                      <div key={ph} className="up-meta-row">
-                        <span className="up-field-key">{`{{${ph}}}`}</span>
-                        <input
-                          className="up-meta-input"
-                          type="text"
-                          value={v}
-                          placeholder="Enter value…"
-                          onChange={e => setMetaValues(prev => ({ ...prev, [ph]: e.target.value }))}
-                        />
-                        <span className={`up-badge ${isSet ? 'up-badge-set' : 'up-badge-required'}`}>
-                          {isSet ? 'set' : 'required'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Section 3: table data sources */}
-            {tables.length > 0 && (
-              <div className="up-section">
-                <div className="up-section-head">
-                  <span className="up-section-label">Table data sources</span>
-                  <span className="up-pill up-pill-gray">{tables.length} table{tables.length !== 1 ? 's' : ''}</span>
-                </div>
-                <p className="up-section-hint">
-                  Choose which collection provides rows for each table.
-                </p>
-                {tables.map(table => {
-                  const boundCollKey = tableCollectionBindings[table.id] ?? '';
-                  const boundCol     = boundCollKey ? ir.collections[boundCollKey] : null;
-                  const colHeaders   = boundCol?.columns ?? [];
-                  const colMap       = collectionMappings[boundCollKey] ?? {};
-                  return (
-                    <div key={table.id} className="up-table-card">
-                      <div className="up-table-card-head">
-                        <span>⊞</span>
-                        <span>{table.label}</span>
-                        {boundCol && (
-                          <span className="up-pill up-pill-green" style={{ marginLeft: 'auto' }}>
-                            {boundCollKey} · {boundCol.rows.length} rows
-                          </span>
-                        )}
-                      </div>
-                      <div className="up-table-card-body">
-                        <div className="up-coll-row">
-                          <span className="up-coll-label">Collection</span>
-                          <select
-                            className="up-coll-select"
-                            value={boundCollKey}
-                            onChange={e => handleCollectionChange(table.id, e.target.value)}
-                          >
-                            <option value="">— select —</option>
-                            {collectionKeys.map(k => (
-                              <option key={k} value={k}>
-                                {k} ({ir.collections[k].rows.length} rows)
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        {boundCol && table.placeholders.length > 0 && (
-                          <div className="up-col-map-grid">
-                            {table.placeholders.map(ph => (
-                              <div key={ph} className="up-col-map-row">
-                                <span className="up-col-map-key">{`{{${ph}}}`}</span>
-                                <span className="up-col-map-arrow">→</span>
-                                <select
-                                  className="up-col-map-sel"
-                                  value={colMap[ph] ?? ''}
-                                  onChange={e =>
-                                    setCollectionMappings(prev => ({
-                                      ...prev,
-                                      [boundCollKey]: { ...(prev[boundCollKey] ?? {}), [ph]: e.target.value },
-                                    }))
-                                  }
-                                >
-                                  <option value="">— column —</option>
-                                  {colHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
+          <MappingPhase
+            ir={ir}
+            classification={classification}
+            reviewResult={reviewResult}
+            autoDriverKey={autoDriverKey}
+            tables={tables}
+            collectionKeys={collectionKeys}
+            tableCollectionBindings={tableCollectionBindings}
+            collectionMappings={collectionMappings}
+            metaValues={metaValues}
+            missingMetaCount={missingMetaCount}
+            onMetaChange={handleMetaChange}
+            onCollectionChange={handleCollectionChange}
+            onColumnMapChange={handleColumnMapChange}
+          />
         )}
 
         {/* Footer */}
         {phase !== 'intent' && phase !== 'review' && (
-          <div className="upload-footer">
-            <span className={`upload-footer-hint ${phase === 'mapping' && missingMetaCount === 0 && ir ? 'hint-ready' : ''}`}>
-              {phase === 'upload'
+          <UploadFooter
+            phase={phase}
+            hint={
+              phase === 'upload'
                 ? (ir ? 'File parsed — click Next to continue' : 'Upload a file to get started')
                 : missingMetaCount > 0
                   ? `${missingMetaCount} document-level field${missingMetaCount > 1 ? 's' : ''} need values`
                   : 'All fields resolved — ready to confirm'
+            }
+            hintReady={phase === 'mapping' && missingMetaCount === 0 && !!ir}
+            nextDisabled={!ir}
+            confirmDisabled={!ir}
+            onBack={() => {
+              if (phase === 'mapping') {
+                setPhase(intent === 'relational' && ir && Object.keys(ir.collections).length > 1 ? 'review' : 'upload');
+              } else {
+                setPhase('intent');
               }
-            </span>
-            <div className="upload-footer-actions">
-              <button type="button" className="upload-btn-secondary" onClick={() => {
-                if (phase === 'mapping') {
-                  setPhase(intent === 'relational' && ir && Object.keys(ir.collections).length > 1 ? 'review' : 'upload');
-                } else {
-                  setPhase('intent');
-                }
-              }}>
-                ← Back
-              </button>
-              {phase === 'upload' && (
-                <button
-                  type="button"
-                  className="upload-btn-primary"
-                  disabled={!ir}
-                  onClick={() => {
-                    if (!ir) return;
-                    if (intent === 'relational' && Object.keys(ir.collections).length > 1 && scoredRelationships) {
-                      setPhase('review');
-                    } else {
-                      setPhase('mapping');
-                    }
-                  }}
-                >
-                  Next →
-                </button>
-              )}
-              {phase === 'mapping' && (
-                <button
-                  type="button"
-                  className="upload-btn-primary"
-                  onClick={handleConfirm}
-                  disabled={!ir}
-                >
-                  Confirm mapping
-                </button>
-              )}
-            </div>
-          </div>
+            }}
+            onNext={() => {
+              if (!ir) return;
+              if (intent === 'relational' && Object.keys(ir.collections).length > 1 && scoredRelationships) {
+                setPhase('review');
+              } else {
+                setPhase('mapping');
+              }
+            }}
+            onConfirm={handleConfirm}
+          />
         )}
       </div>
     </div>

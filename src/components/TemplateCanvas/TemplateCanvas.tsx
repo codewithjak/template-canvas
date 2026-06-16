@@ -36,23 +36,15 @@ import PageBreakDivider    from './PageBreakDivider';
 import BoundaryLine        from './BoundaryLine';
 import SaveTemplateModal   from './SaveTemplateModal';
 import TemplatesLibraryModal from './TemplatesLibraryModal';
-import TextElement         from './TextElement';
-import ImageElement        from './ImageElement';
-import LineElement         from './LineElement';
-import BoxElement          from './BoxElement';
-import ParagraphElement    from './ParagraphElement';
-import RadioElement        from './RadioElement';
-import CheckboxElement     from './CheckboxElement';
-import DateElement         from './DateElement';
-import LayoutTableElement  from './LayoutTableElement';
 import PropertiesPanel     from './PropertiesPanel';
-import PageRulers, { type PageRulerSelection } from './PageRulers';
+import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
 import { usePlan } from '../../plan/PlanProvider';
-import BarcodeElement from './BarcodeElement';
-import ChartElement from './ChartElement';
-import type { BarcodeElementType, ChartElementType, PageSizeConfig } from '../../types/canvas';
-import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize, DEFAULT_CHART_PALETTE } from '../../types/canvas';
+import CloudStatusToast from './CloudStatusToast';
+import BatchExportBar from './BatchExportBar';
+import CanvasElementView from './CanvasElementView';
+import type { PageSizeConfig } from '../../types/canvas';
+import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize } from '../../types/canvas';
 
 import type {
   CanonicalDocument,
@@ -67,7 +59,6 @@ import type {
   HeaderConfig,
   FooterConfig,
   TextElementType,
-  ImageElementType,
 } from '../../types/canvas';
 import {
   createPage,
@@ -101,7 +92,6 @@ import {
 } from '../../types/runtimeDataStructure';
 // ────────────────────────────────────────────────────────────────────────────
 
-import type { LayoutTableElement as LayoutTableModel } from '../../model/layoutTable';
 import {
   createDefaultLayoutTable,
   isLayoutTable,
@@ -110,87 +100,31 @@ import {
 
 import './TemplateCanvas.css';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function adjustColorOpacity(color: string, opacity: number): string {
-  if (color.startsWith('#')) {
-    const hex = color.replace('#', '');
-    const r   = parseInt(hex.substring(0, 2), 16);
-    const g   = parseInt(hex.substring(2, 4), 16);
-    const b   = parseInt(hex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-  }
-  if (color.startsWith('rgba')) return color.replace(/[\d.]+\s*\)/, `${opacity})`);
-  if (color.startsWith('rgb')) {
-    const m = color.match(/\d+/g);
-    if (m && m.length >= 3) return `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${opacity})`;
-  }
-  return color;
-}
-
-function findPageOfElement(pages: CanvasPage[], elementId: string): string | null {
-  for (const p of pages) {
-    if (p.elements.some(e => e.id === elementId)) return p.pageId;
-  }
-  return null;
-}
-
-function updatePageElements(
-  pages:   CanvasPage[],
-  pageId:  string,
-  updater: (els: CanvasElement[]) => CanvasElement[],
-): CanvasPage[] {
-  return pages.map(p =>
-    p.pageId === pageId ? { ...p, elements: updater(p.elements) } : p
-  );
-}
-
-function pageNumberPreviewLabel(el: TextElementType): string {
-  const pn     = el.pageNumber!;
-  const start  = pn.startFrom ?? 1;
-  const format = pn.format    ?? 'Page X of Y';
-  if (format === 'Page X of Y') return `Page ${start} of N`;
-  if (format === 'X / Y')       return `${start} / N`;
-  return String(start);
-}
-
-function getElementRulerSelection(element: CanvasElement | null): PageRulerSelection | null {
-  if (!element) return null;
-  const selection: PageRulerSelection = { x: element.position.x, y: element.position.y };
-  if (element.type === 'image' || element.type === 'box') {
-    selection.width  = element.style.width;
-    selection.height = element.style.height;
-  } else if (element.type === 'text' && element.style.width) {
-    selection.width  = element.style.width;
-    selection.height = element.style.fontSize * 1.3;
-  } else if (element.type === 'barcode' || element.type === 'chart') {
-    selection.width  = element.style.width;
-    selection.height = element.style.height;
-  } else if (element.type === 'line') {
-    selection.width  = element.style.direction === 'horizontal' ? element.style.length : element.style.thickness;
-    selection.height = element.style.direction === 'vertical'   ? element.style.length : element.style.thickness;
-  } else if (isLayoutTable(element)) {
-    selection.width  = element.size?.width  ?? element.columns.reduce((s, c) => c.hidden ? s : s + c.width, 0);
-    selection.height = element.size?.height ?? (
-      (element.headerRow ? 32 : 0) +
-      element.rows.reduce((s, r) => s + (r.height ?? 32), 0)
-    );
-  }
-  return selection;
-}
-
-function maxCollectionRows(ir: CanonicalDocument | null): number {
-  if (!ir) return 0;
-  return Object.values(ir.collections).reduce((m, c) => Math.max(m, c.rows.length), 0);
-}
-
-function removeEmptyMappings(mapping: FieldMapping): FieldMapping {
-  return Object.fromEntries(
-    Object.entries(mapping).filter(([, value]) => value.trim() !== '')
-  );
-}
+import {
+  adjustColorOpacity,
+  findPageOfElement,
+  getElementRulerSelection,
+  maxCollectionRows,
+  removeEmptyMappings,
+  updatePageElements,
+} from './templateCanvasHelpers';
+import {
+  createBarcodeElement,
+  createBoxElement,
+  createChartElement,
+  createCheckboxElement,
+  createDateElement,
+  createEllipseElement,
+  createImageElement,
+  createLineElement,
+  createParagraphElement,
+  createRadioElement,
+  createRectangleElement,
+  createSignatureElement,
+  createTextElement,
+  createTriangleElement,
+  createWatermarkElement,
+} from './elementFactories';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
@@ -440,58 +374,34 @@ function TemplateCanvas() {
 
   // ── Element add handlers ──────────────────────────────────────────────────
 
-  const handleAddText      = () => addEl({ id: `text-${Date.now()}`,      type: 'text',      content: 'New Text',           position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
-  const handleAddParagraph = () => addEl({ id: `paragraph-${Date.now()}`, type: 'paragraph', content: 'Add your text here…', position: { x: 50, y: 50 }, style: { fontSize: 16, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif', lineHeight: 24 } });
+  const handleAddText      = () => addEl(createTextElement());
+  const handleAddParagraph = () => addEl(createParagraphElement());
   const handleAddTable     = () => addEl(createDefaultLayoutTable('table'));
-  const handleAddImage     = () => addEl({ id: `image-${Date.now()}`,     type: 'image',     src: '{{image_url}}',           position: { x: 50, y: 50 }, style: { width: 200, height: 200, objectFit: 'contain' as const, opacity: 100 } });
+  const handleAddImage     = () => addEl(createImageElement());
+  const handleAddLine      = () => addEl(createLineElement());
+  const handleAddBox       = () => addEl(createBoxElement());
+  const handleAddRectangle = () => addEl(createRectangleElement());
+  const handleAddTriangle  = () => addEl(createTriangleElement());
+  const handleAddEllipse   = () => addEl(createEllipseElement());
+  const handleAddRadio     = () => addEl(createRadioElement());
+  const handleAddCheckbox  = () => addEl(createCheckboxElement());
+  const handleAddDate      = () => addEl(createDateElement());
+  const handleAddBarcode   = () => addEl(createBarcodeElement());
+  const handleAddChart     = () => addEl(createChartElement());
+
+  // Watermark and signature also jump the selection to the new element.
   const handleAddWatermark = () => {
-    const el: TextElementType = {
-      id: `watermark-${Date.now()}`, type: 'text', role: 'watermark',
-      content: 'CONFIDENTIAL', position: { x: 88, y: 515 },
-      style: { fontSize: 72, fontWeight: 'bold', color: '#94a3b8', fontFamily: 'Arial, sans-serif', width: 620, opacity: 22, rotation: -30, textAlign: 'center' },
-    };
+    const el = createWatermarkElement();
     addEl(el);
     setSelectedPageBreakId(null); setSelectedBoundary(null);
     setTimeout(() => setSelectedElementId(el.id), 0);
   };
   const handleAddSignature = () => {
-    const el: ImageElementType = {
-      id: `signature-${Date.now()}`, type: 'image', role: 'signature',
-      src: '{{digital_signature}}', position: { x: 500, y: 890 },
-      style: { width: 220, height: 90, objectFit: 'contain' as const, opacity: 100 },
-    };
+    const el = createSignatureElement();
     addEl(el);
     setSelectedPageBreakId(null); setSelectedBoundary(null);
     setTimeout(() => setSelectedElementId(el.id), 0);
   };
-  const handleAddLine      = () => addEl({ id: `line-${Date.now()}`,      type: 'line',      position: { x: 50, y: 50 }, style: { length: 200, thickness: 2, direction: 'horizontal' as const, color: '#000000', style: 'solid' as const, opacity: 100 } });
-  const handleAddBox       = () => addEl({ id: `box-${Date.now()}`,       type: 'box',       shape: 'box',       position: { x: 50, y: 50 }, style: { width: 200, height: 200, borderWidth: 1, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: 'transparent', opacity: 100, borderRadius: 0 } });
-  const handleAddRectangle = () => addEl({ id: `rectangle-${Date.now()}`, type: 'box',       shape: 'rectangle', position: { x: 50, y: 50 }, style: { width: 220, height: 140, borderWidth: 1, borderColor: '#007bff', borderStyle: 'solid' as const, backgroundColor: '#e7f1ff', opacity: 100, borderRadius: 0 } });
-  const handleAddTriangle  = () => addEl({ id: `triangle-${Date.now()}`,  type: 'box',       shape: 'triangle',  position: { x: 50, y: 50 }, style: { width: 140, height: 120, borderWidth: 0, borderColor: '#000000', borderStyle: 'solid' as const, backgroundColor: '#ffb200', opacity: 100, borderRadius: 0 } });
-  const handleAddEllipse   = () => addEl({ id: `ellipse-${Date.now()}`,   type: 'box',       shape: 'ellipse',   position: { x: 50, y: 50 }, style: { width: 200, height: 120, borderWidth: 1, borderColor: '#2a9d8f', borderStyle: 'solid' as const, backgroundColor: '#d8f3ef', opacity: 100, borderRadius: 9999 } });
-  const handleAddRadio     = () => addEl({ id: `radio-${Date.now()}`,     type: 'radio',     options: 2, selected: '', orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
-  const handleAddCheckbox  = () => addEl({ id: `checkbox-${Date.now()}`,  type: 'checkbox',  count: 1, checkedValues: [], orientation: 'vertical', position: { x: 50, y: 50, relativeOffset: 8 } });
-  const handleAddDate      = () => addEl({ id: `date-${Date.now()}`,      type: 'date',      value: '', time: '', includeTime: false, format: 'MM/DD/YYYY', position: { x: 50, y: 50 }, style: { fontSize: 14, fontWeight: 'normal', color: '#000000', fontFamily: 'Arial, sans-serif' } });
-  const handleAddBarcode   = () => addEl({ id: `barcode-${Date.now()}`,   type: 'barcode',   content: '{{tracking_no}}', position: { x: 50, y: 50 }, style: { width: 200, height: 100 }, barcode: { format: 'code128', showText: true } } as BarcodeElementType);
-  const handleAddChart     = () => addEl({
-    id: `chart-${Date.now()}`,
-    type: 'chart',
-    position: { x: 50, y: 50 },
-    style: { width: 320, height: 220, opacity: 100 },
-    chart: {
-      kind: 'bar',
-      title: 'Chart title',
-      data: [
-        { label: 'Q1', value: 42 },
-        { label: 'Q2', value: 58 },
-        { label: 'Q3', value: 35 },
-        { label: 'Q4', value: 71 },
-      ],
-      palette: [...DEFAULT_CHART_PALETTE],
-      showValues: true,
-      showLegend: true,
-    },
-  } as ChartElementType);
 
   // ── Element update ────────────────────────────────────────────────────────
 
@@ -528,12 +438,6 @@ function TemplateCanvas() {
       })
     ));
   }, [pages]);
-
-  const handleUpdateText      = (id: string, content: string) => handleUpdateElement(id, { content });
-  const handleUpdateParagraph = (id: string, content: string) => handleUpdateElement(id, { content });
-  const handleUpdateImage     = (id: string, src: string)     => handleUpdateElement(id, { src });
-  const handleUpdateRadio     = (id: string, updates: any)    => handleUpdateElement(id, updates);
-  const handleUpdateCheckbox  = (id: string, updates: any)    => handleUpdateElement(id, updates);
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
@@ -897,159 +801,20 @@ function TemplateCanvas() {
   // ── Render elements ───────────────────────────────────────────────────────
 
   const renderElements = (pageElements: CanvasElement[], pageId: string) =>
-    pageElements.map(element => {
-      const isSelected = element.id === selectedElementId;
-      const select     = () => handleSelectElement(element.id, pageId);
-
-      if (element.type === 'text') {
-        const displayContent = element.pageNumber?.enabled
-          ? pageNumberPreviewLabel(element)
-          : element.content;
-        return (
-          <TextElement
-            key={element.id} id={element.id} content={displayContent}
-            position={element.position} style={element.style}
-            onUpdate={handleUpdateText} isSelected={isSelected} onSelect={select}
-            onResize={(id, fontSize) =>
-              handleUpdateElement(id, { style: { ...element.style, fontSize } })
-            }
-          />
-        );
-      }
-
-      if (element.type === 'paragraph') return (
-        <ParagraphElement
-          key={element.id} id={element.id} content={element.content}
-          position={element.position} style={element.style}
-          onUpdate={handleUpdateParagraph} isSelected={isSelected} onSelect={select}
-        />
-      );
-
-      if (element.type === 'radio') return (
-        <RadioElement
-          key={element.id} id={element.id} options={element.options}
-          selected={element.selected} orientation={element.orientation as any}
-          position={element.position}
-          onSelect={(id, opt) => handleUpdateRadio(id, { selected: opt })}
-          onUpdate={handleUpdateRadio} onElementSelect={select}
-        />
-      );
-
-      if (element.type === 'checkbox') return (
-        <CheckboxElement
-          key={element.id} id={element.id} count={element.count}
-          checkedValues={element.checkedValues} orientation={element.orientation as any}
-          position={element.position}
-          onUpdate={handleUpdateCheckbox} onElementSelect={select}
-        />
-      );
-
-      if (element.type === 'table' && isLayoutTable(element)) {
-        const tableEl = element as LayoutTableModel;
-        return (
-          <LayoutTableElement
-            key={tableEl.id} element={tableEl}
-            isSelected={tableEl.id === selectedElementId}
-            onTableChromeSelect={() => {
-              handleSelectElement(tableEl.id, pageId);
-              setLayoutTableCellSelection(null);
-              setLayoutTableRange(prev => prev?.tableId === tableEl.id ? null : prev);
-            }}
-            onUpdate={handleUpdateElement}
-            activeCell={
-              layoutTableCellSelection?.tableId === tableEl.id
-                ? { rowIndex: layoutTableCellSelection.rowIndex, colIndex: layoutTableCellSelection.colIndex }
-                : null
-            }
-            selectionRange={
-              layoutTableRange?.tableId === tableEl.id
-                ? { r0: layoutTableRange.r0, c0: layoutTableRange.c0, r1: layoutTableRange.r1, c1: layoutTableRange.c1 }
-                : null
-            }
-            onSelectionRangeChange={(tableId, range) => {
-              if (range) setLayoutTableRange({ tableId, ...range });
-              else setLayoutTableRange(prev => prev?.tableId === tableId ? null : prev);
-            }}
-            onCellSelect={(tableId, rowIndex, colIndex) => {
-              handleSelectElement(tableId, pageId);
-              setLayoutTableCellSelection({ tableId, rowIndex, colIndex });
-            }}
-          />
-        );
-      }
-
-      if (element.type === 'image') return (
-        <ImageElement
-          key={element.id} id={element.id} src={element.src}
-          position={element.position} style={element.style}
-          onUpdate={handleUpdateImage}
-          onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
-          isSelected={isSelected} onSelect={select}
-        />
-      );
-
-      if (element.type === 'line') return (
-        <LineElement
-          key={element.id} id={element.id} position={element.position} style={element.style}
-          onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
-          onUpdatePosition={(id, p) => handleUpdateElement(id, { position: p })}
-          isSelected={isSelected} onSelect={select}
-        />
-      );
-
-      if (element.type === 'box') return (
-        <BoxElement
-          key={element.id} id={element.id} position={element.position}
-          shape={(element as any).shape} style={element.style}
-          onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...element.style, ...s } })}
-          onUpdatePosition={(id, p) => handleUpdateElement(id, { position: p })}
-          isSelected={isSelected} onSelect={select}
-        />
-      );
-
-      if (element.type === 'date') return (
-        <DateElement
-          key={element.id} id={element.id} value={element.value} time={element.time}
-          includeTime={element.includeTime} format={element.format as any}
-          position={element.position} style={element.style}
-          onUpdate={handleUpdateElement} onElementSelect={select}
-        />
-      );
-
-      if (element.type === 'barcode') {
-        const barcodeEl = element as BarcodeElementType;
-        return (
-          <BarcodeElement
-            key={barcodeEl.id}
-            id={barcodeEl.id}
-            content={barcodeEl.content}
-            position={barcodeEl.position}
-            style={barcodeEl.style}
-            barcode={barcodeEl.barcode}
-            isSelected={isSelected}
-            onSelect={select}
-          />
-        );
-      }
-
-      if (element.type === 'chart') {
-        const chartEl = element as ChartElementType;
-        return (
-          <ChartElement
-            key={chartEl.id}
-            id={chartEl.id}
-            position={chartEl.position}
-            style={chartEl.style}
-            chart={chartEl.chart}
-            isSelected={isSelected}
-            onSelect={select}
-            onUpdateStyle={(id, s) => handleUpdateElement(id, { style: { ...chartEl.style, ...s } })}
-          />
-        );
-      }
-
-      return null;
-    });
+    pageElements.map(element => (
+      <CanvasElementView
+        key={element.id}
+        element={element}
+        pageId={pageId}
+        selectedElementId={selectedElementId}
+        onUpdateElement={handleUpdateElement}
+        onSelectElement={handleSelectElement}
+        layoutTableCellSelection={layoutTableCellSelection}
+        layoutTableRange={layoutTableRange}
+        setLayoutTableCellSelection={setLayoutTableCellSelection}
+        setLayoutTableRange={setLayoutTableRange}
+      />
+    ));
 
   // ── JSX ───────────────────────────────────────────────────────────────────
 
@@ -1142,85 +907,29 @@ function TemplateCanvas() {
         )}
 
         {ir && (
-          <div className="batch-export-controls">
-            <div className="batch-export-summary">
-              <span>
-                {rds?.executionPlan.mode === 'single'
-                  ? 'Full report — all data'
-                  : `${totalRows} record${totalRows !== 1 ? 's' : ''} bound`}
-              </span>
-              {totalRows > 1 && rds?.executionPlan.mode !== 'single' && (
-                <span className="preview-label">
-                  &nbsp;— previewing record {previewRowIndex + 1} of {totalRows}
-                </span>
-              )}
-            </div>
-
-            <div className="batch-export-actions">
-              {totalRows > 1 && rds?.executionPlan.mode !== 'single' && (
-                <div className="preview-nav">
-                  <button
-                    type="button" className="preview-nav-btn"
-                    onClick={() => setPreviewRowIndex(i => Math.max(0, i - 1))}
-                    disabled={previewRowIndex === 0}
-                  >‹</button>
-                  <span className="preview-nav-count">
-                    {previewRowIndex + 1} / {totalRows}
-                  </span>
-                  <button
-                    type="button" className="preview-nav-btn"
-                    onClick={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
-                    disabled={previewRowIndex === totalRows - 1}
-                  >›</button>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="batch-control-btn"
-                onClick={() => setShowDataStructureViewer(true)}
-                title="Inspect data relationships"
-              >
-                View structure
-              </button>
-
-              <button
-                type="button"
-                className="batch-control-btn batch-control-btn--primary"
-                onClick={handleExportDocument}
-                disabled={isExporting || allElements.length === 0}
-                title={`Export PDF for record ${previewRowIndex + 1}`}
-              >
-                Export PDF
-              </button>
-
-              {rds?.executionPlan.mode !== 'single' && (
-                <button
-                  type="button"
-                  className="batch-control-btn batch-control-btn--bulk"
-                  onClick={() => {
-                    if (!can('bulk')) {
-                      promptUpgrade({
-                        capability: 'bulk',
-                        title: 'Bulk generation is a Pro feature',
-                        message: 'Generate one document per row from your whole dataset on the Pro plan and above.',
-                      });
-                      return;
-                    }
-                    setBulkPanelOpen(true);
-                  }}
-                  disabled={isExporting}
-                  title="Generate one PDF per row"
-                >
-                  Bulk Export ↗
-                </button>
-              )}
-
-              <button type="button" className="clear-button" onClick={handleClearData}>
-                Clear Data
-              </button>
-            </div>
-          </div>
+          <BatchExportBar
+            isSingleMode={rds?.executionPlan.mode === 'single'}
+            totalRows={totalRows}
+            previewRowIndex={previewRowIndex}
+            isExporting={isExporting}
+            hasElements={allElements.length > 0}
+            onPrevRow={() => setPreviewRowIndex(i => Math.max(0, i - 1))}
+            onNextRow={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
+            onViewStructure={() => setShowDataStructureViewer(true)}
+            onExport={handleExportDocument}
+            onBulkExport={() => {
+              if (!can('bulk')) {
+                promptUpgrade({
+                  capability: 'bulk',
+                  title: 'Bulk generation is a Pro feature',
+                  message: 'Generate one document per row from your whole dataset on the Pro plan and above.',
+                });
+                return;
+              }
+              setBulkPanelOpen(true);
+            }}
+            onClearData={handleClearData}
+          />
         )}
 
         {isExporting && (
@@ -1248,34 +957,7 @@ function TemplateCanvas() {
           />
         )}
 
-        {cloudStatus !== 'idle' && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 20,
-              right: 20,
-              zIndex: 1700,
-              padding: '8px 16px',
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#fff',
-              boxShadow: '0 6px 20px rgba(15,23,42,0.25)',
-              background:
-                cloudStatus === 'error'
-                  ? '#dc2626'
-                  : cloudStatus === 'saving'
-                  ? '#475569'
-                  : '#16a34a',
-            }}
-          >
-            {cloudStatus === 'saving'
-              ? 'Saving…'
-              : cloudStatus === 'saved'
-              ? '✓ Saved to your team'
-              : 'Save failed'}
-          </div>
-        )}
+        <CloudStatusToast status={cloudStatus} />
 
         <div className="canvas-pages-wrapper" style={{ width: pageSize.canvasWidth }}>
           {previewPages.map((page, pageIdx) => (

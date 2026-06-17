@@ -23,13 +23,14 @@ import {
   type Rect,
 } from './types';
 
-/** Map a raw embedded/subset PDF font name to a house font family. */
+/** Map a raw embedded/subset PDF font name (or CSS family) to a house family. */
 function mapFontFamily(fontName: string): string {
   // Strip subset prefix like "ABCDEE+" then match a known family by substring.
   const name = fontName.replace(/^[A-Z]{6}\+/, '').toLowerCase();
-  if (name.includes('times') || name.includes('serif')) return 'Georgia';
   if (name.includes('courier') || name.includes('mono')) return 'Courier New';
-  if (name.includes('helvetica') || name.includes('arial')) return 'Arial';
+  // Check 'sans' before 'serif' — "sans-serif" contains the substring "serif".
+  if (name.includes('sans') || name.includes('helvetica') || name.includes('arial')) return 'Arial';
+  if (name.includes('times') || name.includes('georgia') || name.includes('serif')) return 'Georgia';
   return 'Arial';
 }
 

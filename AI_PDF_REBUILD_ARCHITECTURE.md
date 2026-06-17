@@ -133,13 +133,13 @@ A flat `Primitive[]` with measured geometry — the immutable ground truth for a
 ### Trade-offs
 - **+** Exact, no hallucination, no API cost.
 - **−** pdfjs text runs are fragmented and producer-dependent; font names are often subset/aliased (`ABCDEE+Helvetica`).
-- **Alt:** poppler (`pdftohtml -xml`) gives cleaner word boxes but is a native dependency / server-side only. pdfjs keeps it in-browser, consistent with the current stack.
+- **Alt:** poppler (`pdftohtml -xml`) gives cleaner word boxes but is a native dependency.
 
 ### Limitation
 **No text layer ⇒ no extraction.** Scanned PDFs produce zero text runs and must be detected here (§10).
 
 ### Recommendation
-Start with **pdfjs (already in `_spike`)**. Keep extraction output as a stable internal IR so the extractor can be swapped (poppler/server-side) later without touching Phases 2–6.
+**Run extraction server-side in the existing `backend/` Express app** (revised after inspecting the codebase — see §12). pdfjs-dist is already present there (via `pdf-to-img`), `multer` already handles uploads, and PDF *export* (`pdfLibRenderer.js`) already runs there — extraction is its inverse and belongs in the same place. Text extraction needs only `getTextContent`/`getOperatorList` (no canvas), so it's lighter than the existing rasterize path. Keep the output as a stable internal IR so the extractor can be swapped later without touching Phases 2–6.
 
 ---
 
@@ -353,7 +353,7 @@ Rationale: correctness (geometry + schema) lands first and is provable without a
 | Where geometry comes from | **Extraction only, re-injected post-LLM** | Eliminates the dangerous (geometric) hallucination class entirely |
 | What guarantees schema validity | **Deterministic validator from TS types**, not RAG | Validity must be a guarantee, not a probability |
 | What RAG is for | **Style normalization + structure naming + match-and-diff** — never correctness | Avoids template contamination |
-| In-browser vs server extraction | **pdfjs in-browser for MVP**, stable IR boundary to swap later | Matches current stack; keeps option open |
+| In-browser vs server extraction | **Server-side in `backend/`** (revised) — pdfjs-dist, `multer`, and PDF export already live there; stable IR boundary keeps swap option open | Reuses existing PDF infra; keeps pdfjs (multi-MB) out of the frontend bundle; round-trip harness is server-side anyway |
 | Handling the unknown | **Three terminal states + region isolation + honest report** | Never lies; never fails whole-doc |
 | Build order | **Eval harness first; AI/RAG last** | Everything else becomes measurable |
 | User framing | **"AI draft you refine," with fidelity report** | Sets correct expectations; editor absorbs the last 10% |

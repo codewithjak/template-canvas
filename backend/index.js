@@ -15,6 +15,7 @@ const { parseDataSource, validateBindings } = require('./parsers/index');
 const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer');
 const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { rasterizePdfBuffer, isImageFormat } = require('./renderer/imageRenderer');
+const { extractPdf }                        = require('./pdfImport/extract');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
 const { checkExportAllowed }                = require('./usage');
@@ -81,6 +82,22 @@ app.post('/parse-data', upload.single('file'), (req, res) => {
   } catch (err) {
     console.error('[parse-data]', err);
     return res.status(500).json({ error: err.message || 'Unable to parse file.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /pdf-import  — extract a PDF into the ExtractedDocument IR (Phase 1).
+// The client runs the deterministic pipeline (Phases 2–6) on the result.
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/pdf-import', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'File is required.' });
+  try {
+    const extracted = await extractPdf(req.file.buffer, req.file.originalname);
+    return res.json(extracted);
+  } catch (err) {
+    console.error('[pdf-import]', err);
+    return res.status(500).json({ error: err.message || 'Unable to extract PDF.' });
   }
 });
 

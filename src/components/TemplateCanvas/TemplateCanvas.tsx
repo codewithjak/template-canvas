@@ -73,6 +73,7 @@ import {
   validateBindings,
 } from '../../services/mappingEngine';
 import { generateDocument, extFromBlob } from '../../services/dataSourceService';
+import { importPdfAsTemplate } from '../../services/pdfImportService';
 import {
   createTemplate as createCloudTemplate,
   updateTemplate as updateCloudTemplate,
@@ -578,6 +579,31 @@ function TemplateCanvas() {
     e.target.value = '';
   };
 
+  // Rebuild an uploaded PDF into an editable template. Extraction runs on the
+  // backend (pdfjs); the deterministic pipeline runs here, returning a v2.0
+  // TemplateDocument applied through the same path as file/cloud open.
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setCloudStatus('saving');
+    try {
+      const { document, report } = await importPdfAsTemplate(file);
+      applyDocument(document);
+      setCurrentTemplateId(null);
+      setCloudStatus('idle');
+      const { mapped, approximated, dropped } = report.coverage;
+      if (approximated || dropped) {
+        alert(`Rebuilt from PDF: ${mapped} elements imported` +
+          (approximated ? `, ${approximated} approximated` : '') +
+          (dropped ? `, ${dropped} skipped` : '') + '.');
+      }
+    } catch (err) {
+      setCloudStatus('error');
+      alert('Could not rebuild PDF: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
   // Open a template fetched from Supabase.
   const handleOpenCloudTemplate = (record: TemplateRecord) => {
     applyDocument(record.body_json);
@@ -841,6 +867,7 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onOpenTemplates={() => setTemplatesLibraryOpen(true)}
           onLoad={handleLoadTemplate}
+          onImportPdf={handleImportPdf}
           onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
           onAddPage={handleAddPage}

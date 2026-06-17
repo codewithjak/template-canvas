@@ -32,6 +32,7 @@ export interface ToolbarProps {
   onSave         ?: () => void;
   onOpenTemplates?: () => void;
   onLoad         ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onImportPdf    ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onUpload       ?: () => void;
   onExportPDF    ?: () => void;
   onAddPage      ?: () => void;
@@ -52,7 +53,7 @@ export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
   onAddText, onAddTable, onAddImage, onAddBarcode, onAddChart, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
-  onDelete, onSave, onOpenTemplates, onLoad, onUpload, onExportPDF, onAddPage,
+  onDelete, onSave, onOpenTemplates, onLoad, onImportPdf, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
   hasSelection, hasElements,
   onPageSizeChange, currentPageSize,
@@ -60,6 +61,7 @@ export default function Toolbar({
   exportFormat, onExportFormatChange,
 }: ToolbarProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const pdfInputRef  = React.useRef<HTMLInputElement>(null);
   const hasShapes = onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse;
 
   return (
@@ -164,6 +166,14 @@ export default function Toolbar({
               onChange={onLoad} style={{ display: 'none' }} />
             <IconBtn icon={<Icons.Load />} label="Load template" shortcut="⌘O"
               onClick={() => fileInputRef.current?.click()} variant="action" />
+          </>
+        )}
+        {onImportPdf && (
+          <>
+            <input ref={pdfInputRef} type="file" accept="application/pdf,.pdf"
+              onChange={onImportPdf} style={{ display: 'none' }} />
+            <IconBtn icon={<Icons.Load />} label="Rebuild from PDF"
+              onClick={() => pdfInputRef.current?.click()} variant="action" />
           </>
         )}
         {onUpload && (

@@ -35,7 +35,6 @@ import DataStructureViewer from './DataStructureViewer';
 import PageBreakDivider    from './PageBreakDivider';
 import BoundaryLine        from './BoundaryLine';
 import SaveTemplateModal   from './SaveTemplateModal';
-import PdfImportModal      from './PdfImportModal';
 import TemplatesLibraryModal from './TemplatesLibraryModal';
 import PropertiesPanel     from './PropertiesPanel';
 import PageRulers from './PageRulers';
@@ -213,7 +212,6 @@ function TemplateCanvas() {
   // ── Save modal ────────────────────────────────────────────────────────────
 
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [pdfImportFile, setPdfImportFile] = useState<File | null>(null);
 
   // ── Cloud persistence (Supabase, team-scoped) ──────────────────────────────
 
@@ -584,31 +582,21 @@ function TemplateCanvas() {
   // Rebuild an uploaded PDF into an editable template. Extraction runs on the
   // backend (pdfjs); the deterministic pipeline runs here, returning a v2.0
   // TemplateDocument applied through the same path as file/cloud open.
-  // Step 1: a PDF was chosen → open the modal to pick template vs. document.
-  const handleImportPdf = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Rebuild an uploaded PDF into a reusable TOKENIZED template (values →
+  // {{placeholders}}, tables → token rows + bindings). Always tokenized.
+  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (file) setPdfImportFile(file);
-  };
-
-  // Step 2: the user picked an output mode in the modal → run the import.
-  const runPdfImport = async (mode: 'template' | 'document') => {
-    const file = pdfImportFile;
-    setPdfImportFile(null);
     if (!file) return;
     setCloudStatus('saving');
     try {
-      const { document, report, via, match } = await importPdfAsTemplate(file, { mode });
+      const { document, report, match } = await importPdfAsTemplate(file);
       applyDocument(document);
       setCurrentTemplateId(null);
       setCloudStatus('idle');
-      const kind = mode === 'template' ? 'reusable template' : 'filled document';
-      const { mapped, approximated, dropped } = report.coverage;
-      const suggest = match?.key ? ` Looks like your "${match.name}" template.` : '';
-      const note = via === 'deterministic' ? ' (no AI key configured — basic rebuild, values not tokenized)' : '';
-      alert(`Rebuilt from PDF as a ${kind}: ${mapped} elements` +
-        (approximated ? `, ${approximated} approximated` : '') +
-        (dropped ? `, ${dropped} skipped` : '') + '.' + suggest + note);
+      const { mapped } = report.coverage;
+      const suggest = match?.key ? ` Token names aligned to your "${match.name}" template.` : '';
+      alert(`Tokenized template created from PDF: ${mapped} elements. Link a data source to fill it.` + suggest);
     } catch (err) {
       setCloudStatus('error');
       alert('Could not rebuild PDF: ' + (err instanceof Error ? err.message : String(err)));
@@ -986,13 +974,6 @@ function TemplateCanvas() {
           />
         )}
 
-        {pdfImportFile && (
-          <PdfImportModal
-            fileName={pdfImportFile.name}
-            onChoose={mode => void runPdfImport(mode)}
-            onCancel={() => setPdfImportFile(null)}
-          />
-        )}
 
         {templatesLibraryOpen && (
           <TemplatesLibraryModal

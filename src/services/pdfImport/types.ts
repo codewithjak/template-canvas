@@ -180,9 +180,6 @@ export function record(report: ImportReport, entry: ReportEntry): void {
 
 export type GroupRole = 'title' | 'heading' | 'watermark' | 'none';
 
-/** How the importer renders content: a reusable token template, or a filled doc. */
-export type ImportMode = 'template' | 'document';
-
 export interface StructureGroup {
   /** Ids of text blocks to merge into one element. */
   blockIds: string[];

@@ -11,3 +11,11 @@ export const CONFIDENCE_LOW = 0.7;
 
 /** IoU at/above which two elements are considered a positional match (eval). */
 export const IOU_MATCH = 0.5;
+
+/**
+ * Corpus-match confidence at/above which we adopt the matched template's
+ * known-good layout (match-and-diff). Conservative on purpose — a wrong family
+ * match is worse than none (arch doc §8). Below this, we faithfully rebuild and
+ * only surface the suggestion.
+ */
+export const MATCH_STRONG = 0.8;

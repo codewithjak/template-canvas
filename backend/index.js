@@ -17,6 +17,7 @@ const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { rasterizePdfBuffer, isImageFormat } = require('./renderer/imageRenderer');
 const { extractPdf }                        = require('./pdfImport/extract');
 const { structureBlocks, isAvailable: structurerAvailable } = require('./pdfImport/structurer');
+const { matchTemplate, isAvailable: matcherAvailable } = require('./pdfImport/matcher');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
 const { checkExportAllowed }                = require('./usage');
@@ -121,6 +122,25 @@ app.post('/pdf-structure', async (req, res) => {
   } catch (err) {
     console.error('[pdf-structure]', err);
     return res.status(502).json({ error: err.message || 'Structuring failed.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /pdf-match — retrieval. Input: { extracted:{labels}, corpus:[{key,name,labels}] }.
+// Output: { key, confidence, reason } (key "" = no clear match). 503 when no key.
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/pdf-match', async (req, res) => {
+  const { extracted, corpus } = req.body || {};
+  if (!extracted?.labels || !Array.isArray(corpus)) {
+    return res.status(400).json({ error: '"extracted.labels" and "corpus" are required.' });
+  }
+  if (!matcherAvailable()) return res.status(503).json({ error: 'Matcher unavailable (no API key).' });
+  try {
+    return res.json(await matchTemplate({ extracted, corpus }));
+  } catch (err) {
+    console.error('[pdf-match]', err);
+    return res.status(502).json({ error: err.message || 'Matching failed.' });
   }
 });
 

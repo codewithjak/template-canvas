@@ -48,10 +48,22 @@ const PLAN_SCHEMA = {
               required: ['blockIds', 'type', 'role'],
             },
           },
+          tables: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                headerBlockIds: { type: 'array', items: { type: 'string' } },
+                rows: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+              },
+              required: ['headerBlockIds', 'rows'],
+            },
+          },
           headerBlockIds: { type: 'array', items: { type: 'string' } },
           footerBlockIds: { type: 'array', items: { type: 'string' } },
         },
-        required: ['groups', 'headerBlockIds', 'footerBlockIds'],
+        required: ['groups', 'tables', 'headerBlockIds', 'footerBlockIds'],
       },
     },
   },
@@ -65,13 +77,24 @@ and GROUP them. You MUST NOT invent block IDs, and you MUST NOT output any
 coordinates — geometry is owned by the extractor, not you.
 
 For each page return:
-- groups: arrays of TEXT block ids that should merge into one element.
+- tables: repeating rows of text aligned into columns (line items, data grids).
+  * headerBlockIds: one block id per column for the header row, left-to-right;
+    [] if the table has no header row.
+  * rows: an array of rows; each row is an array of cell block ids, left-to-right,
+    ONE ENTRY PER COLUMN in the same column order as the header. Use the empty
+    string "" for an empty cell so every row has the same length.
+  * Only include kind "text" blocks. A block used in a table must NOT also appear
+    in a group.
+  * Only emit a table when you see genuine tabular structure (≥2 columns and ≥2
+    aligned rows). When unsure, do NOT make a table — leave the text as groups.
+- groups: arrays of TEXT block ids that should merge into one element (text NOT
+  in a table).
   * Merge consecutive lines of the same paragraph into one "paragraph" group.
   * A single standalone line is a "text" group with one id.
   * role: "title"/"heading" for prominent headings, "watermark" for faint
     diagonal/background text, otherwise "none".
   * Only group blocks of kind "text". Never put a line/rect/image id in a group.
-  * Every text block id must appear in exactly one group.
+  * Every text block id must appear in exactly one place: a table cell OR a group.
 - headerBlockIds: ids of blocks in the top header band (logo, letterhead, page
   title running across the top). Empty if there is no clear header.
 - footerBlockIds: ids of blocks in the bottom footer band (page numbers, fine
@@ -79,7 +102,7 @@ For each page return:
 
 Group by reading order and visual proximity using the provided geometry. Be
 conservative: when unsure whether two lines are one paragraph, keep them
-separate.`;
+separate, and when unsure whether something is a table, prefer groups.`;
 
 /** Compact per-page block payload for the prompt (text content + geometry only). */
 function toPromptPages(pages) {

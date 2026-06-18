@@ -57,9 +57,9 @@ async function matchTemplate({ extracted, corpus }) {
   const client = new Anthropic();
   const message = await client.messages.create({
     model: MODEL,
-    max_tokens: 2000,
-    thinking: { type: 'adaptive' },
-    output_config: { format: { type: 'json_schema', schema: RESULT_SCHEMA } },
+    max_tokens: 800,
+    // Latency: family match is a quick classification — no deep thinking needed.
+    output_config: { effort: 'low', format: { type: 'json_schema', schema: RESULT_SCHEMA } },
     system: SYSTEM,
     messages: [
       {

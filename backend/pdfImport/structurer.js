@@ -160,9 +160,11 @@ async function structureBlocks(pages, exemplar = null) {
 
   const message = await client.messages.create({
     model: MODEL,
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    output_config: { format: { type: 'json_schema', schema: PLAN_SCHEMA } },
+    max_tokens: 8000,
+    // Latency: thinking off + medium effort cuts this from ~minutes to ~20s while
+    // keeping tokenization thorough (low effort under-tokenized, e.g. left a title
+    // company name literal). The json_schema output keeps the response constrained.
+    output_config: { effort: 'medium', format: { type: 'json_schema', schema: PLAN_SCHEMA } },
     system: SYSTEM,
     messages: [
       {

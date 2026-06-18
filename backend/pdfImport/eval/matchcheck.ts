@@ -2,12 +2,12 @@
  * backend/pdfImport/eval/matchcheck.ts  —  retrieval (deterministic half)
  *
  * Verifies signatures, corpus building from the real 26 built-ins, and the
- * match-and-diff clone — WITHOUT a live Claude call (the /pdf-match decision
- * needs an API key). Run: npx tsx backend/pdfImport/eval/matchcheck.ts
+ * alignment-exemplar slot extraction — WITHOUT a live Claude call (the /pdf-match
+ * decision needs an API key). Run: npx tsx backend/pdfImport/eval/matchcheck.ts
  */
 
 import {
-  signatureFromTemplate, signatureFromBlocks, buildCorpus, buildFromMatch,
+  signatureFromTemplate, signatureFromBlocks, buildCorpus, extractSlots,
 } from '../../../src/services/pdfImport/index';
 import { createPage, createTemplateDocument, type TemplateDocument } from '../../../src/types/canvas';
 import type { NormalizedDocument } from '../../../src/services/pdfImport/types';
@@ -56,17 +56,11 @@ check(corpus.length === BUILTIN_TEMPLATES.length, `corpus size = builtins, got $
 check(corpus.every(c => c.key && c.name), 'every corpus entry has key+name');
 check(corpus.filter(c => c.labels.length > 0).length >= corpus.length - 2, 'almost all builtins yield labels');
 
-// ── buildFromMatch (clone + provenance, deep copy) ───────────────────────────
-const built = buildFromMatch(doc, 'my-invoice.pdf', { key: 't-x', name: 'Invoice', confidence: 0.92 });
-check(built.version === '2.0', 'built doc is v2.0');
-check(built.meta.name === 'my-invoice', `name from file, got ${built.meta.name}`);
-check(built.meta.templateId !== doc.meta.templateId, 'fresh template id');
-check(built.pages.length === 1 && built.pages[0].elements.length === 2, 'pages cloned');
-const ai = built.ai as { importer?: string; matchedTemplate?: { key?: string; confidence?: number } } | null;
-check(ai?.importer === 'pdf-match' && ai?.matchedTemplate?.key === 't-x' && ai?.matchedTemplate?.confidence === 0.92, 'match provenance recorded');
-// deep clone: mutating the result must not touch the source
-(built.pages[0].elements[0] as { content: string }).content = 'CHANGED';
-check((doc.pages[0].elements[0] as { content: string }).content === 'Invoice Number', 'clone is deep (source untouched)');
+// ── extractSlots — the geometry-stripped alignment exemplar ──────────────────
+const slots = extractSlots(doc);
+check(slots.tables.length === 1 && slots.tables[0].columns.length === 1 && slots.tables[0].columns[0].token === 'qty',
+  `exemplar table column token, got ${JSON.stringify(slots.tables)}`);
+check(slots.tables[0].columns[0].header === 'Qty', 'exemplar keeps the column header label');
 
 if (fails.length) {
   console.error('MATCHCHECK FAILED:');
@@ -76,4 +70,4 @@ if (fails.length) {
 console.log('MATCHCHECK PASSED');
 console.log(`  signature: name="${sig.name}" labels=${JSON.stringify(sig.labels)}`);
 console.log(`  corpus: ${corpus.length} built-ins, e.g. ${corpus[0].name} → ${corpus[0].labels.slice(0, 4).join(', ')}…`);
-console.log('  match-and-diff: deep clone + provenance ✓');
+console.log(`  exemplar slots: cols=${slots.tables[0]?.columns.map(c => c.token).join(',')}`);

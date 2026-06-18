@@ -117,26 +117,17 @@ const plan: StructurePlan = {
     binding?: { enabled?: boolean; collectionKey?: string; itemAlias?: string };
   };
 
-  // Template mode (default): header labels static, ONE token row, bound.
+  // Always tokenized: header labels static, ONE token row, bound.
   {
     const { document } = runImport(tdoc, tplan);
     const tbl = document.pages[0].elements[0] as Tbl;
-    check(tbl.type === 'table', 'template: produces a table');
-    check(tbl.columns.length === 2, `template: 2 columns, got ${tbl.columns.length}`);
-    check(tbl.position.x === 96 && tbl.columns[0].width === 104, 'template: geometry from blocks (x=96, col0=104)');
-    check(tbl.headerRow?.cells.map(c => c.content.value).join('|') === 'Qty|Item', 'template: header labels kept');
-    check(tbl.rows.length === 1, `template: ONE token row, got ${tbl.rows.length}`);
-    check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '{{qty}}|{{item}}', `template: tokenized cells, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
-    check(tbl.binding?.enabled === true && tbl.binding?.collectionKey === 'line_items', 'template: bound to line_items');
-  }
-
-  // Document mode: the PDF's literal rows, no binding.
-  {
-    const { document } = runImport(tdoc, tplan, 'document');
-    const tbl = document.pages[0].elements[0] as Tbl;
-    check(tbl.rows.length === 2, `document: 2 literal rows, got ${tbl.rows.length}`);
-    check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '2|Widget', `document: literal values, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
-    check(!tbl.binding || tbl.binding.enabled !== true, 'document: not bound');
+    check(tbl.type === 'table', 'produces a table');
+    check(tbl.columns.length === 2, `2 columns, got ${tbl.columns.length}`);
+    check(tbl.position.x === 96 && tbl.columns[0].width === 104, 'geometry from blocks (x=96, col0=104)');
+    check(tbl.headerRow?.cells.map(c => c.content.value).join('|') === 'Qty|Item', 'header labels kept');
+    check(tbl.rows.length === 1, `ONE token row, got ${tbl.rows.length}`);
+    check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '{{qty}}|{{item}}', `tokenized cells, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
+    check(tbl.binding?.enabled === true && tbl.binding?.collectionKey === 'line_items', 'bound to line_items');
   }
 }
 
@@ -146,6 +137,5 @@ if (fails.length) {
   process.exit(1);
 }
 console.log('MATERIALIZE PASSED');
-console.log('  template mode: tokenized content + footer zone; table → header labels + {{qty}}|{{item}} + bound to line_items');
-console.log('  document mode: table → literal rows 2|Widget / 5|Gadget, not bound');
-console.log('  no plan:       5 pass-through elements, no zones, no merge');
+console.log('  tokenized: content + footer zone; table → header labels + {{qty}}|{{item}} + bound to line_items');
+console.log('  no plan:   5 pass-through elements, no zones, no merge');

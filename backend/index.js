@@ -18,7 +18,6 @@ const { rasterizePdfBuffer, isImageFormat } = require('./renderer/imageRenderer'
 const { extractPdf }                        = require('./pdfImport/extract');
 const { structureBlocks, isAvailable: structurerAvailable } = require('./pdfImport/structurer');
 const { matchTemplate, isAvailable: matcherAvailable } = require('./pdfImport/matcher');
-const { fillTemplate, isAvailable: fillerAvailable } = require('./pdfImport/filler');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
 const { checkExportAllowed }                = require('./usage');
@@ -143,23 +142,6 @@ app.post('/pdf-match', async (req, res) => {
   } catch (err) {
     console.error('[pdf-match]', err);
     return res.status(502).json({ error: err.message || 'Matching failed.' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /pdf-fill — match-and-diff v2. Input: { slots, texts }. Output: filled
-// values ({token,value} pairs). 503 when no key → client keeps the template tokens.
-// ─────────────────────────────────────────────────────────────────────────────
-
-app.post('/pdf-fill', async (req, res) => {
-  const { slots, texts } = req.body || {};
-  if (!slots || !Array.isArray(texts)) return res.status(400).json({ error: '"slots" and "texts" are required.' });
-  if (!fillerAvailable()) return res.status(503).json({ error: 'Filler unavailable (no API key).' });
-  try {
-    return res.json(await fillTemplate({ slots, texts }));
-  } catch (err) {
-    console.error('[pdf-fill]', err);
-    return res.status(502).json({ error: err.message || 'Fill failed.' });
   }
 });
 

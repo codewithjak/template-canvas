@@ -30,7 +30,6 @@ import {
   type ImportReport,
   type NormalizedDocument,
   type StructurePlan,
-  type ImportMode,
 } from './pdfImport';
 import { BUILTIN_TEMPLATES } from '../templates/registry';
 import type { TemplateDocument } from '../types/canvas';
@@ -38,9 +37,7 @@ import type { TemplateDocument } from '../types/canvas';
 export interface PdfImportResult {
   document: TemplateDocument;
   report: ImportReport;
-  /** Which path built it: the LLM structurer, or the deterministic floor (no key). */
-  via: 'structured' | 'deterministic';
-  /** The corpus family suggestion, if the matcher ran. Used only to align naming. */
+  /** The corpus family suggestion, if the matcher ran. Used only to align token names. */
   match?: MatchResult;
 }
 
@@ -93,15 +90,17 @@ async function fetchPlan(normalized: NormalizedDocument, exemplar: PlanExemplar 
   }
 }
 
-/** Upload a PDF and rebuild it as an editable TemplateDocument. */
+/**
+ * Upload a PDF and rebuild it as a REUSABLE TOKENIZED TEMPLATE — values become
+ * {{placeholders}}, tables become one token row + a binding (fillable only once a
+ * data source is linked). This always tokenizes via the AI structurer; if that's
+ * unavailable it throws (it never silently produces a literal/filled document).
+ */
 export async function importPdfAsTemplate(
   file: File,
-  opts: { useLlm?: boolean; useMatch?: boolean; mode?: ImportMode } = {},
+  opts: { useMatch?: boolean } = {},
 ): Promise<PdfImportResult> {
-  // mode 'template' (default): a REUSABLE template — values become {{tokens}},
-  //   tables become one token row + a binding (fillable only once data is linked).
-  // mode 'document': this PDF's actual values filled in (a one-off document).
-  const { useLlm = true, useMatch = true, mode = 'template' } = opts;
+  const { useMatch = true } = opts;
 
   const extracted = await extract(file);
   const normalized = normalize(extracted);
@@ -120,13 +119,19 @@ export async function importPdfAsTemplate(
     }
   }
 
-  // The template is ALWAYS built from THIS PDF. Template mode tokenizes via the LLM
-  // structurer (aligned to the exemplar's names when present); document mode keeps
-  // literal values. Falls back to the deterministic floor without a key.
-  const plan = useLlm ? await fetchPlan(normalized, exemplar) : null;
-  const { document, report } = runImport(normalized, plan ?? undefined, mode);
+  // Tokenize THIS PDF via the structurer (aligned to the exemplar's names when
+  // present). Mandatory — no literal fallback.
+  const plan = await fetchPlan(normalized, exemplar);
+  if (!plan) {
+    throw new Error(
+      'Could not tokenize the PDF — the AI structurer is unavailable. ' +
+      'Ensure the backend is running with ANTHROPIC_API_KEY set.',
+    );
+  }
+
+  const { document, report } = runImport(normalized, plan);
   if (match && match.key) {
     document.ai = { ...(document.ai ?? {}), matchSuggestion: match };
   }
-  return { document, report, via: plan ? 'structured' : 'deterministic', match: match ?? undefined };
+  return { document, report, match: match ?? undefined };
 }

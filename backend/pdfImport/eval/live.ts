@@ -76,14 +76,14 @@ async function post(path: string, body: unknown) {
   console.log(`\n/pdf-structure: ${s.status}`);
   if (s.status !== 200) { console.log('  ', JSON.stringify(s.json), '\n(no key — cannot verify tokenization)'); return; }
 
-  // 4) TEMPLATE mode → tokenized reusable template (the default, the fix)
+  // 4) tokenized reusable template (the only output)
   {
-    const { document } = runImport(normalized, s.json, 'template');
+    const { document } = runImport(normalized, s.json);
     const json = JSON.stringify(document);
     const textEls = document.pages[0].elements.filter(e => e.type === 'text' || e.type === 'paragraph') as { content: string }[];
     const tbl = document.pages[0].elements.find(e => e.type === 'table') as
       { rows?: { cells: { content: { value: string } }[] }[]; binding?: { enabled?: boolean; collectionKey?: string } } | undefined;
-    console.log('\n── TEMPLATE mode ──');
+    console.log('\n── tokenized template ──');
     console.log('  text contents:', JSON.stringify(textEls.map(e => e.content)));
     console.log('  has {{tokens}}?              ', /\{\{[^}]+\}\}/.test(json));
     console.log('  literal "INV-2026-014" gone? ', !json.includes('INV-2026-014'), '(should be a token)');
@@ -93,15 +93,6 @@ async function post(path: string, body: unknown) {
       console.log('  table rows:', JSON.stringify(tbl.rows?.map(r => r.cells.map(c => c.content.value))));
       console.log('  table bound?              ', tbl.binding?.enabled === true, '→', tbl.binding?.collectionKey);
     }
-  }
-
-  // 5) DOCUMENT mode → literal values (the opt-in)
-  {
-    const { document } = runImport(normalized, s.json, 'document');
-    const json = JSON.stringify(document);
-    console.log('\n── DOCUMENT mode ──');
-    console.log('  literal "INV-2026-014" present?', json.includes('INV-2026-014'));
-    console.log('  has {{tokens}}?               ', /\{\{[^}]+\}\}/.test(json), '(should be false)');
   }
 
   console.log('\nLIVE RUN COMPLETE');

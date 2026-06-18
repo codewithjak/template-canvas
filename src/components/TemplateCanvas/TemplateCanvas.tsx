@@ -588,15 +588,20 @@ function TemplateCanvas() {
     if (!file) return;
     setCloudStatus('saving');
     try {
-      const { document, report } = await importPdfAsTemplate(file);
+      const { document, report, mode, match } = await importPdfAsTemplate(file);
       applyDocument(document);
       setCurrentTemplateId(null);
       setCloudStatus('idle');
-      const { mapped, approximated, dropped } = report.coverage;
-      if (approximated || dropped) {
-        alert(`Rebuilt from PDF: ${mapped} elements imported` +
-          (approximated ? `, ${approximated} approximated` : '') +
-          (dropped ? `, ${dropped} skipped` : '') + '.');
+      if (mode === 'matched') {
+        alert(`Recognized as "${match?.name}" (${Math.round((match?.confidence ?? 0) * 100)}% match) — loaded that template's layout. Link your data to fill it.`);
+      } else {
+        const { mapped, approximated, dropped } = report.coverage;
+        const suggest = match?.key ? ` · looks similar to "${match.name}"` : '';
+        if (approximated || dropped || suggest) {
+          alert(`Rebuilt from PDF: ${mapped} elements imported` +
+            (approximated ? `, ${approximated} approximated` : '') +
+            (dropped ? `, ${dropped} skipped` : '') + '.' + suggest);
+        }
       }
     } catch (err) {
       setCloudStatus('error');

@@ -82,46 +82,56 @@ function clusterTextRuns(primitives: RawPrimitive[], pageHeightPt: number): Bloc
 
   const blocks: Block[] = [];
 
-  for (const line of lines) {
-    line.sort((a, b) => a.rect.x - b.rect.x);
-    // Merge runs left-to-right, joining with a space across visible gaps.
+  // Build one text block from a contiguous segment of runs (joins words with a
+  // space across small gaps; bbox + style from the runs).
+  const buildTextBlock = (runs: RawTextPrimitive[]): TextBlock | null => {
     let text = '';
     let prevRight: number | null = null;
-    for (const run of line) {
-      if (prevRight !== null) {
-        const gap = run.rect.x - prevRight;
-        if (gap > run.fontSizePt * 0.25) text += ' ';
-      }
+    for (const run of runs) {
+      if (prevRight !== null && run.rect.x - prevRight > run.fontSizePt * 0.25) text += ' ';
       text += run.text;
       prevRight = run.rect.x + run.rect.width;
     }
-
-    // Union bbox of the line in PDF space → canvas space.
-    const minX = Math.min(...line.map(r => r.rect.x));
-    const maxX = Math.max(...line.map(r => r.rect.x + r.rect.width));
-    const minY = Math.min(...line.map(r => r.rect.y));
-    const maxY = Math.max(...line.map(r => r.rect.y + r.rect.height));
-    const head = line[0];
-    const canvasRect = rectToCanvas(
-      { x: minX, y: minY, width: maxX - minX, height: maxY - minY },
-      pageHeightPt,
-    );
-
-    const block: TextBlock = {
+    text = text.trim();
+    if (!text) return null;
+    const minX = Math.min(...runs.map(r => r.rect.x));
+    const maxX = Math.max(...runs.map(r => r.rect.x + r.rect.width));
+    const minY = Math.min(...runs.map(r => r.rect.y));
+    const maxY = Math.max(...runs.map(r => r.rect.y + r.rect.height));
+    const head = runs[0];
+    return {
       id: `blk-${head.id}`,
-      sourceIds: line.map(r => r.id),
+      sourceIds: runs.map(r => r.id),
       source: head.source,
-      confidence: Math.min(...line.map(r => r.confidence)),
+      confidence: Math.min(...runs.map(r => r.confidence)),
       kind: 'text',
-      rect: canvasRect,
-      text: text.trim(),
+      rect: rectToCanvas({ x: minX, y: minY, width: maxX - minX, height: maxY - minY }, pageHeightPt),
+      text,
       fontFamily: mapFontFamily(head.fontName),
       fontSizePx: head.fontSizePt * PX_PER_PT,
       fontWeight: mapFontWeight(head.fontName),
       color: head.color,
       rotation: head.rotation,
     };
-    if (block.text.length > 0) blocks.push(block);
+  };
+
+  for (const line of lines) {
+    line.sort((a, b) => a.rect.x - b.rect.x);
+    // Split a line into segments at COLUMN-sized gaps. Word spacing keeps runs
+    // together; a large gap (> 2.5× font size) starts a new block — so table
+    // cells stay distinct instead of collapsing into one line (which would hide
+    // the column structure from the Phase 4 table detector).
+    let segment: RawTextPrimitive[] = [];
+    let prevRight: number | null = null;
+    for (const run of line) {
+      if (prevRight !== null && run.rect.x - prevRight > run.fontSizePt * 2.5) {
+        const b = buildTextBlock(segment); if (b) blocks.push(b);
+        segment = [];
+      }
+      segment.push(run);
+      prevRight = run.rect.x + run.rect.width;
+    }
+    const b = buildTextBlock(segment); if (b) blocks.push(b);
   }
 
   // Non-text primitives → one block each.

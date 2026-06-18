@@ -76,4 +76,7 @@ export { normalize } from './normalize';
 export { structurePage, materializePage } from './structure';
 export { validatePage } from './validate';
 export { assemble } from './assemble';
+export { signatureFromBlocks, signatureFromTemplate, type TemplateSignature } from './signature';
+export { buildCorpus, buildFromMatch, type CorpusEntry, type MatchResult } from './matcher';
+export { MATCH_STRONG } from './config';
 export * from './types';

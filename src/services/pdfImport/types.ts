@@ -176,6 +176,27 @@ export function record(report: ImportReport, entry: ReportEntry): void {
   report.coverage[entry.state] += 1;
 }
 
+// ── Phase 4: structure plan (LLM output, references block ids only) ─────────────
+
+export type GroupRole = 'title' | 'heading' | 'watermark' | 'none';
+
+export interface StructureGroup {
+  /** Ids of text blocks to merge into one element. */
+  blockIds: string[];
+  type: 'text' | 'paragraph';
+  role: GroupRole;
+}
+
+export interface PageStructurePlan {
+  groups: StructureGroup[];
+  headerBlockIds: string[];
+  footerBlockIds: string[];
+}
+
+export interface StructurePlan {
+  pages: PageStructurePlan[];
+}
+
 // ── Geometry constant — the inverse of the PDF export transform ─────────────────
 
 /** 1in = 96 CSS px = 72 pt → px per pt. (canvas.ts: canvasW = in*96, pdfW = in*72) */

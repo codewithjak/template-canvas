@@ -113,12 +113,13 @@ app.post('/pdf-import', upload.single('file'), async (req, res) => {
 
 app.post('/pdf-structure', async (req, res) => {
   const pages = req.body?.pages;
+  const exemplar = req.body?.exemplar ?? null;
   if (!Array.isArray(pages)) return res.status(400).json({ error: '"pages" array is required.' });
   if (!structurerAvailable()) {
     return res.status(503).json({ error: 'Structurer unavailable (no API key).' });
   }
   try {
-    const plan = await structureBlocks(pages);
+    const plan = await structureBlocks(pages, exemplar);
     return res.json(plan);
   } catch (err) {
     console.error('[pdf-structure]', err);

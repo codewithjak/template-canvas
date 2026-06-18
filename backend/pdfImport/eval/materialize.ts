@@ -39,9 +39,9 @@ const normalized: NormalizedDocument = {
 const plan: StructurePlan = {
   pages: [{
     groups: [
-      { blockIds: ['b-title'], type: 'text', role: 'title' },
-      { blockIds: ['b-l1', 'b-l2'], type: 'paragraph', role: 'none' },
-      { blockIds: ['b-foot'], type: 'text', role: 'none' },
+      { blockIds: ['b-title'], type: 'text', role: 'title', content: 'Invoice' },
+      { blockIds: ['b-l1', 'b-l2'], type: 'paragraph', role: 'none', content: 'Line one\nLine two' },
+      { blockIds: ['b-foot'], type: 'text', role: 'none', content: 'Page {{page}} of {{pages}}' },
     ],
     tables: [],
     headerBlockIds: [],
@@ -49,21 +49,21 @@ const plan: StructurePlan = {
   }],
 };
 
-// ── With the plan ────────────────────────────────────────────────────────────
+// ── Template mode: tokenized content from the plan ───────────────────────────
 {
-  const { document, report } = runImport(normalized, plan);
+  const { document, report } = runImport(normalized, plan); // default mode = 'template'
   const els = document.pages[0].elements;
   const byType = (t: string) => els.filter(e => e.type === t);
 
   const para = byType('paragraph')[0] as { content: string; position: { x: number; y: number } } | undefined;
-  check(!!para && para.content === 'Line one\nLine two', `paragraph should merge two lines, got "${para?.content}"`);
+  check(!!para && para.content === 'Line one\nLine two', `paragraph uses plan content, got "${para?.content}"`);
   check(!!para && para.position.x === 96 && para.position.y === 100, `paragraph geometry from blocks, got ${JSON.stringify(para?.position)}`);
 
   const title = byType('text').find(e => (e as { content: string }).content === 'Invoice');
   check(!!title, 'title text element should exist');
 
-  const foot = byType('text').find(e => (e as { content: string }).content === 'Page 1');
-  check(!!foot, 'footer text element should exist (grouped + zone)');
+  const foot = byType('text').find(e => (e as { content: string }).content.includes('{{page}}'));
+  check(!!foot, 'footer text element should exist with tokenized content');
 
   check(byType('line').length === 1, `line should pass through, got ${byType('line').length}`);
   check(els.length === 4, `expected 4 elements (title, paragraph, footer-text, line), got ${els.length}`);
@@ -103,27 +103,41 @@ const plan: StructurePlan = {
   const tplan: StructurePlan = {
     pages: [{
       groups: [],
-      tables: [{ headerBlockIds: ['h0', 'h1'], rows: [['c00', 'c01'], ['c10', 'c11']] }],
+      tables: [{ headerBlockIds: ['h0', 'h1'], rows: [['c00', 'c01'], ['c10', 'c11']],
+        columnTokens: ['qty', 'item'], collectionKey: 'line_items' }],
       headerBlockIds: [],
       footerBlockIds: [],
     }],
   };
 
-  const { document, report } = runImport(tdoc, tplan);
-  const els = document.pages[0].elements;
-  check(els.length === 1 && els[0].type === 'table', `expected 1 table element, got ${els.map(e => e.type).join(',')}`);
-
-  const tbl = els[0] as {
+  type Tbl = {
     type: 'table'; position: { x: number; y: number }; columns: { width: number }[];
-    headerRow?: { cells: { content: { value: string } }[] }; rows: { cells: { content: { value: string } }[] }[];
+    headerRow?: { cells: { content: { value: string } }[] };
+    rows: { cells: { content: { value: string } }[] }[];
+    binding?: { enabled?: boolean; collectionKey?: string; itemAlias?: string };
   };
-  check(tbl.columns.length === 2, `expected 2 columns, got ${tbl.columns.length}`);
-  check(tbl.position.x === 96 && tbl.position.y === 200, `table position from blocks, got ${JSON.stringify(tbl.position)}`);
-  check(tbl.columns[0].width === 104, `col0 width = 200-96 = 104, got ${tbl.columns[0].width}`); // header→item left
-  check(!!tbl.headerRow && tbl.headerRow.cells.map(c => c.content.value).join('|') === 'Qty|Item', 'header row values');
-  check(tbl.rows.length === 2, `expected 2 body rows, got ${tbl.rows.length}`);
-  check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '2|Widget', `row0 values, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
-  check(report.coverage.mapped === 1 && report.coverage.dropped === 0, `table coverage 1/0, got ${JSON.stringify(report.coverage)}`);
+
+  // Template mode (default): header labels static, ONE token row, bound.
+  {
+    const { document } = runImport(tdoc, tplan);
+    const tbl = document.pages[0].elements[0] as Tbl;
+    check(tbl.type === 'table', 'template: produces a table');
+    check(tbl.columns.length === 2, `template: 2 columns, got ${tbl.columns.length}`);
+    check(tbl.position.x === 96 && tbl.columns[0].width === 104, 'template: geometry from blocks (x=96, col0=104)');
+    check(tbl.headerRow?.cells.map(c => c.content.value).join('|') === 'Qty|Item', 'template: header labels kept');
+    check(tbl.rows.length === 1, `template: ONE token row, got ${tbl.rows.length}`);
+    check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '{{qty}}|{{item}}', `template: tokenized cells, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
+    check(tbl.binding?.enabled === true && tbl.binding?.collectionKey === 'line_items', 'template: bound to line_items');
+  }
+
+  // Document mode: the PDF's literal rows, no binding.
+  {
+    const { document } = runImport(tdoc, tplan, 'document');
+    const tbl = document.pages[0].elements[0] as Tbl;
+    check(tbl.rows.length === 2, `document: 2 literal rows, got ${tbl.rows.length}`);
+    check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '2|Widget', `document: literal values, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
+    check(!tbl.binding || tbl.binding.enabled !== true, 'document: not bound');
+  }
 }
 
 if (fails.length) {
@@ -132,6 +146,6 @@ if (fails.length) {
   process.exit(1);
 }
 console.log('MATERIALIZE PASSED');
-console.log('  with plan:    title + merged paragraph + footer(zone) + line, footer zone enabled');
-console.log('  without plan: 5 pass-through elements, no zones, no merge');
-console.log('  table:        1 LayoutTable, 2 cols (w=104/…), header Qty|Item, rows 2|Widget / 5|Gadget');
+console.log('  template mode: tokenized content + footer zone; table → header labels + {{qty}}|{{item}} + bound to line_items');
+console.log('  document mode: table → literal rows 2|Widget / 5|Gadget, not bound');
+console.log('  no plan:       5 pass-through elements, no zones, no merge');

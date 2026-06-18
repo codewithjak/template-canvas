@@ -12,7 +12,7 @@ import type { CanvasElement } from '../../types/canvas';
 import { newStableId, type LayoutTableElement, type TableRow } from '../../model/layoutTable';
 import type {
   Block, TextBlock, LineBlock, RectBlock, ImageBlock, NormalizedPage,
-  PageStructurePlan, StructureTable, Rect,
+  PageStructurePlan, StructureTable, ImportMode, Rect,
 } from './types';
 
 const r = Math.round;
@@ -111,12 +111,16 @@ function unionRect(rects: Rect[]): Rect {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** Build one merged text/paragraph element from grouped text blocks. */
-function mergedTextElement(blocks: TextBlock[], type: 'text' | 'paragraph', role: string): CanvasElement {
+/**
+ * Build one merged text/paragraph element from grouped text blocks. `override`
+ * (the plan's tokenized content) wins in template mode; otherwise the literal
+ * block text is used (document mode / fallback).
+ */
+function mergedTextElement(blocks: TextBlock[], type: 'text' | 'paragraph', role: string, override?: string): CanvasElement {
   const ordered = [...blocks].sort((a, b) => (a.rect.y - b.rect.y) || (a.rect.x - b.rect.x));
   const head = ordered[0];
   const rect = unionRect(ordered.map(b => b.rect));
-  const content = ordered.map(b => b.text).join(type === 'paragraph' ? '\n' : ' ');
+  const content = override && override.trim() ? override : ordered.map(b => b.text).join(type === 'paragraph' ? '\n' : ' ');
 
   if (type === 'paragraph') {
     return {
@@ -137,10 +141,15 @@ function mergedTextElement(blocks: TextBlock[], type: 'text' | 'paragraph', role
   };
 }
 
-/** Build a LayoutTableElement from a plan table; geometry from the cell blocks. */
+/**
+ * Build a LayoutTableElement from a plan table; geometry from the cell blocks.
+ * Template mode → header labels + ONE tokenized row ({{columnToken}}) + a
+ * TableBinding (reusable). Document mode → the PDF's literal rows (a filled doc).
+ */
 function materializeTable(
   table: StructureTable,
   byId: Map<string, Block>,
+  mode: ImportMode,
 ): { element: LayoutTableElement; consumed: string[] } | null {
   const headerIds = table.headerBlockIds ?? [];
   const rowIds = table.rows ?? [];
@@ -182,13 +191,33 @@ function materializeTable(
 
   const rep = textBlock(headerIds[0]) ?? all[0];
   const columns = widths.map(w => ({ id: newStableId(), width: w, widthMode: 'fixed' as const, alignment: 'left' as const }));
-  const makeRow = (ids: string[]): TableRow => ({
+  // A row whose cells take literal block text (used for header labels, and for
+  // document-mode body rows).
+  const literalRow = (ids: string[]): TableRow => ({
     id: newStableId(),
     cells: Array.from({ length: numCols }, (_, c) => {
       const b = textBlock(ids[c]);
       return { id: newStableId(), content: { type: 'text' as const, value: b ? b.text : '' } };
     }),
   });
+
+  const headerRow = headerIds.length ? literalRow(headerIds) : undefined;
+
+  let rows: TableRow[];
+  let binding: LayoutTableElement['binding'];
+  if (mode === 'template') {
+    // One tokenized row + a binding — repeats per data row once a source is linked.
+    rows = [{
+      id: newStableId(),
+      cells: Array.from({ length: numCols }, (_, c) => ({
+        id: newStableId(),
+        content: { type: 'text' as const, value: `{{${table.columnTokens?.[c] || `col_${c + 1}`}}}` },
+      })),
+    }];
+    binding = { enabled: true, collectionKey: table.collectionKey || 'rows', itemAlias: 'item' };
+  } else {
+    rows = rowIds.map(literalRow); // document mode: the PDF's actual rows, static
+  }
 
   const element: LayoutTableElement = {
     id: newStableId(),
@@ -197,8 +226,9 @@ function materializeTable(
     position: { x: r(left), y: r(top) },
     size: { width: r(right - left), height: r(bottom - top) },
     columns,
-    headerRow: headerIds.length ? makeRow(headerIds) : undefined,
-    rows: rowIds.map(makeRow),
+    headerRow,
+    rows,
+    ...(binding ? { binding } : {}),
     style: {
       fontSize: r(rep.fontSizePx), fontWeight: rep.fontWeight, color: rep.color,
       fontFamily: rep.fontFamily, borderColor: '#e2e8f0', borderWidth: 1, showBorders: true,
@@ -213,14 +243,14 @@ function materializeTable(
  * Unknown ids in the plan are ignored; any text block the plan failed to mention
  * still passes through, so nothing is lost. (arch doc §4, §2.3)
  */
-export function materializePage(page: NormalizedPage, plan: PageStructurePlan): MaterializedPage {
+export function materializePage(page: NormalizedPage, plan: PageStructurePlan, mode: ImportMode = 'template'): MaterializedPage {
   const byId = new Map<string, Block>(page.blocks.map(b => [b.id, b]));
   const consumed = new Set<string>();
   const elements: CanvasElement[] = [];
 
   // Tables first — they consume their cell blocks before grouping/pass-through.
   for (const table of plan.tables ?? []) {
-    const built = materializeTable(table, byId);
+    const built = materializeTable(table, byId, mode);
     if (!built) continue;
     built.consumed.forEach(id => consumed.add(id));
     elements.push(built.element);
@@ -232,7 +262,8 @@ export function materializePage(page: NormalizedPage, plan: PageStructurePlan): 
       .filter((b): b is TextBlock => !!b && (b.kind === 'text' || b.kind === 'paragraph') && !consumed.has(b.id));
     if (textBlocks.length === 0) continue;
     textBlocks.forEach(b => consumed.add(b.id));
-    elements.push(mergedTextElement(textBlocks, group.type, group.role));
+    // Template mode uses the plan's tokenized content; document mode the literal text.
+    elements.push(mergedTextElement(textBlocks, group.type, group.role, mode === 'template' ? group.content : undefined));
   }
 
   // Anything the plan didn't consume (untouched text + all non-text) passes through.

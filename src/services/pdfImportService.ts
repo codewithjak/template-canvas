@@ -21,19 +21,16 @@ import {
   runImport,
   signatureFromBlocks,
   buildCorpus,
-  buildFromMatch,
   extractSlots,
-  applyFill,
-  toFillValues,
   MATCH_STRONG,
   type CorpusEntry,
   type FillSlots,
   type MatchResult,
-  type RawFill,
   type ExtractedDocument,
   type ImportReport,
   type NormalizedDocument,
   type StructurePlan,
+  type ImportMode,
 } from './pdfImport';
 import { BUILTIN_TEMPLATES } from '../templates/registry';
 import type { TemplateDocument } from '../types/canvas';
@@ -41,11 +38,14 @@ import type { TemplateDocument } from '../types/canvas';
 export interface PdfImportResult {
   document: TemplateDocument;
   report: ImportReport;
-  /** How the document was built. */
-  mode: 'matched' | 'structured' | 'deterministic';
-  /** The corpus match suggestion, if the matcher ran (surfaced even when not adopted). */
+  /** Which path built it: the LLM structurer, or the deterministic floor (no key). */
+  via: 'structured' | 'deterministic';
+  /** The corpus family suggestion, if the matcher ran. Used only to align naming. */
   match?: MatchResult;
 }
+
+/** Geometry-stripped naming/structure skeleton of a matched template family. */
+type PlanExemplar = { fields: FillSlots['fields']; tables: { columns: FillSlots['tables'][number]['columns'] }[] };
 
 async function extract(file: File): Promise<ExtractedDocument> {
   const form = new FormData();
@@ -73,39 +73,18 @@ async function fetchMatch(labels: string[], corpus: CorpusEntry[]): Promise<Matc
   }
 }
 
-/** Best-effort value fill for a matched template; null when unavailable/fails. */
-async function fetchFill(slots: FillSlots, texts: string[]): Promise<RawFill | null> {
-  try {
-    const res = await fetch(`${API_BASE}/pdf-fill`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ slots, texts }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-/** All text-line content from the normalized blocks (values + labels), in order. */
-function textLines(normalized: NormalizedDocument): string[] {
-  const out: string[] = [];
-  for (const page of normalized.pages) {
-    for (const b of page.blocks) {
-      if (b.kind === 'text' || b.kind === 'paragraph') out.push(b.text);
-    }
-  }
-  return out;
+/** Geometry-stripped skeleton of a matched template — token names + table columns only. */
+function toExemplar(slots: FillSlots): PlanExemplar {
+  return { fields: slots.fields, tables: slots.tables.map(t => ({ columns: t.columns })) };
 }
 
 /** Best-effort structure plan; null when the structurer is unavailable/fails. */
-async function fetchPlan(normalized: NormalizedDocument): Promise<StructurePlan | null> {
+async function fetchPlan(normalized: NormalizedDocument, exemplar: PlanExemplar | null): Promise<StructurePlan | null> {
   try {
     const res = await fetch(`${API_BASE}/pdf-structure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pages: normalized.pages }),
+      body: JSON.stringify({ pages: normalized.pages, exemplar: exemplar ?? undefined }),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -117,38 +96,37 @@ async function fetchPlan(normalized: NormalizedDocument): Promise<StructurePlan 
 /** Upload a PDF and rebuild it as an editable TemplateDocument. */
 export async function importPdfAsTemplate(
   file: File,
-  opts: { useLlm?: boolean; useMatch?: boolean } = {},
+  opts: { useLlm?: boolean; useMatch?: boolean; mode?: ImportMode } = {},
 ): Promise<PdfImportResult> {
-  const { useLlm = true, useMatch = true } = opts;
+  // mode 'template' (default): a REUSABLE template — values become {{tokens}},
+  //   tables become one token row + a binding (fillable only once data is linked).
+  // mode 'document': this PDF's actual values filled in (a one-off document).
+  const { useLlm = true, useMatch = true, mode = 'template' } = opts;
 
   const extracted = await extract(file);
   const normalized = normalize(extracted);
 
-  // Retrieval: does this PDF match a known template family?
+  // Retrieval: find the matching template FAMILY — used ONLY as a geometry-stripped
+  // naming/structure hint to align this PDF's tokens. It NEVER replaces the PDF
+  // (the corpus is a translator, not an inventory — arch doc §2.1, §3).
   let match: MatchResult | null = null;
+  let exemplar: PlanExemplar | null = null;
   if (useMatch) {
     const corpus = buildCorpus(BUILTIN_TEMPLATES);
     match = await fetchMatch(signatureFromBlocks(normalized).labels, corpus);
-
-    // Strong match → adopt the known-good layout (match-and-diff v1) and
-    // transplant the PDF's actual values into its slots (v2, best-effort).
     if (match && match.key && match.confidence >= MATCH_STRONG) {
       const hit = BUILTIN_TEMPLATES.find(t => t.id === match!.key);
-      if (hit) {
-        const document = buildFromMatch(hit.doc, file.name, { ...match, name: hit.name });
-        const raw = useLlm ? await fetchFill(extractSlots(document), textLines(normalized)) : null;
-        if (raw) applyFill(document, toFillValues(raw));
-        const report: ImportReport = { coverage: { mapped: 0, approximated: 0, dropped: 0 }, entries: [], lowConfidence: [] };
-        return { document, report, mode: 'matched', match };
-      }
+      if (hit) exemplar = toExemplar(extractSlots(hit.doc));
     }
   }
 
-  // No strong match → faithful rebuild (LLM structure if available, else deterministic).
-  const plan = useLlm ? await fetchPlan(normalized) : null;
-  const { document, report } = runImport(normalized, plan ?? undefined);
+  // The template is ALWAYS built from THIS PDF. Template mode tokenizes via the LLM
+  // structurer (aligned to the exemplar's names when present); document mode keeps
+  // literal values. Falls back to the deterministic floor without a key.
+  const plan = useLlm ? await fetchPlan(normalized, exemplar) : null;
+  const { document, report } = runImport(normalized, plan ?? undefined, mode);
   if (match && match.key) {
     document.ai = { ...(document.ai ?? {}), matchSuggestion: match };
   }
-  return { document, report, mode: plan ? 'structured' : 'deterministic', match: match ?? undefined };
+  return { document, report, via: plan ? 'structured' : 'deterministic', match: match ?? undefined };
 }

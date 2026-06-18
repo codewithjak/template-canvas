@@ -16,6 +16,7 @@ const { generatePdfBuffer }                 = require('./renderer/pdfLibRenderer
 const { generateZplBuffer }                 = require('./renderer/zplRenderer');
 const { rasterizePdfBuffer, isImageFormat } = require('./renderer/imageRenderer');
 const { extractPdf }                        = require('./pdfImport/extract');
+const { structureBlocks, isAvailable: structurerAvailable } = require('./pdfImport/structurer');
 const { replacePlaceholders }               = require('./utils/resolver');
 const { logExportEvent }                    = require('./analytics');
 const { checkExportAllowed }                = require('./usage');
@@ -98,6 +99,28 @@ app.post('/pdf-import', upload.single('file'), async (req, res) => {
   } catch (err) {
     console.error('[pdf-import]', err);
     return res.status(500).json({ error: err.message || 'Unable to extract PDF.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /pdf-structure — Phase 4 LLM structurer. Input: normalized pages/blocks.
+// Output: a structure plan (paragraph groups + zones) referencing block ids.
+// Returns 503 when unavailable so the client falls back to the deterministic
+// pass-through structurer (the import always succeeds).
+// ─────────────────────────────────────────────────────────────────────────────
+
+app.post('/pdf-structure', async (req, res) => {
+  const pages = req.body?.pages;
+  if (!Array.isArray(pages)) return res.status(400).json({ error: '"pages" array is required.' });
+  if (!structurerAvailable()) {
+    return res.status(503).json({ error: 'Structurer unavailable (no API key).' });
+  }
+  try {
+    const plan = await structureBlocks(pages);
+    return res.json(plan);
+  } catch (err) {
+    console.error('[pdf-structure]', err);
+    return res.status(502).json({ error: err.message || 'Structuring failed.' });
   }
 });
 

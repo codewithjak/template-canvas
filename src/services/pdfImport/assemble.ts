@@ -10,8 +10,13 @@ import {
   createPage,
   createTemplateDocument,
   customPageSize,
+  defaultFooter,
+  defaultHeader,
   PAGE_SIZE_PRESETS,
+  syncRepeatFlag,
+  zoneScope,
   type CanvasElement,
+  type CanvasPage,
   type PageSizeConfig,
   type TemplateDocument,
 } from '../../types/canvas';
@@ -21,6 +26,27 @@ export interface AssembledPage {
   elements: CanvasElement[];
   widthPx: number;
   heightPx: number;
+  /** Optional header/footer zone boundaries (canvas px) from the Phase 4 plan. */
+  headerBoundaryY?: number;
+  footerBoundaryY?: number;
+}
+
+/** Build a CanvasPage, enabling header/footer zones when the plan supplied them. */
+function buildPage(p: AssembledPage, index: number): CanvasPage {
+  const overrides: Partial<CanvasPage> = {
+    pageId: `page-${index + 1}`,
+    label: `Page ${index + 1}`,
+    elements: p.elements,
+  };
+  if (p.headerBoundaryY !== undefined) {
+    const h = { ...defaultHeader(), enabled: true, boundaryY: p.headerBoundaryY };
+    overrides.header = syncRepeatFlag({ ...h, scope: zoneScope(h) });
+  }
+  if (p.footerBoundaryY !== undefined) {
+    const f = { ...defaultFooter(p.heightPx), enabled: true, boundaryY: p.footerBoundaryY };
+    overrides.footer = syncRepeatFlag({ ...f, scope: zoneScope(f) });
+  }
+  return createPage(overrides);
 }
 
 /** Match canvas px dimensions to a known preset, else build a custom size. */
@@ -45,9 +71,7 @@ export function assemble(
   fileName: string,
   report: ImportReport,
 ): TemplateDocument {
-  const canvasPages = pages.map((p, i) =>
-    createPage({ pageId: `page-${i + 1}`, label: `Page ${i + 1}`, elements: p.elements }),
-  );
+  const canvasPages = pages.map((p, i) => buildPage(p, i));
 
   const first = pages[0];
   const pageSize = first ? matchPageSize(first.widthPx, first.heightPx) : undefined;

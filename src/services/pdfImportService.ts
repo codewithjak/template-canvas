@@ -22,9 +22,14 @@ import {
   signatureFromBlocks,
   buildCorpus,
   buildFromMatch,
+  extractSlots,
+  applyFill,
+  toFillValues,
   MATCH_STRONG,
   type CorpusEntry,
+  type FillSlots,
   type MatchResult,
+  type RawFill,
   type ExtractedDocument,
   type ImportReport,
   type NormalizedDocument,
@@ -68,6 +73,32 @@ async function fetchMatch(labels: string[], corpus: CorpusEntry[]): Promise<Matc
   }
 }
 
+/** Best-effort value fill for a matched template; null when unavailable/fails. */
+async function fetchFill(slots: FillSlots, texts: string[]): Promise<RawFill | null> {
+  try {
+    const res = await fetch(`${API_BASE}/pdf-fill`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slots, texts }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** All text-line content from the normalized blocks (values + labels), in order. */
+function textLines(normalized: NormalizedDocument): string[] {
+  const out: string[] = [];
+  for (const page of normalized.pages) {
+    for (const b of page.blocks) {
+      if (b.kind === 'text' || b.kind === 'paragraph') out.push(b.text);
+    }
+  }
+  return out;
+}
+
 /** Best-effort structure plan; null when the structurer is unavailable/fails. */
 async function fetchPlan(normalized: NormalizedDocument): Promise<StructurePlan | null> {
   try {
@@ -99,11 +130,14 @@ export async function importPdfAsTemplate(
     const corpus = buildCorpus(BUILTIN_TEMPLATES);
     match = await fetchMatch(signatureFromBlocks(normalized).labels, corpus);
 
-    // Strong match → adopt the known-good layout (match-and-diff).
+    // Strong match → adopt the known-good layout (match-and-diff v1) and
+    // transplant the PDF's actual values into its slots (v2, best-effort).
     if (match && match.key && match.confidence >= MATCH_STRONG) {
       const hit = BUILTIN_TEMPLATES.find(t => t.id === match!.key);
       if (hit) {
         const document = buildFromMatch(hit.doc, file.name, { ...match, name: hit.name });
+        const raw = useLlm ? await fetchFill(extractSlots(document), textLines(normalized)) : null;
+        if (raw) applyFill(document, toFillValues(raw));
         const report: ImportReport = { coverage: { mapped: 0, approximated: 0, dropped: 0 }, entries: [], lowConfidence: [] };
         return { document, report, mode: 'matched', match };
       }

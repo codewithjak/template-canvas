@@ -57,9 +57,50 @@ function bboxOfPts(pts) {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+// ── Text color (from operator-list fill state) ─────────────────────────────────
+
+const hex2 = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+const grayHex = (g) => { const v = hex2(g * 255); return `#${v}${v}${v}`; };
+const cmykHex = (c, m, y, k) =>
+  `#${hex2(255 * (1 - c) * (1 - k))}${hex2(255 * (1 - m) * (1 - k))}${hex2(255 * (1 - y) * (1 - k))}`;
+
+/**
+ * Walk the op list tracking the current fill color and text position; record a
+ * (x, y, color) span at each text-show op. pdfjs gives fill RGB as a hex string,
+ * gray as a number, CMYK as 4 numbers. (probe: setFillRGBColor → setTextMatrix → showText)
+ */
+function buildTextColorSpans(ops, OPS) {
+  const show = new Set([OPS.showText, OPS.showSpacedText, OPS.nextLineShowText, OPS.nextLineSetSpacingShowText]);
+  const spans = [];
+  let fill = '#000000';
+  let tx = 0, ty = 0;
+  for (let i = 0; i < ops.fnArray.length; i++) {
+    const fn = ops.fnArray[i];
+    const a = ops.argsArray[i];
+    if (fn === OPS.setFillRGBColor) { if (typeof a[0] === 'string') fill = a[0]; }
+    else if (fn === OPS.setFillGray) { if (typeof a[0] === 'number') fill = grayHex(a[0]); }
+    else if (fn === OPS.setFillCMYKColor) { if (a.length >= 4) fill = cmykHex(a[0], a[1], a[2], a[3]); }
+    else if (fn === OPS.setTextMatrix) { const m = a[0]; if (m) { tx = m[4]; ty = m[5]; } }
+    else if (fn === OPS.moveText) { tx += a[0] ?? 0; ty += a[1] ?? 0; }
+    else if (show.has(fn)) { spans.push({ x: tx, y: ty, color: fill }); }
+  }
+  return spans;
+}
+
+/** Nearest span's color to a text run's baseline (x,y); black if none close. */
+function colorAt(spans, x, y) {
+  let best = '#000000';
+  let bestD = 6; // px tolerance — positions match exactly in practice
+  for (const s of spans) {
+    const d = Math.abs(s.x - x) + Math.abs(s.y - y);
+    if (d < bestD) { bestD = d; best = s.color; }
+  }
+  return best;
+}
+
 // ── Text ────────────────────────────────────────────────────────────────────
 
-function extractText(tc, pageNo, nextId) {
+function extractText(tc, colorSpans, nextId) {
   const out = [];
   for (const item of tc.items) {
     if (isBlank(item.str)) continue;
@@ -72,7 +113,7 @@ function extractText(tc, pageNo, nextId) {
       fontName: tc.styles?.[item.fontName]?.fontFamily || 'sans-serif',
       fontSizePt,
       rotation: Math.round(Math.atan2(t[1], t[0]) * RAD2DEG * 100) / 100 || 0,
-      color: '#000000', // TODO: derive from operator-list fill color
+      color: colorAt(colorSpans, t[4], t[5]),
       rect: { x: t[4], y: t[5], width: item.width || item.str.length * fontSizePt * 0.5, height: fontSizePt },
     });
   }
@@ -81,12 +122,11 @@ function extractText(tc, pageNo, nextId) {
 
 // ── Vector graphics + images (operator list) ──────────────────────────────────
 
-async function extractOps(page, pdfjs, pageNo, nextId) {
+async function extractOps(page, pdfjs, ops, pageNo, nextId) {
   const { OPS } = pdfjs;
   const STROKE = new Set([OPS.stroke, OPS.closeStroke, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke]);
   const FILL = new Set([OPS.fill, OPS.eoFill, OPS.fillStroke, OPS.eoFillStroke, OPS.closeFillStroke]);
 
-  const ops = await page.getOperatorList();
   const out = [];
 
   let ctm = IDENTITY;
@@ -220,9 +260,12 @@ async function extractPdf(data, fileName = 'upload.pdf') {
     let counter = 0;
     const nextId = () => `p${pageNo}-${counter++}`;
 
+    const ops = await page.getOperatorList();
+    const colorSpans = buildTextColorSpans(ops, pdfjs.OPS);
+
     const tc = await page.getTextContent();
-    const textPrims = extractText(tc, pageNo, nextId);
-    const opPrims = await extractOps(page, pdfjs, pageNo, nextId);
+    const textPrims = extractText(tc, colorSpans, nextId);
+    const opPrims = await extractOps(page, pdfjs, ops, pageNo, nextId);
 
     pages.push({ widthPt: vp.width, heightPt: vp.height, primitives: [...textPrims, ...opPrims] });
     page.cleanup();

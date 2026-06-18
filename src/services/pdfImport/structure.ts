@@ -9,9 +9,10 @@
  */
 
 import type { CanvasElement } from '../../types/canvas';
+import { newStableId, type LayoutTableElement, type TableRow } from '../../model/layoutTable';
 import type {
   Block, TextBlock, LineBlock, RectBlock, ImageBlock, NormalizedPage,
-  PageStructurePlan, Rect,
+  PageStructurePlan, StructureTable, Rect,
 } from './types';
 
 const r = Math.round;
@@ -136,21 +137,99 @@ function mergedTextElement(blocks: TextBlock[], type: 'text' | 'paragraph', role
   };
 }
 
+/** Build a LayoutTableElement from a plan table; geometry from the cell blocks. */
+function materializeTable(
+  table: StructureTable,
+  byId: Map<string, Block>,
+): { element: LayoutTableElement; consumed: string[] } | null {
+  const headerIds = table.headerBlockIds ?? [];
+  const rowIds = table.rows ?? [];
+  const numCols = Math.max(headerIds.length, ...rowIds.map(r => r.length), 0);
+  if (numCols < 1) return null;
+
+  const textBlock = (id: string | undefined): TextBlock | undefined => {
+    const b = id ? byId.get(id) : undefined;
+    return b && (b.kind === 'text' || b.kind === 'paragraph') ? b : undefined;
+  };
+
+  const consumed: string[] = [];
+  const all: TextBlock[] = [];
+  const colLeft: (number | undefined)[] = Array(numCols).fill(undefined);
+  const note = (id: string | undefined, c: number) => {
+    const b = textBlock(id);
+    if (!b) return;
+    all.push(b);
+    consumed.push(b.id);
+    if (colLeft[c] === undefined || b.rect.x < colLeft[c]!) colLeft[c] = b.rect.x;
+  };
+  headerIds.forEach((id, c) => note(id, c));
+  rowIds.forEach(row => row.forEach((id, c) => note(id, c)));
+  if (all.length === 0) return null;
+
+  const left = Math.min(...all.map(b => b.rect.x));
+  const top = Math.min(...all.map(b => b.rect.y));
+  const right = Math.max(...all.map(b => b.rect.x + b.rect.width));
+  const bottom = Math.max(...all.map(b => b.rect.y + b.rect.height));
+
+  // Column widths from the left edge of each column; even split if any unknown.
+  let widths: number[];
+  if (colLeft.every(v => v !== undefined)) {
+    const lefts = colLeft as number[];
+    widths = lefts.map((l, c) => Math.max(10, r((c < numCols - 1 ? lefts[c + 1] : right) - l)));
+  } else {
+    widths = Array(numCols).fill(Math.max(10, r((right - left) / numCols)));
+  }
+
+  const rep = textBlock(headerIds[0]) ?? all[0];
+  const columns = widths.map(w => ({ id: newStableId(), width: w, widthMode: 'fixed' as const, alignment: 'left' as const }));
+  const makeRow = (ids: string[]): TableRow => ({
+    id: newStableId(),
+    cells: Array.from({ length: numCols }, (_, c) => {
+      const b = textBlock(ids[c]);
+      return { id: newStableId(), content: { type: 'text' as const, value: b ? b.text : '' } };
+    }),
+  });
+
+  const element: LayoutTableElement = {
+    id: newStableId(),
+    type: 'table',
+    schemaVersion: 2,
+    position: { x: r(left), y: r(top) },
+    size: { width: r(right - left), height: r(bottom - top) },
+    columns,
+    headerRow: headerIds.length ? makeRow(headerIds) : undefined,
+    rows: rowIds.map(makeRow),
+    style: {
+      fontSize: r(rep.fontSizePx), fontWeight: rep.fontWeight, color: rep.color,
+      fontFamily: rep.fontFamily, borderColor: '#e2e8f0', borderWidth: 1, showBorders: true,
+    },
+  };
+  return { element, consumed };
+}
+
 /**
  * Materialize a plan against a page's blocks. Geometry comes ENTIRELY from the
- * blocks (looked up by id) — the plan only decides grouping/role/zones. Unknown
- * ids in the plan are ignored; any text block the plan failed to mention still
- * passes through, so nothing is lost. (arch doc §4, §2.3)
+ * blocks (looked up by id) — the plan only decides grouping/tables/role/zones.
+ * Unknown ids in the plan are ignored; any text block the plan failed to mention
+ * still passes through, so nothing is lost. (arch doc §4, §2.3)
  */
 export function materializePage(page: NormalizedPage, plan: PageStructurePlan): MaterializedPage {
   const byId = new Map<string, Block>(page.blocks.map(b => [b.id, b]));
   const consumed = new Set<string>();
   const elements: CanvasElement[] = [];
 
+  // Tables first — they consume their cell blocks before grouping/pass-through.
+  for (const table of plan.tables ?? []) {
+    const built = materializeTable(table, byId);
+    if (!built) continue;
+    built.consumed.forEach(id => consumed.add(id));
+    elements.push(built.element);
+  }
+
   for (const group of plan.groups ?? []) {
     const textBlocks = (group.blockIds ?? [])
       .map(id => byId.get(id))
-      .filter((b): b is TextBlock => !!b && (b.kind === 'text' || b.kind === 'paragraph'));
+      .filter((b): b is TextBlock => !!b && (b.kind === 'text' || b.kind === 'paragraph') && !consumed.has(b.id));
     if (textBlocks.length === 0) continue;
     textBlocks.forEach(b => consumed.add(b.id));
     elements.push(mergedTextElement(textBlocks, group.type, group.role));

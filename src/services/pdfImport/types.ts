@@ -187,8 +187,19 @@ export interface StructureGroup {
   role: GroupRole;
 }
 
+/**
+ * A detected table: a grid of text-block ids. Empty cells are the empty string.
+ * Column count is the widest of headerBlockIds / any row. Geometry (column
+ * widths, position) is derived from the referenced blocks, not from the model.
+ */
+export interface StructureTable {
+  headerBlockIds: string[];   // one id per column, or [] when there's no header
+  rows: string[][];           // rows × columns of block ids ("" = empty cell)
+}
+
 export interface PageStructurePlan {
   groups: StructureGroup[];
+  tables: StructureTable[];
   headerBlockIds: string[];
   footerBlockIds: string[];
 }

@@ -43,6 +43,7 @@ const plan: StructurePlan = {
       { blockIds: ['b-l1', 'b-l2'], type: 'paragraph', role: 'none' },
       { blockIds: ['b-foot'], type: 'text', role: 'none' },
     ],
+    tables: [],
     headerBlockIds: [],
     footerBlockIds: ['b-foot'],
   }],
@@ -83,6 +84,48 @@ const plan: StructurePlan = {
   check(els.filter(e => e.type === 'paragraph').length === 0, 'fallback should not merge paragraphs');
 }
 
+// ── Table detection (4b) ─────────────────────────────────────────────────────
+{
+  const tdoc: NormalizedDocument = {
+    fileName: 'invoice.pdf',
+    pages: [{
+      widthPx: 794, heightPx: 1123,
+      blocks: [
+        text('h0', 96, 200, 40, 14, 'Qty'),
+        text('h1', 200, 200, 200, 14, 'Item'),
+        text('c00', 96, 220, 20, 14, '2'),
+        text('c01', 200, 220, 120, 14, 'Widget'),
+        text('c10', 96, 240, 20, 14, '5'),
+        text('c11', 200, 240, 120, 14, 'Gadget'),
+      ],
+    }],
+  };
+  const tplan: StructurePlan = {
+    pages: [{
+      groups: [],
+      tables: [{ headerBlockIds: ['h0', 'h1'], rows: [['c00', 'c01'], ['c10', 'c11']] }],
+      headerBlockIds: [],
+      footerBlockIds: [],
+    }],
+  };
+
+  const { document, report } = runImport(tdoc, tplan);
+  const els = document.pages[0].elements;
+  check(els.length === 1 && els[0].type === 'table', `expected 1 table element, got ${els.map(e => e.type).join(',')}`);
+
+  const tbl = els[0] as {
+    type: 'table'; position: { x: number; y: number }; columns: { width: number }[];
+    headerRow?: { cells: { content: { value: string } }[] }; rows: { cells: { content: { value: string } }[] }[];
+  };
+  check(tbl.columns.length === 2, `expected 2 columns, got ${tbl.columns.length}`);
+  check(tbl.position.x === 96 && tbl.position.y === 200, `table position from blocks, got ${JSON.stringify(tbl.position)}`);
+  check(tbl.columns[0].width === 104, `col0 width = 200-96 = 104, got ${tbl.columns[0].width}`); // header→item left
+  check(!!tbl.headerRow && tbl.headerRow.cells.map(c => c.content.value).join('|') === 'Qty|Item', 'header row values');
+  check(tbl.rows.length === 2, `expected 2 body rows, got ${tbl.rows.length}`);
+  check(tbl.rows[0].cells.map(c => c.content.value).join('|') === '2|Widget', `row0 values, got ${tbl.rows[0].cells.map(c => c.content.value).join('|')}`);
+  check(report.coverage.mapped === 1 && report.coverage.dropped === 0, `table coverage 1/0, got ${JSON.stringify(report.coverage)}`);
+}
+
 if (fails.length) {
   console.error('MATERIALIZE FAILED:');
   fails.forEach(f => console.error('  ✗ ' + f));
@@ -91,3 +134,4 @@ if (fails.length) {
 console.log('MATERIALIZE PASSED');
 console.log('  with plan:    title + merged paragraph + footer(zone) + line, footer zone enabled');
 console.log('  without plan: 5 pass-through elements, no zones, no merge');
+console.log('  table:        1 LayoutTable, 2 cols (w=104/…), header Qty|Item, rows 2|Widget / 5|Gadget');

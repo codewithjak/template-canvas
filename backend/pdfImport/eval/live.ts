@@ -9,10 +9,14 @@
  */
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { normalize, runImport, signatureFromBlocks, buildCorpus } from '../../../src/services/pdfImport/index';
+import {
+  normalize, runImport, signatureFromBlocks, buildCorpus, buildFromMatch,
+  extractSlots, applyFill, toFillValues, MATCH_STRONG,
+} from '../../../src/services/pdfImport/index';
 import { BUILTIN_TEMPLATES } from '../../../src/templates/registry';
 
-const BASE = `http://localhost:${process.env.PORT || '3195'}`;
+// Pure pipeline only — the frontend service can't load under Node (Vite env).
+const BASE = `http://localhost:${process.env.PORT || '3001'}`;
 
 async function makePdf(): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -62,19 +66,32 @@ async function post(path: string, body: unknown) {
     console.log('  headerBlockIds:', JSON.stringify(p.headerBlockIds), ' footerBlockIds:', JSON.stringify(p.footerBlockIds));
   } else { console.log('  ', JSON.stringify(s.json)); }
 
-  // 3) match (LIVE Claude)
-  const corpus = buildCorpus(BUILTIN_TEMPLATES);
-  const m = await post('/pdf-match', { extracted: { labels: signatureFromBlocks(normalized).labels }, corpus });
-  console.log(`\n/pdf-match: ${m.status}`);
-  console.log('  ', JSON.stringify(m.json));
-
-  // 4) assemble with the live plan
+  // 4) assemble with the live structure plan (the rebuild path)
   if (s.status === 200) {
     const { document } = runImport(normalized, s.json);
     const types: Record<string, number> = {};
     document.pages[0].elements.forEach((e) => { types[e.type] = (types[e.type] || 0) + 1; });
-    console.log('\nfinal document element types:', JSON.stringify(types));
-    console.log('footer zone enabled:', document.pages[0].footer.enabled);
+    console.log('\nstructure-path document element types:', JSON.stringify(types), ' footer zone:', document.pages[0].footer.enabled);
   }
+
+  // 5) match → fill → match-and-diff v2 (replicates the service's match path)
+  const corpus = buildCorpus(BUILTIN_TEMPLATES);
+  const m = await post('/pdf-match', { extracted: { labels: signatureFromBlocks(normalized).labels }, corpus });
+  console.log(`\n/pdf-match: ${m.status} →`, JSON.stringify(m.json));
+  if (m.status === 200 && m.json.key && m.json.confidence >= MATCH_STRONG) {
+    const hit = BUILTIN_TEMPLATES.find(t => t.id === m.json.key)!;
+    const document = buildFromMatch(hit.doc, 'invoice.pdf', { ...m.json, name: hit.name });
+    const texts = normalized.pages.flatMap(p =>
+      p.blocks.filter(b => b.kind === 'text' || b.kind === 'paragraph').map(b => (b as { text: string }).text));
+    const f = await post('/pdf-fill', { slots: extractSlots(document), texts });
+    console.log(`/pdf-fill: ${f.status}`);
+    if (f.status === 200) applyFill(document, toFillValues(f.json));
+    const json = JSON.stringify(document);
+    console.log('  match-and-diff →', hit.name);
+    console.log('  transplanted "INV-2026-014"? ', json.includes('INV-2026-014'));
+    console.log('  transplanted "Consulting"?   ', json.includes('Consulting'));
+    console.log('  residual {{tokens}}?         ', /\{\{[^}]+\}\}/.test(json));
+  }
+
   console.log('\nLIVE RUN COMPLETE');
 })().catch((e) => { console.error('LIVE ERROR:', e); process.exit(1); });

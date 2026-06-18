@@ -78,5 +78,6 @@ export { validatePage } from './validate';
 export { assemble } from './assemble';
 export { signatureFromBlocks, signatureFromTemplate, type TemplateSignature } from './signature';
 export { buildCorpus, buildFromMatch, type CorpusEntry, type MatchResult } from './matcher';
+export { extractSlots, applyFill, toFillValues, type FillSlots, type FillValues, type RawFill } from './fill';
 export { MATCH_STRONG } from './config';
 export * from './types';

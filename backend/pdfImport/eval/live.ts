@@ -10,8 +10,7 @@
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import {
-  normalize, runImport, signatureFromBlocks, buildCorpus, buildFromMatch,
-  extractSlots, applyFill, toFillValues, MATCH_STRONG,
+  normalize, runImport, signatureFromBlocks, buildCorpus, extractSlots, MATCH_STRONG,
 } from '../../../src/services/pdfImport/index';
 import { BUILTIN_TEMPLATES } from '../../../src/templates/registry';
 
@@ -56,41 +55,53 @@ async function post(path: string, body: unknown) {
   const normalized = normalize(extracted);
   console.log(`normalize: ${normalized.pages[0].blocks.length} blocks`);
 
-  // 2) structure (LIVE Claude)
-  const s = await post('/pdf-structure', { pages: normalized.pages });
-  console.log(`\n/pdf-structure: ${s.status}`);
-  if (s.status === 200) {
-    const p = s.json.pages[0];
-    console.log('  groups:', JSON.stringify(p.groups));
-    console.log('  tables:', JSON.stringify(p.tables));
-    console.log('  headerBlockIds:', JSON.stringify(p.headerBlockIds), ' footerBlockIds:', JSON.stringify(p.footerBlockIds));
-  } else { console.log('  ', JSON.stringify(s.json)); }
-
-  // 4) assemble with the live structure plan (the rebuild path)
-  if (s.status === 200) {
-    const { document } = runImport(normalized, s.json);
-    const types: Record<string, number> = {};
-    document.pages[0].elements.forEach((e) => { types[e.type] = (types[e.type] || 0) + 1; });
-    console.log('\nstructure-path document element types:', JSON.stringify(types), ' footer zone:', document.pages[0].footer.enabled);
+  // 2) match → exemplar (corpus is a NAMING hint only, never a replacement)
+  const m = await post('/pdf-match', {
+    extracted: { labels: signatureFromBlocks(normalized).labels },
+    corpus: buildCorpus(BUILTIN_TEMPLATES),
+  });
+  console.log(`\n/pdf-match: ${m.status} →`, JSON.stringify(m.json));
+  let exemplar = null;
+  if (m.status === 200 && m.json.key && m.json.confidence >= MATCH_STRONG) {
+    const hit = BUILTIN_TEMPLATES.find(t => t.id === m.json.key);
+    if (hit) {
+      const slots = extractSlots(hit.doc);
+      exemplar = { fields: slots.fields, tables: slots.tables.map(t => ({ columns: t.columns })) };
+      console.log(`  exemplar (naming hint) from "${hit.name}": ${exemplar.fields.slice(0, 5).map(f => f.token).join(', ')}…`);
+    }
   }
 
-  // 5) match → fill → match-and-diff v2 (replicates the service's match path)
-  const corpus = buildCorpus(BUILTIN_TEMPLATES);
-  const m = await post('/pdf-match', { extracted: { labels: signatureFromBlocks(normalized).labels }, corpus });
-  console.log(`\n/pdf-match: ${m.status} →`, JSON.stringify(m.json));
-  if (m.status === 200 && m.json.key && m.json.confidence >= MATCH_STRONG) {
-    const hit = BUILTIN_TEMPLATES.find(t => t.id === m.json.key)!;
-    const document = buildFromMatch(hit.doc, 'invoice.pdf', { ...m.json, name: hit.name });
-    const texts = normalized.pages.flatMap(p =>
-      p.blocks.filter(b => b.kind === 'text' || b.kind === 'paragraph').map(b => (b as { text: string }).text));
-    const f = await post('/pdf-fill', { slots: extractSlots(document), texts });
-    console.log(`/pdf-fill: ${f.status}`);
-    if (f.status === 200) applyFill(document, toFillValues(f.json));
+  // 3) structure WITH the exemplar (LIVE Claude) — tokenizes THIS PDF, aligned names
+  const s = await post('/pdf-structure', { pages: normalized.pages, exemplar: exemplar ?? undefined });
+  console.log(`\n/pdf-structure: ${s.status}`);
+  if (s.status !== 200) { console.log('  ', JSON.stringify(s.json), '\n(no key — cannot verify tokenization)'); return; }
+
+  // 4) TEMPLATE mode → tokenized reusable template (the default, the fix)
+  {
+    const { document } = runImport(normalized, s.json, 'template');
     const json = JSON.stringify(document);
-    console.log('  match-and-diff →', hit.name);
-    console.log('  transplanted "INV-2026-014"? ', json.includes('INV-2026-014'));
-    console.log('  transplanted "Consulting"?   ', json.includes('Consulting'));
-    console.log('  residual {{tokens}}?         ', /\{\{[^}]+\}\}/.test(json));
+    const textEls = document.pages[0].elements.filter(e => e.type === 'text' || e.type === 'paragraph') as { content: string }[];
+    const tbl = document.pages[0].elements.find(e => e.type === 'table') as
+      { rows?: { cells: { content: { value: string } }[] }[]; binding?: { enabled?: boolean; collectionKey?: string } } | undefined;
+    console.log('\n── TEMPLATE mode ──');
+    console.log('  text contents:', JSON.stringify(textEls.map(e => e.content)));
+    console.log('  has {{tokens}}?              ', /\{\{[^}]+\}\}/.test(json));
+    console.log('  literal "INV-2026-014" gone? ', !json.includes('INV-2026-014'), '(should be a token)');
+    // Proves it is THIS PDF tokenized, NOT the stock built-in (which has no such text).
+    console.log('  built from THIS pdf?         ', /consulting services/i.test(json), '(PDF\'s own paragraph text present)');
+    if (tbl) {
+      console.log('  table rows:', JSON.stringify(tbl.rows?.map(r => r.cells.map(c => c.content.value))));
+      console.log('  table bound?              ', tbl.binding?.enabled === true, '→', tbl.binding?.collectionKey);
+    }
+  }
+
+  // 5) DOCUMENT mode → literal values (the opt-in)
+  {
+    const { document } = runImport(normalized, s.json, 'document');
+    const json = JSON.stringify(document);
+    console.log('\n── DOCUMENT mode ──');
+    console.log('  literal "INV-2026-014" present?', json.includes('INV-2026-014'));
+    console.log('  has {{tokens}}?               ', /\{\{[^}]+\}\}/.test(json), '(should be false)');
   }
 
   console.log('\nLIVE RUN COMPLETE');

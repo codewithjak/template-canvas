@@ -44,8 +44,9 @@ const PLAN_SCHEMA = {
                 blockIds: { type: 'array', items: { type: 'string' } },
                 type: { type: 'string', enum: ['text', 'paragraph'] },
                 role: { type: 'string', enum: ['title', 'heading', 'watermark', 'none'] },
+                content: { type: 'string' },
               },
-              required: ['blockIds', 'type', 'role'],
+              required: ['blockIds', 'type', 'role', 'content'],
             },
           },
           tables: {
@@ -56,8 +57,10 @@ const PLAN_SCHEMA = {
               properties: {
                 headerBlockIds: { type: 'array', items: { type: 'string' } },
                 rows: { type: 'array', items: { type: 'array', items: { type: 'string' } } },
+                columnTokens: { type: 'array', items: { type: 'string' } },
+                collectionKey: { type: 'string' },
               },
-              required: ['headerBlockIds', 'rows'],
+              required: ['headerBlockIds', 'rows', 'columnTokens', 'collectionKey'],
             },
           },
           headerBlockIds: { type: 'array', items: { type: 'string' } },
@@ -70,39 +73,45 @@ const PLAN_SCHEMA = {
   required: ['pages'],
 };
 
-const SYSTEM = `You are a layout-structuring assistant for a PDF→template importer.
-You are given, per page, a list of already-extracted layout BLOCKS with exact
-measured geometry (canvas pixels, top-left origin). Your ONLY job is to CLASSIFY
-and GROUP them. You MUST NOT invent block IDs, and you MUST NOT output any
-coordinates — geometry is owned by the extractor, not you.
+const SYSTEM = `You convert an uploaded PDF into a REUSABLE TOKENIZED TEMPLATE.
+You are given, per page, already-extracted text BLOCKS with measured geometry
+(canvas px, top-left origin). You CLASSIFY and GROUP them, and you TOKENIZE their
+content — replacing the specific document's VALUES with named placeholders so the
+template can later be filled from a data source. You MUST NOT invent block IDs and
+MUST NOT output coordinates — geometry is owned by the extractor.
+
+TOKENIZATION (the core job):
+- A "value" is content specific to this one document (names, numbers, dates, IDs,
+  amounts, addresses, line-item cells). Replace each value with a {{snake_case}}
+  placeholder named for what it holds, e.g. "INV-2026-014" → {{invoice_no}},
+  "ACME Corp" → {{company_name}}, "2026-06-18" → {{invoice_date}}, "$500" → {{amount}}.
+- A "label" is fixed boilerplate (field captions, column headers, headings, legal
+  text). Keep labels VERBATIM — do not tokenize them.
+- Mixed lines keep the label and tokenize the value: "Invoice No: INV-2026-014"
+  → "Invoice No: {{invoice_no}}". A standalone value becomes just its token.
 
 For each page return:
-- tables: repeating rows of text aligned into columns (line items, data grids).
-  * headerBlockIds: one block id per column for the header row, left-to-right;
-    [] if the table has no header row.
-  * rows: an array of rows; each row is an array of cell block ids, left-to-right,
-    ONE ENTRY PER COLUMN in the same column order as the header. Use the empty
-    string "" for an empty cell so every row has the same length.
-  * Only include kind "text" blocks. A block used in a table must NOT also appear
-    in a group.
-  * Only emit a table when you see genuine tabular structure (≥2 columns and ≥2
-    aligned rows). When unsure, do NOT make a table — leave the text as groups.
-- groups: arrays of TEXT block ids that should merge into one element (text NOT
-  in a table).
-  * Merge consecutive lines of the same paragraph into one "paragraph" group.
-  * A single standalone line is a "text" group with one id.
-  * role: "title"/"heading" for prominent headings, "watermark" for faint
-    diagonal/background text, otherwise "none".
-  * Only group blocks of kind "text". Never put a line/rect/image id in a group.
-  * Every text block id must appear in exactly one place: a table cell OR a group.
-- headerBlockIds: ids of blocks in the top header band (logo, letterhead, page
-  title running across the top). Empty if there is no clear header.
-- footerBlockIds: ids of blocks in the bottom footer band (page numbers, fine
-  print). Empty if there is no clear footer.
+- tables: repeating rows of values aligned into columns (line items, data grids).
+  * headerBlockIds: one block id per column for the header row (the column LABELS),
+    left-to-right; [] if there is no header row.
+  * rows: array of rows; each row is the cell block ids left-to-right, ONE ENTRY
+    PER COLUMN, "" for an empty cell. (Used only to locate/size columns.)
+  * columnTokens: a {{}}-free snake_case token name per column, same order as the
+    columns, e.g. ["qty","description","amount"].
+  * collectionKey: snake_case name for the row collection, e.g. "line_items".
+  * Only "text" blocks; a block in a table must NOT also be in a group. Only emit
+    a table for genuine tabular structure (≥2 columns, ≥2 aligned rows).
+- groups: TEXT blocks NOT in a table, each becoming one element.
+  * Merge continuation lines of one paragraph into a "paragraph" group; a standalone
+    line is a "text" group.
+  * role: "title"/"heading" for prominent headings, "watermark" for faint background
+    text, else "none".
+  * content: the TOKENIZED text for the whole group (labels kept, values → tokens).
+  * Every text block id appears in exactly one place: a table cell OR a group.
+- headerBlockIds / footerBlockIds: ids of blocks in the top header band / bottom
+  footer band (letterhead, running titles, page numbers). Empty if none.
 
-Group by reading order and visual proximity using the provided geometry. Be
-conservative: when unsure whether two lines are one paragraph, keep them
-separate, and when unsure whether something is a table, prefer groups.`;
+Reuse the SAME token name when the same field recurs. Be conservative about tables.`;
 
 /** Compact per-page block payload for the prompt (text content + geometry only). */
 function toPromptPages(pages) {
@@ -131,10 +140,14 @@ function isAvailable() {
 
 /**
  * @param {Array} pages  normalized pages: { widthPx, heightPx, blocks: Block[] }
+ * @param {object|null} [exemplar]  geometry-stripped naming/structure skeleton of a
+ *   matched corpus template — { fields:[{token,label}], tables:[{columns:[{token,header}]}] }.
+ *   ALIGNMENT HINT ONLY: it guides token names + table structure; it is NEVER copied
+ *   as content or geometry. The template is always built from THIS PDF's blocks.
  * @returns {Promise<{pages: Array}>}  the structure plan (one entry per input page)
  * @throws if no API key or the model call fails — caller falls back to pass-through.
  */
-async function structureBlocks(pages) {
+async function structureBlocks(pages, exemplar = null) {
   if (!isAvailable()) {
     const err = new Error('LLM structurer unavailable: ANTHROPIC_API_KEY not set');
     err.code = 'NO_API_KEY';
@@ -142,7 +155,8 @@ async function structureBlocks(pages) {
   }
 
   const client = new Anthropic();
-  const promptPages = toPromptPages(pages);
+  const payload = { pages: toPromptPages(pages) };
+  if (exemplar) payload.exemplar = exemplar;
 
   const message = await client.messages.create({
     model: MODEL,
@@ -154,8 +168,14 @@ async function structureBlocks(pages) {
       {
         role: 'user',
         content:
-          'Structure these pages. Return JSON matching the schema.\n\n' +
-          JSON.stringify({ pages: promptPages }),
+          (exemplar
+            ? 'An "exemplar" (a matching template family\'s token/column NAMES) is included as an ' +
+              'ALIGNMENT guide: prefer its token names + table column tokens + collectionKey when the ' +
+              'field semantics match THIS document. Never copy its content or invent fields it has but ' +
+              'this document lacks.\n\n'
+            : '') +
+          'Structure these pages into a tokenized template. Return JSON matching the schema.\n\n' +
+          JSON.stringify(payload),
       },
     ],
   });

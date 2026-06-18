@@ -180,11 +180,21 @@ export function record(report: ImportReport, entry: ReportEntry): void {
 
 export type GroupRole = 'title' | 'heading' | 'watermark' | 'none';
 
+/** How the importer renders content: a reusable token template, or a filled doc. */
+export type ImportMode = 'template' | 'document';
+
 export interface StructureGroup {
   /** Ids of text blocks to merge into one element. */
   blockIds: string[];
   type: 'text' | 'paragraph';
   role: GroupRole;
+  /**
+   * TOKENIZED content: variable values replaced with named {{snake_case}}
+   * placeholders, static labels kept verbatim — e.g. "Invoice No: INV-2026-014"
+   * → "Invoice No: {{invoice_no}}". Used in template mode; document mode renders
+   * the literal block text instead.
+   */
+  content: string;
 }
 
 /**
@@ -195,6 +205,10 @@ export interface StructureGroup {
 export interface StructureTable {
   headerBlockIds: string[];   // one id per column, or [] when there's no header
   rows: string[][];           // rows × columns of block ids ("" = empty cell)
+  /** Per-column token name (snake_case) for the bound template row, e.g. "qty". */
+  columnTokens: string[];
+  /** Collection the row binds to (snake_case), e.g. "line_items". */
+  collectionKey: string;
 }
 
 export interface PageStructurePlan {

@@ -16,7 +16,7 @@
  */
 
 import type { TemplateDocument } from '../../types/canvas';
-import type { ExtractedDocument, NormalizedDocument, StructurePlan, Block } from './types';
+import type { ExtractedDocument, NormalizedDocument, StructurePlan, ImportMode, Block } from './types';
 import { emptyReport, record } from './types';
 import { normalize } from './normalize';
 import { structurePage, materializePage } from './structure';
@@ -34,7 +34,7 @@ export interface ImportResult {
  * Pass a `plan` to use the LLM structurer's output; omit it for the
  * deterministic pass-through. Either way the import always completes.
  */
-export function runImport(normalized: NormalizedDocument, plan?: StructurePlan): ImportResult {
+export function runImport(normalized: NormalizedDocument, plan?: StructurePlan, mode: ImportMode = 'template'): ImportResult {
   const report = emptyReport();
 
   const assembledPages: AssembledPage[] = normalized.pages.map((page, i) => {
@@ -42,7 +42,7 @@ export function runImport(normalized: NormalizedDocument, plan?: StructurePlan):
 
     const pagePlan = plan?.pages?.[i];
     const { elements, zones } = pagePlan
-      ? materializePage(page, pagePlan)
+      ? materializePage(page, pagePlan, mode)
       : { elements: structurePage(page), zones: {} as { headerBoundaryY?: number; footerBoundaryY?: number } };
 
     const { elements: valid, dropped } = validatePage(elements, page.widthPx, page.heightPx);

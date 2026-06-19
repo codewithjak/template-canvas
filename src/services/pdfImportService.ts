@@ -41,6 +41,29 @@ export interface PdfImportResult {
   match?: MatchResult;
 }
 
+/**
+ * Progress stages, in order. Each maps to one boundary in importPdfAsTemplate
+ * below; the callback fires immediately BEFORE that step's work begins, so a UI
+ * can show the step that is currently running. `normalize`/`assemble` are folded
+ * into the awaited steps either side of them (they're sub-millisecond, sync).
+ */
+export type PdfImportStage = 'extract' | 'match' | 'structure' | 'assemble';
+
+export interface PdfImportStepInfo {
+  id: PdfImportStage;
+  label: string;
+  /** Sub-label shown under the step while it runs. */
+  hint: string;
+}
+
+/** Ordered step list — the single source of truth shared by the progress UI. */
+export const PDF_IMPORT_STEPS: PdfImportStepInfo[] = [
+  { id: 'extract',   label: 'Reading the PDF',     hint: 'Extracting text & measuring layout' },
+  { id: 'match',     label: 'Matching a template', hint: 'Looking for a similar design' },
+  { id: 'structure', label: 'Rebuilding with AI',  hint: 'Tokenizing fields — usually 5–15s' },
+  { id: 'assemble',  label: 'Finalizing template', hint: 'Validating & assembling pages' },
+];
+
 /** Geometry-stripped naming/structure skeleton of a matched template family. */
 type PlanExemplar = { fields: FillSlots['fields']; tables: { columns: FillSlots['tables'][number]['columns'] }[] };
 
@@ -99,16 +122,18 @@ function toExemplar(slots: FillSlots): PlanExemplar {
  */
 export async function importPdfAsTemplate(
   file: File,
-  opts: { useMatch?: boolean } = {},
+  opts: { useMatch?: boolean; onProgress?: (stage: PdfImportStage) => void } = {},
 ): Promise<PdfImportResult> {
-  const { useMatch = true } = opts;
+  const { useMatch = true, onProgress } = opts;
 
+  onProgress?.('extract');
   const extracted = await extract(file);
   const normalized = normalize(extracted);
 
   // Retrieval: find the matching template FAMILY — used ONLY as a geometry-stripped
   // naming/structure hint to align this PDF's tokens. It NEVER replaces the PDF
   // (the corpus is a translator, not an inventory — arch doc §2.1, §3).
+  onProgress?.('match');
   let match: MatchResult | null = null;
   let exemplar: PlanExemplar | null = null;
   if (useMatch) {
@@ -122,6 +147,7 @@ export async function importPdfAsTemplate(
 
   // Tokenize THIS PDF via the structurer (aligned to the exemplar's names when
   // present). Mandatory — no literal fallback.
+  onProgress?.('structure');
   const plan = await fetchPlan(normalized, exemplar);
   if (!plan) {
     throw new Error(
@@ -130,6 +156,7 @@ export async function importPdfAsTemplate(
     );
   }
 
+  onProgress?.('assemble');
   const { document, report } = runImport(normalized, plan);
   if (match && match.key) {
     document.ai = { ...(document.ai ?? {}), matchSuggestion: match };

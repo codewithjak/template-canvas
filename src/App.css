@@ -657,6 +657,16 @@ h1, h2, h3 { margin: 0; }
   color: var(--gold);
 }
 
+.feat-badge--soon {
+  background: rgba(148, 163, 184, 0.14);
+  color: #64748b;
+}
+
+.feat-card--dark .feat-badge--soon {
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+}
+
 .feat-card p {
   font-size: 0.95rem;
   line-height: 1.65;

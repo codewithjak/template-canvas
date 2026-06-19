@@ -54,6 +54,24 @@ const Icons = {
       <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   ),
+  AI: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5 11.4 7l4.5 1.4-4.5 1.4L10 14.3 8.6 9.8 4.1 8.4 8.6 7 10 2.5Z" fill="currentColor" opacity=".9"/>
+      <path d="m15.5 12.5.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9Z" fill="currentColor" opacity=".6"/>
+    </svg>
+  ),
+  Email: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="m3.5 5.5 6.5 5 6.5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Component: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5 14 6l-4 3.5L6 6l4-3.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M13 9.5 16.5 13 13 16.5 9.5 13 13 9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  ),
 }
 
 const features = [
@@ -83,14 +101,29 @@ const features = [
     body: 'Generate pixel-perfect, print-ready PDFs, high-resolution PNG, JPG, and JPEG images, or ZPL output for thermal and label printers. What you see is what you get.',
   },
   {
+    Icon: Icons.Export,
+    title: 'Email delivery',
+    body: 'Send a generated document straight from Mapdoc — export to PDF and email it to recipients without leaving the canvas.',
+  },
+  {
     Icon: Icons.Eye,
     title: 'Multi-page & live preview',
     body: 'Multiple pages, custom page sizes, page breaks, and page numbers — all with an accurate, real-time preview as you build.',
   },
   {
+    Icon: Icons.AI,
+    title: 'AI template extraction',
+    body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.',
+  },
+  {
+    Icon: Icons.Template,
+    title: 'Built-in template library',
+    body: 'Start from ready-made, industry-specific designs — invoices, labels, logistics docs and more — that open as fully editable copies.',
+  },
+  {
     Icon: Icons.Team,
     title: 'Team workspaces',
-    body: 'Shared template libraries and role-based access, so your whole organisation works from the same source of truth.',
+    body: 'Shared template libraries, invites, and role-based access, so your whole organisation works from the same source of truth.',
   },
 ]
 
@@ -116,11 +149,12 @@ export default function Features() {
         <div className="wrap hero__inner">
           <div className="hero__content">
             <span className="eyebrow hero__eyebrow">✦ Product features</span>
-            <h1>Every tool you need to build <em>perfect documents.</em></h1>
+            <h1>Every tool you need to <em>design once and export anywhere.</em></h1>
             <p className="hero__sub">
-              From a drag-and-drop canvas to one-click PDF and image export and
-              dynamic data mapping — Mapdoc gives teams everything to create, reuse,
-              and automate business documents at scale.
+              From a drag-and-drop canvas to one-click PDF, image, and ZPL export,
+              AI template extraction, and dynamic data mapping — Mapdoc gives teams
+              everything to create, reuse, and automate at scale. And it's growing
+              beyond documents: reusable UI components are next.
             </p>
             <div className="hero__actions">
               <Link to="/canvas" className="btn btn--primary btn--lg">
@@ -157,7 +191,7 @@ export default function Features() {
         <div className="wrap">
           <div className="section__head section__head--center" style={{ marginInline: 'auto' }}>
             <span className="eyebrow">Capabilities</span>
-            <h2>Everything you need to <em>create and manage</em> templates.</h2>
+            <h2>Everything you need to <em>design, map, and ship</em> at scale.</h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
               Built for teams who create recurring business documents and need
               consistency without the manual work.
@@ -184,14 +218,14 @@ export default function Features() {
             <span className="eyebrow eyebrow--light">Coming soon</span>
             <h2>The roadmap is <em>just getting started.</em></h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Data mapping, bulk generation, PDF/image/ZPL export, and team
-              workspaces are already live. AI template extraction is in active development —
-              with more on the roadmap.
+              Data mapping, bulk generation, PDF/image/ZPL export, AI template
+              extraction, and team workspaces are already live. Next up: Mapdoc moves
+              beyond documents to generate reusable UI components — with more on the roadmap.
             </p>
           </div>
           <div className="feat-grid">
             {[
-              { title: 'AI template extraction', badge: 'In progress', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — grounded on real template JSON so it reproduces the original’s structure accurately.' },
+              { title: 'UI component export', badge: 'Coming soon', body: 'Design on the same canvas and generate reusable, standalone UI components — turning a visual layout into production-ready front-end code.' },
               { title: 'Version history',  body: 'Track every change to a template, compare revisions, and roll back to any previous version.' },
               { title: 'Cloud sync',       body: 'Save templates and data sources to the cloud and pick up where you left off on any device.' },
             ].map(({ title, body, badge }) => (
@@ -205,7 +239,7 @@ export default function Features() {
                 {badge ? (
                   <div className="feat-card__title">
                     <h3>{title}</h3>
-                    <span className="feat-badge feat-badge--progress">{badge}</span>
+                    <span className="feat-badge feat-badge--soon">{badge}</span>
                   </div>
                 ) : (
                   <h3>{title}</h3>
@@ -257,7 +291,7 @@ export default function Features() {
           </div>
         </div>
         <div className="wrap footer__bottom">
-          <span>© 2025 Mapdoc. All rights reserved.</span>
+          <span>© 2026 Mapdoc. All rights reserved.</span>
           <span>Map it. Make it.</span>
         </div>
       </footer>
@@ -288,7 +322,8 @@ function FeatureHighlight() {
           { icon: '⚡', label: 'Data mapping',           status: 'live'     },
           { icon: '📄', label: 'PDF, image & ZPL export', status: 'live'     },
           { icon: '👥', label: 'Team workspaces',        status: 'live'     },
-          { icon: '✨', label: 'AI template extraction', status: 'progress' },
+          { icon: '✨', label: 'AI template extraction', status: 'live'     },
+          { icon: '◈',  label: 'UI component export',    status: 'soon'     },
         ].map(({ icon, label, status }) => {
           const accent = {
             live:     { rowBg: 'rgba(35,85,244,0.06)',  rowBorder: 'rgba(35,85,244,0.12)',  text: '#0f172a', badgeBg: 'rgba(34,197,94,0.1)',   badgeColor: '#15803d', badgeText: 'Live' },

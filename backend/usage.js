@@ -98,12 +98,13 @@ async function getUsageSummary(teamId) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const UPGRADE_LABEL = {
-  bulk: 'Bulk generation',
-  zpl:  'ZPL / label export',
-  api:  'API access',
+  bulk:     'Bulk generation',
+  zpl:      'ZPL / label export',
+  delivery: 'Email delivery',
+  api:      'API access',
 };
 
-async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, format = 'pdf' }) {
+async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, format = 'pdf', delivery = false }) {
   const sb = getAdmin();
   if (!sb) {
     // Not configured for Supabase (e.g. local dev) — cannot resolve a plan,
@@ -134,6 +135,7 @@ async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, forma
   // 1. Capability gates ──────────────────────────────────────────────
   if (format === 'zpl' && !planAllows(plan, 'zpl')) return capabilityError('zpl');
   if (isBulk && !planAllows(plan, 'bulk'))          return capabilityError('bulk');
+  if (delivery && !planAllows(plan, 'delivery'))    return capabilityError('delivery');
 
   // 2. Per-job row ceiling (bulk only) ───────────────────────────────
   if (isBulk && limits.maxBulkRowsPerJob != null && requested > limits.maxBulkRowsPerJob) {

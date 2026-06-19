@@ -16,6 +16,7 @@ export type Capability =
   | 'cleanExport'
   | 'bulk'
   | 'zpl'
+  | 'delivery'
   | 'api'
   | 'teams'
   | 'versionHistory'
@@ -54,6 +55,7 @@ export const PLANS: Record<PlanId, Plan> = {
       cleanExport: false,
       bulk: false,
       zpl: false,
+      delivery: false,
       api: false,
       teams: false,
       versionHistory: false,
@@ -77,6 +79,7 @@ export const PLANS: Record<PlanId, Plan> = {
       cleanExport: true,
       bulk: true,
       zpl: true,
+      delivery: true,
       api: false,
       teams: false,
       versionHistory: true,
@@ -103,6 +106,7 @@ export const PLANS: Record<PlanId, Plan> = {
       cleanExport: true,
       bulk: true,
       zpl: true,
+      delivery: true,
       api: true,
       teams: true,
       versionHistory: true,

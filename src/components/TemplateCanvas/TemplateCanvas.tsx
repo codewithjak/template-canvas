@@ -927,7 +927,17 @@ function TemplateCanvas() {
             onNextRow={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
             onViewStructure={() => setShowDataStructureViewer(true)}
             onExport={handleExportDocument}
-            onSendEmail={() => setSendPanelOpen(true)}
+            onSendEmail={() => {
+              if (!can('delivery')) {
+                promptUpgrade({
+                  capability: 'delivery',
+                  title: 'Email delivery is a Pro feature',
+                  message: 'Email your exports (with an optional response deadline) on the Pro plan and above.',
+                });
+                return;
+              }
+              setSendPanelOpen(true);
+            }}
             onBulkExport={() => {
               if (!can('bulk')) {
                 promptUpgrade({

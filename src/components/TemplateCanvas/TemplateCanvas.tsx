@@ -73,7 +73,9 @@ import {
   mapTemplateForPreview,
   validateBindings,
 } from '../../services/mappingEngine';
-import { generateDocument, extFromBlob } from '../../services/dataSourceService';
+import { generateDocument, sendDocument, extFromBlob } from '../../services/dataSourceService';
+import type { GenerateDocumentParams, DeliverySpec, SendDocumentResult } from '../../services/dataSourceService';
+import SendDocumentModal from './SendDocumentModal';
 import type { PdfImportResult } from '../../services/pdfImportService';
 import {
   createTemplate as createCloudTemplate,
@@ -203,6 +205,7 @@ function TemplateCanvas() {
   // ── Bulk export state ─────────────────────────────────────────────────────
 
   const [bulkPanelOpen,     setBulkPanelOpen]     = useState(false);
+  const [sendPanelOpen,     setSendPanelOpen]     = useState(false);
   const [savedGlobalFields, setSavedGlobalFields] = useState<Record<string, string>>({});
 
   // ── Single export state ───────────────────────────────────────────────────
@@ -686,9 +689,8 @@ function TemplateCanvas() {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
-  const handleExportDocument = async () => {
-    if (allElements.length === 0) { alert('No template to export.'); return; }
-
+  /** Build the export request params for the current preview row (rds-aware). */
+  const buildExportParams = (): GenerateDocumentParams => {
     const cleanFieldMapping = removeEmptyMappings(fieldMapping);
 
     if (ir) {
@@ -696,6 +698,49 @@ function TemplateCanvas() {
       if (!validation.valid) console.warn('[export] missing bindings:', validation);
     }
 
+    const exportPages = pages.map(p => ({
+      pageId:                  p.pageId,
+      label:                   p.label,
+      templateElements:        p.elements,
+      header:                  p.header,
+      footer:                  p.footer,
+      fieldMapping:            cleanFieldMapping,
+      tableCollectionBindings,
+      collectionMappings,
+    }));
+
+    const outputFileName = `document-${Date.now()}`;
+
+    // RDS path — scope client-side, send a pre-scoped IR (rowIndex 0).
+    if (rds) {
+      const ctx = buildRenderContext(rds, previewRowIndex);
+      const scopedIr: CanonicalDocument = {
+        fields: ctx.fields,
+        collections: Object.fromEntries(
+          Object.entries(ctx.collections).map(([k, c]) => [
+            k,
+            { rows: c.rows as Record<string, string>[], columns: c.columns },
+          ]),
+        ),
+      };
+      return {
+        pages: exportPages, ir: scopedIr, outputFileName,
+        rowIndex: 0, driverCollectionKey: undefined, relatedCollections: {},
+        pageSize, format: exportFormat,
+      };
+    }
+
+    // Fallback — original row-scoping via server params.
+    const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
+    return {
+      pages: exportPages, ir: exportIr, outputFileName,
+      rowIndex: previewRowIndex, driverCollectionKey, relatedCollections: relatedCollectionsConfig,
+      pageSize, format: exportFormat,
+    };
+  };
+
+  const handleExportDocument = async () => {
+    if (allElements.length === 0) { alert('No template to export.'); return; }
     try {
       setIsExporting(true);
       setExportStatus(
@@ -703,74 +748,25 @@ function TemplateCanvas() {
           ? `Generating document — record ${previewRowIndex + 1} of ${totalRows}…`
           : 'Generating document…'
       );
-
-      const outputFileName = `document-${Date.now()}`;
-
-      const exportPages = pages.map(p => ({
-        pageId:                  p.pageId,
-        label:                   p.label,
-        templateElements:        p.elements,
-        header:                  p.header,
-        footer:                  p.footer,
-        fieldMapping:            cleanFieldMapping,
-        tableCollectionBindings,
-        collectionMappings,
-      }));
-
-      // ── NEW: RDS path — scope client-side, send pre-scoped IR ────────────
-      if (rds) {
-        const ctx = buildRenderContext(rds, previewRowIndex);
-
-        // Re-wrap RenderContext as CanonicalDocument for the existing endpoint
-        const scopedIr: CanonicalDocument = {
-          fields: ctx.fields,
-          collections: Object.fromEntries(
-            Object.entries(ctx.collections).map(([k, c]) => [
-              k,
-              { rows: c.rows as Record<string, string>[], columns: c.columns },
-            ]),
-          ),
-        };
-
-        const blob = await generateDocument({
-          pages:               exportPages,
-          ir:                  scopedIr,
-          outputFileName,
-          // rowIndex 0 — IR is already scoped to the requested record
-          rowIndex:            0,
-          driverCollectionKey: undefined,
-          relatedCollections:  {},
-          pageSize,
-          format: exportFormat,
-        });
-
-        downloadBlob(blob, `${outputFileName}.${extFromBlob(blob, exportFormat)}`);
-        return;
-      }
-      // ── END NEW ───────────────────────────────────────────────────────────
-
-      // Fallback: no rds — original row-scoping via server params
-      const exportIr: CanonicalDocument = ir ?? { fields: {}, collections: {} };
-
-      const blob = await generateDocument({
-        pages:               exportPages,
-        ir:                  exportIr,
-        outputFileName,
-        rowIndex:            previewRowIndex,
-        driverCollectionKey,
-        relatedCollections:  relatedCollectionsConfig,
-        pageSize,
-        format: exportFormat,
-      });
-
-      downloadBlob(blob, `${outputFileName}.${exportFormat === 'zpl' ? 'zpl' : 'pdf'}`);
-
+      const params = buildExportParams();
+      const blob   = await generateDocument(params);
+      downloadBlob(blob, `${params.outputFileName}.${extFromBlob(blob, exportFormat)}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed.');
     } finally {
       setIsExporting(false);
       setExportStatus(null);
       void refreshPlan(); // reflect the export against the monthly cap
+    }
+  };
+
+  /** Render the current export and email it (no download). Used by the send modal. */
+  const handleSendDocument = async (delivery: DeliverySpec): Promise<SendDocumentResult> => {
+    if (allElements.length === 0) throw new Error('No template to send.');
+    try {
+      return await sendDocument(buildExportParams(), delivery);
+    } finally {
+      void refreshPlan(); // sending counts against the monthly cap too
     }
   };
 
@@ -931,6 +927,7 @@ function TemplateCanvas() {
             onNextRow={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
             onViewStructure={() => setShowDataStructureViewer(true)}
             onExport={handleExportDocument}
+            onSendEmail={() => setSendPanelOpen(true)}
             onBulkExport={() => {
               if (!can('bulk')) {
                 promptUpgrade({
@@ -959,6 +956,13 @@ function TemplateCanvas() {
             initialName={templateMeta.name || ''}
             onConfirm={name => { setShowSaveModal(false); void persistToCloud(name); }}
             onCancel={() => setShowSaveModal(false)}
+          />
+        )}
+
+        {sendPanelOpen && (
+          <SendDocumentModal
+            onClose={() => setSendPanelOpen(false)}
+            onSend={handleSendDocument}
           />
         )}
 

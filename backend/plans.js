@@ -36,6 +36,7 @@ const PLANS = {
       cleanExport:    false, // free exports are watermarked
       bulk:           false,
       zpl:            false,
+      delivery:       false, // emailing exports is a paid feature
       api:            false,
       teams:          false,
       versionHistory: false,
@@ -57,6 +58,7 @@ const PLANS = {
       cleanExport:    true,
       bulk:           true,
       zpl:            true,
+      delivery:       true,
       api:            false,
       teams:          false,
       versionHistory: true,
@@ -78,6 +80,7 @@ const PLANS = {
       cleanExport:    true,
       bulk:           true,
       zpl:            true,
+      delivery:       true,
       api:            true,
       teams:          true,
       versionHistory: true,

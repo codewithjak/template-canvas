@@ -6,7 +6,8 @@
 > a given time frame.
 >
 > **Date:** 2026-06-19 · **Branch context:** TC-0072
-> **Status:** planned · **Channel for v1:** email only (WhatsApp deferred — see §7)
+> **Status:** P0, P1, P3, P4, P5 done · P2 (hybrid storage) pending — needs the Supabase bucket.
+> **Channel for v1:** email only (WhatsApp deferred — see §7)
 
 ---
 
@@ -240,13 +241,24 @@ existing `API_BASE` + `authHeaders()`. Reuse existing TS shapes; **no `any`**.
 
 ---
 
-### P5 — Gating + rate limiting + polish
+### P5 — Gating + rate limiting + polish ✅ done
 **Effort:** S · **Depends on:** P1–P4
 
-Add the `delivery` capability to `plans.js`/`plans.ts`, enforce it in the route, apply the
-shared rate limiter, finalize copy/error states, and document env in `EMAIL_SETUP.md`.
+Added the `delivery` capability to `plans.js` + `plans.ts` (**Pro + Business only**; Free is
+gated). Enforcement:
+- **Server (authoritative):** `checkExportAllowed({ ..., delivery })` in `usage.js` returns a
+  403 "Email delivery requires the Pro plan" when a Free plan requests delivery. The route
+  passes `delivery: Boolean(req.body.delivery?.email)`.
+- **Client (UX only):** the ✉ Email button calls `promptUpgrade('delivery')` when
+  `!can('delivery')`, mirroring the bulk/zpl gates.
+- **Rate limit:** `makeRateLimiter(20, 1h)` per IP on the delivery branch → 429 when exceeded.
+- **Config reuse:** no new env. Delivery uses the existing `SENDGRID_API_KEY` + `CONTACT_FROM`
+  (see `backend/.env.example`); missing key → 503.
 
-**Exit:** sending is gated to the chosen plan(s), throttled, and validated end-to-end.
+**Error contract:** 402/403 (cap/capability), 400 (bad recipient/deadline), 429 (throttle),
+503 (not configured), 502 (send failed). The send modal surfaces the server's message.
+
+**Exit:** sending is gated to Pro+, throttled, and validated end-to-end. ✅
 
 ---
 

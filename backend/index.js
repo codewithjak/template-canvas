@@ -31,8 +31,11 @@ const { normalisePayload }  = require('./lib/normalisePayload');
 const { buildRowIr }        = require('./lib/buildRowIr');
 const { renderDocEntries }  = require('./lib/renderDocEntries');
 const { buildExportArtifact } = require('./lib/exportArtifact');
-const { isEmailConfigured } = require('./lib/email');
+const { isEmailConfigured, makeRateLimiter, clientIp } = require('./lib/email');
 const { deliver, validateDelivery } = require('./delivery');
+
+// Throttle export emails: max 20 per hour per IP.
+const deliveryRateLimited = makeRateLimiter(20, 60 * 60 * 1000);
 const contactRouter         = require('./routes/contact');
 const teamApiRouter         = require('./routes/teamApi');
 
@@ -195,8 +198,11 @@ app.post('/generate-document', async (req, res) => {
   const format = String(req.body.format || 'pdf').toLowerCase();
 
   // Entitlement gate (plan capability + monthly cap). Runs before any work.
+  // Emailing the export is itself a paid capability ("delivery").
+  const wantsDelivery = Boolean(req.body.delivery && req.body.delivery.email);
   const gate = await checkExportAllowed({
     authHeader: req.headers.authorization, mode: 'single', rows: 1, format,
+    delivery: wantsDelivery,
   });
   if (!gate.allowed) return res.status(gate.status).json({ error: gate.error });
 
@@ -243,6 +249,10 @@ app.post('/generate-document', async (req, res) => {
       }
       const deliveryError = validateDelivery(delivery);
       if (deliveryError) return res.status(400).json({ error: deliveryError });
+
+      if (deliveryRateLimited(clientIp(req))) {
+        return res.status(429).json({ error: 'Too many emails sent — please try again in a little while.' });
+      }
 
       const artifact = await buildExportArtifact({
         format, genArgs, gate, outputFileName,

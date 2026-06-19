@@ -1,0 +1,29 @@
+{
+  "fields": {
+    "brand_name": "PostEx",
+    "brand_sub": "E-commerce Logistics · COD & Last-Mile",
+    "cn": "78451200340038",
+    "status": "DELIVERED",
+    "delivered_at": "Jun 19, 2026 · 02:42 PM",
+    "consignee": "Bilal Ahmed",
+    "consignee_phone": "0333-4455667",
+    "address": "House 22, Block C, Model Town, Lahore",
+    "order_ref": "TL-ORD-90218",
+    "merchant": "Trendline Apparel",
+    "attempt": "1 of 3",
+    "cod_amount": "PKR 7,800",
+    "payment_mode": "Cash",
+    "received_by": "Bilal Ahmed",
+    "rider": "Imran Tariq · LEA-417"
+  },
+  "collections": {
+    "items": {
+      "columns": ["description", "qty"],
+      "rows": [
+        { "description": "Cotton Polo Shirt — Navy (L)", "qty": "1" },
+        { "description": "Slim-fit Chinos — Beige (32)", "qty": "1" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "postex-pod.data.json" }
+}

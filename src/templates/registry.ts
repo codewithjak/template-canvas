@@ -66,8 +66,19 @@ import eventQuotationDoc from './builtins/event-quotation.template.json'
 import eventQuotationData from './builtins/event-quotation.data.json'
 import realtorBrochureDoc from './builtins/realtor-brochure.template.json'
 import realtorBrochureData from './builtins/realtor-brochure.data.json'
+import postexLoadSheetDoc from './builtins/postex-load-sheet.template.json'
+import postexLoadSheetData from './builtins/postex-load-sheet.data.json'
+import postexRunSheetDoc from './builtins/postex-run-sheet.template.json'
+import postexRunSheetData from './builtins/postex-run-sheet.data.json'
+import postexSettlementDoc from './builtins/postex-settlement.template.json'
+import postexSettlementData from './builtins/postex-settlement.data.json'
+import postexMerchantInvoiceDoc from './builtins/postex-merchant-invoice.template.json'
+import postexMerchantInvoiceData from './builtins/postex-merchant-invoice.data.json'
+import postexPodDoc from './builtins/postex-pod.template.json'
+import postexPodData from './builtins/postex-pod.data.json'
 
 export type BuiltinCategory =
+  | 'Courier & Last-Mile'
   | 'Logistics & Freight'
   | 'Construction & Engineering'
   | 'Insurance'
@@ -91,6 +102,52 @@ export interface BuiltinTemplate {
 }
 
 export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
+  // ── Courier & Last-Mile (PostEx e-commerce logistics) ──
+  {
+    id: 'builtin-postex-load-sheet',
+    name: 'Load Sheet',
+    description: 'Hub dispatch load sheet: parcels, CN numbers, COD and rider sign-off.',
+    category: 'Courier & Last-Mile',
+    sizeLabel: 'A4',
+    doc: postexLoadSheetDoc as unknown as TemplateDocument,
+    data: postexLoadSheetData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-postex-run-sheet',
+    name: 'Run Sheet',
+    description: 'Rider delivery run with COD-to-collect and per-stop status/signature columns.',
+    category: 'Courier & Last-Mile',
+    sizeLabel: 'A4',
+    doc: postexRunSheetDoc as unknown as TemplateDocument,
+    data: postexRunSheetData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-postex-settlement',
+    name: 'COD Settlement Receipt',
+    description: 'Merchant remittance advice with COD breakdown and net upfront payment.',
+    category: 'Courier & Last-Mile',
+    sizeLabel: 'A4',
+    doc: postexSettlementDoc as unknown as TemplateDocument,
+    data: postexSettlementData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-postex-merchant-invoice',
+    name: 'Merchant Invoice',
+    description: 'Tax invoice billing the merchant for delivery, COD and return charges.',
+    category: 'Courier & Last-Mile',
+    sizeLabel: 'A4',
+    doc: postexMerchantInvoiceDoc as unknown as TemplateDocument,
+    data: postexMerchantInvoiceData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-postex-pod',
+    name: 'Proof of Delivery',
+    description: 'Single-parcel POD with CN barcode, delivered stamp and signature block.',
+    category: 'Courier & Last-Mile',
+    sizeLabel: 'A4',
+    doc: postexPodDoc as unknown as TemplateDocument,
+    data: postexPodData as unknown as CanonicalDocument,
+  },
   // ── Logistics & Freight ──
   {
     id: 'builtin-invoice',

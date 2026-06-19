@@ -1,0 +1,87 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-postex-pod",
+    "name": "Proof of Delivery",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": { "preset": "a4", "canvasWidth": 794, "canvasHeight": 1123, "pdfWidth": 595.28, "pdfHeight": 841.89 },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Proof of Delivery",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80, "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": true, "scope": "this-page-and-overflow", "repeatOnOverflow": true, "boundaryY": 1040, "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 0, "opacity": 1 } },
+      "elements": [
+        { "id": "b-1", "type": "box", "position": { "x": 0, "y": 0 }, "style": { "width": 794, "height": 112, "borderWidth": 0, "borderColor": "#1a1f71", "borderStyle": "solid", "backgroundColor": "#1a1f71", "borderRadius": 0, "opacity": 100 } },
+        { "id": "b-2", "type": "box", "position": { "x": 0, "y": 112 }, "style": { "width": 794, "height": 5, "borderWidth": 0, "borderColor": "#f4a81d", "borderStyle": "solid", "backgroundColor": "#f4a81d", "borderRadius": 0, "opacity": 100 } },
+        { "id": "t-3", "type": "text", "content": "{{brand_name}}", "position": { "x": 60, "y": 32 }, "style": { "fontSize": 26, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-4", "type": "text", "content": "{{brand_sub}}", "position": { "x": 60, "y": 70 }, "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "left" } },
+        { "id": "t-5", "type": "text", "content": "PROOF OF DELIVERY", "position": { "x": 374, "y": 32 }, "style": { "fontSize": 24, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "right" } },
+        { "id": "t-6", "type": "text", "content": "Delivery confirmation", "position": { "x": 374, "y": 70 }, "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "right" } },
+
+        { "id": "bc-7", "type": "barcode", "content": "{{cn}}", "position": { "x": 60, "y": 144 }, "style": { "width": 360, "height": 84 }, "barcode": { "format": "code128", "showText": true } },
+
+        { "id": "b-8", "type": "box", "position": { "x": 470, "y": 144 }, "style": { "width": 264, "height": 84, "borderWidth": 2, "borderColor": "#16a34a", "borderStyle": "solid", "backgroundColor": "#ecfdf5", "borderRadius": 10, "opacity": 100 } },
+        { "id": "t-9", "type": "text", "content": "{{status}}", "position": { "x": 470, "y": 162 }, "style": { "fontSize": 26, "fontWeight": "bold", "color": "#15803d", "fontFamily": "Arial, sans-serif", "width": 264, "textAlign": "center" } },
+        { "id": "t-10", "type": "text", "content": "{{delivered_at}}", "position": { "x": 470, "y": 196 }, "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#15803d", "fontFamily": "Arial, sans-serif", "width": 264, "textAlign": "center" } },
+
+        { "id": "l-11", "type": "line", "position": { "x": 60, "y": 256 }, "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" } },
+
+        { "id": "t-12", "type": "text", "content": "CONSIGNEE", "position": { "x": 60, "y": 276 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 320, "textAlign": "left" } },
+        { "id": "t-13", "type": "text", "content": "{{consignee}}", "position": { "x": 60, "y": 294 }, "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-14", "type": "text", "content": "{{consignee_phone}}", "position": { "x": 60, "y": 316 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-15", "type": "text", "content": "{{address}}", "position": { "x": 60, "y": 336 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "left" } },
+
+        { "id": "t-16", "type": "text", "content": "Order Ref.", "position": { "x": 430, "y": 276 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-17", "type": "text", "content": "{{order_ref}}", "position": { "x": 566, "y": 276 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" } },
+        { "id": "t-18", "type": "text", "content": "Merchant", "position": { "x": 430, "y": 297 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-19", "type": "text", "content": "{{merchant}}", "position": { "x": 510, "y": 297 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 224, "textAlign": "right" } },
+        { "id": "t-20", "type": "text", "content": "Attempt", "position": { "x": 430, "y": 318 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-21", "type": "text", "content": "{{attempt}}", "position": { "x": 566, "y": 318 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" } },
+
+        { "id": "b-22", "type": "box", "position": { "x": 60, "y": 384 }, "style": { "width": 327, "height": 72, "borderWidth": 1, "borderColor": "#e2e8f0", "borderStyle": "solid", "backgroundColor": "#f8fafc", "borderRadius": 8, "opacity": 100 } },
+        { "id": "t-23", "type": "text", "content": "COD COLLECTED", "position": { "x": 76, "y": 398 }, "style": { "fontSize": 9, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "t-24", "type": "text", "content": "{{cod_amount}}", "position": { "x": 76, "y": 416 }, "style": { "fontSize": 21, "fontWeight": "bold", "color": "#1a1f71", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "b-25", "type": "box", "position": { "x": 407, "y": 384 }, "style": { "width": 327, "height": 72, "borderWidth": 1, "borderColor": "#e2e8f0", "borderStyle": "solid", "backgroundColor": "#f8fafc", "borderRadius": 8, "opacity": 100 } },
+        { "id": "t-26", "type": "text", "content": "PAYMENT MODE", "position": { "x": 423, "y": 398 }, "style": { "fontSize": 9, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "t-27", "type": "text", "content": "{{payment_mode}}", "position": { "x": 423, "y": 418 }, "style": { "fontSize": 15, "fontWeight": "bold", "color": "#1a1f71", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+
+        { "id": "t-28", "type": "text", "content": "PARCEL CONTENTS", "position": { "x": 60, "y": 484 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 400, "textAlign": "left" } },
+        { "id": "tbl-29", "type": "table", "schemaVersion": 2, "position": { "x": 60, "y": 504 }, "size": { "width": 674, "height": 90 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": true }, "binding": { "enabled": true, "collectionKey": "items", "itemAlias": "item" },
+          "columns": [
+            { "id": "col-desc", "width": 524, "alignment": "left" },
+            { "id": "col-qty", "width": 150, "alignment": "center" }
+          ],
+          "headerRow": { "id": "row-head", "height": 30, "cells": [
+            { "id": "h-desc", "content": { "type": "text", "value": "ITEM" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#1a1f71" } },
+            { "id": "h-qty", "content": { "type": "text", "value": "QTY" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#1a1f71" } }
+          ] },
+          "rows": [
+            { "id": "row-1", "height": 28, "cells": [
+              { "id": "r-desc", "content": { "type": "text", "value": "{{description}}" }, "style": { "textAlign": "left", "color": "#334155" } },
+              { "id": "r-qty", "content": { "type": "text", "value": "{{qty}}" }, "style": { "textAlign": "center", "color": "#334155" } }
+            ] }
+          ]
+        },
+
+        { "id": "t-30", "type": "text", "content": "RECEIVED IN GOOD CONDITION BY", "position": { "x": 60, "y": 880 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 400, "textAlign": "left" } },
+        { "id": "l-31", "type": "line", "position": { "x": 60, "y": 944 }, "style": { "length": 200, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" } },
+        { "id": "t-32", "type": "text", "content": "{{received_by}}", "position": { "x": 60, "y": 952 }, "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 200, "textAlign": "left" } },
+        { "id": "t-33", "type": "text", "content": "Name · CNIC · relation to consignee", "position": { "x": 60, "y": 970 }, "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 240, "textAlign": "left" } },
+        { "id": "l-34", "type": "line", "position": { "x": 320, "y": 944 }, "style": { "length": 200, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" } },
+        { "id": "t-35", "type": "text", "content": "{{rider}}", "position": { "x": 320, "y": 952 }, "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 200, "textAlign": "left" } },
+        { "id": "t-36", "type": "text", "content": "Delivered by — PostEx rider", "position": { "x": 320, "y": 970 }, "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 240, "textAlign": "left" } },
+
+        { "id": "l-37", "type": "line", "position": { "x": 60, "y": 1044 }, "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" } },
+        { "id": "t-38", "type": "text", "content": "PostEx · Proof of Delivery · CN {{cn}}", "position": { "x": 60, "y": 1054 }, "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" } },
+        { "id": "t-39", "type": "text", "content": "Retain this slip as proof of delivery. Track at postex.pk/tracking.", "position": { "x": 60, "y": 1068 }, "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" } }
+      ]
+    }
+  ]
+}

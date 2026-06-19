@@ -171,6 +171,12 @@ export const Icons = {
       <rect x="10.8" y="9.5" width="2.2" height="2.5" fill="currentColor"/>
     </svg>
   ),
+  Ai: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5l1.4 3.6L13 6.5l-3.6 1.4L8 11.5 6.6 7.9 3 6.5l3.6-1.4L8 1.5Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+      <path d="M12.5 10.5l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6.6-1.5Z" fill="currentColor"/>
+    </svg>
+  ),
   PageSize: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>

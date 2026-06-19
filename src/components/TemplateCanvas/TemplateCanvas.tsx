@@ -36,6 +36,7 @@ import PageBreakDivider    from './PageBreakDivider';
 import BoundaryLine        from './BoundaryLine';
 import SaveTemplateModal   from './SaveTemplateModal';
 import TemplatesLibraryModal from './TemplatesLibraryModal';
+import RebuildWithAiModal  from './RebuildWithAiModal';
 import PropertiesPanel     from './PropertiesPanel';
 import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
@@ -73,7 +74,7 @@ import {
   validateBindings,
 } from '../../services/mappingEngine';
 import { generateDocument, extFromBlob } from '../../services/dataSourceService';
-import { importPdfAsTemplate } from '../../services/pdfImportService';
+import type { PdfImportResult } from '../../services/pdfImportService';
 import {
   createTemplate as createCloudTemplate,
   updateTemplate as updateCloudTemplate,
@@ -217,6 +218,7 @@ function TemplateCanvas() {
 
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
   const [templatesLibraryOpen, setTemplatesLibraryOpen] = useState(false);
+  const [rebuildAiOpen, setRebuildAiOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // ── Sensors ───────────────────────────────────────────────────────────────
@@ -579,28 +581,14 @@ function TemplateCanvas() {
     e.target.value = '';
   };
 
-  // Rebuild an uploaded PDF into an editable template. Extraction runs on the
-  // backend (pdfjs); the deterministic pipeline runs here, returning a v2.0
-  // TemplateDocument applied through the same path as file/cloud open.
-  // Rebuild an uploaded PDF into a reusable TOKENIZED template (values →
-  // {{placeholders}}, tables → token rows + bindings). Always tokenized.
-  const handleImportPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setCloudStatus('saving');
-    try {
-      const { document, report, match } = await importPdfAsTemplate(file);
-      applyDocument(document);
-      setCurrentTemplateId(null);
-      setCloudStatus('idle');
-      const { mapped } = report.coverage;
-      const suggest = match?.key ? ` Token names aligned to your "${match.name}" template.` : '';
-      alert(`Tokenized template created from PDF: ${mapped} elements. Link a data source to fill it.` + suggest);
-    } catch (err) {
-      setCloudStatus('error');
-      alert('Could not rebuild PDF: ' + (err instanceof Error ? err.message : String(err)));
-    }
+  // Apply a PDF rebuilt by Mapdoc AI into the editor. The RebuildWithAiModal owns
+  // the upload + progress + fidelity-report UI and the importPdfAsTemplate call;
+  // this just adopts the finished TOKENIZED template (values → {{placeholders}},
+  // tables → token rows + bindings) through the same path as a file/cloud open.
+  const handleApplyRebuiltPdf = (result: PdfImportResult) => {
+    applyDocument(result.document);
+    setCurrentTemplateId(null);
+    setRebuildAiOpen(false);
   };
 
   // Open a template fetched from Supabase.
@@ -866,7 +854,7 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onOpenTemplates={() => setTemplatesLibraryOpen(true)}
           onLoad={handleLoadTemplate}
-          onImportPdf={handleImportPdf}
+          onRebuildWithAi={() => setRebuildAiOpen(true)}
           onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
           onAddPage={handleAddPage}
@@ -981,6 +969,13 @@ function TemplateCanvas() {
             onOpen={handleOpenCloudTemplate}
             onOpenBuiltin={handleOpenBuiltin}
             onClose={() => setTemplatesLibraryOpen(false)}
+          />
+        )}
+
+        {rebuildAiOpen && (
+          <RebuildWithAiModal
+            onApply={handleApplyRebuiltPdf}
+            onClose={() => setRebuildAiOpen(false)}
           />
         )}
 

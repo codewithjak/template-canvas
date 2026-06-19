@@ -74,6 +74,19 @@ const Icon = {
       <path d="m15.5 12.5.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6.6-1.9Z" fill="currentColor" opacity=".6"/>
     </svg>
   ),
+  Email: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="2.5" y="4" width="15" height="12" rx="2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="m3.5 5.5 6.5 5 6.5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Component: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M10 2.5 14 6l-4 3.5L6 6l4-3.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M3.5 9.5 7 13l-3.5 3.5L0 13" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" transform="translate(2 0)"/>
+      <path d="M13 9.5 16.5 13 13 16.5 9.5 13 13 9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  ),
 }
 
 /* ── Product mockup ───────────────────────────────────────── */
@@ -168,11 +181,12 @@ export default function Home() {
         <div className="wrap hero__inner">
           <div className="hero__content">
             <span className="eyebrow hero__eyebrow">✦ Map it. Make it.</span>
-            <h1>Build document templates <em>in minutes.</em></h1>
+            <h1>Design once, export <em>anywhere.</em></h1>
             <p className="hero__sub">
-              Mapdoc lets teams create invoices, receipts, reports, and proposals
-              with a single reusable template — so every document looks polished
-              and consistent, every time.
+              Mapdoc turns one visual canvas into polished invoices, receipts,
+              reports, labels, and images — map your data, generate at scale, and
+              keep everything perfectly on-brand. And it's growing beyond documents:
+              reusable UI components are next.
             </p>
             <div className="hero__actions">
               <Link to="/canvas" className="btn btn--primary btn--lg">
@@ -183,9 +197,9 @@ export default function Home() {
               </a>
             </div>
             <ul className="hero__bullets">
-              <li>Create once, reuse across every document</li>
-              <li>Keep formatting consistent across your team</li>
-              <li>Export polished PDFs and images in one click</li>
+              <li>Documents, labels &amp; images today — UI components next</li>
+              <li>Map CSV, Excel, or API data into any layout</li>
+              <li>Export print-ready PDF, image, or ZPL in one click</li>
             </ul>
           </div>
 
@@ -272,7 +286,7 @@ export default function Home() {
         <div className="wrap">
           <div className="section__head section__head--center" style={{marginInline:'auto'}}>
             <span className="eyebrow">Capabilities</span>
-            <h2>Everything you need to <em>create and manage</em> templates.</h2>
+            <h2>Everything you need to <em>design, map, and ship</em> at scale.</h2>
           </div>
           <div className="feat-grid">
             {[
@@ -281,10 +295,13 @@ export default function Home() {
               { Icon: Icon.Reuse,    title: 'Data mapping',         body: 'Connect CSV, Excel, or API data. Mapdoc auto-detects relationships and maps fields to your template.' },
               { Icon: Icon.Bolt,     title: 'Bulk generation',      body: 'Turn one template and a dataset into hundreds of personalised documents in a single run.' },
               { Icon: Icon.Export,   title: 'PDF, image & ZPL export', body: 'One-click, print-ready PDFs, high-resolution PNG, JPG, and JPEG images, or ZPL output for thermal and label printers.' },
+              { Icon: Icon.Email,    title: 'Email delivery',       body: 'Send a generated document straight from Mapdoc — export to PDF and email it to recipients without leaving the canvas.' },
               { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
-              { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries and role-based team access, so your whole org works from the same source.' },
-              { Icon: Icon.AI,       title: 'AI template extraction', badge: 'In progress', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.' },
-            ].map(({ Icon: Ic, title, body, badge }) => (
+              { Icon: Icon.Template, title: 'Built-in template library', body: 'Start from ready-made, industry-specific designs — invoices, labels, logistics docs and more — that open as editable copies.' },
+              { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries, invites, and role-based team access, so your whole org works from the same source.' },
+              { Icon: Icon.AI,       title: 'AI template extraction', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.' },
+              { Icon: Icon.Component, title: 'UI component export', badge: 'Coming soon', badgeVariant: 'soon', body: 'Design on the same canvas and generate reusable, standalone UI components — turning a visual layout into production-ready front-end code.' },
+            ].map(({ Icon: Ic, title, body, badge, badgeVariant }) => (
               <article className="feat-card" key={title}>
                 <div className="feat-card__icon" style={{color:'var(--blue)'}}>
                   <Ic />
@@ -292,7 +309,7 @@ export default function Home() {
                 {badge ? (
                   <div className="feat-card__title">
                     <h3>{title}</h3>
-                    <span className="feat-badge feat-badge--progress">{badge}</span>
+                    <span className={`feat-badge feat-badge--${badgeVariant ?? 'progress'}`}>{badge}</span>
                   </div>
                 ) : (
                   <h3>{title}</h3>
@@ -342,11 +359,11 @@ export default function Home() {
         <div className="wrap footer__inner">
           <div>
             <span className="eyebrow eyebrow--light footer__tag">✦ Map it. Make it.</span>
-            <h2>Map your data. Make your documents. <em>At scale.</em></h2>
+            <h2>Map your data. Make anything. <em>At scale.</em></h2>
             <p className="footer__sub">
               Upload CSV, Excel, or connect your API to instantly map fields and
-              generate documents at scale — invoices, HR letters, reports, bulk
-              workflows, all without manual copy-paste.
+              generate at scale — invoices, HR letters, reports, labels, and bulk
+              workflows today, with reusable UI components on the way.
             </p>
           </div>
 

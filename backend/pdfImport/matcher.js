@@ -12,10 +12,7 @@
  * model is told to prefer key:"" unless the type is clearly the same.
  */
 
-const AnthropicMod = require('@anthropic-ai/sdk');
-const Anthropic = AnthropicMod.default ?? AnthropicMod;
-
-const MODEL = 'claude-opus-4-8';
+const { structuredJson, isAvailable } = require('./ai');
 
 const RESULT_SCHEMA = {
   type: 'object',
@@ -40,39 +37,21 @@ Be conservative: if no candidate is clearly the same type, return key:"" with a
 low confidence. A wrong match is worse than no match. confidence is 0..1.
 Return only a key from the provided list, or "".`;
 
-function isAvailable() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
-}
-
 /**
- * @param {{extracted:{labels:string[]}, corpus:Array<{key,name,labels}>}} input
- * @returns {Promise<{key:string, confidence:number, reason:string}>}
+ * @typedef {{ key: string, name?: string, labels: string[] }} CorpusCandidate
+ * @param {{ extracted: { labels: string[] }, corpus: CorpusCandidate[] }} input
+ * @returns {Promise<{ key: string, confidence: number, reason: string }>}
  */
 async function matchTemplate({ extracted, corpus }) {
-  if (!isAvailable()) {
-    const err = new Error('Matcher unavailable: ANTHROPIC_API_KEY not set');
-    err.code = 'NO_API_KEY';
-    throw err;
-  }
-  const client = new Anthropic();
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 800,
-    // Latency: family match is a quick classification — no deep thinking needed.
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: RESULT_SCHEMA } },
+  // Latency: family match is a quick classification — low effort.
+  const r = await structuredJson({
     system: SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content:
-          'Upload labels and candidate templates:\n\n' +
-          JSON.stringify({ upload: extracted.labels, candidates: corpus }),
-      },
-    ],
+    user: 'Upload labels and candidate templates:\n\n' +
+      JSON.stringify({ upload: extracted.labels, candidates: corpus }),
+    schema: RESULT_SCHEMA,
+    maxTokens: 800,
+    effort: 'low',
   });
-  const textBlock = message.content.find((b) => b.type === 'text');
-  if (!textBlock) throw new Error('Matcher returned no text content');
-  const r = JSON.parse(textBlock.text);
   // Guard: the model must return a key that exists in the corpus, else treat as no match.
   if (r.key && !corpus.some((c) => c.key === r.key)) return { key: '', confidence: 0, reason: 'hallucinated key' };
   return r;

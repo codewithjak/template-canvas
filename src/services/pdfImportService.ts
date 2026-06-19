@@ -44,50 +44,51 @@ export interface PdfImportResult {
 /** Geometry-stripped naming/structure skeleton of a matched template family. */
 type PlanExemplar = { fields: FillSlots['fields']; tables: { columns: FillSlots['tables'][number]['columns'] }[] };
 
+/** POST JSON and parse the response; throws on a non-OK status (with the server's error). */
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error || `${path} failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
+
+/** Best-effort POST: returns null on any failure (unavailable AI step → caller degrades). */
+async function postJsonOrNull<T>(path: string, body: unknown): Promise<T | null> {
+  try {
+    return await postJson<T>(path, body);
+  } catch {
+    return null;
+  }
+}
+
 async function extract(file: File): Promise<ExtractedDocument> {
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(`${API_BASE}/pdf-import`, { method: 'POST', body: form });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `PDF import failed (${res.status})`);
+    throw new Error((body as { error?: string }).error || `PDF import failed (${res.status})`);
   }
   return res.json();
 }
 
 /** Best-effort corpus match; null when the matcher is unavailable/fails. */
-async function fetchMatch(labels: string[], corpus: CorpusEntry[]): Promise<MatchResult | null> {
-  try {
-    const res = await fetch(`${API_BASE}/pdf-match`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ extracted: { labels }, corpus }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
+const fetchMatch = (labels: string[], corpus: CorpusEntry[]) =>
+  postJsonOrNull<MatchResult>('/pdf-match', { extracted: { labels }, corpus });
+
+/** Best-effort structure plan; null when the structurer is unavailable/fails. */
+const fetchPlan = (normalized: NormalizedDocument, exemplar: PlanExemplar | null) =>
+  postJsonOrNull<StructurePlan>('/pdf-structure', { pages: normalized.pages, exemplar: exemplar ?? undefined });
 
 /** Geometry-stripped skeleton of a matched template — token names + table columns only. */
 function toExemplar(slots: FillSlots): PlanExemplar {
   return { fields: slots.fields, tables: slots.tables.map(t => ({ columns: t.columns })) };
-}
-
-/** Best-effort structure plan; null when the structurer is unavailable/fails. */
-async function fetchPlan(normalized: NormalizedDocument, exemplar: PlanExemplar | null): Promise<StructurePlan | null> {
-  try {
-    const res = await fetch(`${API_BASE}/pdf-structure`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pages: normalized.pages, exemplar: exemplar ?? undefined }),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
 }
 
 /**

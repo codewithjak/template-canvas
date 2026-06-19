@@ -14,14 +14,11 @@
  *    the endpoint signals that and the client uses the pass-through structurer.
  *    The import always succeeds.
  *
- * Model + params per the claude-api skill: claude-opus-4-8, adaptive thinking,
- * structured outputs (output_config.format). No sampling params (removed on 4.8).
+ * Model + params per the claude-api skill: claude-opus-4-8, structured outputs
+ * (output_config.format), thinking off + tuned effort for latency.
  */
 
-const AnthropicMod = require('@anthropic-ai/sdk');
-const Anthropic = AnthropicMod.default ?? AnthropicMod;
-
-const MODEL = 'claude-opus-4-8';
+const { structuredJson, isAvailable } = require('./ai');
 
 // JSON schema for the plan — obeys structured-output limits (additionalProperties
 // false everywhere, no numeric/length constraints, all properties required).
@@ -133,58 +130,37 @@ function toPromptPages(pages) {
   }));
 }
 
-/** True when the structurer can run (API key present). */
-function isAvailable() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
-}
+const ALIGN_PREAMBLE =
+  'An "exemplar" (a matching template family\'s token/column NAMES) is included as an ' +
+  'ALIGNMENT guide: prefer its token names + table column tokens + collectionKey when the ' +
+  'field semantics match THIS document. Never copy its content or invent fields it has but ' +
+  'this document lacks.\n\n';
 
 /**
- * @param {Array} pages  normalized pages: { widthPx, heightPx, blocks: Block[] }
- * @param {object|null} [exemplar]  geometry-stripped naming/structure skeleton of a
- *   matched corpus template — { fields:[{token,label}], tables:[{columns:[{token,header}]}] }.
- *   ALIGNMENT HINT ONLY: it guides token names + table structure; it is NEVER copied
- *   as content or geometry. The template is always built from THIS PDF's blocks.
- * @returns {Promise<{pages: Array}>}  the structure plan (one entry per input page)
+ * @typedef {{ fields: {token:string,label:string}[], tables: {columns:{token:string,header:string}[]}[] }} Exemplar
+ * @param {Array<{widthPx:number,heightPx:number,blocks:object[]}>} pages  normalized pages
+ * @param {Exemplar|null} [exemplar]  geometry-stripped naming/structure skeleton of a matched
+ *   corpus template. ALIGNMENT HINT ONLY — guides token names; never copied as content/geometry.
+ *   The template is always built from THIS PDF's blocks.
+ * @returns {Promise<{pages: object[]}>}  the structure plan (one entry per input page)
  * @throws if no API key or the model call fails — caller falls back to pass-through.
  */
 async function structureBlocks(pages, exemplar = null) {
-  if (!isAvailable()) {
-    const err = new Error('LLM structurer unavailable: ANTHROPIC_API_KEY not set');
-    err.code = 'NO_API_KEY';
-    throw err;
-  }
-
-  const client = new Anthropic();
   const payload = { pages: toPromptPages(pages) };
   if (exemplar) payload.exemplar = exemplar;
 
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: 8000,
-    // Latency: thinking off + medium effort cuts this from ~minutes to ~20s while
-    // keeping tokenization thorough (low effort under-tokenized, e.g. left a title
-    // company name literal). The json_schema output keeps the response constrained.
-    output_config: { effort: 'medium', format: { type: 'json_schema', schema: PLAN_SCHEMA } },
+  return structuredJson({
     system: SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content:
-          (exemplar
-            ? 'An "exemplar" (a matching template family\'s token/column NAMES) is included as an ' +
-              'ALIGNMENT guide: prefer its token names + table column tokens + collectionKey when the ' +
-              'field semantics match THIS document. Never copy its content or invent fields it has but ' +
-              'this document lacks.\n\n'
-            : '') +
-          'Structure these pages into a tokenized template. Return JSON matching the schema.\n\n' +
-          JSON.stringify(payload),
-      },
-    ],
+    user:
+      (exemplar ? ALIGN_PREAMBLE : '') +
+      'Structure these pages into a tokenized template. Return JSON matching the schema.\n\n' +
+      JSON.stringify(payload),
+    schema: PLAN_SCHEMA,
+    // Latency: thinking off + medium effort cuts this from ~minutes to ~15s while keeping
+    // tokenization thorough (low effort under-tokenized, e.g. left a title company name literal).
+    maxTokens: 8000,
+    effort: 'medium',
   });
-
-  const textBlock = message.content.find((b) => b.type === 'text');
-  if (!textBlock) throw new Error('LLM structurer returned no text content');
-  return JSON.parse(textBlock.text);
 }
 
 module.exports = { structureBlocks, isAvailable };

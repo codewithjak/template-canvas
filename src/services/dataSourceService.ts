@@ -120,6 +120,34 @@ export interface GenerateDocumentParams {
   jpegQuality?: number;   // 0..1, jpeg only
 }
 
+/** Response deadline for the calendar reminder — relative to now, or absolute. */
+export type DeadlineSpec =
+  | { mode: 'relative'; value: { days?: number; hours?: number; minutes?: number } }
+  | { mode: 'absolute'; value: string };
+
+export interface EmailDelivery {
+  to:       string;
+  subject?: string;
+  message?: string;
+}
+
+export interface CalendarReminder {
+  title?:   string;
+  deadline: DeadlineSpec;
+}
+
+/** Where an export should be sent. `calendar` adds an optional .ics reminder. */
+export interface DeliverySpec {
+  email:     EmailDelivery;
+  calendar?: CalendarReminder;
+}
+
+export interface SendDocumentResult {
+  ok:            boolean;
+  viaLink:       boolean;
+  withReminder?: boolean;
+}
+
 export interface BulkDocumentOptions {
   driverCollectionKey: string;
   fileNameTemplate?:   string;
@@ -138,23 +166,28 @@ export interface GenerateBulkDocumentsParams extends GenerateDocumentParams {
 // PDF generation — single document
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** The /generate-document request body shared by download and email-send. */
+function generatePayload(params: GenerateDocumentParams): Record<string, unknown> {
+  return {
+    pages:               params.pages,
+    ir:                  params.ir,
+    outputFileName:      params.outputFileName ?? 'document',
+    // Row-scoping fields — forwarded to server buildRowIr()
+    rowIndex:            params.rowIndex ?? 0,
+    driverCollectionKey: params.driverCollectionKey,
+    relatedCollections:  params.relatedCollections ?? {},
+    pageSize:            params.pageSize ?? null,
+    format:              params.format ?? 'pdf',
+    dpi:                 params.dpi,
+    jpegQuality:         params.jpegQuality,
+  };
+}
+
 export async function generateDocument(params: GenerateDocumentParams): Promise<Blob> {
   const res = await fetch(`${API_BASE}/generate-document`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
-    body:    JSON.stringify({
-      pages:               params.pages,
-      ir:                  params.ir,
-      outputFileName:      params.outputFileName ?? 'document',
-      // Row-scoping fields — forwarded to server buildRowIr()
-      rowIndex:            params.rowIndex ?? 0,
-      driverCollectionKey: params.driverCollectionKey,
-      relatedCollections:  params.relatedCollections ?? {},
-      pageSize:            params.pageSize ?? null,
-      format:              params.format ?? 'pdf',
-      dpi:                 params.dpi,
-      jpegQuality:         params.jpegQuality,
-    }),
+    body:    JSON.stringify(generatePayload(params)),
   });
 
   if (!res.ok) {
@@ -167,6 +200,28 @@ export async function generateDocument(params: GenerateDocumentParams): Promise<
   }
 
   return res.blob();
+}
+
+/**
+ * Render an export and email it (instead of downloading). Same payload as
+ * generateDocument plus a `delivery` block; the server sends the file and
+ * returns a small JSON status.
+ */
+export async function sendDocument(
+  params:   GenerateDocumentParams,
+  delivery: DeliverySpec,
+): Promise<SendDocumentResult> {
+  const res = await fetch(`${API_BASE}/generate-document`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body:    JSON.stringify({ ...generatePayload(params), delivery }),
+  });
+  const body = await expectJson(res, 'sendDocument');
+  return {
+    ok:           body.ok === true,
+    viaLink:      body.viaLink === true,
+    withReminder: body.withReminder === true,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

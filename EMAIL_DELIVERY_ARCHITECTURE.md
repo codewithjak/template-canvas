@@ -222,8 +222,12 @@ relative and absolute modes both produce the correct absolute time.
 
 ---
 
-### P4 — Frontend "Send via email" UI
+### P4 — Frontend "Send via email" UI ✅ done
 **Effort:** M · **Depends on:** P1 (P2/P3 enhance it)
+
+> **Entry point:** the ✉ Email button lives in `BatchExportBar` (shown once data
+> is bound). Adding a parallel entry in the top toolbar for static (data-less)
+> templates is a small follow-up.
 
 A small panel in the export flow (`TemplateCanvas.tsx`, beside the format selector):
 recipient, subject, message, and an "Add response deadline" toggle revealing

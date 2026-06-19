@@ -21,6 +21,7 @@ interface Props {
   onNextRow: () => void;
   onViewStructure: () => void;
   onExport: () => void;
+  onSendEmail: () => void;
   onBulkExport: () => void;
   onClearData: () => void;
 }
@@ -35,6 +36,7 @@ function BatchExportBar({
   onNextRow,
   onViewStructure,
   onExport,
+  onSendEmail,
   onBulkExport,
   onClearData,
 }: Props) {
@@ -92,6 +94,16 @@ function BatchExportBar({
           title={`Export PDF for record ${previewRowIndex + 1}`}
         >
           Export PDF
+        </button>
+
+        <button
+          type="button"
+          className="batch-control-btn"
+          onClick={onSendEmail}
+          disabled={isExporting || !hasElements}
+          title={`Email record ${previewRowIndex + 1}`}
+        >
+          ✉ Email
         </button>
 
         {!isSingleMode && (

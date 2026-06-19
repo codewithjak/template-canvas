@@ -1,0 +1,90 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-postex-settlement",
+    "name": "COD Settlement Receipt",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": { "preset": "a4", "canvasWidth": 794, "canvasHeight": 1123, "pdfWidth": 595.28, "pdfHeight": 841.89 },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "COD Settlement",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80, "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": true, "scope": "this-page-and-overflow", "repeatOnOverflow": true, "boundaryY": 1040, "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 0, "opacity": 1 } },
+      "elements": [
+        { "id": "b-1", "type": "box", "position": { "x": 0, "y": 0 }, "style": { "width": 794, "height": 112, "borderWidth": 0, "borderColor": "#1a1f71", "borderStyle": "solid", "backgroundColor": "#1a1f71", "borderRadius": 0, "opacity": 100 } },
+        { "id": "b-2", "type": "box", "position": { "x": 0, "y": 112 }, "style": { "width": 794, "height": 5, "borderWidth": 0, "borderColor": "#f4a81d", "borderStyle": "solid", "backgroundColor": "#f4a81d", "borderRadius": 0, "opacity": 100 } },
+        { "id": "t-3", "type": "text", "content": "{{brand_name}}", "position": { "x": 60, "y": 32 }, "style": { "fontSize": 26, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-4", "type": "text", "content": "{{brand_sub}}", "position": { "x": 60, "y": 70 }, "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "left" } },
+        { "id": "t-5", "type": "text", "content": "COD SETTLEMENT", "position": { "x": 374, "y": 32 }, "style": { "fontSize": 26, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "right" } },
+        { "id": "t-6", "type": "text", "content": "Remittance advice", "position": { "x": 374, "y": 70 }, "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#c7d2fe", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "right" } },
+
+        { "id": "t-7", "type": "text", "content": "REMITTED TO MERCHANT", "position": { "x": 60, "y": 148 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 320, "textAlign": "left" } },
+        { "id": "t-8", "type": "text", "content": "{{merchant_name}}", "position": { "x": 60, "y": 166 }, "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-9", "type": "text", "content": "{{merchant_id}}", "position": { "x": 60, "y": 188 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-10", "type": "text", "content": "{{merchant_bank}}", "position": { "x": 60, "y": 206 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+
+        { "id": "t-11", "type": "text", "content": "Settlement No.", "position": { "x": 430, "y": 148 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-12", "type": "text", "content": "{{settlement_no}}", "position": { "x": 566, "y": 148 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" } },
+        { "id": "t-13", "type": "text", "content": "Period", "position": { "x": 430, "y": 169 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-14", "type": "text", "content": "{{period}}", "position": { "x": 530, "y": 169 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 204, "textAlign": "right" } },
+        { "id": "t-15", "type": "text", "content": "Payment Date", "position": { "x": 430, "y": 190 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-16", "type": "text", "content": "{{payment_date}}", "position": { "x": 566, "y": 190 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" } },
+        { "id": "t-17", "type": "text", "content": "Payment Ref.", "position": { "x": 430, "y": 211 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" } },
+        { "id": "t-18", "type": "text", "content": "{{payment_ref}}", "position": { "x": 530, "y": 211 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 204, "textAlign": "right" } },
+
+        { "id": "b-19", "type": "box", "position": { "x": 60, "y": 250 }, "style": { "width": 674, "height": 64, "borderWidth": 0, "borderColor": "#16a34a", "borderStyle": "solid", "backgroundColor": "#ecfdf5", "borderRadius": 10, "opacity": 100 } },
+        { "id": "t-20", "type": "text", "content": "NET AMOUNT REMITTED", "position": { "x": 80, "y": 264 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#15803d", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "t-21", "type": "text", "content": "Paid upfront to your account — before delivery completion", "position": { "x": 80, "y": 284 }, "style": { "fontSize": 10, "fontWeight": "normal", "color": "#15803d", "fontFamily": "Arial, sans-serif", "width": 360, "textAlign": "left" } },
+        { "id": "t-22", "type": "text", "content": "{{net_payable}}", "position": { "x": 414, "y": 266 }, "style": { "fontSize": 26, "fontWeight": "bold", "color": "#15803d", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "right" } },
+
+        { "id": "t-23", "type": "text", "content": "SETTLEMENT BREAKDOWN", "position": { "x": 60, "y": 344 }, "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 400, "textAlign": "left" } },
+        { "id": "tbl-24", "type": "table", "schemaVersion": 2, "position": { "x": 60, "y": 364 }, "size": { "width": 674, "height": 120 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": true }, "binding": { "enabled": true, "collectionKey": "lines", "itemAlias": "item" },
+          "columns": [
+            { "id": "col-part", "width": 374, "alignment": "left" },
+            { "id": "col-count", "width": 150, "alignment": "center" },
+            { "id": "col-amount", "width": 150, "alignment": "right" }
+          ],
+          "headerRow": { "id": "row-head", "height": 32, "cells": [
+            { "id": "h-part", "content": { "type": "text", "value": "PARTICULARS" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#1a1f71" } },
+            { "id": "h-count", "content": { "type": "text", "value": "PARCELS" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#1a1f71" } },
+            { "id": "h-amount", "content": { "type": "text", "value": "AMOUNT (PKR)" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "right", "backgroundColor": "#1a1f71" } }
+          ] },
+          "rows": [
+            { "id": "row-1", "height": 30, "cells": [
+              { "id": "r-part", "content": { "type": "text", "value": "{{particular}}" }, "style": { "textAlign": "left", "color": "#334155" } },
+              { "id": "r-count", "content": { "type": "text", "value": "{{count}}" }, "style": { "textAlign": "center", "color": "#334155" } },
+              { "id": "r-amount", "content": { "type": "text", "value": "{{amount}}" }, "style": { "textAlign": "right", "color": "#334155" } }
+            ] }
+          ]
+        },
+
+        { "id": "l-25", "type": "line", "position": { "x": 434, "y": 690 }, "style": { "length": 300, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" } },
+        { "id": "t-26", "type": "text", "content": "Gross COD collected", "position": { "x": 434, "y": 700 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" } },
+        { "id": "t-27", "type": "text", "content": "{{gross_cod}}", "position": { "x": 624, "y": 700 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 110, "textAlign": "right" } },
+        { "id": "t-28", "type": "text", "content": "Less: delivery & COD charges", "position": { "x": 434, "y": 722 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 230, "textAlign": "left" } },
+        { "id": "t-29", "type": "text", "content": "{{charges}}", "position": { "x": 624, "y": 722 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 110, "textAlign": "right" } },
+        { "id": "t-30", "type": "text", "content": "Less: tax withheld", "position": { "x": 434, "y": 744 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" } },
+        { "id": "t-31", "type": "text", "content": "{{tax}}", "position": { "x": 624, "y": 744 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 110, "textAlign": "right" } },
+        { "id": "b-32", "type": "box", "position": { "x": 434, "y": 772 }, "style": { "width": 300, "height": 40, "borderWidth": 0, "borderColor": "#1a1f71", "borderStyle": "solid", "backgroundColor": "#1a1f71", "borderRadius": 8, "opacity": 100 } },
+        { "id": "t-33", "type": "text", "content": "NET REMITTED", "position": { "x": 450, "y": 784 }, "style": { "fontSize": 12, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 150, "textAlign": "left" } },
+        { "id": "t-34", "type": "text", "content": "{{net_payable}}", "position": { "x": 594, "y": 784 }, "style": { "fontSize": 13, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 124, "textAlign": "right" } },
+
+        { "id": "t-35", "type": "text", "content": "PAYMENT MODE", "position": { "x": 60, "y": 700 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "t-36", "type": "text", "content": "{{payment_mode}}", "position": { "x": 60, "y": 718 }, "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+        { "id": "t-37", "type": "text", "content": "NOTE", "position": { "x": 60, "y": 748 }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "t-38", "type": "text", "content": "Amount credited under PostEx upfront-payment facility. System-generated; no signature required.", "position": { "x": 60, "y": 766 }, "style": { "fontSize": 10, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" } },
+
+        { "id": "l-39", "type": "line", "position": { "x": 60, "y": 1044 }, "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" } },
+        { "id": "t-40", "type": "text", "content": "PostEx · COD Settlement · {{settlement_no}}", "position": { "x": 60, "y": 1054 }, "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" } },
+        { "id": "t-41", "type": "text", "content": "For queries on this remittance, contact your PostEx account manager.", "position": { "x": 60, "y": 1068 }, "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "fields": {
+    "brand_name": "PostEx",
+    "brand_address": "PostEx (Pvt) Ltd · Gulberg III, Lahore · NTN 1234567-8",
+    "merchant_name": "Trendline Apparel",
+    "merchant_address": "Office 4, Commercial Area, DHA Phase 6, Lahore",
+    "merchant_ntn": "Merchant ID: MER-10472 · NTN: 4567890-1",
+    "invoice_no": "INV-PX-2026-33108",
+    "issue_date": "Jun 19, 2026",
+    "period": "Jun 1 – Jun 18, 2026",
+    "due_date": "Jun 26, 2026",
+    "subtotal": "26,940",
+    "tax": "4,310",
+    "total": "PKR 31,250",
+    "settlement_note": "These charges have been deducted from settlement STL-2026-08841. No separate payment required."
+  },
+  "collections": {
+    "items": {
+      "columns": ["description", "qty", "rate", "amount"],
+      "rows": [
+        { "description": "Delivery charges — within-city", "qty": "402", "rate": "55.00", "amount": "22,110" },
+        { "description": "Delivery charges — other cities", "qty": "44", "rate": "95.00", "amount": "4,180" },
+        { "description": "COD service fee (1% of collected)", "qty": "446", "rate": "—", "amount": "2,015" },
+        { "description": "Return handling", "qty": "27", "rate": "30.00", "amount": "810" },
+        { "description": "Weight surcharge (>2kg)", "qty": "18", "rate": "40.00", "amount": "720" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "postex-merchant-invoice.data.json" }
+}

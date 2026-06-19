@@ -1,0 +1,32 @@
+{
+  "fields": {
+    "brand_name": "PostEx",
+    "brand_sub": "E-commerce Logistics · COD & Last-Mile",
+    "merchant_name": "Trendline Apparel",
+    "merchant_id": "Merchant ID: MER-10472 · NTN: 4567890-1",
+    "merchant_bank": "Meezan Bank · IBAN PK36MEZN0001234567890123",
+    "settlement_no": "STL-2026-08841",
+    "period": "Jun 12 – Jun 18, 2026",
+    "payment_date": "Jun 19, 2026",
+    "payment_ref": "IBFT-77120934",
+    "net_payable": "PKR 182,640",
+    "gross_cod": "201,500",
+    "charges": "(15,860)",
+    "tax": "(3,000)",
+    "payment_mode": "Bank transfer (IBFT) — upfront facility",
+    "received_by": "Trendline Apparel"
+  },
+  "collections": {
+    "lines": {
+      "columns": ["particular", "count", "amount"],
+      "rows": [
+        { "particular": "COD collected — delivered parcels", "count": "138", "amount": "201,500" },
+        { "particular": "Delivery charges", "count": "138", "amount": "(13,800)" },
+        { "particular": "COD service fee (1%)", "count": "138", "amount": "(2,015)" },
+        { "particular": "Return handling", "count": "9", "amount": "(45)" },
+        { "particular": "Withholding tax", "count": "—", "amount": "(3,000)" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "postex-settlement.data.json" }
+}

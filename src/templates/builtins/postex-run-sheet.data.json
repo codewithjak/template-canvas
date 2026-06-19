@@ -1,0 +1,32 @@
+{
+  "fields": {
+    "brand_name": "PostEx",
+    "brand_sub": "E-commerce Logistics · COD & Last-Mile",
+    "rider_name": "Imran Tariq",
+    "rider_id": "LEA-417 · 0301-2345678",
+    "route": "Zone A · Johar Town / Model Town / DHA",
+    "run_sheet_no": "RS-LHE-44021",
+    "hub": "Lahore — Township",
+    "run_date": "Jun 19, 2026",
+    "vehicle": "Bike · LEB-2291",
+    "assigned": "8",
+    "cod_total": "41,250",
+    "shift": "Morning"
+  },
+  "collections": {
+    "shipments": {
+      "columns": ["cn", "consignee", "area", "cod"],
+      "rows": [
+        { "cn": "78451200340021", "consignee": "Ayesha Khan · 0321-1112233", "area": "St 7, Block H, Johar Town", "cod": "4,500" },
+        { "cn": "78451200340038", "consignee": "Bilal Ahmed · 0333-4455667", "area": "Block C, Model Town", "cod": "7,800" },
+        { "cn": "78451200340045", "consignee": "Sana Riaz · 0300-9988776", "area": "Sector C, DHA Phase 5", "cod": "3,200" },
+        { "cn": "78451200340052", "consignee": "Usman Sheikh · 0345-1239870", "area": "Main Blvd, Gulberg III", "cod": "5,950" },
+        { "cn": "78451200340069", "consignee": "Hira Aslam · 0312-7654321", "area": "Akbar Chowk, Faisal Town", "cod": "2,400" },
+        { "cn": "78451200340076", "consignee": "Kashif Mehmood · 0301-8765432", "area": "Block J, Wapda Town", "cod": "9,100" },
+        { "cn": "78451200340083", "consignee": "Nida Yousaf · 0322-3344556", "area": "Babar Block, Garden Town", "cod": "3,300" },
+        { "cn": "78451200340090", "consignee": "Faisal Iqbal · 0334-6677889", "area": "Karim Block, Iqbal Town", "cod": "5,000" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "postex-run-sheet.data.json" }
+}

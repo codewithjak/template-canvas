@@ -1,0 +1,34 @@
+{
+  "fields": {
+    "brand_name": "PostEx",
+    "brand_sub": "E-commerce Logistics · COD & Last-Mile",
+    "origin_hub": "Lahore Hub — Township",
+    "destination_city": "Lahore Metro",
+    "route": "Zone A · Johar Town / Model Town / DHA",
+    "load_sheet_no": "LS-LHE-44021",
+    "rider": "Imran Tariq — LEA-417",
+    "dispatch_date": "Jun 19, 2026 · 09:15",
+    "bags": "3 bags / 28 pcs",
+    "total_parcels": "8",
+    "total_cod": "41,250",
+    "total_weight": "62.4",
+    "areas": "5",
+    "dispatched_by": "Hub Supervisor"
+  },
+  "collections": {
+    "parcels": {
+      "columns": ["cn", "consignee", "city", "pieces", "cod"],
+      "rows": [
+        { "cn": "78451200340021", "consignee": "Ayesha Khan", "city": "Johar Town, LHE", "pieces": "1", "cod": "4,500" },
+        { "cn": "78451200340038", "consignee": "Bilal Ahmed", "city": "Model Town, LHE", "pieces": "2", "cod": "7,800" },
+        { "cn": "78451200340045", "consignee": "Sana Riaz", "city": "DHA Phase 5, LHE", "pieces": "1", "cod": "3,200" },
+        { "cn": "78451200340052", "consignee": "Usman Sheikh", "city": "Gulberg III, LHE", "pieces": "1", "cod": "5,950" },
+        { "cn": "78451200340069", "consignee": "Hira Aslam", "city": "Faisal Town, LHE", "pieces": "1", "cod": "2,400" },
+        { "cn": "78451200340076", "consignee": "Kashif Mehmood", "city": "Wapda Town, LHE", "pieces": "2", "cod": "9,100" },
+        { "cn": "78451200340083", "consignee": "Nida Yousaf", "city": "Garden Town, LHE", "pieces": "1", "cod": "3,300" },
+        { "cn": "78451200340090", "consignee": "Faisal Iqbal", "city": "Iqbal Town, LHE", "pieces": "1", "cod": "5,000" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "postex-load-sheet.data.json" }
+}

@@ -14,6 +14,7 @@
 
 import type { TemplateDocument } from '../../types/canvas';
 import type { NormalizedDocument } from './types';
+import { tokensIn, stripTokens } from './tokens';
 
 export interface TemplateSignature {
   /** Human/doc-type name (templates only; undefined for an unknown upload). */
@@ -22,7 +23,6 @@ export interface TemplateSignature {
   labels: string[];
 }
 
-const TOKEN_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
 const MAX_LABELS = 60;
 const MAX_LEN = 48;
 
@@ -41,36 +41,30 @@ function tidy(raw: string[]): string[] {
   return out;
 }
 
-/** Pull {{token}} field-names out of a string (returns the inner names). */
-function tokens(s: string): string[] {
-  const out: string[] = [];
-  let m: RegExpExecArray | null;
-  TOKEN_RE.lastIndex = 0;
-  while ((m = TOKEN_RE.exec(s)) !== null) out.push(m[1]);
-  return out;
+interface TableLike {
+  headerRow?: { cells?: { content?: { value?: string } }[] };
+  rows?: { cells?: { content?: { value?: string } }[] }[];
+}
+
+/** Label vocabulary contributed by one element (static label text + token names). */
+function elementLabels(el: { type: string }): string[] {
+  if (el.type === 'text' || el.type === 'paragraph') {
+    const c = (el as { content?: string }).content ?? '';
+    // Static label text (tokens removed) + token field-names — never the raw "{{x}}".
+    return [stripTokens(c), ...tokensIn(c)];
+  }
+  if (el.type === 'table') {
+    const tbl = el as TableLike;
+    const headers = (tbl.headerRow?.cells ?? []).map(cell => cell.content?.value ?? '');
+    const cellTokens = (tbl.rows ?? []).flatMap(row =>
+      (row.cells ?? []).flatMap(cell => tokensIn(cell.content?.value ?? '')));
+    return [...headers, ...cellTokens];
+  }
+  return [];
 }
 
 export function signatureFromTemplate(doc: TemplateDocument): TemplateSignature {
-  const raw: string[] = [];
-  for (const page of doc.pages ?? []) {
-    for (const el of page.elements ?? []) {
-      if (el.type === 'text' || el.type === 'paragraph') {
-        const c = (el as { content?: string }).content ?? '';
-        // Static label text (tokens removed) + token field-names — never the raw "{{x}}".
-        raw.push(c.replace(TOKEN_RE, ' '), ...tokens(c));
-      } else if (el.type === 'table') {
-        const tbl = el as {
-          columns?: unknown[];
-          headerRow?: { cells?: { content?: { value?: string } }[] };
-          rows?: { cells?: { content?: { value?: string } }[] }[];
-        };
-        for (const cell of tbl.headerRow?.cells ?? []) raw.push(cell.content?.value ?? '');
-        for (const row of tbl.rows ?? []) for (const cell of row.cells ?? []) {
-          raw.push(...tokens(cell.content?.value ?? ''));
-        }
-      }
-    }
-  }
+  const raw = (doc.pages ?? []).flatMap(page => (page.elements ?? []).flatMap(elementLabels));
   return { name: doc.meta?.name, labels: tidy(raw) };
 }
 

@@ -10,16 +10,7 @@
 
 import type { TemplateDocument } from '../../types/canvas';
 import { isLayoutTable, type LayoutTableElement } from '../../model/layoutTable';
-
-const TOKEN_RE = /\{\{\s*([^}]+?)\s*\}\}/g;
-
-const tokensIn = (s: string): string[] => {
-  const out: string[] = [];
-  let m: RegExpExecArray | null;
-  TOKEN_RE.lastIndex = 0;
-  while ((m = TOKEN_RE.exec(s)) !== null) out.push(m[1].trim());
-  return out;
-};
+import { tokensIn, stripTokens } from './tokens';
 
 export interface FillSlots {
   /** Scalar token slots in text/paragraph elements, with their label context. */
@@ -38,7 +29,7 @@ export function extractSlots(doc: TemplateDocument): FillSlots {
     for (const el of page.elements ?? []) {
       if (el.type === 'text' || el.type === 'paragraph') {
         const content = (el as { content?: string }).content ?? '';
-        const label = content.replace(TOKEN_RE, ' ').replace(/\s+/g, ' ').trim();
+        const label = stripTokens(content).replace(/\s+/g, ' ').trim();
         for (const token of tokensIn(content)) {
           if (seen.has(token)) continue;
           seen.add(token);
@@ -52,7 +43,7 @@ export function extractSlots(doc: TemplateDocument): FillSlots {
         bodyRow.cells.forEach((cell, i) => {
           const t = tokensIn(cell.content?.value ?? '')[0];
           if (!t) return;
-          const header = tbl.headerRow?.cells?.[i]?.content?.value?.replace(TOKEN_RE, ' ').trim() || t;
+          const header = stripTokens(tbl.headerRow?.cells?.[i]?.content?.value ?? '').trim() || t;
           columns.push({ token: t, header });
         });
         if (columns.length) tables.push({ elementId: tbl.id, columns });

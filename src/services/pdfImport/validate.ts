@@ -14,14 +14,84 @@ export interface ValidationResult {
   dropped: { id: string; reason: string }[];
 }
 
+type Pos = { x: number; y: number };
+/** A validated element to keep, or a reason to drop it. */
+type Verdict = { el: CanvasElement } | { drop: string };
+/** Narrow a CanvasElement to one variant by its `type`. */
+type Of<T extends CanvasElement['type']> = Extract<CanvasElement, { type: T }>;
+
 const isFiniteNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+const oneOf = <T extends string>(allowed: readonly T[], v: unknown, fallback: T): T =>
+  allowed.includes(v as T) ? (v as T) : fallback;
 
 /** Is the element so far off-page that clamping would be meaningless? */
 function fullyOffPage(el: CanvasElement, w: number, h: number): boolean {
   const { x, y } = el.position ?? { x: 0, y: 0 };
   // Allow a one-page margin of slop before declaring it lost.
   return x > w * 2 || y > h * 2 || x < -w || y < -h;
+}
+
+// ── Per-type validators — each returns a Verdict (keep-repaired | drop) ─────────
+
+function validateText(el: Of<'text' | 'paragraph'>, position: Pos): Verdict {
+  if (typeof el.content !== 'string' || el.content.length === 0) return { drop: 'empty text content' };
+  return { el: { ...el, position } };
+}
+
+function validateImage(el: Of<'image'>, position: Pos): Verdict {
+  if (!el.src) return { drop: 'image missing src' };
+  const w = isFiniteNum(el.style.width) ? el.style.width : 0;
+  const h = isFiniteNum(el.style.height) ? el.style.height : 0;
+  if (w <= 0 || h <= 0) return { drop: 'image has zero size' };
+  return { el: { ...el, position } };
+}
+
+function validateLine(el: Of<'line'>, position: Pos): Verdict {
+  if (!isFiniteNum(el.style.length) || el.style.length <= 0) return { drop: 'line has zero length' };
+  return {
+    el: {
+      ...el, position,
+      style: {
+        ...el.style,
+        direction: el.style.direction === 'vertical' ? 'vertical' : 'horizontal',
+        style: oneOf(['solid', 'dashed', 'dotted'] as const, el.style.style, 'solid'),
+        thickness: isFiniteNum(el.style.thickness) && el.style.thickness > 0 ? el.style.thickness : 1,
+      },
+    },
+  };
+}
+
+function validateBox(el: Of<'box'>, position: Pos): Verdict {
+  const { width, height } = el.style;
+  if (!isFiniteNum(width) || !isFiniteNum(height) || width <= 0 || height <= 0) {
+    return { drop: 'box has non-positive size' };
+  }
+  return {
+    el: {
+      ...el, position,
+      style: {
+        ...el.style,
+        borderStyle: oneOf(['solid', 'dashed', 'dotted', 'double'] as const, el.style.borderStyle, 'solid'),
+        borderWidth: isFiniteNum(el.style.borderWidth) ? Math.max(0, el.style.borderWidth) : 0,
+        backgroundColor: el.style.backgroundColor || 'transparent',
+      },
+    },
+  };
+}
+
+/** Dispatch an element to its validator; unknown types pass through repositioned. */
+function validateElement(el: CanvasElement, position: Pos): Verdict {
+  switch (el.type) {
+    case 'text':
+    case 'paragraph': return validateText(el, position);
+    case 'image': return validateImage(el, position);
+    case 'line': return validateLine(el, position);
+    case 'box': return validateBox(el, position);
+    // radio/checkbox/date/barcode/chart/table aren't emitted by the importer yet;
+    // pass through unchanged after the position clamp if they ever appear.
+    default: return { el: { ...el, position } };
+  }
 }
 
 /**
@@ -46,69 +116,10 @@ export function validatePage(
       continue;
     }
 
-    // Clamp position into the page box.
-    const pos = { x: clamp(el.position.x, 0, width), y: clamp(el.position.y, 0, height) };
-
-    switch (el.type) {
-      case 'text':
-      case 'paragraph': {
-        if (typeof el.content !== 'string' || el.content.length === 0) {
-          dropped.push({ id: el.id, reason: 'empty text content' });
-          continue;
-        }
-        out.push({ ...el, position: pos });
-        break;
-      }
-      case 'image': {
-        if (!el.src) { dropped.push({ id: el.id, reason: 'image missing src' }); continue; }
-        const width_ = isFiniteNum(el.style.width) ? el.style.width : 0;
-        const height_ = isFiniteNum(el.style.height) ? el.style.height : 0;
-        if (width_ <= 0 || height_ <= 0) { dropped.push({ id: el.id, reason: 'image has zero size' }); continue; }
-        out.push({ ...el, position: pos });
-        break;
-      }
-      case 'line': {
-        const len = el.style.length;
-        if (!isFiniteNum(len) || len <= 0) { dropped.push({ id: el.id, reason: 'line has zero length' }); continue; }
-        const repaired = {
-          ...el,
-          position: pos,
-          style: {
-            ...el.style,
-            direction: el.style.direction === 'vertical' ? 'vertical' as const : 'horizontal' as const,
-            style: (['solid', 'dashed', 'dotted'] as const).includes(el.style.style) ? el.style.style : 'solid' as const,
-            thickness: isFiniteNum(el.style.thickness) && el.style.thickness > 0 ? el.style.thickness : 1,
-          },
-        };
-        out.push(repaired);
-        break;
-      }
-      case 'box': {
-        const w = el.style.width, h = el.style.height;
-        if (!isFiniteNum(w) || !isFiniteNum(h) || w <= 0 || h <= 0) {
-          dropped.push({ id: el.id, reason: 'box has non-positive size' });
-          continue;
-        }
-        const validBorder = (['solid', 'dashed', 'dotted', 'double'] as const).includes(el.style.borderStyle);
-        const repaired = {
-          ...el,
-          position: pos,
-          style: {
-            ...el.style,
-            borderStyle: validBorder ? el.style.borderStyle : 'solid' as const,
-            borderWidth: isFiniteNum(el.style.borderWidth) ? Math.max(0, el.style.borderWidth) : 0,
-            backgroundColor: el.style.backgroundColor || 'transparent',
-          },
-        };
-        out.push(repaired);
-        break;
-      }
-      default:
-        // Other element types (radio/checkbox/date/barcode/chart/table) are not
-        // produced by the pass-through structurer yet; pass through unchanged if
-        // they ever appear, after the position clamp.
-        out.push({ ...el, position: pos });
-    }
+    const position = { x: clamp(el.position.x, 0, width), y: clamp(el.position.y, 0, height) };
+    const verdict = validateElement(el, position);
+    if ('drop' in verdict) dropped.push({ id: el.id, reason: verdict.drop });
+    else out.push(verdict.el);
   }
 
   return { elements: out, dropped };

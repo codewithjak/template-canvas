@@ -142,6 +142,18 @@ function mergedTextElement(blocks: TextBlock[], type: 'text' | 'paragraph', role
 }
 
 /**
+ * Column widths from each column's left edge (right edge for the last column);
+ * an even split when any column's position is unknown. Pure — geometry in, px out.
+ */
+function columnWidths(colLeft: (number | undefined)[], numCols: number, left: number, right: number): number[] {
+  if (colLeft.every(v => v !== undefined)) {
+    const lefts = colLeft as number[];
+    return lefts.map((l, c) => Math.max(10, r((c < numCols - 1 ? lefts[c + 1] : right) - l)));
+  }
+  return Array<number>(numCols).fill(Math.max(10, r((right - left) / numCols)));
+}
+
+/**
  * Build a LayoutTableElement from a plan table; geometry from the cell blocks.
  * Always reusable: header labels + ONE tokenized row ({{columnToken}}) + a
  * TableBinding (fillable only once a data source is linked).
@@ -179,15 +191,7 @@ function materializeTable(
   const right = Math.max(...all.map(b => b.rect.x + b.rect.width));
   const bottom = Math.max(...all.map(b => b.rect.y + b.rect.height));
 
-  // Column widths from the left edge of each column; even split if any unknown.
-  let widths: number[];
-  if (colLeft.every(v => v !== undefined)) {
-    const lefts = colLeft as number[];
-    widths = lefts.map((l, c) => Math.max(10, r((c < numCols - 1 ? lefts[c + 1] : right) - l)));
-  } else {
-    widths = Array(numCols).fill(Math.max(10, r((right - left) / numCols)));
-  }
-
+  const widths = columnWidths(colLeft, numCols, left, right);
   const rep = textBlock(headerIds[0]) ?? all[0];
   const columns = widths.map(w => ({ id: newStableId(), width: w, widthMode: 'fixed' as const, alignment: 'left' as const }));
   // A row whose cells take literal block text (used for header labels, and for

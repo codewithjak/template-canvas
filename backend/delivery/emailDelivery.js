@@ -25,6 +25,16 @@ function toAttachment(artifact) {
   };
 }
 
+/** A SendGrid attachment carrying an iCalendar deadline reminder. */
+function toCalendarAttachment(ics) {
+  return {
+    content:     Buffer.from(ics, 'utf8').toString('base64'),
+    filename:    'reminder.ics',
+    type:        'text/calendar; method=PUBLISH',
+    disposition: 'attachment',
+  };
+}
+
 /** Shape the SendGrid message. `replyTo` is added only when provided. */
 function buildMessage({ to, replyTo, subject, message, attachments }) {
   const msg = {
@@ -38,15 +48,17 @@ function buildMessage({ to, replyTo, subject, message, attachments }) {
   return msg;
 }
 
-/** Send `artifact` to `email.to` as an attachment. */
-async function deliverByEmail({ artifact, email, replyTo }) {
+/** Send `artifact` to `email.to`, with an optional calendar reminder attached. */
+async function deliverByEmail({ artifact, email, replyTo, calendarIcs }) {
+  const attachments = [toAttachment(artifact)];
+  if (calendarIcs) attachments.push(toCalendarAttachment(calendarIcs));
   return sendMail(buildMessage({
-    to:          email.to,
+    to:      email.to,
     replyTo,
-    subject:     email.subject,
-    message:     email.message,
-    attachments: [toAttachment(artifact)],
+    subject: email.subject,
+    message: email.message,
+    attachments,
   }));
 }
 
-module.exports = { deliverByEmail, toAttachment, buildMessage };
+module.exports = { deliverByEmail, toAttachment, toCalendarAttachment, buildMessage };

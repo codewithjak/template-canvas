@@ -208,7 +208,7 @@ attaches.
 
 ---
 
-### P3 — Calendar reminder (optional per-send)
+### P3 — Calendar reminder (optional per-send) ✅ done
 **Effort:** M · **Depends on:** P1
 
 Add `backend/lib/deadline.js` (`resolveDeadline`) + `backend/lib/icsBuilder.js`

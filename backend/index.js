@@ -30,6 +30,9 @@ const {
 const { normalisePayload }  = require('./lib/normalisePayload');
 const { buildRowIr }        = require('./lib/buildRowIr');
 const { renderDocEntries }  = require('./lib/renderDocEntries');
+const { buildExportArtifact } = require('./lib/exportArtifact');
+const { isEmailConfigured } = require('./lib/email');
+const { deliver, validateDelivery } = require('./delivery');
 const contactRouter         = require('./routes/contact');
 const teamApiRouter         = require('./routes/teamApi');
 
@@ -226,9 +229,40 @@ app.post('/generate-document', async (req, res) => {
     const validation = validateBindings(templateElements, ir, fieldMapping);
     if (!validation.valid) console.warn('[generate-document] missing bindings:', validation);
 
-    const pdfBuffer = await generatePdfBuffer({
+    const genArgs = {
       ir, templateElements, fieldMapping, tableCollectionBindings, collectionMappings, pageConfigs, pageSize,
-    });
+    };
+
+    // ── Email delivery (optional) ─────────────────────────────────────
+    // When the caller asks to email the export, render it to a single
+    // artifact and send it instead of streaming the file back.
+    const delivery = req.body.delivery;
+    if (delivery && delivery.email) {
+      if (!isEmailConfigured()) {
+        return res.status(503).json({ error: 'Email delivery is not configured.' });
+      }
+      const deliveryError = validateDelivery(delivery);
+      if (deliveryError) return res.status(400).json({ error: deliveryError });
+
+      const artifact = await buildExportArtifact({
+        format, genArgs, gate, outputFileName,
+        dpi:         parseInt(req.body.dpi, 10) || undefined,
+        jpegQuality: req.body.jpegQuality,
+      });
+
+      logExportEvent(req.headers.authorization, { format, mode: 'single' });
+
+      try {
+        const result = await deliver({ artifact, delivery, authHeader: req.headers.authorization });
+        return res.status(202).json(result);
+      } catch (sendErr) {
+        console.error('[generate-document] delivery failed:', sendErr?.response?.body || sendErr);
+        return res.status(502).json({ error: 'Could not send the document. Please try again.' });
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────
+
+    const pdfBuffer = await generatePdfBuffer(genArgs);
 
     // ── Format-aware response ─────────────────────────────────────────
     // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).

@@ -165,7 +165,7 @@ endpoint streams the file exactly as today.
 > **Effort** sized S/M/L. **Exit criteria** are the objective "done when" gate. Don't start
 > a phase until its dependency's exit criteria are met. Keep every function small (§0.3).
 
-### P0 — Shared email primitives (refactor, no new behavior)
+### P0 — Shared email primitives (refactor, no new behavior) ✅ done
 **Effort:** S · **Depends on:** none
 
 Lift the reusable bits out of `contact.js` into `backend/lib/email.js` so there is one
@@ -179,7 +179,7 @@ email implementation.
 
 ---
 
-### P1 — Email an export (attachment only, no calendar)
+### P1 — Email an export (attachment only, no calendar) ✅ done
 **Effort:** M · **Depends on:** P0
 
 Add `delivery/emailDelivery.js` + `delivery/index.js`. Wire the optional `delivery.email`

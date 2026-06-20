@@ -61,6 +61,8 @@
 .auth__brand {
   color: #fff;
   font-size: 1.5rem;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 /* ── Floating card stage ───────────────────────────────────────────────── */

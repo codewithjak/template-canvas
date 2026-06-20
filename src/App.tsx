@@ -11,6 +11,8 @@ import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AcceptInvite from './pages/AcceptInvite'
 import { PlanProvider } from './plan/PlanProvider'
+import AdminRoute from './admin/AdminRoute'        // [ADMIN PANEL]
+import AdminPage from './admin/AdminPage'          // [ADMIN PANEL]
 import './App.css'
 
 function App() {
@@ -40,6 +42,15 @@ function App() {
               <ProtectedRoute>
                 <Settings />
               </ProtectedRoute>
+            }
+          />
+          {/* [ADMIN PANEL] isolated feature — remove this Route + its imports to disable */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
             }
           />
         </Routes>

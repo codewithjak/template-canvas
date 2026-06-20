@@ -592,6 +592,7 @@ function TemplateCanvas() {
     applyDocument(result.document);
     setCurrentTemplateId(null);
     setRebuildAiOpen(false);
+    void refreshPlan(); // the rebuild counted against the monthly AI quota
   };
 
   // Open a template fetched from Supabase.
@@ -850,7 +851,16 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onOpenTemplates={() => setTemplatesLibraryOpen(true)}
           onLoad={handleLoadTemplate}
-          onRebuildWithAi={() => setRebuildAiOpen(true)}
+          onRebuildWithAi={() => {
+            if (atLimit('aiBuildsThisMonth')) {
+              promptUpgrade({
+                title: 'AI rebuild limit reached',
+                message: "You've used all your AI PDF→template rebuilds for this month. Upgrade for a higher monthly limit.",
+              });
+              return;
+            }
+            setRebuildAiOpen(true);
+          }}
           onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
           onAddPage={handleAddPage}

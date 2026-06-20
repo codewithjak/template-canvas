@@ -19,8 +19,8 @@ const { extractPdf }                        = require('./pdfImport/extract');
 const { structureBlocks, isAvailable: structurerAvailable } = require('./pdfImport/structurer');
 const { matchTemplate, isAvailable: matcherAvailable } = require('./pdfImport/matcher');
 const { replacePlaceholders }               = require('./utils/resolver');
-const { logExportEvent }                    = require('./analytics');
-const { checkExportAllowed }                = require('./usage');
+const { logExportEvent, logAiBuildEvent }   = require('./analytics');
+const { checkExportAllowed, checkAiBuildAllowed } = require('./usage');
 const { stampWatermark }                    = require('./renderer/watermark');
 
 // Extracted helpers (pure functions) and self-contained route groups.
@@ -123,8 +123,18 @@ app.post('/pdf-structure', async (req, res) => {
   if (!structurerAvailable()) {
     return res.status(503).json({ error: 'Structurer unavailable (no API key).' });
   }
+
+  // Metered entitlement: this is the billable AI step. Enforce the team's
+  // monthly AI-rebuild quota BEFORE spending any tokens.
+  const gate = await checkAiBuildAllowed({ authHeader: req.headers.authorization });
+  if (!gate.allowed) {
+    return res.status(gate.status).json({ error: gate.error });
+  }
+
   try {
     const plan = await structureBlocks(pages, exemplar);
+    // Count this build against the monthly quota (fire-and-forget, JWT-attributed).
+    logAiBuildEvent(req.headers.authorization);
     return res.json(plan);
   } catch (err) {
     console.error('[pdf-structure]', err);

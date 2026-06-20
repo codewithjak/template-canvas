@@ -184,13 +184,13 @@ create policy invites_select_team on public.invites
 -- ---------- Analytics events ----------------------------------------
 -- Append-only usage log, keyed on the TEAM (the tenant). user_id is an
 -- optional "who within the team did it" drill-down, not the grouping key.
--- One row per tracked action: login, template_created, pdf_exported.
+-- One row per tracked action: login, template_created, pdf_exported, ai_build.
 create table if not exists public.analytics_events (
   id          bigint generated always as identity primary key,
   team_id     uuid not null references public.teams(id) on delete cascade,
   user_id     uuid references public.profiles(id) on delete set null,
   event_type  text not null
-                check (event_type in ('login','template_created','pdf_exported')),
+                check (event_type in ('login','template_created','pdf_exported','ai_build')),
   metadata    jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now()
 );

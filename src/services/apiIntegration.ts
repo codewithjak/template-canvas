@@ -35,8 +35,10 @@ export interface UsageSummary {
   plan: string;
   /** Present on responses from servers running the entitlements build. */
   capabilities?: Record<string, boolean>;
-  templates:        { used: number; limit: number | null };
-  exportsThisMonth: { used: number; limit: number | null };
+  templates:         { used: number; limit: number | null };
+  exportsThisMonth:  { used: number; limit: number | null };
+  /** Present on servers running the metered-AI build. */
+  aiBuildsThisMonth?: { used: number; limit: number | null };
 }
 
 export interface TeamMember {

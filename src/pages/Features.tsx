@@ -112,8 +112,8 @@ const features = [
   },
   {
     Icon: Icons.AI,
-    title: 'AI template extraction',
-    body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.',
+    title: 'AI rebuild from PDF',
+    body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a reusable, editable template — values become data placeholders and tables become bound rows, ready to drive with your own data. The layout is measured from the PDF, so structure stays faithful, never hallucinated.',
   },
   {
     Icon: Icons.Template,
@@ -152,8 +152,8 @@ export default function Features() {
             <h1>Every tool you need to <em>design once and export anywhere.</em></h1>
             <p className="hero__sub">
               From a drag-and-drop canvas to one-click PDF, image, and ZPL export,
-              AI template extraction, and dynamic data mapping — Mapdoc gives teams
-              everything to create, reuse, and automate at scale. And it's growing
+              AI rebuild from PDF, and dynamic data mapping — Mapdoc gives you
+              everything to design, reuse, and generate at scale. And it's growing
               beyond documents: reusable UI components are next.
             </p>
             <div className="hero__actions">
@@ -193,8 +193,8 @@ export default function Features() {
             <span className="eyebrow">Capabilities</span>
             <h2>Everything you need to <em>design, map, and ship</em> at scale.</h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Built for teams who create recurring business documents and need
-              consistency without the manual work.
+              One visual canvas, one data flow, many kinds of output — so whatever
+              you design can be generated cleanly, in bulk, and on-brand.
             </p>
           </div>
           <div className="feat-grid">
@@ -211,6 +211,39 @@ export default function Features() {
         </div>
       </section>
 
+      {/* ── How the AI works ── */}
+      <section className="section" id="how-ai-works">
+        <div className="wrap">
+          <div className="section__head section__head--center" style={{ marginInline: 'auto' }}>
+            <span className="eyebrow">How the AI works</span>
+            <h2>Upload a PDF, get a <em>reusable template</em> back.</h2>
+            <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
+              Mapdoc’s AI rebuild runs as a four-stage pipeline. The exact layout is
+              measured from your PDF — the AI only names and organises what’s there,
+              so the structure can’t drift or be invented. Every AI step is
+              best-effort: if it can’t run, the import still falls back to a faithful copy.
+            </p>
+          </div>
+          <div className="steps steps--ai">
+            {[
+              { label: 'Extract', title: 'Read the PDF exactly', body: 'A deterministic pass pulls the real text, fonts, tables, lines, and images with their measured positions. This geometry is the source of truth — no AI touches it.' },
+              { label: 'Match',   title: 'Find a similar design', body: 'The AI compares your document to Mapdoc’s built-in template families and picks the closest match as a naming hint — never as a replacement for your actual layout.' },
+              { label: 'Rebuild', title: 'Tokenise with AI',      body: 'The AI classifies and groups the content, detects line-item tables, and turns values into data placeholders and tables into bound rows — a reusable template, not a static snapshot.' },
+              { label: 'Finalise', title: 'Validate & open',      body: 'The result is checked against Mapdoc’s schema, assembled into editable pages with a fidelity report, and opened on the canvas as an AI draft you refine.' },
+            ].map(({ label, title, body }, i) => (
+              <article className="step-card feat-card" key={title}>
+                <div className="step-card__head">
+                  <span className="step-card__num">{i + 1}</span>
+                  <span className="step-card__label">{label}</span>
+                </div>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Coming soon ── */}
       <section className="section section--dark">
         <div className="wrap">
@@ -218,8 +251,8 @@ export default function Features() {
             <span className="eyebrow eyebrow--light">Coming soon</span>
             <h2>The roadmap is <em>just getting started.</em></h2>
             <p className="section__lead" style={{ textAlign: 'center', marginInline: 'auto' }}>
-              Data mapping, bulk generation, PDF/image/ZPL export, AI template
-              extraction, and team workspaces are already live. Next up: Mapdoc moves
+              Data mapping, bulk generation, PDF/image/ZPL export, AI rebuild
+              from PDF, and team workspaces are already live. Next up: Mapdoc moves
               beyond documents to generate reusable UI components — with more on the roadmap.
             </p>
           </div>
@@ -322,7 +355,7 @@ function FeatureHighlight() {
           { icon: '⚡', label: 'Data mapping',           status: 'live'     },
           { icon: '📄', label: 'PDF, image & ZPL export', status: 'live'     },
           { icon: '👥', label: 'Team workspaces',        status: 'live'     },
-          { icon: '✨', label: 'AI template extraction', status: 'live'     },
+          { icon: '✨', label: 'AI rebuild from PDF',     status: 'live'     },
           { icon: '◈',  label: 'UI component export',    status: 'soon'     },
         ].map(({ icon, label, status }) => {
           const accent = {

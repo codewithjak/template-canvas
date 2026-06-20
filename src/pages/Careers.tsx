@@ -44,7 +44,7 @@ const perks = [
       </svg>
     ),
     title: 'Real impact',
-    body: 'Your work directly helps thousands of teams eliminate repetitive document work and focus on what matters.',
+    body: 'Your work directly helps thousands of teams eliminate repetitive design and production work and focus on what matters.',
   },
   {
     icon: (
@@ -91,10 +91,12 @@ export default function Careers() {
         <div className="wrap hero__inner">
           <div className="hero__content">
             <span className="eyebrow hero__eyebrow">✦ Join our team</span>
-            <h1>Help us build the future of <em>document automation.</em></h1>
+            <h1>Help us redefine how people <em>design and generate</em> everything.</h1>
             <p className="hero__sub">
-              We're looking for people who care deeply about great software,
-              want to move fast, and want their work to matter from day one.
+              We're building a visual canvas that turns one design into anything —
+              documents and images today, UI components next. We're looking for
+              people who care deeply about great software, want to move fast, and
+              want their work to matter from day one.
             </p>
             <div className="hero__actions">
               <a href="mailto:careers@mapdoc.com" className="btn btn--primary btn--lg">
@@ -258,7 +260,7 @@ export default function Careers() {
           </div>
         </div>
         <div className="wrap footer__bottom">
-          <span>© 2025 Mapdoc. All rights reserved.</span>
+          <span>© 2026 Mapdoc. All rights reserved.</span>
           <span>Map it. Make it.</span>
         </div>
       </footer>

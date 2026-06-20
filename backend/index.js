@@ -598,6 +598,7 @@ app.get('/bulk-jobs/:jobId/download', (req, res) => {
 
 app.use(teamApiRouter);
 app.use(contactRouter);
+app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this line + backend/admin/ to disable
 
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,124 @@
+/* src/admin/AdminPage.css  [ADMIN PANEL — isolated feature]
+   All selectors are namespaced under .admin / .admin-gate so removing this
+   file (with the rest of src/admin/) leaves no global styles behind. */
+
+.admin {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+  color: #1c2430;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.admin__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.admin__title { font-size: 24px; font-weight: 700; margin: 0; }
+.admin__subtitle { margin: 4px 0 0; color: #6b7785; font-size: 14px; }
+.admin__back { color: #2f6df6; text-decoration: none; font-size: 14px; white-space: nowrap; }
+.admin__back:hover { text-decoration: underline; }
+
+.admin__grant {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.admin__input,
+.admin__select,
+.admin__search,
+.admin__planselect {
+  border: 1px solid #d4dae2;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: #fff;
+  color: #1c2430;
+}
+
+.admin__input { flex: 1; min-width: 220px; }
+.admin__search { width: 100%; margin-bottom: 16px; box-sizing: border-box; }
+
+.admin__btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #2f6df6;
+  color: #fff;
+  cursor: pointer;
+}
+.admin__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.admin__notice {
+  background: #e6f6ec;
+  color: #1d7a40;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.admin__error {
+  background: #fdecec;
+  color: #c0392b;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.admin__loading { color: #6b7785; padding: 32px 0; text-align: center; }
+
+.admin__tablewrap {
+  border: 1px solid #e4e9ef;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.admin__table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: #f6f8fa;
+  color: #6b7785;
+  font-weight: 600;
+  border-bottom: 1px solid #e4e9ef;
+}
+.admin__table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f3f6;
+}
+.admin__table tr:last-child td { border-bottom: none; }
+
+.admin__planselect { padding: 6px 10px; }
+.admin__saving { margin-left: 8px; color: #6b7785; }
+.admin__muted { color: #aab3be; }
+.admin__empty { text-align: center; color: #6b7785; padding: 28px 0; }
+
+/* Route-guard spinner */
+.admin-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+.admin-gate__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #d4dae2;
+  border-top-color: #2f6df6;
+  border-radius: 50%;
+  animation: admin-spin 0.8s linear infinite;
+}
+@keyframes admin-spin { to { transform: rotate(360deg); } }

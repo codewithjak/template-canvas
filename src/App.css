@@ -691,6 +691,8 @@ h1, h2, h3 { margin: 0; }
   counter-reset: step;
 }
 
+.steps--ai { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
 .step-card {
   position: relative;
   background: var(--surface);
@@ -882,6 +884,7 @@ h1, h2, h3 { margin: 0; }
   .hero__visual { order: -1; max-width: 480px; }
   .feat-grid { grid-template-columns: repeat(2, 1fr); }
   .steps { grid-template-columns: 1fr; }
+  .steps--ai { grid-template-columns: repeat(2, 1fr); }
   .footer__inner { grid-template-columns: 1fr; gap: 2.5rem; }
 }
 
@@ -889,6 +892,7 @@ h1, h2, h3 { margin: 0; }
   .hero { padding: 3rem 0; }
   .section { padding: 3.5rem 0; }
   .feat-grid { grid-template-columns: 1fr; }
+  .steps--ai { grid-template-columns: 1fr; }
   .stats { grid-template-columns: repeat(3, 1fr); }
   .topbar__nav { display: none; }
   .waitlist-form { flex-direction: column; }

@@ -73,7 +73,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'pro',
     name: 'Pro',
     price: 15,
-    tagline: 'For individuals shipping real documents.',
+    tagline: 'For individuals shipping real work.',
     limits: { maxTemplates: null, maxExportsPerMonth: 2000, maxBulkRowsPerJob: 500, maxMembers: 1 },
     capabilities: {
       cleanExport: true,
@@ -89,7 +89,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Everything in Free, plus:',
       'Unlimited templates',
       'Clean, watermark-free exports',
-      '2,000 documents / month',
+      '2,000 exports / month',
       'Bulk generation (up to 500 rows/job)',
       'ZPL / thermal label export',
       'Version history & cloud sync',
@@ -114,7 +114,7 @@ export const PLANS: Record<PlanId, Plan> = {
     },
     features: [
       'Everything in Pro, plus:',
-      '25,000 documents / month',
+      '25,000 exports / month',
       'Bulk generation (up to 5,000 rows/job)',
       'API access & programmatic ingestion',
       'Team workspaces, roles & invites (up to 5 members)',

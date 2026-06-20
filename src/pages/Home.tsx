@@ -181,12 +181,12 @@ export default function Home() {
         <div className="wrap hero__inner">
           <div className="hero__content">
             <span className="eyebrow hero__eyebrow">✦ Map it. Make it.</span>
-            <h1>Design once, export <em>anywhere.</em></h1>
+            <h1>Design it once. Make <em>anything.</em></h1>
             <p className="hero__sub">
-              Mapdoc turns one visual canvas into polished invoices, receipts,
-              reports, labels, and images — map your data, generate at scale, and
-              keep everything perfectly on-brand. And it's growing beyond documents:
-              reusable UI components are next.
+              Mapdoc is a visual canvas where you design something once, drive it
+              with your data, and generate it at scale. One design, many outputs —
+              invoices, labels, reports, and images today, with reusable UI
+              components next. Whatever you can lay out, Mapdoc can produce.
             </p>
             <div className="hero__actions">
               <Link to="/canvas" className="btn btn--primary btn--lg">
@@ -197,9 +197,9 @@ export default function Home() {
               </a>
             </div>
             <ul className="hero__bullets">
-              <li>Documents, labels &amp; images today — UI components next</li>
-              <li>Map CSV, Excel, or API data into any layout</li>
-              <li>Export print-ready PDF, image, or ZPL in one click</li>
+              <li>One canvas, many outputs — docs &amp; images now, UI components next</li>
+              <li>Map CSV, Excel, or API data into any design</li>
+              <li>Generate print-ready PDF, image, or ZPL in one click</li>
             </ul>
           </div>
 
@@ -228,17 +228,18 @@ export default function Home() {
         <div className="wrap">
           <div className="section__head">
             <span className="eyebrow section__eyebrow">Why it works</span>
-            <h2>Stop rebuilding the same layout <em>over and over.</em></h2>
+            <h2>Design once. <em>Reuse it everywhere.</em></h2>
             <p className="section__lead">
-              Mapdoc gives teams a visual way to define page structure and reuse
-              it for invoices, delivery notes, quotes, and more.
+              Mapdoc gives you one visual place to design a layout and turn it
+              into finished output — on demand, in bulk, and across formats —
+              without rebuilding it by hand every time.
             </p>
           </div>
           <div className="feat-grid">
             {[
-              { Icon: Icon.Bolt,     title: 'Save time',       body: 'Build a template once, then use it across every document without redesigning or copy-pasting.' },
-              { Icon: Icon.Template, title: 'Stay consistent', body: 'Use the same structure for all business documents so formatting stays aligned and on-brand.' },
-              { Icon: Icon.Shield,   title: 'Scale better',    body: 'Manage templates for growing teams, new document types, and evolving client workflows.' },
+              { Icon: Icon.Bolt,     title: 'Save time',       body: 'Design once, then generate as much as you need — no redesigning, no copy-pasting, no manual rework.' },
+              { Icon: Icon.Template, title: 'Stay consistent', body: 'Everything you produce comes from the same source design, so it stays aligned, on-brand, and pixel-accurate.' },
+              { Icon: Icon.Shield,   title: 'Scale better',    body: 'From one-offs to thousands of data-driven outputs — and new formats as your needs grow — without rebuilding.' },
             ].map(({ Icon: Ic, title, body }) => (
               <article className="feat-card" key={title}>
                 <div className="feat-card__icon" style={{color:'var(--blue)'}}>
@@ -257,16 +258,16 @@ export default function Home() {
         <div className="wrap">
           <div className="section__head section__head--center">
             <span className="eyebrow eyebrow--light">How it works</span>
-            <h2>Three steps to a <em>polished document.</em></h2>
+            <h2>Three steps from idea to <em>finished output.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              From blank canvas to mapped data and a print-ready PDF, image, or ZPL export — Mapdoc keeps the process simple.
+              From a blank canvas to mapped data and a print-ready PDF, image, or ZPL export — Mapdoc keeps the process simple, whatever you're making.
             </p>
           </div>
           <div className="steps">
             {[
-              { label: 'Design',  title: 'Build your template', body: 'Drag and drop text, tables, images, barcodes, QR codes, and shapes onto the canvas to lay out your document — no code required.' },
-              { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, or connect an API. Mapdoc auto-detects fields and relationships and maps them into your template.' },
-              { label: 'Export',  title: 'Generate at scale',   body: 'Produce one polished file or bulk-generate hundreds of personalised documents — exported as print-ready PDF, PNG/JPG/JPEG image, or ZPL in a single click.' },
+              { label: 'Design',  title: 'Build your design',   body: 'Drag and drop text, tables, images, barcodes, QR codes, and shapes onto the canvas to lay out whatever you’re making — no code required.' },
+              { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, or connect an API. Mapdoc auto-detects fields and relationships and maps them into your design.' },
+              { label: 'Generate', title: 'Produce at scale',    body: 'Make one polished file or bulk-generate hundreds of personalised outputs — exported as print-ready PDF, PNG/JPG/JPEG image, or ZPL in a single click.' },
             ].map(({ label, title, body }, i) => (
               <article className="step-card feat-card feat-card--dark" key={title}>
                 <div className="step-card__head">
@@ -299,7 +300,7 @@ export default function Home() {
               { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
               { Icon: Icon.Template, title: 'Built-in template library', body: 'Start from ready-made, industry-specific designs — invoices, labels, logistics docs and more — that open as editable copies.' },
               { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries, invites, and role-based team access, so your whole org works from the same source.' },
-              { Icon: Icon.AI,       title: 'AI template extraction', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a fully editable template — reproducing the original’s structure as schema-accurate template JSON.' },
+              { Icon: Icon.AI,       title: 'AI rebuild from PDF', body: 'Upload a PDF and Mapdoc’s AI rebuilds it as a reusable, editable template — values become data placeholders and tables become bound rows, ready to drive with your own data. The layout is measured from the PDF, so structure stays faithful, never hallucinated.' },
               { Icon: Icon.Component, title: 'UI component export', badge: 'Coming soon', badgeVariant: 'soon', body: 'Design on the same canvas and generate reusable, standalone UI components — turning a visual layout into production-ready front-end code.' },
             ].map(({ Icon: Ic, title, body, badge, badgeVariant }) => (
               <article className="feat-card" key={title}>
@@ -326,9 +327,9 @@ export default function Home() {
         <div className="wrap">
           <div className="section__head section__head--center" style={{marginInline:'auto'}}>
             <span className="eyebrow">See it in action</span>
-            <h2>Build a template, map your data, and <em>export polished documents.</em></h2>
+            <h2>Design it, map your data, and <em>generate at scale.</em></h2>
             <p className="section__lead" style={{textAlign:'center',marginInline:'auto'}}>
-              Template creation, element arrangement, data mapping, and PDF, image, or ZPL export — all in a few minutes.
+              Designing on the canvas, arranging elements, mapping data, and PDF, image, or ZPL export — all in a few minutes.
             </p>
           </div>
           <div className="video-wrap" style={{ background: '#fff', padding: '2.5rem', display: 'flex', justifyContent: 'center' }}>

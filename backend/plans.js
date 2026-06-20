@@ -31,6 +31,7 @@ const PLANS = {
       maxExportsPerMonth: 50,
       maxBulkRowsPerJob:  0, // bulk disabled entirely on free
       maxMembers:         1, // personal team only — no invites
+      maxAiBuildsPerMonth: 3, // free "taste" of AI PDF→template rebuild
     },
     capabilities: {
       cleanExport:    false, // free exports are watermarked
@@ -53,6 +54,7 @@ const PLANS = {
       maxExportsPerMonth: 2000,
       maxBulkRowsPerJob:  500,
       maxMembers:         1, // teams capability is Business-only
+      maxAiBuildsPerMonth: 100,
     },
     capabilities: {
       cleanExport:    true,
@@ -75,6 +77,7 @@ const PLANS = {
       maxExportsPerMonth: 25000,
       maxBulkRowsPerJob:  5000,
       maxMembers:         5, // 1 owner + up to 4 invited members
+      maxAiBuildsPerMonth: null, // unlimited AI rebuilds
     },
     capabilities: {
       cleanExport:    true,

@@ -15,7 +15,7 @@
  * suggestion is surfaced either way. See AI_PDF_REBUILD_ARCHITECTURE.md §8.
  */
 
-import { API_BASE } from './config';
+import { API_BASE, authHeaders } from './config';
 import {
   normalize,
   runImport,
@@ -67,25 +67,41 @@ export const PDF_IMPORT_STEPS: PdfImportStepInfo[] = [
 /** Geometry-stripped naming/structure skeleton of a matched template family. */
 type PlanExemplar = { fields: FillSlots['fields']; tables: { columns: FillSlots['tables'][number]['columns'] }[] };
 
-/** POST JSON and parse the response; throws on a non-OK status (with the server's error). */
+/** Entitlement statuses the AI endpoints use to signal a quota/plan block. */
+const ENTITLEMENT_STATUS = new Set([401, 402, 403]);
+
+/** Thrown when the server rejects a build for plan/quota reasons (NOT degradable). */
+export class AiQuotaError extends Error {}
+
+/**
+ * POST JSON (auth-attached) and parse the response; throws on a non-OK status
+ * (with the server's error). The bearer token lets the server attribute and
+ * meter the AI build to the right team.
+ */
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { error?: string }).error || `${path} failed (${res.status})`);
+    const message = (err as { error?: string }).error || `${path} failed (${res.status})`;
+    throw ENTITLEMENT_STATUS.has(res.status) ? new AiQuotaError(message) : new Error(message);
   }
   return res.json() as Promise<T>;
 }
 
-/** Best-effort POST: returns null on any failure (unavailable AI step → caller degrades). */
+/**
+ * Best-effort POST: returns null when the step is merely unavailable so the caller
+ * can degrade. A plan/quota rejection (AiQuotaError) is re-thrown — it is a
+ * deliberate block the user must see, not a degradable failure.
+ */
 async function postJsonOrNull<T>(path: string, body: unknown): Promise<T | null> {
   try {
     return await postJson<T>(path, body);
-  } catch {
+  } catch (err) {
+    if (err instanceof AiQuotaError) throw err;
     return null;
   }
 }
@@ -93,7 +109,11 @@ async function postJsonOrNull<T>(path: string, body: unknown): Promise<T | null>
 async function extract(file: File): Promise<ExtractedDocument> {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${API_BASE}/pdf-import`, { method: 'POST', body: form });
+  const res = await fetch(`${API_BASE}/pdf-import`, {
+    method: 'POST',
+    body: form,
+    headers: { ...(await authHeaders()) },
+  });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error((body as { error?: string }).error || `PDF import failed (${res.status})`);

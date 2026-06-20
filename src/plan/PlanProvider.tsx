@@ -44,7 +44,7 @@ interface PlanContextValue {
   can: (capability: Capability) => boolean
   limit: (key: keyof PlanLimits) => number | null
   /** True when a counted resource is at/over its plan limit. */
-  atLimit: (key: 'templates' | 'exportsThisMonth') => boolean
+  atLimit: (key: 'templates' | 'exportsThisMonth' | 'aiBuildsThisMonth') => boolean
   refresh: () => Promise<void>
   promptUpgrade: (prompt: { capability?: Capability; title?: string; message?: string }) => void
 }
@@ -80,8 +80,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     can: (capability) => planAllows(plan, capability),
     limit: (key) => getPlan(plan).limits[key],
     atLimit: (key) => {
-      if (!usage) return false
-      const { used, limit } = usage[key]
+      const counter = usage?.[key]
+      if (!counter) return false
+      const { used, limit } = counter
       return limit != null && used >= limit
     },
     refresh,

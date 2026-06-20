@@ -29,6 +29,8 @@ export interface PlanLimits {
   maxBulkRowsPerJob: number | null
   /** Max members in a team (seats). 1 = personal team only. */
   maxMembers: number | null
+  /** AI PDF→template rebuilds per month. null = unlimited. */
+  maxAiBuildsPerMonth: number | null
 }
 
 export interface Plan {
@@ -50,7 +52,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Free',
     price: 0,
     tagline: 'Design and try it out.',
-    limits: { maxTemplates: 3, maxExportsPerMonth: 50, maxBulkRowsPerJob: 0, maxMembers: 1 },
+    limits: { maxTemplates: 3, maxExportsPerMonth: 50, maxBulkRowsPerJob: 0, maxMembers: 1, maxAiBuildsPerMonth: 3 },
     capabilities: {
       cleanExport: false,
       bulk: false,
@@ -66,6 +68,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Up to 3 saved templates',
       '50 PDF exports / month (watermarked)',
       'CSV / Excel / JSON data mapping',
+      '3 AI PDF→template rebuilds / month',
     ],
   },
 
@@ -74,7 +77,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Pro',
     price: 15,
     tagline: 'For individuals shipping real work.',
-    limits: { maxTemplates: null, maxExportsPerMonth: 2000, maxBulkRowsPerJob: 500, maxMembers: 1 },
+    limits: { maxTemplates: null, maxExportsPerMonth: 2000, maxBulkRowsPerJob: 500, maxMembers: 1, maxAiBuildsPerMonth: 100 },
     capabilities: {
       cleanExport: true,
       bulk: true,
@@ -92,6 +95,7 @@ export const PLANS: Record<PlanId, Plan> = {
       '2,000 exports / month',
       'Bulk generation (up to 500 rows/job)',
       'ZPL / thermal label export',
+      '100 AI PDF→template rebuilds / month',
       'Version history & cloud sync',
     ],
   },
@@ -101,7 +105,7 @@ export const PLANS: Record<PlanId, Plan> = {
     name: 'Business',
     price: 49,
     tagline: 'For teams automating at scale.',
-    limits: { maxTemplates: null, maxExportsPerMonth: 25000, maxBulkRowsPerJob: 5000, maxMembers: 5 },
+    limits: { maxTemplates: null, maxExportsPerMonth: 25000, maxBulkRowsPerJob: 5000, maxMembers: 5, maxAiBuildsPerMonth: null },
     capabilities: {
       cleanExport: true,
       bulk: true,
@@ -118,6 +122,7 @@ export const PLANS: Record<PlanId, Plan> = {
       'Bulk generation (up to 5,000 rows/job)',
       'API access & programmatic ingestion',
       'Team workspaces, roles & invites (up to 5 members)',
+      'Unlimited AI PDF→template rebuilds',
       'Priority support',
     ],
   },

@@ -26,11 +26,14 @@ function bearerToken(authHeader) {
 }
 
 /**
- * Record a 'pdf_exported' event for whoever owns the supplied JWT.
+ * Append an analytics event for whoever owns the supplied JWT. The team/user are
+ * derived ONLY from the verified token (never the request body), so the client
+ * cannot forge attribution. Fire-and-forget: never throws.
  * @param {string|undefined} authHeader  The raw Authorization header.
+ * @param {string} eventType             e.g. 'pdf_exported', 'ai_build'.
  * @param {object} metadata              Extra context (format, mode, rows…).
  */
-async function logExportEvent(authHeader, metadata = {}) {
+async function logEvent(authHeader, eventType, metadata = {}) {
   try {
     const sb = getAdmin();
     if (!sb) return; // not configured — skip silently
@@ -56,12 +59,20 @@ async function logExportEvent(authHeader, metadata = {}) {
     await sb.from('analytics_events').insert({
       team_id: membership.team_id,
       user_id: userId,
-      event_type: 'pdf_exported',
+      event_type: eventType,
       metadata,
     });
   } catch (err) {
-    console.warn('[analytics] export log failed:', err.message);
+    console.warn(`[analytics] ${eventType} log failed:`, err.message);
   }
 }
 
-module.exports = { logExportEvent };
+/** Record a 'pdf_exported' event. Metadata: { format, mode, rows… }. */
+const logExportEvent = (authHeader, metadata = {}) =>
+  logEvent(authHeader, 'pdf_exported', metadata);
+
+/** Record an 'ai_build' event (one AI PDF→template rebuild). */
+const logAiBuildEvent = (authHeader, metadata = {}) =>
+  logEvent(authHeader, 'ai_build', metadata);
+
+module.exports = { logEvent, logExportEvent, logAiBuildEvent };

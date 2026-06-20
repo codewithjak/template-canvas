@@ -56,6 +56,20 @@ async function getMonthlyExportCount(teamId) {
   return total;
 }
 
+/** AI PDF→template rebuilds this calendar month (UTC). One event = one build. */
+async function getMonthlyAiBuildCount(teamId) {
+  const sb = getAdmin();
+  if (!sb) return 0;
+  const { count, error } = await sb
+    .from('analytics_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .eq('event_type', 'ai_build')
+    .gte('created_at', monthStartIso());
+  if (error) return 0;
+  return count || 0;
+}
+
 async function getTemplateCount(teamId) {
   const sb = getAdmin();
   if (!sb) return 0;
@@ -68,17 +82,19 @@ async function getTemplateCount(teamId) {
 }
 
 async function getUsageSummary(teamId) {
-  const [plan, exportsThisMonth, templates] = await Promise.all([
+  const [plan, exportsThisMonth, templates, aiBuildsThisMonth] = await Promise.all([
     getTeamPlan(teamId),
     getMonthlyExportCount(teamId),
     getTemplateCount(teamId),
+    getMonthlyAiBuildCount(teamId),
   ]);
   const limits = getPlanLimits(plan);
   return {
     plan,
-    capabilities:     getPlan(plan).capabilities,
-    templates:        { used: templates,        limit: limits.maxTemplates },
-    exportsThisMonth: { used: exportsThisMonth,  limit: limits.maxExportsPerMonth },
+    capabilities:      getPlan(plan).capabilities,
+    templates:         { used: templates,         limit: limits.maxTemplates },
+    exportsThisMonth:  { used: exportsThisMonth,   limit: limits.maxExportsPerMonth },
+    aiBuildsThisMonth: { used: aiBuildsThisMonth,  limit: limits.maxAiBuildsPerMonth },
   };
 }
 
@@ -170,11 +186,54 @@ async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, forma
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AI-build entitlement guard
+//
+// Called by /pdf-structure (the mandatory, billable LLM tokenization step) BEFORE
+// doing any model work. The AI rebuild is metered, not capability-gated: every
+// plan gets a monthly quota (free tier = a small taste), so this only enforces the
+// per-month ceiling. Degrades OPEN when Supabase isn't configured (local dev),
+// mirroring checkExportAllowed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function checkAiBuildAllowed({ authHeader }) {
+  const sb = getAdmin();
+  if (!sb) {
+    // Not configured for Supabase (local dev) — cannot resolve a plan, so don't block.
+    return { allowed: true, plan: 'free', teamId: null, unmetered: true };
+  }
+
+  const ctx = await resolveTeamFromJwt(authHeader);
+  if (!ctx) {
+    return { allowed: false, status: 401, error: 'Sign in to rebuild PDFs with AI.' };
+  }
+
+  const plan   = await getTeamPlan(ctx.teamId);
+  const limits = getPlanLimits(plan);
+
+  if (limits.maxAiBuildsPerMonth != null) {
+    const used = await getMonthlyAiBuildCount(ctx.teamId);
+    if (used >= limits.maxAiBuildsPerMonth) {
+      const planName = getPlan(plan).name;
+      return {
+        allowed: false,
+        status:  402,
+        error:   `Monthly AI rebuild limit reached (${limits.maxAiBuildsPerMonth} on the ${planName} plan). ` +
+                 `Upgrade for more AI rebuilds.`,
+      };
+    }
+  }
+
+  return { allowed: true, plan, teamId: ctx.teamId };
+}
+
 module.exports = {
   getPlanLimits,
   getTeamPlan,
   getMonthlyExportCount,
+  getMonthlyAiBuildCount,
   getTemplateCount,
   getUsageSummary,
   checkExportAllowed,
+  checkAiBuildAllowed,
 };

@@ -33,7 +33,7 @@ function Showcase() {
       <div className="auth__orb auth__orb--2" />
 
       <div className="auth__showcase-top">
-        <div className="brand auth__brand">Mapdoc</div>
+        <Link to="/" className="brand auth__brand" tabIndex={-1}>Mapdoc</Link>
       </div>
 
       <div className="auth__stage">

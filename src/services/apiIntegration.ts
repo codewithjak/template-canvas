@@ -137,8 +137,12 @@ export async function getTeam(): Promise<TeamSummary> {
   return getJson('/v1/team');
 }
 
-/** Invite someone by email. Returns the invite incl. its token for the link. */
-export async function inviteMember(email: string, role: string): Promise<{ invite: TeamInvite }> {
+/**
+ * Invite someone by email. The server emails them the accept link and returns
+ * `emailed` to say whether that send succeeded; the invite token is also
+ * returned so the UI can always offer a copyable link as a fallback.
+ */
+export async function inviteMember(email: string, role: string): Promise<{ invite: TeamInvite; emailed?: boolean }> {
   return postJson('/v1/team/invites', { email, role });
 }
 

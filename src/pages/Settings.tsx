@@ -77,6 +77,7 @@ function TeamCard() {
   const [role, setRole] = useState('member')
   const [busy, setBusy] = useState(false)
   const [freshLink, setFreshLink] = useState<string | null>(null)
+  const [emailedTo, setEmailedTo] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const canTeams = can('teams')
@@ -111,10 +112,12 @@ function TeamCard() {
   }
 
   const invite = async () => {
-    setBusy(true); setErr(null); setFreshLink(null)
+    setBusy(true); setErr(null); setFreshLink(null); setEmailedTo(null)
     try {
-      const { invite } = await inviteMember(email.trim(), role)
+      const target = email.trim()
+      const { invite, emailed } = await inviteMember(target, role)
       setFreshLink(`${window.location.origin}/invite?token=${invite.token}`)
+      setEmailedTo(emailed ? target : null)
       setEmail('')
       await load()
     } catch (e) {
@@ -211,7 +214,11 @@ function TeamCard() {
 
           {freshLink && (
             <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#065f46', marginBottom: 6 }}>Invite created — share this link with your teammate:</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#065f46', marginBottom: 6 }}>
+                {emailedTo
+                  ? `Invitation emailed to ${emailedTo}. You can also share this link directly:`
+                  : 'Invite created — share this link with your teammate:'}
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <code style={{ flex: 1, fontSize: 12, background: '#fff', border: '1px solid #d1fae5', borderRadius: 6, padding: '8px 10px', wordBreak: 'break-all' }}>{freshLink}</code>
                 <button onClick={copyLink} style={{ border: '1px solid #10b981', background: copied ? '#10b981' : '#fff', color: copied ? '#fff' : '#059669', borderRadius: 6, padding: '0 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{copied ? 'Copied' : 'Copy'}</button>

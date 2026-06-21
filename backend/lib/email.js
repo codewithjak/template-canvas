@@ -68,6 +68,37 @@ async function sendMail(message) {
   return sgMail.send(message);
 }
 
+const INVITE_FROM = process.env.CONTACT_FROM || 'noreply@map-doc.com';
+
+/**
+ * Email a team invitation: a branded "you've been invited" message carrying the
+ * accept link. Built on the same `sendMail` path as the contact form and export
+ * delivery. `invitedBy` (the inviter's address) becomes Reply-To so the invitee
+ * can reply to a real person. Throws on send failure (caller decides whether to
+ * surface it — the invite row already exists, so the link is the fallback).
+ */
+async function sendInviteEmail({ to, teamName, role, acceptUrl, invitedBy }) {
+  const team = teamName || 'a team';
+  const msg = {
+    to,
+    from:    INVITE_FROM, // must be a SendGrid-authenticated sender/domain
+    subject: `You've been invited to join ${team} on Mapdoc`,
+    text:
+      `You've been invited to join "${team}" on Mapdoc as a ${role || 'member'}.\n\n` +
+      `Accept your invite:\n${acceptUrl}\n\n` +
+      `This link expires in 7 days. If you weren't expecting this, you can ignore this email.`,
+    html:
+      `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;color:#0f172a;line-height:1.5">` +
+      `<p>You've been invited to join <strong>${escapeHtml(team)}</strong> on Mapdoc as a <strong>${escapeHtml(role || 'member')}</strong>.</p>` +
+      `<p><a href="${encodeURI(acceptUrl)}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;padding:10px 20px;font-weight:600">Accept invitation</a></p>` +
+      `<p style="color:#64748b;font-size:13px">Or paste this link into your browser:<br>${escapeHtml(acceptUrl)}</p>` +
+      `<p style="color:#64748b;font-size:13px">This link expires in 7 days. If you weren't expecting this, you can ignore this email.</p>` +
+      `</div>`,
+  };
+  if (invitedBy && isValidEmail(invitedBy)) msg.replyTo = { email: invitedBy };
+  return sendMail(msg);
+}
+
 module.exports = {
   isValidEmail,
   escapeHtml,
@@ -75,4 +106,5 @@ module.exports = {
   makeRateLimiter,
   isEmailConfigured,
   sendMail,
+  sendInviteEmail,
 };

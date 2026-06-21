@@ -39,6 +39,11 @@ const {
 } = require('../teams');
 const { getUsageSummary, getTeamPlan } = require('../usage');
 const { getAdmin: getSupabaseAdmin } = require('../supabaseAdmin');
+const { isEmailConfigured, sendInviteEmail } = require('../lib/email');
+
+// Where the invitee lands. Must be the deployed frontend in production
+// (e.g. https://app.map-doc.com); falls back to local dev.
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
 const router = express.Router();
 
@@ -141,9 +146,34 @@ router.post('/v1/team/invites', async (req, res) => {
     }
     const { email, role } = req.body || {};
     const invite = await createInvite(ctx.teamId, email, role, ctx.userId);
-    // The token is returned so the UI can build a shareable accept link
-    // (no email is sent server-side yet).
-    return res.json({ invite });
+
+    // Email the invitee a branded accept link. The invite row already exists,
+    // so a send failure must NOT fail the request — the returned token still
+    // lets the UI show a copyable link as a fallback. We report whether the
+    // email went out so the UI can message accordingly.
+    const acceptUrl = `${FRONTEND_ORIGIN}/invite?token=${invite.token}`;
+    let emailed = false;
+    if (isEmailConfigured()) {
+      try {
+        const sb = getSupabaseAdmin();
+        const { data: team } = sb
+          ? await sb.from('teams').select('name').eq('id', ctx.teamId).maybeSingle()
+          : { data: null };
+        await sendInviteEmail({
+          to:        invite.email,
+          teamName:  team?.name,
+          role:      invite.role,
+          acceptUrl,
+          invitedBy: ctx.userEmail,
+        });
+        emailed = true;
+      } catch (mailErr) {
+        console.error('[v1/team/invites] email send failed', mailErr?.response?.body || mailErr);
+      }
+    }
+
+    // The token is returned so the UI can build a shareable accept link too.
+    return res.json({ invite, emailed });
   } catch (err) {
     return sendTeamError(res, '[v1/team/invites]', err, 'Could not create invite.');
   }

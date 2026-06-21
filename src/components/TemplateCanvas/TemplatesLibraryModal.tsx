@@ -13,6 +13,7 @@ import {
   type TemplateRecord,
 } from '../../services/templatesRepo'
 import { BUILTIN_TEMPLATES, type BuiltinTemplate } from '../../templates/registry'
+import { confirm } from '../../notify'
 import './TemplatesLibraryModal.css'
 
 interface Props {
@@ -69,7 +70,7 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
 
   const handleDelete = async (e: React.MouseEvent, item: TemplateSummary) => {
     e.stopPropagation()
-    if (!window.confirm(`Delete "${item.name}"? This cannot be undone.`)) return
+    if (!(await confirm({ message: { key: 'templates.deleteConfirm', vars: { name: item.name } }, danger: true }))) return
     setBusyId(item.id)
     try {
       await deleteTemplate(item.id)

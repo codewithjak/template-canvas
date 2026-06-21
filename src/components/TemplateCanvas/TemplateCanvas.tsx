@@ -74,6 +74,7 @@ import {
   validateBindings,
 } from '../../services/mappingEngine';
 import { generateDocument, sendDocument, extFromBlob } from '../../services/dataSourceService';
+import { notify, t } from '../../notify';
 import type { GenerateDocumentParams, DeliverySpec, SendDocumentResult } from '../../services/dataSourceService';
 import SendDocumentModal from './SendDocumentModal';
 import type { PdfImportResult } from '../../services/pdfImportService';
@@ -510,7 +511,7 @@ function TemplateCanvas() {
       window.setTimeout(() => setCloudStatus('idle'), 2500);
     } catch (err) {
       setCloudStatus('error');
-      alert('Could not save template: ' + (err instanceof Error ? err.message : String(err)));
+      notify.error({ key: 'template.saveFailed', vars: { error: err instanceof Error ? err.message : String(err) } });
     }
   };
 
@@ -570,14 +571,14 @@ function TemplateCanvas() {
         } else if (Array.isArray(raw.elements)) {
           doc = migrateV1(raw);
         } else {
-          alert('Invalid template file.');
+          notify.error('template.invalidFile');
           return;
         }
         applyDocument(doc);
         // Imported from a file, not linked to a cloud row yet.
         setCurrentTemplateId(null);
       } catch {
-        alert('Error reading template file.');
+        notify.error('template.readError');
       }
     };
     reader.readAsText(file);
@@ -741,7 +742,7 @@ function TemplateCanvas() {
   };
 
   const handleExportDocument = async () => {
-    if (allElements.length === 0) { alert('No template to export.'); return; }
+    if (allElements.length === 0) { notify.warning('export.nothingToExport'); return; }
     try {
       setIsExporting(true);
       setExportStatus(
@@ -753,7 +754,7 @@ function TemplateCanvas() {
       const blob   = await generateDocument(params);
       downloadBlob(blob, `${params.outputFileName}.${extFromBlob(blob, exportFormat)}`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      notify.error(err instanceof Error ? err.message : t('export.failed'));
     } finally {
       setIsExporting(false);
       setExportStatus(null);

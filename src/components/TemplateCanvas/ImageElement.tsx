@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { notify } from '../../notify';
 import './ImageElement.css';
 
 interface ImageElementProps {
@@ -63,7 +64,7 @@ function ImageElement({
 
     // Check if it's an image
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      notify.error('image.selectImageFile');
       return;
     }
 

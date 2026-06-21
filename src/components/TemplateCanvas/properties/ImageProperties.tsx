@@ -7,6 +7,7 @@
  */
 
 import type React from 'react';
+import { notify } from '../../../notify';
 import type { ImageElementType, UpdateElement } from './elementTypes';
 
 interface Props {
@@ -28,7 +29,7 @@ function ImageProperties({ element, onUpdate }: Props) {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+      notify.error('image.selectImageFile');
       return;
     }
 

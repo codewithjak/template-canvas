@@ -106,7 +106,11 @@ export default function Login() {
   const [params] = useSearchParams()
   const next = params.get('next') || '/canvas'
 
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  // Invite links arrive with ?mode=signup so a brand-new invitee gets a
+  // magic link (shouldCreateUser:true) instead of a silent "user not found".
+  const [mode, setMode] = useState<'signin' | 'signup'>(
+    params.get('mode') === 'signup' ? 'signup' : 'signin',
+  )
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)

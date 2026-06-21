@@ -50,8 +50,9 @@ export default function AcceptInvite() {
   }, [token])
 
   const goSignIn = useCallback(() => {
-    // Come straight back here after auth (Login forwards to ?next=).
-    navigate(`/login?next=${encodeURIComponent(`/invite?token=${token}`)}`)
+    // Come straight back here after auth (Login forwards to ?next=). mode=signup
+    // ensures a first-time invitee actually receives a magic link.
+    navigate(`/login?next=${encodeURIComponent(`/invite?token=${token}`)}&mode=signup`)
   }, [navigate, token])
 
   const accept = useCallback(async () => {

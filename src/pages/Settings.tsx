@@ -25,6 +25,7 @@ import { listMyTeams, setActiveTeam, getActiveTeamId } from '../services/teamSer
 import { API_BASE } from '../services/config'
 import { usePlan } from '../plan/PlanProvider'
 import { getPlan, minPlanFor } from '../config/plans'
+import { confirm } from '../notify'
 
 function UsageBar({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const pct = limit ? Math.min(100, Math.round((used / limit) * 100)) : 0
@@ -126,7 +127,7 @@ function TeamCard() {
   }
 
   const revoke = async (id: string) => {
-    if (!window.confirm('Revoke this invite? The link will stop working.')) return
+    if (!(await confirm({ message: 'invite.revokeConfirm', danger: true }))) return
     setBusy(true); setErr(null)
     try { await revokeTeamInvite(id); await load() }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
@@ -134,7 +135,7 @@ function TeamCard() {
   }
 
   const remove = async (userId: string, name: string | null) => {
-    if (!window.confirm(`Remove ${name || 'this member'} from the team?`)) return
+    if (!(await confirm({ message: { key: 'member.removeConfirm', vars: { name: name || 'this member' } }, danger: true }))) return
     setBusy(true); setErr(null)
     try { await removeTeamMember(userId); await load() }
     catch (e) { setErr(e instanceof Error ? e.message : String(e)) }
@@ -288,7 +289,7 @@ export default function Settings() {
   }
 
   const handleRevoke = async () => {
-    if (!window.confirm('Revoke this API key? Any system using it will stop working immediately.')) return
+    if (!(await confirm({ message: 'apiKey.revokeConfirm', danger: true }))) return
     setBusy(true); setError(null)
     try {
       await revokeApiKey()

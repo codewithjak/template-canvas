@@ -13,6 +13,7 @@ import AcceptInvite from './pages/AcceptInvite'
 import { PlanProvider } from './plan/PlanProvider'
 import AdminRoute from './admin/AdminRoute'        // [ADMIN PANEL]
 import AdminPage from './admin/AdminPage'          // [ADMIN PANEL]
+import { NotificationProvider } from './notify'
 import './App.css'
 
 function App() {
@@ -56,6 +57,8 @@ function App() {
         </Routes>
         </PlanProvider>
       </Router>
+      {/* Global toasts + confirm dialogs — replaces native alert()/confirm() */}
+      <NotificationProvider />
     </AuthProvider>
   )
 }

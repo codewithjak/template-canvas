@@ -1,0 +1,181 @@
+/* notify.css
+ *
+ * Styling for the notification module (toasts + confirm dialog). Routes through
+ * the app's shared --color-* / --btn-* / --shadow-* design tokens (see
+ * src/index.css) so it matches the rest of the editor. Fallbacks are inlined so
+ * the module still looks right if mounted somewhere the tokens aren't loaded.
+ */
+
+/* ── Toast stack (bottom-right) ─────────────────────────────────────────── */
+.ntf-toaster {
+  position       : fixed;
+  bottom         : 20px;
+  right          : 20px;
+  z-index        : 4000;            /* above modals (SaveTemplate uses 3000) */
+  display        : flex;
+  flex-direction : column;
+  gap            : 10px;
+  max-width      : min(380px, calc(100vw - 32px));
+  pointer-events : none;            /* let clicks through the empty stack */
+}
+
+.ntf-toast {
+  pointer-events : auto;
+  display        : flex;
+  align-items    : flex-start;
+  gap            : 10px;
+  padding        : 12px 12px 12px 14px;
+  border-radius  : var(--radius-sm, 12px);
+  background     : var(--color-background-primary, #ffffff);
+  border         : 1px solid var(--color-border-tertiary, #e5e9f1);
+  border-left    : 3px solid var(--ntf-accent, #475569);
+  box-shadow     : var(--shadow-overlay, 0 20px 60px rgba(15, 23, 42, 0.18));
+  color          : var(--color-text-primary, #0f172a);
+  font-family    : var(--font-body, 'DM Sans', system-ui, sans-serif);
+  animation      : ntf-slide-in 0.18s ease-out;
+}
+
+.ntf-toast--success { --ntf-accent: var(--color-success, #16a34a); }
+.ntf-toast--error   { --ntf-accent: var(--color-danger,  #dc2626); }
+.ntf-toast--warning { --ntf-accent: var(--color-gold,    #f5a623); }
+.ntf-toast--info    { --ntf-accent: var(--color-accent,  #2355f4); }
+
+.ntf-toast__icon {
+  flex           : 0 0 20px;
+  width          : 20px;
+  height         : 20px;
+  margin-top     : 1px;
+  border-radius  : 50%;
+  display        : grid;
+  place-items    : center;
+  font-size      : 12px;
+  font-weight    : 700;
+  line-height    : 1;
+  color          : #fff;
+  background     : var(--ntf-accent, #475569);
+}
+
+.ntf-toast__body  { flex: 1 1 auto; min-width: 0; }
+.ntf-toast__title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.ntf-toast__msg {
+  font-size   : 13px;
+  line-height : 1.45;
+  color       : var(--color-text-secondary, #475569);
+  word-break  : break-word;
+}
+
+.ntf-toast__close {
+  flex        : 0 0 auto;
+  border      : none;
+  background  : transparent;
+  cursor      : pointer;
+  font-size   : 12px;
+  line-height : 1;
+  padding     : 2px 4px;
+  color       : var(--color-text-tertiary, #94a3b8);
+  border-radius: var(--btn-radius-sm, 6px);
+  transition  : color 0.15s, background 0.15s;
+}
+.ntf-toast__close:hover {
+  color      : var(--color-text-primary, #0f172a);
+  background : var(--color-background-tertiary, #f1f5f9);
+}
+
+/* ── Confirm dialog ─────────────────────────────────────────────────────── */
+.ntf-backdrop {
+  position        : fixed;
+  inset           : 0;
+  z-index         : 4100;
+  background      : var(--color-scrim, rgba(15, 23, 42, 0.5));
+  display         : flex;
+  align-items     : center;
+  justify-content : center;
+  padding         : 16px;
+  animation       : ntf-fade-in 0.15s ease-out;
+}
+
+.ntf-dialog {
+  width         : min(420px, 100%);
+  background    : var(--color-background-primary, #ffffff);
+  border-radius : var(--radius-sm, 12px);
+  padding       : 24px 24px 20px;
+  box-shadow    : var(--shadow-overlay, 0 20px 60px rgba(15, 23, 42, 0.18));
+  font-family   : var(--font-body, 'DM Sans', system-ui, sans-serif);
+  animation     : ntf-pop-in 0.16s ease-out;
+}
+
+.ntf-dialog__title {
+  margin      : 0 0 6px;
+  font-size   : 17px;
+  font-weight : 700;
+  color       : var(--color-text-primary, #0f172a);
+}
+.ntf-dialog__msg {
+  margin      : 0 0 20px;
+  font-size   : 14px;
+  line-height : 1.5;
+  color       : var(--color-text-secondary, #475569);
+}
+
+.ntf-dialog__actions {
+  display         : flex;
+  justify-content : flex-end;
+  gap             : 10px;
+}
+
+.ntf-btn {
+  height        : 38px;
+  padding       : 0 18px;
+  border-radius : var(--btn-radius, 8px);
+  font-size     : 13px;
+  font-weight   : var(--btn-font-weight, 600);
+  font-family   : inherit;
+  cursor        : pointer;
+  border        : 1px solid transparent;
+  transition    : var(--btn-transition, all 0.15s ease);
+}
+
+.ntf-btn--cancel {
+  background   : var(--color-background-secondary, #f8fafc);
+  border-color : var(--color-border-primary, #cbd5e1);
+  color        : var(--color-text-secondary, #475569);
+}
+.ntf-btn--cancel:hover { background: var(--color-background-tertiary, #f1f5f9); }
+
+.ntf-btn--confirm {
+  background   : var(--color-accent, #2355f4);
+  border-color : var(--color-accent, #2355f4);
+  color        : var(--color-accent-contrast, #ffffff);
+}
+.ntf-btn--confirm:hover {
+  background   : var(--color-accent-hover, #1740d0);
+  border-color : var(--color-accent-hover, #1740d0);
+}
+
+.ntf-btn--danger {
+  background   : var(--color-danger, #dc2626);
+  border-color : var(--color-danger, #dc2626);
+  color        : #ffffff;
+}
+.ntf-btn--danger:hover {
+  background   : var(--color-danger-hover, #b91c1c);
+  border-color : var(--color-danger-hover, #b91c1c);
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────── */
+@keyframes ntf-slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ntf-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes ntf-pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ntf-toast, .ntf-backdrop, .ntf-dialog { animation: none; }
+}

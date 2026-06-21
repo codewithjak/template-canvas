@@ -31,7 +31,7 @@ export default function AcceptInvite() {
   const [params] = useSearchParams()
   const token = params.get('token') || ''
   const navigate = useNavigate()
-  const { session, loading: authLoading } = useAuth()
+  const { session, user, signOut, loading: authLoading } = useAuth()
   const { refresh } = usePlan()
 
   const [info, setInfo] = useState<InviteInfo | null>(null)
@@ -68,6 +68,26 @@ export default function AcceptInvite() {
     }
   }, [token, refresh, navigate])
 
+  // Sign out of the wrong account, then bounce to sign-in for the invited one.
+  const switchAccount = useCallback(async () => {
+    setBusy(true); setErr(null)
+    try {
+      await signOut()
+      clearTeamCache()
+      navigate(`/login?next=${encodeURIComponent(`/invite?token=${token}`)}&mode=signup`)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e)); setBusy(false)
+    }
+  }, [signOut, navigate, token])
+
+  // The invite is bound to a specific email. Catch the wrong-account case up
+  // front so we show a clear "switch accounts" prompt instead of letting the
+  // accept call fail with a confusing error after the click.
+  const sessionEmail = user?.email ?? null
+  const emailMismatch =
+    !!session && !!sessionEmail && !!info &&
+    sessionEmail.toLowerCase() !== info.email.toLowerCase()
+
   if (loading || authLoading) {
     return <Shell><div style={{ color: '#64748b', fontSize: 14 }}>Loading invite…</div></Shell>
   }
@@ -101,6 +121,15 @@ export default function AcceptInvite() {
         <p style={{ fontSize: 14, color: '#059669', fontWeight: 600 }}>Joined — taking you to the editor…</p>
       ) : expired ? (
         <button onClick={() => navigate('/')} style={{ border: '1px solid #e2e8f0', background: '#fff', color: '#475569', borderRadius: 9, padding: '9px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Back to home</button>
+      ) : emailMismatch ? (
+        <div>
+          <p style={{ fontSize: 13, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 9, padding: '10px 12px', margin: '0 0 14px', lineHeight: 1.5 }}>
+            This invite is for <strong>{info?.email}</strong>, but you're signed in as <strong>{sessionEmail}</strong>. Sign out and sign in as <strong>{info?.email}</strong> to accept it.
+          </p>
+          <button disabled={busy} onClick={switchAccount} style={{ border: 'none', background: '#4f46e5', color: '#fff', borderRadius: 9, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+            {busy ? 'Signing out…' : 'Sign out & switch account'}
+          </button>
+        </div>
       ) : session ? (
         <button disabled={busy} onClick={accept} style={{ border: 'none', background: '#4f46e5', color: '#fff', borderRadius: 9, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
           {busy ? 'Joining…' : 'Accept invite'}

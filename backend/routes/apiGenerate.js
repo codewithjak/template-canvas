@@ -23,53 +23,14 @@
 const express = require('express');
 
 const { parseDataSource } = require('../parsers/index');
-const { getAdmin } = require('../supabaseAdmin');
-const { extractApiKey, resolveTeamFromApiKey } = require('../apiKeys');
 const { planAllows, minPlanFor, getPlan } = require('../plans');
 const { getTeamPlan, getPlanLimits, getMonthlyExportCount } = require('../usage');
+const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
 const { assembleGenArgs, scopeIrToRow } = require('../lib/templateAssembly');
 const { buildExportArtifact } = require('../lib/exportArtifact');
+const { dispatchWebhook } = require('../webhooks/dispatch');
 
 const router = express.Router();
-
-// ── Small helpers ─────────────────────────────────────────────────────────────
-
-/** A thrown error that carries the HTTP status the route should return. */
-function httpError(status, message) {
-  const err = new Error(message);
-  err.status = status;
-  return err;
-}
-
-/** Map a thrown error to a JSON response; log only true server faults (5xx). */
-function sendError(res, err) {
-  const status = err.status || 500;
-  if (status >= 500) console.error('[v1/generate]', err);
-  return res.status(status).json({ error: err.message || 'Failed to generate document.' });
-}
-
-// ── Auth (API key → trusted team) ───────────────────────────────────────────────
-//
-// Same sequence /v1/ingest uses. Restated here to keep this router standalone;
-// see the refactor notes for folding both onto one shared `requireApiTeam`.
-
-/** Resolve { teamId, sb } from the request's API key, or throw an httpError. */
-async function requireApiTeam(req) {
-  const rawKey = extractApiKey(req);
-  if (!rawKey) throw httpError(401, 'API key required (X-API-Key header).');
-
-  const teamId = await resolveTeamFromApiKey(rawKey);
-  if (!teamId) throw httpError(403, 'Invalid or revoked API key.');
-
-  // The key may have been issued on Business then downgraded — re-check live.
-  if (!planAllows(await getTeamPlan(teamId), 'api')) {
-    throw httpError(403, 'API access requires the Business plan.');
-  }
-
-  const sb = getAdmin();
-  if (!sb) throw httpError(503, 'Server not configured for Supabase.');
-  return { teamId, sb };
-}
 
 // ── Stored-state loaders (tenant-scoped) ────────────────────────────────────────
 
@@ -200,13 +161,25 @@ router.post('/v1/generate', async (req, res) => {
 
     logExport(sb, teamId, { format, mode: 'single', source: 'api' });
 
+    // Notify subscribers that a document was generated. Fire-and-forget: the
+    // file is the response, so this must never delay or fail the request.
+    dispatchWebhook(teamId, 'document.generated', {
+      event:      'document.generated',
+      teamId,
+      templateId,
+      format,
+      fileName:   artifact.fileName,
+      bytes:      artifact.buffer.length,
+      createdAt:  new Date().toISOString(),
+    });
+
     res.set({
       'Content-Type':        artifact.contentType,
       'Content-Disposition': `attachment; filename="${artifact.fileName}"`,
     });
     return res.send(artifact.buffer);
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, '[v1/generate]', err);
   }
 });
 

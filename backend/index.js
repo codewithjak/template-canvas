@@ -607,6 +607,7 @@ app.get('/bulk-jobs/:jobId/download', (req, res) => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 app.use(teamApiRouter);
+app.use(require('./routes/apiGenerate'));   // POST /v1/generate — headless API generation (Step 1)
 app.use(contactRouter);
 app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this line + backend/admin/ to disable
 

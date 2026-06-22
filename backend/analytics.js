@@ -75,4 +75,28 @@ const logExportEvent = (authHeader, metadata = {}) =>
 const logAiBuildEvent = (authHeader, metadata = {}) =>
   logEvent(authHeader, 'ai_build', metadata);
 
-module.exports = { logEvent, logExportEvent, logAiBuildEvent };
+/**
+ * Append an event for an ALREADY-TRUSTED team (no JWT to resolve) — used by the
+ * API-key paths, where the caller is a system, not a signed-in user. user_id is
+ * null (the schema/RLS allow it). Fire-and-forget: never throws.
+ */
+async function logEventForTeam(teamId, eventType, metadata = {}) {
+  try {
+    const sb = getAdmin();
+    if (!sb || !teamId) return;
+    await sb.from('analytics_events').insert({
+      team_id: teamId, user_id: null, event_type: eventType, metadata,
+    });
+  } catch (err) {
+    console.warn(`[analytics] ${eventType} log failed:`, err.message);
+  }
+}
+
+/** Record a team-attributed 'pdf_exported' event (API path). */
+const logExportEventForTeam = (teamId, metadata = {}) =>
+  logEventForTeam(teamId, 'pdf_exported', metadata);
+
+module.exports = {
+  logEvent, logExportEvent, logAiBuildEvent,
+  logEventForTeam, logExportEventForTeam,
+};

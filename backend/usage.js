@@ -120,33 +120,29 @@ const UPGRADE_LABEL = {
   api:      'API access',
 };
 
-async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, format = 'pdf', delivery = false }) {
-  const sb = getAdmin();
-  if (!sb) {
-    // Not configured for Supabase (e.g. local dev) — cannot resolve a plan,
-    // so don't block. Watermark defaults to off in this mode.
-    return { allowed: true, plan: 'free', teamId: null, watermark: false, unmetered: true };
-  }
+/** Build a 403 result describing the lowest plan that unlocks a capability. */
+function capabilityError(cap) {
+  const min      = minPlanFor(cap);
+  const planName = min ? getPlan(min).name : 'a paid';
+  return {
+    allowed: false,
+    status:  403,
+    error:   `${UPGRADE_LABEL[cap]} requires the ${planName} plan. Upgrade to unlock it.`,
+  };
+}
 
-  const ctx = await resolveTeamFromJwt(authHeader);
-  if (!ctx) {
-    return { allowed: false, status: 401, error: 'Sign in to export documents.' };
-  }
-
-  const plan      = await getTeamPlan(ctx.teamId);
+/**
+ * Core entitlement evaluation for an ALREADY-RESOLVED team + plan (no auth
+ * resolution, no Supabase config check). Shared by both the JWT path
+ * (checkExportAllowed) and the API-key path (checkExportAllowedForTeam) so the
+ * two enforce identically. Result shape:
+ *   { allowed: true,  plan, teamId, watermark }
+ *   { allowed: false, status, error }
+ */
+async function evaluateExportEntitlement({ teamId, plan, mode = 'single', rows = 1, format = 'pdf', delivery = false }) {
   const limits    = getPlanLimits(plan);
   const isBulk    = mode === 'bulk' || mode === 'bulk_async';
   const requested = Math.max(1, Number(rows) || 1);
-
-  const capabilityError = (cap) => {
-    const min      = minPlanFor(cap);
-    const planName = min ? getPlan(min).name : 'a paid';
-    return {
-      allowed: false,
-      status:  403,
-      error:   `${UPGRADE_LABEL[cap]} requires the ${planName} plan. Upgrade to unlock it.`,
-    };
-  };
 
   // 1. Capability gates ──────────────────────────────────────────────
   if (format === 'zpl' && !planAllows(plan, 'zpl')) return capabilityError('zpl');
@@ -164,7 +160,7 @@ async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, forma
 
   // 3. Monthly export cap ────────────────────────────────────────────
   if (limits.maxExportsPerMonth != null) {
-    const used = await getMonthlyExportCount(ctx.teamId);
+    const used = await getMonthlyExportCount(teamId);
     if (used + requested > limits.maxExportsPerMonth) {
       const remaining = Math.max(0, limits.maxExportsPerMonth - used);
       return {
@@ -179,11 +175,41 @@ async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, forma
   return {
     allowed:   true,
     plan,
-    teamId:    ctx.teamId,
+    teamId,
     // Free tier (anything lacking cleanExport) gets a watermark stamped on PDF
     // output. ZPL is gated off for those plans, so PDF-only stamping is fine.
     watermark: !planAllows(plan, 'cleanExport'),
   };
+}
+
+/**
+ * Export guard for the BROWSER path: resolves the team from the verified JWT,
+ * then evaluates entitlement. Degrades OPEN when Supabase is unconfigured.
+ */
+async function checkExportAllowed({ authHeader, mode = 'single', rows = 1, format = 'pdf', delivery = false }) {
+  const sb = getAdmin();
+  if (!sb) {
+    // Not configured for Supabase (e.g. local dev) — cannot resolve a plan,
+    // so don't block. Watermark defaults to off in this mode.
+    return { allowed: true, plan: 'free', teamId: null, watermark: false, unmetered: true };
+  }
+
+  const ctx = await resolveTeamFromJwt(authHeader);
+  if (!ctx) {
+    return { allowed: false, status: 401, error: 'Sign in to export documents.' };
+  }
+
+  const plan = await getTeamPlan(ctx.teamId);
+  return evaluateExportEntitlement({ teamId: ctx.teamId, plan, mode, rows, format, delivery });
+}
+
+/**
+ * Export guard for the API-KEY path: the team is already trusted (resolved from
+ * the key), so resolve its plan and evaluate. Used by /v1/generate.
+ */
+async function checkExportAllowedForTeam({ teamId, mode = 'single', rows = 1, format = 'pdf', delivery = false }) {
+  const plan = await getTeamPlan(teamId);
+  return evaluateExportEntitlement({ teamId, plan, mode, rows, format, delivery });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -234,6 +260,8 @@ module.exports = {
   getMonthlyAiBuildCount,
   getTemplateCount,
   getUsageSummary,
+  evaluateExportEntitlement,
   checkExportAllowed,
+  checkExportAllowedForTeam,
   checkAiBuildAllowed,
 };

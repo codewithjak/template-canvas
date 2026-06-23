@@ -346,6 +346,19 @@ This closes the delivery-visibility gap and gives a manual recovery path for
 dead-lettered deliveries (a lightweight stand-in for a full durable-retry queue,
 which remains future work).
 
+### Endpoint lifecycle ✅ _built_
+
+Management for a registered endpoint (API-key authed, tenant-scoped):
+
+- **`POST /v1/webhooks/:id/ping`** — send a signed `webhook.test` event so a user
+  can confirm a new endpoint works. Works even when paused; recorded in the
+  delivery log like any other attempt.
+- **`POST /v1/webhooks/:id/rotate-secret`** — mint a new signing secret (returned
+  once); the old one stops working.
+- **`PATCH /v1/webhooks/:id` `{ active }`** — pause/resume. A paused endpoint is
+  skipped by the dispatcher (`loadSubscribers` only loads `active`) but can still
+  be ping-tested.
+
 ---
 
 ## Step 4 — Connector-facing endpoints (REST Hooks)

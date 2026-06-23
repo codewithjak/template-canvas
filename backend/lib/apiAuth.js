@@ -13,7 +13,7 @@
  */
 
 const { getAdmin } = require('../supabaseAdmin');
-const { extractApiKey, resolveTeamFromApiKey } = require('../apiKeys');
+const { extractApiKey, resolveTeamFromApiKey, resolveTeamFromJwt } = require('../apiKeys');
 const { planAllows } = require('../plans');
 const { getTeamPlan } = require('../usage');
 
@@ -52,4 +52,32 @@ async function requireApiTeam(req) {
   return { teamId, sb };
 }
 
-module.exports = { httpError, sendError, requireApiTeam };
+/**
+ * Resolve { teamId, sb } from EITHER a tc_live API key (connectors / curl) OR a
+ * Supabase JWT (the signed-in user managing webhooks in the settings UI). Both
+ * paths still require the Business `api` capability. Used by the webhook
+ * management router so the same endpoints serve the UI and external callers.
+ */
+async function requireTeam(req) {
+  let teamId = null;
+
+  const rawKey = extractApiKey(req); // X-API-Key or "Bearer tc_live_…"
+  if (rawKey) {
+    teamId = await resolveTeamFromApiKey(rawKey);
+    if (!teamId) throw httpError(403, 'Invalid or revoked API key.');
+  } else {
+    const ctx = await resolveTeamFromJwt(req.headers.authorization); // Supabase JWT
+    if (!ctx) throw httpError(401, 'Authentication required.');
+    teamId = ctx.teamId;
+  }
+
+  if (!planAllows(await getTeamPlan(teamId), 'api')) {
+    throw httpError(403, 'API access requires the Business plan.');
+  }
+
+  const sb = getAdmin();
+  if (!sb) throw httpError(503, 'Server not configured for Supabase.');
+  return { teamId, sb };
+}
+
+module.exports = { httpError, sendError, requireApiTeam, requireTeam };

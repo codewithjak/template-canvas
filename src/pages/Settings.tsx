@@ -22,6 +22,7 @@ import {
   type TeamSummary,
 } from '../services/apiIntegration'
 import { listMyTeams, setActiveTeam, getActiveTeamId } from '../services/teamService'
+import WebhooksCard from './WebhooksCard'
 import { API_BASE } from '../services/config'
 import { usePlan } from '../plan/PlanProvider'
 import { getPlan, minPlanFor } from '../config/plans'
@@ -397,6 +398,8 @@ export default function Settings() {
               </>
               )}
             </Card>
+
+            {can('api') && <WebhooksCard />}
 
             {usage && (
               <Card title={`Usage · ${usage.plan} plan`}>

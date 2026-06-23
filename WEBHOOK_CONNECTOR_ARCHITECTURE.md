@@ -321,6 +321,23 @@ defends in **two layers**:
 Note this guard is for the **webhook delivery** path (user-controlled URLs); the
 S3 artifact upload/presign talks to AWS, not user input, so it is unaffected.
 
+### Operability — delivery log & redelivery ✅ _built_
+
+Every attempt is already recorded in `webhook_deliveries`; these endpoints make
+that log usable without DB access (tenant-scoped via the team's endpoints):
+
+- **`GET /v1/webhooks/deliveries`** — recent attempts, newest first, filterable by
+  `?endpointId=…`, `?status=pending|success|failed|dead`, `?limit=…` (≤200). A team
+  only ever sees its own deliveries (an `endpointId` it doesn't own returns `[]`).
+- **`POST /v1/webhooks/deliveries/:id/redeliver`** — re-fire a past delivery (e.g. a
+  dead-lettered one) to the same endpoint, recording a **fresh** attempt row
+  (reuses the dispatcher's single-endpoint `deliverToEndpoint`, so signing, the
+  SSRF guard and retries all apply).
+
+This closes the delivery-visibility gap and gives a manual recovery path for
+dead-lettered deliveries (a lightweight stand-in for a full durable-retry queue,
+which remains future work).
+
 ---
 
 ## Step 4 — Connector-facing endpoints (REST Hooks)

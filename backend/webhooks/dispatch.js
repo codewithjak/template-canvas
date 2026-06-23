@@ -172,4 +172,6 @@ async function dispatchWebhook(teamId, event, payload) {
   }
 }
 
-module.exports = { dispatchWebhook, signBody };
+// `deliverToEndpoint` is the single-endpoint delivery (records a fresh attempt
+// row). Exposed for manual redelivery (routes/webhooks.js).
+module.exports = { dispatchWebhook, signBody, deliverToEndpoint: deliver };

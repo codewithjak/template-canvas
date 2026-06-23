@@ -42,7 +42,7 @@ const router = express.Router();
 
 router.post('/v1/generate', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApbackend/API_GENERATE_REFACTOR_NOTES.mdiTeam(req);
+    const { teamId, sb } = await requireApiTeam(req);
 
     const { templateId, data } = req.body || {};
     if (!templateId)        throw httpError(400, '"templateId" is required.');

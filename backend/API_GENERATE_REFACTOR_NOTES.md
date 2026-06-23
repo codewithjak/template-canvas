@@ -1,47 +1,80 @@
-# API/connector layer — refactor log
+# `/v1/generate` — deferred refactors
 
-Tracks the consolidations around the API-key routes (`/v1/generate`, `/v1/ingest`,
-`/v1/webhooks`, `/v1/me`, `/v1/hooks/*`). Originally these were built
-self-contained so no shared module had to change; this file records what has
-since been consolidated and what remains.
+`POST /v1/generate` (Step 1 of `WEBHOOK_CONNECTOR_ARCHITECTURE.md`) was added as a
+**self-contained** router (`backend/routes/apiGenerate.js`) so no existing shared
+module had to change yet. To stay standalone it restates a few things that already
+exist elsewhere. None of these are bugs; they are **intentional, tracked
+duplications** to clean up when we deliberately choose to touch the shared modules.
 
----
-
-## Done — shared-module consolidation (was "A 1–4")
-
-1. **Export entitlement** — extracted `usage.evaluateExportEntitlement({ teamId,
-   plan, … })`; `checkExportAllowed` (JWT) and the new `checkExportAllowedForTeam`
-   (API key) both delegate to it. `/v1/generate` now calls
-   `checkExportAllowedForTeam` instead of a local copy. One enforcement source.
-
-2. **API-key auth** — `requireApiTeam` / `httpError` / `sendError` live in
-   `lib/apiAuth.js` and are used by `/v1/generate`, `/v1/webhooks`, `/v1/connector`
-   **and** `/v1/ingest` (the last inlined copy is gone).
-
-3. **Template + bindings loaders** — `lib/templateStore.js` (`loadTemplate`,
-   `loadBindings`) is shared by `/v1/generate` and `/v1/ingest`.
-
-4. **Team-attributed logging** — `analytics.logExportEventForTeam(teamId, metadata)`
-   replaced the direct insert that `/v1/generate` had inlined.
+Until then, if you change the original in any item below, mirror it in
+`routes/apiGenerate.js`.
 
 ---
 
-## Remaining
+## 1. Export entitlement check (the most important one)
 
-5. **Validation helpers (cosmetic)** — `routes/webhooks.js` (`parseEndpointInput`)
-   and `routes/connector.js` (`requireHttpUrl` / `requireKnownEvent`) repeat the
-   `^https?://` URL check and event-name validation. Move both next to the
-   catalogue (`webhooks/events.js`, or a small `webhooks/validate.js`).
+- **Original:** `usage.checkExportAllowed({ authHeader, mode, rows, format, delivery })`
+  resolves the team **from a JWT**, then checks capability + per-job row ceiling +
+  monthly cap and computes `watermark`.
+- **Restated as:** `checkEntitlement(teamId, format)` in `apiGenerate.js`
+  (`assertFormatAllowed` + `assertUnderMonthlyCap` + watermark), because the API
+  path has a `teamId`, not a JWT. It only covers the single-document case.
+- **Consolidation:** extract the JWT-free core into
+  `usage.evaluateExportEntitlement({ teamId, plan, mode, rows, format, delivery })`
+  and have **both** `checkExportAllowed` (JWT) and a new
+  `checkExportAllowedForTeam({ teamId, … })` delegate to it. Then delete
+  `checkEntitlement` here and call `checkExportAllowedForTeam`.
+- **Risk if it drifts:** the API path could under-/over-enforce caps relative to the
+  browser path.
+
+## 2. API-key auth sequence  — _partly done_
+
+- **Now shared:** `requireApiTeam` / `httpError` / `sendError` live in
+  `backend/lib/apiAuth.js` and are used by both `/v1/generate` and `/v1/webhooks`.
+- **Still inlined:** the app's own `/v1/ingest` in `routes/teamApi.js` repeats the
+  same sequence (extract key → `resolveTeamFromApiKey` → `planAllows('api')` →
+  `getAdmin`).
+- **Remaining consolidation:** point `/v1/ingest` at `lib/apiAuth.requireApiTeam`
+  too. (Deferred only because it edits the pre-existing route.)
+
+## 3. Template + bindings loaders
+
+- **Original:** `/v1/ingest` loads `templates` (tenant check) and reads
+  `template_bindings.field_mapping` inline.
+- **Restated as:** `loadTemplate` / `loadBindings` in `apiGenerate.js`
+  (`loadBindings` also returns collection/table maps, normalised to camelCase).
+- **Consolidation:** share both loaders; `/v1/ingest` can use `loadBindings` and
+  read `.fieldMapping`.
+
+## 4. Team-attributed usage logging
+
+- **Original:** `analytics.logExportEvent(authHeader, metadata)` derives the team
+  from the JWT and inserts a `pdf_exported` event.
+- **Restated as:** `logExport(sb, teamId, metadata)` in `apiGenerate.js` — a direct
+  `analytics_events` insert with `user_id: null` (allowed by the schema/RLS).
+- **Consolidation:** add `analytics.logExportEventForTeam(teamId, metadata)` and
+  call it here.
+
+---
+
+## Bigger, separate decision — unifying browser + API assembly
+
+`backend/lib/templateAssembly.js` reconstructs server-side the small payload the
+browser builds at `src/.../TemplateCanvas.tsx` (`exportPages`) +
+`dataSourceService.ts` (`generatePayload`). The heavy engine (`normalisePayload`,
+`buildRowIr`, the renderers) is **already shared** — only the ~30-line *reshaping
+contract* is now stated in two places.
 
 6. **Test Supabase fakes (cosmetic)** — each e2e test file defines its own
    in-memory Supabase query-builder. Extract one `test/helpers/fakeSupabase.js`
    (the stateful builder in `connector.e2e` / `v1-ingest.e2e` is the most capable)
    and reuse it.
 
-7. **Job registry → durable + team-aware (Step 2)** — `backend/index.js`: stamp
-   `team_id`/`source` on async jobs, stop delete-on-download, move artifacts to S3
-   with a signed URL, and fire `bulk.completed` from the async completion site.
-   This necessarily edits existing code; it is the substance of Step 2.
+7. ~~**Job registry → durable + team-aware (Step 2)**~~ — **done.** `backend/index.js`
+   now stamps `team_id`/`source` on async jobs, uploads the artifact to S3
+   (`storage/artifactStore` → `s3Store`, no-SDK SigV4), no longer deletes on
+   download (redirects to a presigned URL), and fires `bulk.completed` /
+   `bulk.failed` from the async completion site. See `S3_SETUP.md`.
 
 8. **Unify browser ↔ API assembly (separate decision)** — `lib/templateAssembly.js`
    restates the ~30-line payload-shaping the frontend does

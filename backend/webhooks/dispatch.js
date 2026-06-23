@@ -18,7 +18,10 @@
  */
 
 const crypto = require('crypto');
+const http = require('http');
+const https = require('https');
 const { getAdmin } = require('../supabaseAdmin');
+const { guardedLookup } = require('./ssrfGuard');
 
 const MAX_ATTEMPTS  = 3;
 const TIMEOUT_MS    = 10000;
@@ -70,18 +73,42 @@ async function closeDelivery(sb, id, patch) {
   }
 }
 
-/** One signed POST with a timeout. Resolves the HTTP status, or null on error. */
-async function postOnce(url, body, headers) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
-    return res.status;
-  } catch {
-    return null; // network error / timeout
-  } finally {
-    clearTimeout(timer);
-  }
+/**
+ * One signed POST with a timeout. Resolves the HTTP status, or null on error
+ * (network failure, timeout, or an SSRF-blocked target — guardedLookup refuses
+ * to resolve to a private/reserved address, so the request can only ever reach
+ * a public IP).
+ */
+function postOnce(urlString, body, headers) {
+  return new Promise((resolve) => {
+    let u;
+    try {
+      u = new URL(urlString);
+    } catch {
+      return resolve(null);
+    }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return resolve(null);
+
+    const mod = u.protocol === 'https:' ? https : http;
+    const req = mod.request(
+      {
+        method:   'POST',
+        hostname: u.hostname,
+        port:     u.port || (u.protocol === 'https:' ? 443 : 80),
+        path:     u.pathname + u.search,
+        headers:  { ...headers, 'Content-Length': Buffer.byteLength(body) },
+        lookup:   guardedLookup, // SSRF: only resolves to public addresses
+      },
+      (res) => {
+        res.resume(); // drain so the socket can close
+        res.on('end', () => resolve(res.statusCode));
+      },
+    );
+    req.setTimeout(TIMEOUT_MS, () => req.destroy(new Error('timeout')));
+    req.on('error', () => resolve(null));
+    req.write(body);
+    req.end();
+  });
 }
 
 /** True for a 2xx HTTP status. */

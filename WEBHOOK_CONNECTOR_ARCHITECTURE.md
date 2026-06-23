@@ -290,6 +290,37 @@ surprise: no endpoint, no call.
 The system can reliably tell the outside world "your documents are ready, here is
 the URL" — signed, retried, and fully audited.
 
+### Security — SSRF protection ✅ _built_
+
+The dispatcher POSTs to URLs that *users register*, so without a guard a
+subscriber could point MapDoc at internal targets (cloud metadata at
+`169.254.169.254`, `localhost`, RFC-1918 ranges, link-local, …) and use the
+server as a server-side request forgery proxy. `backend/webhooks/ssrfGuard.js`
+defends in **two layers**:
+
+1. **Registration time — `assertPublicUrl(url)`.** Wired into both
+   `POST /v1/webhooks` (`parseEndpointInput`) and `POST /v1/hooks/subscribe`
+   (`requireHttpUrl`). Rejects non-`http(s)` schemes and **literal** private /
+   reserved IP hosts (IPv4 + IPv6: loopback, link-local, RFC-1918, CGNAT
+   `100.64/10`, multicast, `169.254/16`, IPv4-mapped IPv6, etc.). Fast, friendly
+   rejection — but a hostname can still *resolve* to a private IP later, so this
+   is not sufficient alone.
+
+2. **Delivery time — `guardedLookup` (the real protection).** The dispatcher's
+   request uses a custom DNS `lookup` that resolves the host, drops any
+   private/reserved addresses, and **connects only to a validated public IP**.
+   Because the socket connects to the exact address that was checked, this closes
+   the **DNS-rebinding / TOCTOU** window (a host that passed step 1 cannot be
+   re-pointed at a private IP between check and connect). A blocked target fails
+   the attempt and dead-letters; it never reaches a private address.
+
+> **Dev bypass.** `WEBHOOK_ALLOW_PRIVATE_TARGETS=true` disables the guard so a
+> developer can deliver to a `localhost` receiver. Off by default; set only in
+> local/dev.
+
+Note this guard is for the **webhook delivery** path (user-controlled URLs); the
+S3 artifact upload/presign talks to AWS, not user input, so it is unaffected.
+
 ---
 
 ## Step 4 — Connector-facing endpoints (REST Hooks)

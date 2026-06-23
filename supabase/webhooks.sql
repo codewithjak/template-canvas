@@ -37,10 +37,19 @@ create table if not exists public.webhook_deliveries (
   attempts        int  not null default 0,
   response_code   int,
   last_attempt_at timestamptz,
+  next_attempt_at timestamptz,           -- when the durable retry worker should re-attempt
   created_at      timestamptz not null default now()
 );
 
 create index if not exists idx_webhook_deliveries_endpoint on public.webhook_deliveries(endpoint_id, created_at);
+
+-- The durable-retry worker scans for due, still-retryable deliveries.
+create index if not exists idx_webhook_deliveries_due
+  on public.webhook_deliveries(next_attempt_at)
+  where status in ('pending', 'failed');
+
+-- Additive for existing installs (table created before retries existed).
+alter table public.webhook_deliveries add column if not exists next_attempt_at timestamptz;
 
 -- ---------- Row-Level Security --------------------------------------
 --

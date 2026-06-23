@@ -343,8 +343,29 @@ that log usable without DB access (tenant-scoped via the team's endpoints):
   SSRF guard and retries all apply).
 
 This closes the delivery-visibility gap and gives a manual recovery path for
-dead-lettered deliveries (a lightweight stand-in for a full durable-retry queue,
-which remains future work).
+dead-lettered deliveries.
+
+### Durable retries ✅ _built_
+
+Retries are **persisted, not in-memory**, so they survive restarts. Each
+`webhook_deliveries` row carries its own schedule (`status` + `attempts` +
+`next_attempt_at`):
+
+- `dispatchWebhook` (and ping/redeliver) make **one** attempt inline. On failure
+  the row becomes `failed` with `next_attempt_at = now + backoff` (60s → 5m → 15m
+  → 1h); after `WEBHOOK_MAX_ATTEMPTS` (default 5) it becomes `dead`.
+- A background sweeper, `startRetryWorker()` (started in `index.js`, interval
+  `WEBHOOK_RETRY_INTERVAL_MS`, default 60s), queries due, still-retryable
+  deliveries (`status in (pending,failed)` and `next_attempt_at ≤ now`) and
+  re-attempts them. A freshly created delivery is leased `next_attempt_at` a
+  minute ahead, so the worker also recovers deliveries whose process **crashed
+  before the inline attempt finished**. A delivery whose endpoint was deleted is
+  dead-lettered.
+
+> **Single-instance caveat.** The worker uses an in-process `workerBusy` guard to
+> avoid overlapping ticks. Running multiple backend instances would need a DB
+> claim (e.g. `SELECT … FOR UPDATE SKIP LOCKED`) to prevent double-sends — noted
+> as the next step if/when the backend scales horizontally.
 
 ### Endpoint lifecycle ✅ _built_
 

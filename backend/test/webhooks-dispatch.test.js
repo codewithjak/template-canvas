@@ -60,7 +60,8 @@ function fakeFrom(table) {
 const supa = require('../supabaseAdmin');
 supa.getAdmin = () => ({ from: fakeFrom });
 
-const { dispatchWebhook, signBody } = require('../webhooks/dispatch');
+const { dispatchWebhook } = require('../webhooks/dispatch');
+const { sign } = require('../webhooks/signature');
 
 // ── Local receiver ──────────────────────────────────────────────────────────────
 
@@ -94,9 +95,9 @@ const subscribe = (events) => { endpoints = [{ id: 'ep-1', url: receiverUrl, sec
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-test('signBody is a stable HMAC-SHA256 in "sha256=<hex>" form', () => {
-  const expected = 'sha256=' + crypto.createHmac('sha256', SECRET).update('{"a":1}').digest('hex');
-  assert.strictEqual(signBody(SECRET, '{"a":1}'), expected);
+test('sign is a stable HMAC over "<timestamp>.<body>"', () => {
+  const expected = 'sha256=' + crypto.createHmac('sha256', SECRET).update('1700000000.{"a":1}').digest('hex');
+  assert.strictEqual(sign(SECRET, '1700000000', '{"a":1}'), expected);
 });
 
 test('delivers a signed POST to a subscribed endpoint and records success', async () => {
@@ -109,10 +110,11 @@ test('delivers a signed POST to a subscribed endpoint and records success', asyn
   const got = received[0];
   assert.strictEqual(got.headers['x-mapdoc-event'], 'document.generated');
   assert.ok(got.headers['x-mapdoc-delivery'], 'delivery id header present');
+  assert.ok(got.headers['x-mapdoc-timestamp'], 'timestamp header present');
   assert.deepStrictEqual(got.body, payload);
 
-  // Signature verifies against the raw body.
-  assert.strictEqual(got.headers['x-mapdoc-signature'], signBody(SECRET, got.raw));
+  // Signature verifies against "<timestamp>.<rawBody>".
+  assert.strictEqual(got.headers['x-mapdoc-signature'], sign(SECRET, got.headers['x-mapdoc-timestamp'], got.raw));
 
   // Audit row closed as success.
   assert.strictEqual(deliveries.length, 1);

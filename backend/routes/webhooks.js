@@ -22,6 +22,8 @@ const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
 const { KNOWN_EVENTS } = require('../webhooks/events');
 const { createEndpoint, deleteEndpoint } = require('../webhooks/endpoints');
 const { assertPublicUrl } = require('../webhooks/ssrfGuard');
+const { listDeliveries, getDeliveryForTeam, DELIVERY_STATUSES } = require('../webhooks/deliveries');
+const { deliverToEndpoint } = require('../webhooks/dispatch');
 
 const router = express.Router();
 
@@ -92,6 +94,38 @@ router.delete('/v1/webhooks/:id', async (req, res) => {
     return res.json({ ok: true, id: req.params.id });
   } catch (err) {
     return sendError(res, '[v1/webhooks:delete]', err);
+  }
+});
+
+// ── GET /v1/webhooks/deliveries ───────────────────────────────────────────────
+// The delivery audit log: recent attempts, newest first. Filter with
+// ?endpointId=… and/or ?status=pending|success|failed|dead, ?limit=… (≤200).
+router.get('/v1/webhooks/deliveries', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireApiTeam(req);
+    const { endpointId, status, limit } = req.query;
+    if (status && !DELIVERY_STATUSES.includes(status)) {
+      throw httpError(400, `Unknown status. Known: ${DELIVERY_STATUSES.join(', ')}.`);
+    }
+    const deliveries = await listDeliveries(sb, teamId, { endpointId, status, limit });
+    return res.json({ deliveries });
+  } catch (err) {
+    return sendError(res, '[v1/webhooks:deliveries]', err);
+  }
+});
+
+// ── POST /v1/webhooks/deliveries/:id/redeliver ────────────────────────────────
+// Re-attempt a past delivery (e.g. a dead-lettered one). Records a NEW attempt
+// row against the same endpoint; returns once the attempt completes.
+router.post('/v1/webhooks/deliveries/:id/redeliver', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireApiTeam(req);
+    const found = await getDeliveryForTeam(sb, teamId, req.params.id);
+    if (!found) throw httpError(404, 'Delivery not found.');
+    await deliverToEndpoint(sb, found.endpoint, found.delivery.event, found.delivery.payload);
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendError(res, '[v1/webhooks:redeliver]', err);
   }
 });
 

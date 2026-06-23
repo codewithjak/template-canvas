@@ -10,98 +10,21 @@
  * server assembles the same renderer args the browser would and returns the
  * rendered file. See WEBHOOK_CONNECTOR_ARCHITECTURE.md, Step 1.
  *
- * SELF-CONTAINED BY DESIGN. It only *calls* existing exported helpers; it does
- * not modify usage.js / analytics.js / teamApi.js. A few small things are
- * therefore restated locally (the API-key auth sequence, the export
- * entitlement check, the usage-log insert). Those are deliberate, temporary
- * duplications — see API_GENERATE_REFACTOR_NOTES.md for how they should be
- * consolidated once we choose to touch the shared modules.
- *
  * Mounted by index.js (one additive `app.use` line).
  */
 
 const express = require('express');
 
 const { parseDataSource } = require('../parsers/index');
-const { planAllows, minPlanFor, getPlan } = require('../plans');
-const { getTeamPlan, getPlanLimits, getMonthlyExportCount } = require('../usage');
+const { checkExportAllowedForTeam } = require('../usage');
+const { logExportEventForTeam } = require('../analytics');
 const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
+const { loadTemplate, loadBindings } = require('../lib/templateStore');
 const { assembleGenArgs, scopeIrToRow } = require('../lib/templateAssembly');
 const { buildExportArtifact } = require('../lib/exportArtifact');
 const { dispatchWebhook } = require('../webhooks/dispatch');
 
 const router = express.Router();
-
-// ── Stored-state loaders (tenant-scoped) ────────────────────────────────────────
-
-/** Load the template's design, asserting it belongs to the key's team. */
-async function loadTemplate(sb, teamId, templateId) {
-  const { data, error } = await sb
-    .from('templates')
-    .select('id, team_id, body_json')
-    .eq('id', templateId)
-    .maybeSingle();
-  if (error) throw error;
-  if (!data || data.team_id !== teamId) throw httpError(404, 'Template not found for this team.');
-  return data;
-}
-
-/** Load the saved mapping blob, normalised to the camelCase keys assembly wants. */
-async function loadBindings(sb, teamId, templateId) {
-  const { data } = await sb
-    .from('template_bindings')
-    .select('field_mapping, collection_mappings, table_collection_bindings')
-    .eq('team_id', teamId)
-    .eq('template_id', templateId)
-    .maybeSingle();
-  return {
-    fieldMapping:            (data && data.field_mapping)             || {},
-    collectionMappings:      (data && data.collection_mappings)       || {},
-    tableCollectionBindings: (data && data.table_collection_bindings) || {},
-  };
-}
-
-// ── Entitlement (export caps + watermark) ───────────────────────────────────────
-//
-// A trimmed, single-document restatement of usage.checkExportAllowed for the
-// key path (which has a teamId, not a JWT). See refactor notes.
-
-/** Throw if `format` needs a capability the plan lacks. */
-function assertFormatAllowed(plan, format) {
-  if (format === 'zpl' && !planAllows(plan, 'zpl')) {
-    const name = getPlan(minPlanFor('zpl') || 'business').name;
-    throw httpError(403, `ZPL / label export requires the ${name} plan.`);
-  }
-}
-
-/** Throw if generating one more document would exceed the monthly cap. */
-async function assertUnderMonthlyCap(teamId, plan) {
-  const limit = getPlanLimits(plan).maxExportsPerMonth;
-  if (limit == null) return;
-  const used = await getMonthlyExportCount(teamId);
-  if (used + 1 > limit) {
-    throw httpError(402, `Monthly export limit reached (${limit}).`);
-  }
-}
-
-/** Resolve the team's plan and confirm a single export is allowed. */
-async function checkEntitlement(teamId, format) {
-  const plan = await getTeamPlan(teamId);
-  assertFormatAllowed(plan, format);
-  await assertUnderMonthlyCap(teamId, plan);
-  // Free/legacy plans get a watermark; api capability is Business-only today, so
-  // this is effectively always false here, but kept general.
-  return { plan, watermark: !planAllows(plan, 'cleanExport') };
-}
-
-// ── Usage logging (fire-and-forget, team-attributed) ─────────────────────────────
-
-/** Append a pdf_exported event for the team (user_id null on the API path). */
-function logExport(sb, teamId, metadata) {
-  sb.from('analytics_events')
-    .insert({ team_id: teamId, user_id: null, event_type: 'pdf_exported', metadata })
-    .then(() => {}, (err) => console.warn('[v1/generate] usage log failed:', err.message));
-}
 
 // ── Route ───────────────────────────────────────────────────────────────────────
 //
@@ -128,7 +51,8 @@ router.post('/v1/generate', async (req, res) => {
     const format = String(req.body.format || 'pdf').toLowerCase();
 
     // Resolve plan + entitlement BEFORE doing any rendering work.
-    const gate = await checkEntitlement(teamId, format);
+    const gate = await checkExportAllowedForTeam({ teamId, mode: 'single', rows: 1, format });
+    if (!gate.allowed) throw httpError(gate.status, gate.error);
 
     // Stored design + saved mapping (tenant-checked).
     const template = await loadTemplate(sb, teamId, templateId);
@@ -159,7 +83,7 @@ router.post('/v1/generate', async (req, res) => {
       jpegQuality:    req.body.jpegQuality,
     });
 
-    logExport(sb, teamId, { format, mode: 'single', source: 'api' });
+    logExportEventForTeam(teamId, { format, mode: 'single', source: 'api' });
 
     // Notify subscribers that a document was generated. Fire-and-forget: the
     // file is the response, so this must never delay or fail the request.

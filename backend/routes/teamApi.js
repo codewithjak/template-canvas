@@ -22,13 +22,13 @@ const express = require('express');
 const { parseDataSource, validateBindings } = require('../parsers/index');
 const { planAllows, PLAN_ORDER, getPlan } = require('../plans');
 const {
-  extractApiKey,
   resolveTeamFromJwt,
-  resolveTeamFromApiKey,
   issueKeyForTeam,
   getKeyMeta,
   revokeKeyForTeam,
 } = require('../apiKeys');
+const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
+const { loadTemplate, loadBindings } = require('../lib/templateStore');
 const {
   listTeam,
   createInvite,
@@ -247,55 +247,26 @@ router.post('/v1/invites/accept', async (req, res) => {
 // (team, template). Existing mapping columns on that row are preserved.
 router.post('/v1/ingest', async (req, res) => {
   try {
-    const rawKey = extractApiKey(req);
-    if (!rawKey) return res.status(401).json({ error: 'API key required (X-API-Key header).' });
-
-    const teamId = await resolveTeamFromApiKey(rawKey);
-    if (!teamId) return res.status(403).json({ error: 'Invalid or revoked API key.' });
-
-    // A team can hold a key issued while on Business but later downgrade — keep
-    // the capability check live on every request, not just at issue time.
-    if (!planAllows(await getTeamPlan(teamId), 'api')) {
-      return res.status(403).json({ error: 'API access requires the Business plan.' });
-    }
+    const { teamId, sb } = await requireApiTeam(req);
 
     const { templateId, data } = req.body || {};
-    if (!templateId)        return res.status(400).json({ error: '"templateId" is required.' });
-    if (data === undefined) return res.status(400).json({ error: '"data" is required.' });
+    if (!templateId)        throw httpError(400, '"templateId" is required.');
+    if (data === undefined) throw httpError(400, '"data" is required.');
 
-    const sb = getSupabaseAdmin();
-    if (!sb) return res.status(503).json({ error: 'Server not configured for Supabase.' });
-
-    // Tenant isolation: the template must belong to the key's team.
-    const { data: tpl, error: tplErr } = await sb
-      .from('templates')
-      .select('id, team_id, body_json')
-      .eq('id', templateId)
-      .maybeSingle();
-    if (tplErr) throw tplErr;
-    if (!tpl || tpl.team_id !== teamId) {
-      return res.status(404).json({ error: 'Template not found for this team.' });
-    }
+    // Tenant isolation + saved mapping (shared with /v1/generate).
+    const tpl      = await loadTemplate(sb, teamId, templateId);
+    const bindings = await loadBindings(sb, teamId, templateId);
 
     // Normalise → CanonicalDocument IR (same path as POST /parse-json).
     let ir;
     try {
       ir = parseDataSource(data, 'application/json');
     } catch (e) {
-      return res.status(422).json({ error: `Could not parse data: ${e.message}` });
+      throw httpError(422, `Could not parse data: ${e.message}`);
     }
 
-    // Load any existing binding so we can validate against its saved mapping.
-    const { data: binding } = await sb
-      .from('template_bindings')
-      .select('field_mapping')
-      .eq('team_id', teamId)
-      .eq('template_id', templateId)
-      .maybeSingle();
-
-    const fieldMapping = binding?.field_mapping || {};
-    const elements     = collectTemplateElements(tpl.body_json);
-    const validation   = validateBindings(elements, ir, fieldMapping);
+    const elements   = collectTemplateElements(tpl.body_json);
+    const validation = validateBindings(elements, ir, bindings.fieldMapping);
 
     // Store latest payload. Only these columns are written, so existing mapping
     // columns are preserved on update and default to '{}' on first insert.
@@ -314,7 +285,7 @@ router.post('/v1/ingest', async (req, res) => {
     return res.json({
       ok:          true,
       templateId,
-      bound:       !!binding, // false → app needs a one-time link/mapping
+      bound:       bindings.bound, // false → app needs a one-time link/mapping
       fields:      Object.keys(ir.fields).length,
       collections: Object.fromEntries(
         Object.entries(ir.collections).map(([k, c]) => [k, c.rows.length]),
@@ -323,8 +294,7 @@ router.post('/v1/ingest', async (req, res) => {
       validation,
     });
   } catch (err) {
-    console.error('[v1/ingest]', err);
-    return res.status(500).json({ error: err.message || 'Ingestion failed.' });
+    return sendError(res, '[v1/ingest]', err);
   }
 });
 

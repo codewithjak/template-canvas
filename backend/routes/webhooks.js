@@ -21,15 +21,14 @@ const express = require('express');
 const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
 const { KNOWN_EVENTS } = require('../webhooks/events');
 const { createEndpoint, deleteEndpoint } = require('../webhooks/endpoints');
+const { assertPublicUrl } = require('../webhooks/ssrfGuard');
 
 const router = express.Router();
 
 /** Validate + normalise the create body, or throw an httpError. */
 function parseEndpointInput(body) {
   const url = String((body && body.url) || '').trim();
-  if (!/^https?:\/\/.+/i.test(url)) {
-    throw httpError(400, '"url" must be a valid http(s) URL.');
-  }
+  assertPublicUrl(url); // scheme + SSRF guard (rejects private/reserved targets)
 
   const events = Array.isArray(body && body.events) ? body.events : [];
   if (events.length === 0) {

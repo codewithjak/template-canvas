@@ -10,6 +10,10 @@
  * Run:  node --test test/
  */
 
+// The receiver runs on 127.0.0.1, which the SSRF guard blocks by default; allow
+// private targets for this dispatcher test (the guard itself is tested separately).
+process.env.WEBHOOK_ALLOW_PRIVATE_TARGETS = 'true';
+
 const { test, before, after, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');

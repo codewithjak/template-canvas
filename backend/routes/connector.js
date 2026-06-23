@@ -24,6 +24,7 @@ const express = require('express');
 const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
 const { KNOWN_EVENTS, isKnownEvent, sampleEvent } = require('../webhooks/events');
 const { createEndpoint, deleteEndpoint } = require('../webhooks/endpoints');
+const { assertPublicUrl } = require('../webhooks/ssrfGuard');
 
 const router = express.Router();
 
@@ -36,10 +37,10 @@ function requireKnownEvent(value) {
   return event;
 }
 
-/** Read + validate an http(s) URL, or throw an httpError. */
+/** Read + validate an http(s) URL (scheme + SSRF guard), or throw an httpError. */
 function requireHttpUrl(value) {
   const url = String(value || '').trim();
-  if (!/^https?:\/\/.+/i.test(url)) throw httpError(400, '"url" must be a valid http(s) URL.');
+  assertPublicUrl(url); // rejects bad schemes + literal private/reserved targets
   return url;
 }
 

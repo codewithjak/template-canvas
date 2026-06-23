@@ -39,7 +39,7 @@ const deliveryRateLimited = makeRateLimiter(20, 60 * 60 * 1000);
 const contactRouter         = require('./routes/contact');
 const teamApiRouter         = require('./routes/teamApi');
 const artifactStore         = require('./storage/artifactStore');
-const { dispatchWebhook }   = require('./webhooks/dispatch');
+const { dispatchWebhook, startRetryWorker } = require('./webhooks/dispatch');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
@@ -656,5 +656,9 @@ app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this
 // ─────────────────────────────────────────────────────────────────────────────
 // Start
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Durable webhook retry sweeper: re-attempts due deliveries (state lives in the
+// DB, so retries survive restarts). No-op when Supabase isn't configured.
+startRetryWorker();
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

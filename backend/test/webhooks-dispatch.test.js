@@ -137,15 +137,17 @@ test('is a no-op (no throw) when the team has no endpoints', async () => {
   assert.strictEqual(deliveries.length, 0);
 });
 
-test('retries then dead-letters when the receiver keeps failing', async () => {
+test('a failed delivery makes one attempt and is scheduled for durable retry', async () => {
   subscribe(['document.generated']);
   respondStatus = 500;
 
   await dispatchWebhook('team-1', 'document.generated', { event: 'document.generated' });
 
-  assert.strictEqual(received.length, 3, 'should attempt MAX_ATTEMPTS times');
+  // Dispatch attempts ONCE inline; further attempts are the worker's job.
+  assert.strictEqual(received.length, 1, 'one immediate attempt');
   assert.strictEqual(deliveries.length, 1);
-  assert.strictEqual(deliveries[0].status, 'dead');
-  assert.strictEqual(deliveries[0].attempts, 3);
+  assert.strictEqual(deliveries[0].status, 'failed');
+  assert.strictEqual(deliveries[0].attempts, 1);
   assert.strictEqual(deliveries[0].response_code, 500);
+  assert.ok(deliveries[0].next_attempt_at, 'scheduled for a future retry');
 });

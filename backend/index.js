@@ -38,10 +38,15 @@ const { deliver, validateDelivery } = require('./delivery');
 const deliveryRateLimited = makeRateLimiter(20, 60 * 60 * 1000);
 const contactRouter         = require('./routes/contact');
 const teamApiRouter         = require('./routes/teamApi');
+const artifactStore         = require('./storage/artifactStore');
+const { dispatchWebhook }   = require('./webhooks/dispatch');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
 const upload = multer({ storage: multer.memoryStorage() });
+
+// Lifetime of presigned download URLs (webhook payloads + browser redirects).
+const ARTIFACT_URL_TTL_MS = (parseInt(process.env.ARTIFACT_URL_TTL_SECONDS, 10) || 3600) * 1000;
 
 // In production set FRONTEND_ORIGIN to the deployed frontend URL
 // (e.g. https://app.map-doc.com) so the API only accepts that origin.
@@ -69,6 +74,28 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+// Notify subscribers that a bulk job finished. Fire-and-forget: a presigned
+// download URL is minted and the 'bulk.completed' event dispatched. Never throws.
+async function notifyBulkComplete(jobId, job) {
+  try {
+    const { url, expiresAt } = await artifactStore.downloadTarget(jobId, {
+      fileName: job.zipFileName, expiresInMs: ARTIFACT_URL_TTL_MS,
+    });
+    dispatchWebhook(job.teamId, 'bulk.completed', {
+      event:       'bulk.completed',
+      teamId:      job.teamId,
+      jobId,
+      rows:        job.total,
+      generated:   job.current,
+      downloadUrl: url,
+      expiresAt,
+      createdAt:   new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[bulk-async] completion notify failed:', err.message);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /parse-data
@@ -498,7 +525,10 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const jobId   = uuidv4();
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
 
-  jobs.set(jobId, { status: 'running', current: 0, total, zipPath, zipFileName, createdAt: Date.now() });
+  jobs.set(jobId, {
+    status: 'running', current: 0, total, zipPath, zipFileName, createdAt: Date.now(),
+    teamId: gate.teamId, source: 'browser',
+  });
 
   // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
   logExportEvent(req.headers.authorization, { format, mode: 'bulk_async', rows: total });
@@ -552,11 +582,25 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
         output.on('error', reject);
       });
 
+      // Persist to S3 (resilient: retries + existence check), then drop the
+      // local staging copy — S3 is now the source of truth for the artifact.
+      await artifactStore.put(jobId, { filePath: zipPath, contentType: 'application/zip' });
+      fs.unlink(zipPath, () => {});
+
       job.status = 'done';
+      notifyBulkComplete(jobId, job);
     } catch (err) {
       console.error('[bulk-async] job failed:', err);
       job.status  = 'error';
       job.message = err.message;
+      dispatchWebhook(job.teamId, 'bulk.failed', {
+        event:     'bulk.failed',
+        teamId:    job.teamId,
+        jobId,
+        rows:      job.total,
+        error:     err.message,
+        createdAt: new Date().toISOString(),
+      });
     }
   })();
 });
@@ -576,28 +620,23 @@ app.get('/bulk-jobs/:jobId/status', (req, res) => {
 // GET /bulk-jobs/:jobId/download
 // ─────────────────────────────────────────────────────────────────────────────
 
-app.get('/bulk-jobs/:jobId/download', (req, res) => {
+app.get('/bulk-jobs/:jobId/download', async (req, res) => {
   const job = jobs.get(req.params.jobId);
   if (!job)                  return res.status(404).json({ error: 'Job not found' });
   if (job.status !== 'done') return res.status(409).json({ error: 'Job not complete', status: job.status });
 
-  res.set({
-    'Content-Type':        'application/zip',
-    'Content-Disposition': `attachment; filename="${job.zipFileName}"`,
-  });
-
-  const stream = fs.createReadStream(job.zipPath);
-  stream.pipe(res);
-
-  stream.on('close', () => {
-    fs.unlink(job.zipPath, () => {});
-    jobs.delete(req.params.jobId);
-  });
-
-  stream.on('error', err => {
+  // The artifact lives in S3; hand the client a fresh presigned URL and redirect.
+  // The browser's anchor-based download follows this 302 without needing CORS,
+  // and the filename comes from the URL's response-content-disposition.
+  try {
+    const { url } = await artifactStore.downloadTarget(req.params.jobId, {
+      fileName: job.zipFileName, expiresInMs: ARTIFACT_URL_TTL_MS,
+    });
+    return res.redirect(302, url);
+  } catch (err) {
     console.error('[bulk-download]', err);
-    if (!res.headersSent) res.status(500).json({ error: 'Download failed' });
-  });
+    return res.status(500).json({ error: 'Could not produce download URL' });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

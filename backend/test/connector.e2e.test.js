@@ -118,7 +118,8 @@ test('GET /v1/me returns team identity + plan + events', async () => {
   const res = await call('GET', '/v1/me', { headers: KEY });
   assert.strictEqual(res.status, 200);
   assert.deepStrictEqual(await res.json(), {
-    teamId: 'team-1', name: 'Acme', plan: 'business', events: ['document.generated'],
+    teamId: 'team-1', name: 'Acme', plan: 'business',
+    events: ['document.generated', 'bulk.completed', 'bulk.failed'],
   });
 });
 

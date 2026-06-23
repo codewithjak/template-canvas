@@ -138,7 +138,17 @@ The system can now generate from a pure API call — but only when explicitly as
 
 ---
 
-## Step 2 — Evolving the job registry
+## Step 2 — Evolving the job registry  ✅ _built (S3-only, no-SDK, option A)_
+
+> **Implemented.** Artifacts now go to **S3** and the `bulk.completed` webhook
+> carries a presigned `downloadUrl` (option A). Details that differ from the
+> original sketch below: storage is **S3-only with no local fallback**; S3 is
+> reached **without the AWS SDK** (hand-rolled SigV4 in `storage/s3SigV4.js`,
+> verified against AWS's known-answer vector) using **static env credentials**;
+> the browser download endpoint **302-redirects** to a presigned URL (no CORS
+> needed); and the upload is **idempotent + resilient** — on failure it HEAD-checks
+> whether the object landed ("found ⇒ done") before retrying with backoff. Full
+> configuration is in **`S3_SETUP.md`**.
 
 ### Today
 Async jobs live in an **in-memory `Map`** (`backend/index.js:60`); the ZIP is
@@ -174,6 +184,18 @@ is not throwaway work.
 ### After
 A finished generation is a durable, addressable artifact with a stable URL, owned
 by a known team, regardless of who triggered it or how often it is fetched.
+
+### Delivery: option A (built) vs option B (documented, later)
+- **Option A — presigned URL in the payload (current).** `bulk.completed` carries
+  `downloadUrl` (a private-bucket, TLS-only, least-privilege, short-TTL presigned
+  GET). Convenient; the URL is a bearer link, bounded by `ARTIFACT_URL_TTL_SECONDS`.
+- **Option B — jobId only + authenticated callback (future).** The webhook would
+  carry just `jobId` (no URL); the consumer calls an authenticated
+  `GET /v1/jobs/:jobId/download` with their API key, and the server mints a fresh
+  presigned URL on the spot. No long-lived bearer link ever sits in a third
+  party's logs. **Drop-in:** reuses `storage/s3Store.downloadTarget` and the
+  existing API-key auth (`lib/apiAuth.requireApiTeam`); only the payload shape and
+  one new route change. Recommended for teams handling sensitive documents.
 
 ---
 
@@ -323,16 +345,16 @@ to a delivered document, with no MapDoc-built per-system integrations.
 
 ## Sequencing
 
-| Order | Step | Notes |
-|---|---|---|
-| 1 | `/v1/generate` (Step 1) | Unblocks everything; shippable as raw API value on its own |
-| 2 | Webhook tables + dispatcher (Step 3) | Needs only `team_id` on the job; can use temp-file URLs at first |
-| 3 | hooks / me endpoints (Step 4) | Trivial once Step 3 exists |
-| 4 | S3 artifact durability (Step 2) | Promote before real production traffic; temp URLs suffice for a demo |
-| 5 | Connector apps (Step 5) | Configuration over the endpoints above; Zapier first, then Make / n8n reuse the same backend |
+| Order | Step | Status | Notes |
+|---|---|---|---|
+| 1 | `/v1/generate` (Step 1) | ✅ built | Unblocks everything; shippable as raw API value on its own |
+| 2 | Webhook tables + dispatcher (Step 3) | ✅ built | Dispatcher, signing, retries, `webhook_deliveries` audit |
+| 3 | hooks / me endpoints (Step 4) | ✅ built | `/v1/me`, `/v1/hooks/*`, `/v1/events/sample` |
+| 4 | S3 artifact durability (Step 2) | ✅ built | S3-only, no-SDK SigV4, option-A presigned URLs (`S3_SETUP.md`) |
+| 5 | Connector apps (Step 5) | ⏳ external | Configuration in Zapier/Make/n8n over the endpoints above |
 
-Only **Step 2** touches existing behavior (the job-registry assumptions). Steps 1,
-3, and 4 are purely additive.
+Step 2 was the only one to touch existing behavior (the job-registry assumptions);
+Steps 1, 3, and 4 were purely additive.
 
 ## Open decisions
 

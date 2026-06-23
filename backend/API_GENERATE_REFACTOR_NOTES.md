@@ -65,9 +65,21 @@ browser builds at `src/.../TemplateCanvas.tsx` (`exportPages`) +
 `buildRowIr`, the renderers) is **already shared** — only the ~30-line *reshaping
 contract* is now stated in two places.
 
-This is unavoidable for a headless API (there is no browser to assemble in the
-Zapier flow). The optional way to remove even the small duplication is to route the
-browser's **saved-template** exports through the server assembler too (browser sends
-`templateId` + any unsaved edits; server assembles). That changes the existing
-browser generate flow and is a deliberate later step ("move assembly server-side"),
-**not** part of Step 1.
+6. **Test Supabase fakes (cosmetic)** — each e2e test file defines its own
+   in-memory Supabase query-builder. Extract one `test/helpers/fakeSupabase.js`
+   (the stateful builder in `connector.e2e` / `v1-ingest.e2e` is the most capable)
+   and reuse it.
+
+7. ~~**Job registry → durable + team-aware (Step 2)**~~ — **done.** `backend/index.js`
+   now stamps `team_id`/`source` on async jobs, uploads the artifact to S3
+   (`storage/artifactStore` → `s3Store`, no-SDK SigV4), no longer deletes on
+   download (redirects to a presigned URL), and fires `bulk.completed` /
+   `bulk.failed` from the async completion site. See `S3_SETUP.md`.
+
+8. **Unify browser ↔ API assembly (separate decision)** — `lib/templateAssembly.js`
+   restates the ~30-line payload-shaping the frontend does
+   (`TemplateCanvas.tsx` `exportPages` + `dataSourceService.generatePayload`). The
+   engine (`normalisePayload`, renderers) is already shared. Removing the small
+   remaining duplication means routing the browser's **saved-template** exports
+   through the server assembler — a deliberate "move assembly server-side" step
+   that changes the existing browser flow. Not Step 2; its own decision.

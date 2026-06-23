@@ -17,22 +17,17 @@
  * WEBHOOK_CONNECTOR_ARCHITECTURE.md, Step 3.
  */
 
-const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
 const { getAdmin } = require('../supabaseAdmin');
 const { guardedLookup } = require('./ssrfGuard');
+const { sign, now } = require('./signature');
 
 const MAX_ATTEMPTS  = 3;
 const TIMEOUT_MS    = 10000;
 const BACKOFF_MS    = [1000, 3000]; // waits between attempts 1→2 and 2→3
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-/** HMAC-SHA256 of the raw body, formatted like Stripe/GitHub: "sha256=<hex>". */
-function signBody(secret, body) {
-  return 'sha256=' + crypto.createHmac('sha256', secret).update(body).digest('hex');
-}
 
 /** Active endpoints for a team that subscribed to `event`. Never throws → []. */
 async function loadSubscribers(sb, teamId, event) {
@@ -119,12 +114,15 @@ const isOk = (status) => status != null && status >= 200 && status < 300;
  * backoff, updating the audit row as it goes. Resolves when done; never throws.
  */
 async function deliver(sb, endpoint, event, payload) {
-  const body      = JSON.stringify(payload);
+  const body       = JSON.stringify(payload);
+  const timestamp  = now();
   const deliveryId = await openDelivery(sb, endpoint.id, event, payload);
-  const headers   = {
+  const headers    = {
     'Content-Type':       'application/json',
     'X-MapDoc-Event':     event,
-    'X-MapDoc-Signature': signBody(endpoint.secret, body),
+    'X-MapDoc-Timestamp': timestamp,
+    // Signature covers "<timestamp>.<body>" → receivers reject stale/replayed deliveries.
+    'X-MapDoc-Signature': sign(endpoint.secret, timestamp, body),
     // Stable per-delivery id → receivers can dedupe (idempotency key).
     'X-MapDoc-Delivery':  deliveryId || '',
   };
@@ -174,4 +172,4 @@ async function dispatchWebhook(teamId, event, payload) {
 
 // `deliverToEndpoint` is the single-endpoint delivery (records a fresh attempt
 // row). Exposed for manual redelivery (routes/webhooks.js).
-module.exports = { dispatchWebhook, signBody, deliverToEndpoint: deliver };
+module.exports = { dispatchWebhook, deliverToEndpoint: deliver };

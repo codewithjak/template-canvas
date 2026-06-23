@@ -246,12 +246,20 @@ A new module `backend/webhooks/dispatch.js` exposing
 
 1. Load the team's `active` endpoints subscribed to `event`.
 2. Write a `pending` `webhook_deliveries` row per endpoint.
-3. **Sign the body**: `X-MapDoc-Signature: sha256=<hmac(secret, rawBody)>`, plus
-   `X-MapDoc-Event` and a unique delivery id. HMAC proves the call came from MapDoc
-   (the Stripe/Shopify scheme); the delivery id doubles as an **idempotency key** so
-   receivers can dedupe.
+3. **Sign with replay protection** (`backend/webhooks/signature.js`): each delivery
+   carries `X-MapDoc-Timestamp: <unix seconds>` and
+   `X-MapDoc-Signature: sha256=<hmac(secret, "<timestamp>.<rawBody>")>` — the
+   timestamp is *inside* the signed string, so a captured request can't be replayed
+   later. Plus `X-MapDoc-Event` and a unique `X-MapDoc-Delivery` id (an
+   **idempotency key** for dedupe).
 4. POST. On non-2xx / timeout, **retry with exponential backoff** (e.g. 3 attempts);
    mark `dead` after the last failure.
+
+#### Verifying a delivery (for receivers)
+Recompute `sha256=HMAC(secret, "<X-MapDoc-Timestamp>.<rawBody>")`, compare in
+constant time, **and** reject if `X-MapDoc-Timestamp` is outside a tolerance window
+(default 5 min). The shipped `signature.verify(secret, timestamp, body, signature,
+toleranceSec)` does exactly this; external consumers re-implement the same check.
 
 ### Change — wiring
 One line at each existing completion site:

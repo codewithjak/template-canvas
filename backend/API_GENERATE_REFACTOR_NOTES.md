@@ -27,13 +27,15 @@ Until then, if you change the original in any item below, mirror it in
 - **Risk if it drifts:** the API path could under-/over-enforce caps relative to the
   browser path.
 
-## 2. API-key auth sequence
+## 2. API-key auth sequence  — _partly done_
 
-- **Original:** inline at the top of `/v1/ingest` in `routes/teamApi.js`
-  (extract key → `resolveTeamFromApiKey` → `planAllows('api')` → `getAdmin`).
-- **Restated as:** `requireApiTeam(req)` in `apiGenerate.js`.
-- **Consolidation:** export a single `requireApiTeam` (e.g. from `apiKeys.js`) and
-  use it in both `/v1/ingest` and `/v1/generate`.
+- **Now shared:** `requireApiTeam` / `httpError` / `sendError` live in
+  `backend/lib/apiAuth.js` and are used by both `/v1/generate` and `/v1/webhooks`.
+- **Still inlined:** the app's own `/v1/ingest` in `routes/teamApi.js` repeats the
+  same sequence (extract key → `resolveTeamFromApiKey` → `planAllows('api')` →
+  `getAdmin`).
+- **Remaining consolidation:** point `/v1/ingest` at `lib/apiAuth.requireApiTeam`
+  too. (Deferred only because it edits the pre-existing route.)
 
 ## 3. Template + bindings loaders
 

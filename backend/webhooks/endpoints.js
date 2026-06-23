@@ -48,4 +48,51 @@ async function deleteEndpoint(sb, teamId, id) {
   return Array.isArray(data) && data.length > 0;
 }
 
-module.exports = { generateSecret, createEndpoint, deleteEndpoint };
+/**
+ * Fetch one of a team's endpoints (including `secret`, for signing a test ping).
+ * Tenant-scoped; returns the row or null. Callers must not leak `secret`.
+ */
+async function getEndpoint(sb, teamId, id) {
+  const { data } = await sb
+    .from('webhook_endpoints')
+    .select('id, team_id, url, secret, events, active, created_at')
+    .eq('id', id)
+    .eq('team_id', teamId)
+    .maybeSingle();
+  return data || null;
+}
+
+/**
+ * Mint a new signing secret for an endpoint. Returns the new secret (surface it
+ * once), or null when the endpoint isn't found for the team.
+ */
+async function rotateSecret(sb, teamId, id) {
+  const secret = generateSecret();
+  const { data, error } = await sb
+    .from('webhook_endpoints')
+    .update({ secret })
+    .eq('id', id)
+    .eq('team_id', teamId)
+    .select('id');
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0 ? secret : null;
+}
+
+/**
+ * Pause/resume an endpoint by toggling `active` (dispatch only loads active
+ * ones). Returns the updated public row, or null when not found for the team.
+ */
+async function setActive(sb, teamId, id, active) {
+  const { data, error } = await sb
+    .from('webhook_endpoints')
+    .update({ active })
+    .eq('id', id)
+    .eq('team_id', teamId)
+    .select('id, url, events, active, created_at');
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0 ? data[0] : null;
+}
+
+module.exports = {
+  generateSecret, createEndpoint, deleteEndpoint, getEndpoint, rotateSecret, setActive,
+};

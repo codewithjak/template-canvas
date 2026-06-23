@@ -20,7 +20,7 @@ const express = require('express');
 
 const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
 const { KNOWN_EVENTS } = require('../webhooks/events');
-const { createEndpoint, deleteEndpoint } = require('../webhooks/endpoints');
+const { createEndpoint, deleteEndpoint, getEndpoint, rotateSecret, setActive } = require('../webhooks/endpoints');
 const { assertPublicUrl } = require('../webhooks/ssrfGuard');
 const { listDeliveries, getDeliveryForTeam, DELIVERY_STATUSES } = require('../webhooks/deliveries');
 const { deliverToEndpoint } = require('../webhooks/dispatch');
@@ -94,6 +94,56 @@ router.delete('/v1/webhooks/:id', async (req, res) => {
     return res.json({ ok: true, id: req.params.id });
   } catch (err) {
     return sendError(res, '[v1/webhooks:delete]', err);
+  }
+});
+
+// ── PATCH /v1/webhooks/:id ────────────────────────────────────────────────────
+// Pause/resume an endpoint. Body: { active: boolean }. A paused endpoint is
+// skipped by dispatch but can still be ping-tested.
+router.patch('/v1/webhooks/:id', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireApiTeam(req);
+    const active = req.body && req.body.active;
+    if (typeof active !== 'boolean') throw httpError(400, '"active" (boolean) is required.');
+    const updated = await setActive(sb, teamId, req.params.id, active);
+    if (!updated) throw httpError(404, 'Webhook endpoint not found.');
+    return res.json(publicEndpoint(updated));
+  } catch (err) {
+    return sendError(res, '[v1/webhooks:update]', err);
+  }
+});
+
+// ── POST /v1/webhooks/:id/rotate-secret ───────────────────────────────────────
+// Mint a new signing secret. Returned ONCE; the old secret stops working.
+router.post('/v1/webhooks/:id/rotate-secret', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireApiTeam(req);
+    const secret = await rotateSecret(sb, teamId, req.params.id);
+    if (!secret) throw httpError(404, 'Webhook endpoint not found.');
+    return res.json({ id: req.params.id, secret });
+  } catch (err) {
+    return sendError(res, '[v1/webhooks:rotate]', err);
+  }
+});
+
+// ── POST /v1/webhooks/:id/ping ────────────────────────────────────────────────
+// Send a signed `webhook.test` event to verify connectivity. Works on paused
+// endpoints too; the attempt is recorded in the delivery log like any other.
+router.post('/v1/webhooks/:id/ping', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireApiTeam(req);
+    const endpoint = await getEndpoint(sb, teamId, req.params.id);
+    if (!endpoint) throw httpError(404, 'Webhook endpoint not found.');
+    await deliverToEndpoint(sb, endpoint, 'webhook.test', {
+      event:     'webhook.test',
+      teamId,
+      endpointId: endpoint.id,
+      message:   'MapDoc webhook test event',
+      createdAt: new Date().toISOString(),
+    });
+    return res.json({ ok: true });
+  } catch (err) {
+    return sendError(res, '[v1/webhooks:ping]', err);
   }
 });
 

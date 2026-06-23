@@ -96,8 +96,12 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  return sendJson<T>('POST', path, body);
+}
+
+async function sendJson<T>(method: 'POST' | 'PATCH' | 'DELETE', path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    method:  'POST',
+    method,
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body:    body ? JSON.stringify(body) : undefined,
   });
@@ -162,6 +166,82 @@ export async function lookupInvite(token: string): Promise<InviteInfo> {
 /** Accept an invite as the signed-in user; joins the team + makes it active. */
 export async function acceptInvite(token: string): Promise<{ ok: boolean; teamId: string }> {
   return postJson('/v1/invites/accept', { token });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Outbound webhooks (JWT-authed via requireTeam on the backend)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Events a webhook endpoint can subscribe to. Keep in sync with webhooks/events.js. */
+export const WEBHOOK_EVENTS = ['document.generated', 'bulk.completed', 'bulk.failed'] as const;
+export type WebhookEvent = typeof WEBHOOK_EVENTS[number];
+
+export interface WebhookEndpoint {
+  id:         string;
+  url:        string;
+  events:     string[];
+  active:     boolean;
+  created_at: string;
+}
+
+/** Create/rotate responses include the signing secret — shown to the user ONCE. */
+export interface WebhookSecret { id: string; secret: string }
+
+export interface WebhookDelivery {
+  id:              string;
+  endpoint_id:     string;
+  event:           string;
+  status:          'pending' | 'success' | 'failed' | 'dead';
+  attempts:        number;
+  response_code:   number | null;
+  last_attempt_at: string | null;
+  created_at:      string;
+  payload:         unknown;
+}
+
+export async function listWebhooks(): Promise<WebhookEndpoint[]> {
+  const { endpoints } = await getJson<{ endpoints: WebhookEndpoint[] }>('/v1/webhooks');
+  return endpoints;
+}
+
+/** Register an endpoint. Returns the row plus the secret (shown once). */
+export async function createWebhook(url: string, events: string[]): Promise<WebhookEndpoint & { secret: string }> {
+  return postJson('/v1/webhooks', { url, events });
+}
+
+export async function deleteWebhook(id: string): Promise<void> {
+  await sendJson('DELETE', `/v1/webhooks/${encodeURIComponent(id)}`);
+}
+
+export async function setWebhookActive(id: string, active: boolean): Promise<WebhookEndpoint> {
+  return sendJson('PATCH', `/v1/webhooks/${encodeURIComponent(id)}`, { active });
+}
+
+/** Mint a new signing secret (returned once); the old one stops working. */
+export async function rotateWebhookSecret(id: string): Promise<WebhookSecret> {
+  return postJson(`/v1/webhooks/${encodeURIComponent(id)}/rotate-secret`);
+}
+
+/** Send a signed `webhook.test` event to verify the endpoint works. */
+export async function pingWebhook(id: string): Promise<void> {
+  await postJson(`/v1/webhooks/${encodeURIComponent(id)}/ping`);
+}
+
+export async function listWebhookDeliveries(
+  opts: { endpointId?: string; status?: string; limit?: number } = {},
+): Promise<WebhookDelivery[]> {
+  const q = new URLSearchParams();
+  if (opts.endpointId) q.set('endpointId', opts.endpointId);
+  if (opts.status)     q.set('status', opts.status);
+  if (opts.limit)      q.set('limit', String(opts.limit));
+  const suffix = q.toString() ? `?${q}` : '';
+  const { deliveries } = await getJson<{ deliveries: WebhookDelivery[] }>(`/v1/webhooks/deliveries${suffix}`);
+  return deliveries;
+}
+
+/** Re-attempt a past delivery (e.g. a dead-lettered one). */
+export async function redeliverWebhook(deliveryId: string): Promise<void> {
+  await postJson(`/v1/webhooks/deliveries/${encodeURIComponent(deliveryId)}/redeliver`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

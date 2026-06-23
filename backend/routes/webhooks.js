@@ -3,22 +3,26 @@
 /**
  * routes/webhooks.js
  *
- * Manage a team's outbound webhook endpoints (API-key authed):
+ * Manage a team's outbound webhook endpoints. Dual-authed via `requireTeam`:
+ * the signed-in user (Supabase JWT, from the settings UI) OR a tc_live API key
+ * (curl / external callers). Both require the Business `api` capability.
  *
- *   POST   /v1/webhooks        register an endpoint  → returns the secret ONCE
- *   GET    /v1/webhooks        list endpoints        → never returns secrets
- *   DELETE /v1/webhooks/:id    remove an endpoint
+ *   POST   /v1/webhooks            register an endpoint → returns the secret ONCE
+ *   GET    /v1/webhooks            list endpoints       → never returns secrets
+ *   PATCH  /v1/webhooks/:id        pause/resume (active)
+ *   DELETE /v1/webhooks/:id        remove an endpoint
+ *   POST   /v1/webhooks/:id/rotate-secret | /ping
+ *   GET    /v1/webhooks/deliveries           audit log
+ *   POST   /v1/webhooks/deliveries/:id/redeliver
  *
- * These rows are what webhooks/dispatch.js delivers to. Connector platforms
- * (Zapier REST Hooks, Step 4) ultimately call the same create/delete on the
- * user's behalf; this generic management surface also serves direct callers.
+ * These rows are what webhooks/dispatch.js delivers to.
  *
  * Mounted by index.js (one additive `app.use` line).
  */
 
 const express = require('express');
 
-const { httpError, sendError, requireApiTeam } = require('../lib/apiAuth');
+const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const { KNOWN_EVENTS } = require('../webhooks/events');
 const { createEndpoint, deleteEndpoint, getEndpoint, rotateSecret, setActive } = require('../webhooks/endpoints');
 const { assertPublicUrl } = require('../webhooks/ssrfGuard');
@@ -57,7 +61,7 @@ function publicEndpoint(row) {
 // ── POST /v1/webhooks ─────────────────────────────────────────────────────────
 router.post('/v1/webhooks', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const { url, events } = parseEndpointInput(req.body);
 
     const { endpoint, secret } = await createEndpoint(sb, { teamId, url, events, source: 'manual' });
@@ -72,7 +76,7 @@ router.post('/v1/webhooks', async (req, res) => {
 // ── GET /v1/webhooks ────────────────────────────────────────────────────────────
 router.get('/v1/webhooks', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const { data, error } = await sb
       .from('webhook_endpoints')
       .select('id, url, events, active, created_at')
@@ -88,7 +92,7 @@ router.get('/v1/webhooks', async (req, res) => {
 // ── DELETE /v1/webhooks/:id ───────────────────────────────────────────────────
 router.delete('/v1/webhooks/:id', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const removed = await deleteEndpoint(sb, teamId, req.params.id);
     if (!removed) throw httpError(404, 'Webhook endpoint not found.');
     return res.json({ ok: true, id: req.params.id });
@@ -102,7 +106,7 @@ router.delete('/v1/webhooks/:id', async (req, res) => {
 // skipped by dispatch but can still be ping-tested.
 router.patch('/v1/webhooks/:id', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const active = req.body && req.body.active;
     if (typeof active !== 'boolean') throw httpError(400, '"active" (boolean) is required.');
     const updated = await setActive(sb, teamId, req.params.id, active);
@@ -117,7 +121,7 @@ router.patch('/v1/webhooks/:id', async (req, res) => {
 // Mint a new signing secret. Returned ONCE; the old secret stops working.
 router.post('/v1/webhooks/:id/rotate-secret', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const secret = await rotateSecret(sb, teamId, req.params.id);
     if (!secret) throw httpError(404, 'Webhook endpoint not found.');
     return res.json({ id: req.params.id, secret });
@@ -131,7 +135,7 @@ router.post('/v1/webhooks/:id/rotate-secret', async (req, res) => {
 // endpoints too; the attempt is recorded in the delivery log like any other.
 router.post('/v1/webhooks/:id/ping', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const endpoint = await getEndpoint(sb, teamId, req.params.id);
     if (!endpoint) throw httpError(404, 'Webhook endpoint not found.');
     await deliverToEndpoint(sb, endpoint, 'webhook.test', {
@@ -152,7 +156,7 @@ router.post('/v1/webhooks/:id/ping', async (req, res) => {
 // ?endpointId=… and/or ?status=pending|success|failed|dead, ?limit=… (≤200).
 router.get('/v1/webhooks/deliveries', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const { endpointId, status, limit } = req.query;
     if (status && !DELIVERY_STATUSES.includes(status)) {
       throw httpError(400, `Unknown status. Known: ${DELIVERY_STATUSES.join(', ')}.`);
@@ -169,7 +173,7 @@ router.get('/v1/webhooks/deliveries', async (req, res) => {
 // row against the same endpoint; returns once the attempt completes.
 router.post('/v1/webhooks/deliveries/:id/redeliver', async (req, res) => {
   try {
-    const { teamId, sb } = await requireApiTeam(req);
+    const { teamId, sb } = await requireTeam(req);
     const found = await getDeliveryForTeam(sb, teamId, req.params.id);
     if (!found) throw httpError(404, 'Delivery not found.');
     await deliverToEndpoint(sb, found.endpoint, found.delivery.event, found.delivery.payload);

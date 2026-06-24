@@ -137,6 +137,16 @@ h1, h2, h3 { margin: 0; }
 .btn--sm { min-height: 36px; padding: 0.45rem 1rem; font-size: 0.875rem; }
 .btn--lg { min-height: 52px; padding: 0.85rem 1.75rem; font-size: 1rem; }
 
+.btn--danger {
+  background: transparent;
+  color: #dc2626;
+  border: 1.5px solid #fecaca;
+}
+.btn--danger:hover { border-color: #dc2626; background: #fef2f2; color: #dc2626; }
+
+.btn:disabled { opacity: 0.55; cursor: default; }
+.btn:disabled:hover { transform: none; box-shadow: none; }
+
 /* ── Eyebrow ───────────────────────────────────────────────── */
 .eyebrow {
   display: inline-flex;

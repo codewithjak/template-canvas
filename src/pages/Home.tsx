@@ -87,6 +87,14 @@ const Icon = {
       <path d="M13 9.5 16.5 13 13 16.5 9.5 13 13 9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
     </svg>
   ),
+  Integrations: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="5" cy="5" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <circle cx="15" cy="5" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <circle cx="10" cy="15" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M6.7 6.6 9 13M13.3 6.6 11 13M7.2 5h5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
 }
 
 /* ── Product mockup ───────────────────────────────────────── */
@@ -266,7 +274,7 @@ export default function Home() {
           <div className="steps">
             {[
               { label: 'Design',  title: 'Build your design',   body: 'Drag and drop text, tables, images, barcodes, QR codes, and shapes onto the canvas to lay out whatever you’re making — no code required.' },
-              { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, or connect an API. Mapdoc auto-detects fields and relationships and maps them into your design.' },
+              { label: 'Map data', title: 'Connect your data',   body: 'Upload a CSV or Excel file, connect an API, or push data straight from your own tools. Mapdoc auto-detects fields and relationships and maps them into your design.' },
               { label: 'Generate', title: 'Produce at scale',    body: 'Make one polished file or bulk-generate hundreds of personalised outputs — exported as print-ready PDF, PNG/JPG/JPEG image, or ZPL in a single click.' },
             ].map(({ label, title, body }, i) => (
               <article className="step-card feat-card feat-card--dark" key={title}>
@@ -297,6 +305,7 @@ export default function Home() {
               { Icon: Icon.Bolt,     title: 'Bulk generation',      body: 'Turn one template and a dataset into hundreds of personalised documents in a single run.' },
               { Icon: Icon.Export,   title: 'PDF, image & ZPL export', body: 'One-click, print-ready PDFs, high-resolution PNG, JPG, and JPEG images, or ZPL output for thermal and label printers.' },
               { Icon: Icon.Email,    title: 'Email delivery',       body: 'Send a generated document straight from Mapdoc — export to PDF and email it to recipients without leaving the canvas.' },
+              { Icon: Icon.Integrations, title: 'Webhooks & integrations', body: 'Connect Mapdoc to the tools you already run. Trigger generation from any system via the API, and get a signed webhook when documents are ready — wire it to Zapier, n8n, Make, or your own backend, no custom code per app.' },
               { Icon: Icon.Shield,   title: 'Multi-page layouts',   body: 'Multiple pages, custom page sizes, page breaks, and page numbers — with a live, real-time preview.' },
               { Icon: Icon.Template, title: 'Built-in template library', body: 'Start from ready-made, industry-specific designs — invoices, labels, logistics docs and more — that open as editable copies.' },
               { Icon: Icon.Team,     title: 'Team workspaces',      body: 'Shared template libraries, invites, and role-based team access, so your whole org works from the same source.' },

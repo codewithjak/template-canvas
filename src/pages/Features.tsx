@@ -72,6 +72,14 @@ const Icons = {
       <path d="M13 9.5 16.5 13 13 16.5 9.5 13 13 9.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
     </svg>
   ),
+  Integrations: () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <circle cx="5" cy="5" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <circle cx="15" cy="5" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <circle cx="10" cy="15" r="2.2" stroke="currentColor" strokeWidth="1.6"/>
+      <path d="M6.7 6.6 9 13M13.3 6.6 11 13M7.2 5h5.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  ),
 }
 
 const features = [
@@ -104,6 +112,11 @@ const features = [
     Icon: Icons.Export,
     title: 'Email delivery',
     body: 'Send a generated document straight from Mapdoc — export to PDF and email it to recipients without leaving the canvas.',
+  },
+  {
+    Icon: Icons.Integrations,
+    title: 'Webhooks & integrations',
+    body: 'Put Mapdoc inside your workflow. Trigger generation from any system through the API, and receive a signed webhook the moment documents are ready — connect Zapier, n8n, Make, or your own backend without building a separate integration for each tool.',
   },
   {
     Icon: Icons.Eye,
@@ -356,6 +369,7 @@ function FeatureHighlight() {
           { icon: '📄', label: 'PDF, image & ZPL export', status: 'live'     },
           { icon: '👥', label: 'Team workspaces',        status: 'live'     },
           { icon: '✨', label: 'AI rebuild from PDF',     status: 'live'     },
+          { icon: '🔗', label: 'Webhooks & integrations', status: 'live'     },
           { icon: '◈',  label: 'UI component export',    status: 'soon'     },
         ].map(({ icon, label, status }) => {
           const accent = {

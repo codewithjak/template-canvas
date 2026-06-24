@@ -56,6 +56,34 @@
   cursor: pointer;
 }
 .admin__btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin__btn--ghost { background: #fff; color: #334155; border: 1px solid #cbd5e1; }
+.admin__btn--danger { background: #dc2626; }
+
+/* Actions + activity + soft-delete */
+.admin__actions { display: flex; gap: 10px; white-space: nowrap; }
+.admin__linkbtn { border: none; background: none; padding: 0; font-size: 13px; font-weight: 600; color: #2f6df6; cursor: pointer; }
+.admin__linkbtn:hover { text-decoration: underline; }
+.admin__linkbtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin__linkbtn--danger { color: #dc2626; }
+
+.admin__row--deleted td { opacity: 0.55; }
+.admin__badge { display: inline-block; margin-left: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; border-radius: 999px; padding: 2px 7px; }
+.admin__badge--deleted { background: #fef2f2; color: #dc2626; }
+
+.admin__drawerrow td { background: #f8fafc; }
+.admin__drawer { padding: 12px 4px; }
+.admin__chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.admin__chip { font-size: 12px; color: #475569; background: #fff; border: 1px solid #e5e9f1; border-radius: 999px; padding: 3px 10px; }
+.admin__timeline { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; }
+.admin__event { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #334155; padding: 5px 0; border-bottom: 1px solid #eef1f6; }
+.admin__event-type { font-weight: 600; }
+
+/* Confirm modal */
+.admin__overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.admin__modal { background: #fff; border-radius: 14px; padding: 24px; width: 440px; max-width: calc(100vw - 32px); box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25); }
+.admin__modal-title { margin: 0 0 8px; font-size: 18px; font-weight: 700; color: #0f172a; }
+.admin__modal-text { margin: 0 0 14px; font-size: 13px; color: #475569; line-height: 1.5; }
+.admin__modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 
 .admin__notice {
   background: #e6f6ec;

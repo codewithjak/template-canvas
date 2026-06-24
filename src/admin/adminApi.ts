@@ -16,9 +16,18 @@ export interface AdminUser {
   teamName: string | null
   plan: string
   role: string | null
+  deleted: boolean
+  deletedAt: string | null
 }
 
 export type PlanId = 'free' | 'pro' | 'business'
+
+export interface AdminActivity {
+  user: { id: string; email: string; name: string | null; createdAt: string; deleted: boolean; deletedAt: string | null }
+  team: { id: string | null; name: string | null; plan: string; role: string | null } | null
+  summary: { counts: Record<string, number>; templateCount: number; lastActiveAt: string | null }
+  events: { event_type: string; metadata: Record<string, unknown> | null; created_at: string }[]
+}
 
 async function parseError(res: Response, fallback: string): Promise<string> {
   try {
@@ -57,4 +66,30 @@ export async function setUserPlan(
   })
   if (!res.ok) throw new Error(await parseError(res, 'Could not set plan.'))
   return res.json()
+}
+
+/** A member's activity timeline + summary. */
+export async function fetchUserActivity(id: string): Promise<AdminActivity> {
+  const res = await fetch(`${API_BASE}/v1/admin/users/${encodeURIComponent(id)}/activity`, { headers: await authHeaders() })
+  if (!res.ok) throw new Error(await parseError(res, 'Could not load activity.'))
+  return res.json()
+}
+
+/** Soft-delete a member (record retained; account locked out). */
+export async function softDeleteUser(id: string): Promise<{ deletedTeams: string[] }> {
+  const res = await fetch(`${API_BASE}/v1/admin/users/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) throw new Error(await parseError(res, 'Could not delete member.'))
+  return res.json()
+}
+
+/** Undo a soft-delete. */
+export async function restoreUser(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/v1/admin/users/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+    headers: await authHeaders(),
+  })
+  if (!res.ok) throw new Error(await parseError(res, 'Could not restore member.'))
 }

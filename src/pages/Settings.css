@@ -1,0 +1,149 @@
+/**
+ * src/pages/Settings.css
+ *
+ * Settings surface styling, built on the app's canonical design tokens
+ * (src/index.css): slate text ramp, accent #2355f4, elevation shadows, and the
+ * shared button geometry. Replaces the page's old flat inline styles so it
+ * matches the editor + marketing surfaces.
+ */
+
+.settings {
+  min-height: 100vh;
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+.settings__bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: color-mix(in srgb, var(--color-background-primary) 88%, transparent);
+  backdrop-filter: saturate(140%) blur(8px);
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+.settings__title { font-size: 18px; font-weight: 700; margin: 0; }
+.settings__main { max-width: 760px; margin: 0 auto; padding: 28px 24px 64px; }
+.settings__muted { color: var(--color-text-muted); font-size: 14px; }
+
+/* ── Card ────────────────────────────────────────────────────────────── */
+.scard {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-pop);
+}
+.scard__head { margin-bottom: 18px; }
+.scard__title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 16px; font-weight: 700; margin: 0;
+}
+.scard__icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 9px;
+  background: var(--color-accent-bg); color: var(--color-accent);
+}
+.scard__sub { font-size: 13px; color: var(--color-text-muted); margin: 7px 0 0; }
+
+/* Buttons come from the app's canonical .btn system in App.css
+   (.btn / .btn--primary / .btn--ghost / .btn--danger / .btn--sm) — do not
+   redefine .btn here, or it would diverge from the rest of the app. */
+
+/* ── Inputs / selects ────────────────────────────────────────────────── */
+.field {
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--btn-radius);
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: var(--color-background-primary);
+  transition: var(--btn-transition);
+}
+.field:focus { outline: none; border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-ring); }
+.field--grow { flex: 1; min-width: 0; }
+
+/* ── Badges & chips ──────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 9px;
+}
+.badge--success { background: var(--color-success-bg); color: var(--color-success-hover); }
+.badge--muted   { background: var(--color-background-tertiary); color: var(--color-text-muted); }
+.badge--danger  { background: var(--color-danger-bg); color: var(--color-danger); }
+.badge--warn    { background: #fffbeb; color: #b45309; }
+.chip { display: inline-flex; font-size: 11px; font-weight: 600; color: var(--color-text-secondary); background: var(--color-background-tertiary); border-radius: 999px; padding: 2px 9px; }
+
+/* ── Layout helpers ──────────────────────────────────────────────────── */
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.smeta { font-size: 12px; color: var(--color-text-tertiary); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--color-text-primary); }
+.alert--danger { background: var(--color-danger-bg); color: var(--color-danger-hover); padding: 11px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+
+/* ── Notice / secret reveal ──────────────────────────────────────────── */
+.notice { border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+.notice--success { background: var(--color-success-bg); border: 1px solid var(--color-success-border); }
+.notice__label { font-size: 12px; font-weight: 600; color: var(--color-success-hover); margin-bottom: 8px; }
+.copyrow { display: flex; gap: 8px; }
+.copyrow code { flex: 1; font-size: 12px; background: var(--color-background-primary); border: 1px solid var(--color-success-border); border-radius: 7px; padding: 8px 10px; word-break: break-all; }
+
+/* ── Usage bars ──────────────────────────────────────────────────────── */
+.usage { margin-bottom: 14px; }
+.usage__head { display: flex; justify-content: space-between; font-size: 13px; color: var(--color-text-secondary); margin-bottom: 6px; }
+.usage__value { font-weight: 600; color: var(--color-text-primary); }
+.usage__value--over { color: var(--color-danger); }
+.usage__track { height: 8px; border-radius: 999px; background: var(--color-canvas); overflow: hidden; }
+.usage__fill { height: 100%; background: var(--color-accent); transition: width .25s ease; }
+.usage__fill--over { background: var(--color-danger); }
+
+/* ── Lists (team members / invites) ──────────────────────────────────── */
+.list__row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--color-background-tertiary); }
+.list__row:last-child { border-bottom: none; }
+.list__name { font-size: 14px; }
+.list__sub { font-size: 12px; color: var(--color-text-tertiary); margin-top: 2px; }
+
+/* ── Code block (curl sample) ────────────────────────────────────────── */
+.codeblock { background: #0b1220; color: #e2e8f0; border-radius: 12px; padding: 16px; font-size: 12px; line-height: 1.6; overflow-x: auto; margin: 0; }
+
+/* ── Segmented control (no-code presets) ─────────────────────────────── */
+.seg { display: inline-flex; gap: 4px; background: var(--color-background-tertiary); padding: 4px; border-radius: 11px; flex-wrap: wrap; }
+.seg__btn { border: none; background: transparent; padding: 6px 13px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; transition: var(--btn-transition); }
+.seg__btn--active { background: var(--color-background-primary); color: var(--color-accent); box-shadow: var(--shadow-pop); }
+
+/* ── Webhooks ────────────────────────────────────────────────────────── */
+.wh-form { border: 1px solid var(--color-border-tertiary); border-radius: 14px; padding: 16px; margin-bottom: 18px; background: var(--color-background-secondary); }
+.wh-events { display: grid; gap: 10px; }
+.wh-event { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; color: var(--color-text-secondary); cursor: pointer; }
+.wh-event input { margin-top: 3px; flex: none; }
+.wh-event__desc { font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+.wh-item { border: 1px solid var(--color-border-tertiary); border-radius: 12px; padding: 14px; }
+
+/* ── In-app guidance ─────────────────────────────────────────────────── */
+.wh-guide { border: 1px solid var(--color-border-tertiary); border-radius: 12px; background: var(--color-background-secondary); margin-bottom: 16px; }
+.wh-guide > summary { cursor: pointer; list-style: none; padding: 12px 14px; font-size: 13px; font-weight: 600; color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px; }
+.wh-guide > summary::-webkit-details-marker { display: none; }
+.wh-guide > summary::after { content: '⌄'; margin-left: auto; color: var(--color-text-tertiary); }
+.wh-guide[open] > summary::after { content: '⌃'; }
+.wh-guide__body { padding: 2px 14px 14px; }
+.wh-steps { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 10px; }
+.wh-steps li { display: flex; gap: 10px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+.wh-steps .n { flex: none; width: 22px; height: 22px; border-radius: 999px; background: var(--color-accent-bg); color: var(--color-accent-strong); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+
+.wh-empty { border: 1px dashed var(--color-border-secondary); border-radius: 12px; padding: 18px; background: var(--color-background-secondary); }
+.wh-empty__title { font-size: 14px; font-weight: 600; color: var(--color-text-primary); margin-bottom: 12px; }
+
+/* Click "?" info popover */
+.help { position: relative; display: inline-flex; vertical-align: middle; }
+.help__btn { width: 16px; height: 16px; border-radius: 999px; border: 1px solid var(--color-border-primary); background: var(--color-background-primary); color: var(--color-text-muted); font-size: 11px; font-weight: 700; line-height: 1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.help__btn:hover { color: var(--color-accent); border-color: var(--color-accent-border); }
+.help__pop { position: absolute; top: 22px; left: 0; z-index: 30; width: 260px; background: var(--color-background-primary); border: 1px solid var(--color-border-tertiary); border-radius: 10px; box-shadow: var(--shadow-pop); padding: 11px 13px; font-size: 12px; line-height: 1.5; color: var(--color-text-secondary); font-weight: 400; white-space: normal; }
+.help__pop code { font-size: 11px; background: var(--color-background-tertiary); border-radius: 4px; padding: 1px 4px; }
+.wh-item + .wh-item { margin-top: 12px; }
+.wh-actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+.wh-deliveries { margin-top: 12px; border-top: 1px dashed var(--color-border-tertiary); padding-top: 10px; display: flex; flex-direction: column; gap: 7px; }
+.wh-delivery { display: flex; align-items: center; gap: 10px; font-size: 12px; }

@@ -29,7 +29,7 @@ async function listAllUsers() {
 
   const { data: profiles, error } = await sb
     .from('profiles')
-    .select('id, email, name, created_at, memberships(team_id, role, teams(name, plan))')
+    .select('id, email, name, created_at, deleted, deleted_at, memberships(team_id, role, teams(name, plan))')
     .order('created_at', { ascending: false });
   if (error) throw error;
 
@@ -45,6 +45,8 @@ async function listAllUsers() {
       teamName: primary?.teams?.name || null,
       plan: primary?.teams?.plan || 'free',
       role: primary?.role || null,
+      deleted: !!p.deleted,
+      deletedAt: p.deleted_at || null,
     };
   });
 }

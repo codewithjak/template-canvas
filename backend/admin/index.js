@@ -19,6 +19,8 @@ const express = require('express');
 const { resolveAdmin } = require('./middleware');
 const { listAllUsers } = require('./users');
 const { setPlanForEmail } = require('./setPlan');
+const { getUserActivity } = require('./activity');
+const { softDeleteUser, restoreUser } = require('./deleteUser');
 
 const router = express.Router();
 
@@ -69,6 +71,41 @@ router.post('/v1/admin/set-plan', async (req, res) => {
     return res.json({ ok: true, ...result });
   } catch (err) {
     return sendError(res, '[admin/set-plan]', err, 'Could not set plan.');
+  }
+});
+
+/** GET /v1/admin/users/:id/activity — a member's timeline + summary. */
+router.get('/v1/admin/users/:id/activity', async (req, res) => {
+  try {
+    const auth = await resolveAdmin(req.headers.authorization);
+    if (!auth.ok) return res.status(auth.status).json({ error: 'Admin access required.' });
+    return res.json(await getUserActivity(req.params.id));
+  } catch (err) {
+    return sendError(res, '[admin/activity]', err, 'Could not load activity.');
+  }
+});
+
+/** DELETE /v1/admin/users/:id — soft-delete a member (record retained). */
+router.delete('/v1/admin/users/:id', async (req, res) => {
+  try {
+    const auth = await resolveAdmin(req.headers.authorization);
+    if (!auth.ok) return res.status(auth.status).json({ error: 'Admin access required.' });
+    const result = await softDeleteUser(req.params.id, auth.userId);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return sendError(res, '[admin/delete]', err, 'Could not delete member.');
+  }
+});
+
+/** POST /v1/admin/users/:id/restore — undo a soft-delete. */
+router.post('/v1/admin/users/:id/restore', async (req, res) => {
+  try {
+    const auth = await resolveAdmin(req.headers.authorization);
+    if (!auth.ok) return res.status(auth.status).json({ error: 'Admin access required.' });
+    const result = await restoreUser(req.params.id);
+    return res.json({ ok: true, ...result });
+  } catch (err) {
+    return sendError(res, '[admin/restore]', err, 'Could not restore member.');
   }
 });
 

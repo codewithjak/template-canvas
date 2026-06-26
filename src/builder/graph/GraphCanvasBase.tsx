@@ -26,7 +26,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  addEdge,
   useNodesState,
   useEdgesState,
   type Connection,
@@ -50,9 +49,28 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
 
+  // Enforce the source node's connection rules; tag the edge with its domain type.
   const onConnect = useCallback(
-    (c: Connection) => setEdges((eds) => addEdge(c, eds)),
-    [setEdges],
+    (c: Connection) => {
+      const src = nodes.find((n) => n.id === c.source);
+      const tgt = nodes.find((n) => n.id === c.target);
+      if (!src || !tgt) return;
+      const entry = pack.catalog.find((e) => e.type === src.data.nodeType);
+      const rule = entry?.edges?.find((r) => r.to.includes(tgt.data.nodeType));
+      if (entry?.edges && !rule) return; // connection not permitted by the source's rules
+      setEdges((eds) => {
+        if (eds.some((e) => e.source === c.source && e.target === c.target)) return eds;
+        return eds.concat({
+          id: `e-${c.source}-${c.target}-${Date.now()}`,
+          source: c.source,
+          target: c.target,
+          sourceHandle: c.sourceHandle,
+          targetHandle: c.targetHandle,
+          label: rule?.type,
+        });
+      });
+    },
+    [nodes, pack, setEdges],
   );
 
   function addNode(entry: CatalogEntry) {

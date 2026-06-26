@@ -21,13 +21,21 @@ export interface FieldDescriptor {
   options?: string[]; // for kind: 'select'
 }
 
+/** A permitted outgoing connection from a node type — compiles to a ref/rule/flow. */
+export interface EdgeRule {
+  type: string;  // domain edge type, e.g. "connects_to" | "attached_to"
+  to: string[];  // target node types this edge may point at
+}
+
 /** One drawable node type — a maker + its property fields. Mirrors elementFactories.ts. */
 export interface CatalogEntry {
   type: string;
   label: string;
-  group: string;             // palette grouping, e.g. "Compute"
-  create: () => GraphNode;   // a fresh node with defaults + a unique id
-  fields?: FieldDescriptor[];// properties-panel schema
+  group: string;              // palette grouping, e.g. "Compute"
+  create: () => GraphNode;    // a fresh node with defaults + a unique id
+  fields?: FieldDescriptor[]; // properties-panel schema
+  parents?: string[];         // node types this may be nested inside (omitted = top-level)
+  edges?: EdgeRule[];         // permitted outgoing connections (omitted = any)
 }
 
 export type NodeCatalog = CatalogEntry[];

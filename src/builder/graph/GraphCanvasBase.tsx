@@ -37,8 +37,7 @@ import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
 import type { Blueprint } from '../types/blueprint';
 import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
 import { ApprovalGate } from '../run/ApprovalGate';
-import { simulatePlanFromHcl } from '../run/simulatePlan';
-import type { Plan } from '../run/planTypes';
+import { startRun, type RunHandle } from '../run/runController';
 
 interface GraphCanvasBaseProps {
   pack: DomainPack;
@@ -50,7 +49,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>(toRFEdges(initial));
 
   const [compiled, setCompiled] = useState<string | null>(null);
-  const [plan, setPlan] = useState<Plan | null>(null);
+  const [run, setRun] = useState<RunHandle | null>(null);
   const [intent, setIntent] = useState('');
   const [thinking, setThinking] = useState(false);
 
@@ -95,14 +94,20 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
     setCompiled(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
   }
 
-  function planRun() {
+  async function planRun() {
     const blocking = diagnostics.filter((d) => d.severity === 'block');
     if (blocking.length) {
       setCompiled('# Cannot plan — resolve blocking issues first:\n'
         + blocking.map((d) => `#  • ${d.message}`).join('\n'));
       return;
     }
-    setPlan(simulatePlanFromHcl(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint'))));
+    setThinking(true);
+    try {
+      const hcl = pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint'));
+      setRun(await startRun(hcl));
+    } finally {
+      setThinking(false);
+    }
   }
 
   async function describe() {
@@ -193,7 +198,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
           </section>
         ))}
         <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
-        <button className="gcb-compile" onClick={planRun}>Plan ▸ review</button>
+        <button className="gcb-compile" disabled={thinking} onClick={() => void planRun()}>Plan ▸ review</button>
       </aside>
 
       {/* CANVAS — React Flow node/edge surface */}
@@ -215,7 +220,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
             <pre>{compiled}</pre>
           </div>
         )}
-        {plan && <ApprovalGate plan={plan} onClose={() => setPlan(null)} />}
+        {run && <ApprovalGate plan={run.plan} onApply={run.apply} onClose={() => setRun(null)} />}
         {diagnostics.length > 0 && (
           <div className="gcb-diagnostics">
             {diagnostics.map((d, i) => (

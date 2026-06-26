@@ -1,30 +1,37 @@
 /**
  * ApprovalGate.tsx — the human-in-the-loop gate (P7).
  *
- * Shows the plan (PlanReview); on Approve, runs the apply and shows captured
- * outputs. Locally it simulates the apply so the whole lifecycle is visible; a
- * real apply runs in the user's account via the backend once connected.
+ * Shows the plan (PlanReview); on Approve, runs the supplied apply() and shows
+ * captured outputs. apply() is injected by the run controller, so the gate is
+ * agnostic to whether the apply runs on the backend or is simulated locally.
  */
 
 import { useState } from 'react';
 import type { Plan } from './planTypes';
+import type { AppliedResult } from './simulateApply';
 import { PlanReview } from './PlanReview';
-import { simulateApply, type AppliedResult } from './simulateApply';
 import './ApprovalGate.css';
 
-type Phase = 'review' | 'applying' | 'applied';
+type Phase = 'review' | 'applying' | 'applied' | 'error';
 
-export function ApprovalGate({ plan, onClose }: { plan: Plan; onClose: () => void }) {
+export function ApprovalGate({ plan, onApply, onClose }: {
+  plan: Plan;
+  onApply: () => Promise<AppliedResult>;
+  onClose: () => void;
+}) {
   const [phase, setPhase] = useState<Phase>('review');
   const [result, setResult] = useState<AppliedResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  function approve() {
+  async function approve() {
     setPhase('applying');
-    // Local simulated apply (a real apply runs server-side once connected).
-    window.setTimeout(() => {
-      setResult(simulateApply(plan));
+    try {
+      setResult(await onApply());
       setPhase('applied');
-    }, 600);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Apply failed.');
+      setPhase('error');
+    }
   }
 
   if (phase === 'review') {
@@ -34,14 +41,16 @@ export function ApprovalGate({ plan, onClose }: { plan: Plan; onClose: () => voi
   return (
     <div className="ag-root">
       <div className="ag-head">
-        <strong>{phase === 'applying' ? 'Applying…' : 'Applied'}</strong>
+        <strong>
+          {phase === 'applying' ? 'Applying…' : phase === 'error' ? 'Apply failed' : 'Applied'}
+        </strong>
         {result?.simulated && <span className="ag-sim">simulated</span>}
         <button className="ag-close" onClick={onClose}>×</button>
       </div>
 
-      {phase === 'applying' && (
-        <p className="ag-msg">Provisioning {plan.summary.add} resource(s)…</p>
-      )}
+      {phase === 'applying' && <p className="ag-msg">Provisioning {plan.summary.add} resource(s)…</p>}
+
+      {phase === 'error' && <p className="ag-err">{error}</p>}
 
       {phase === 'applied' && result && (
         <div className="ag-body">

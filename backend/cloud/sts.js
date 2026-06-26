@@ -88,7 +88,13 @@ async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) 
 
   const assumedRoleArn = xmlField(body, 'Arn') || ''; // arn:aws:sts::ACCOUNT:assumed-role/...
   const accountId = assumedRoleArn.split(':')[4] || null;
-  return { accountId, assumedRoleArn };
+  const credentials = {
+    accessKeyId: xmlField(body, 'AccessKeyId'),
+    secretAccessKey: xmlField(body, 'SecretAccessKey'),
+    sessionToken: xmlField(body, 'SessionToken'),
+    expiration: xmlField(body, 'Expiration'),
+  };
+  return { accountId, assumedRoleArn, credentials };
 }
 
 module.exports = { assumeConnectRole };

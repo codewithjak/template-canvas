@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Features from './pages/Features'
 import Careers from './pages/Careers'
 import Canvas from './pages/Canvas'
+import Builder from './pages/Builder'
 import Settings from './pages/Settings'
 import Pricing from './pages/Pricing'
 import Login from './pages/Login'
@@ -29,6 +30,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/invite" element={<AcceptInvite />} />
+          {/* Graph-canvas builder preview (platform P1) — unguarded for now */}
+          <Route path="/builder" element={<Builder />} />
           <Route
             path="/canvas"
             element={

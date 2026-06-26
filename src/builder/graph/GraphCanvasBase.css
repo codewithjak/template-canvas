@@ -1,0 +1,74 @@
+/**
+ * GraphCanvasBase.css — layout for the shared graph canvas.
+ * Three columns: palette · canvas (React Flow) · properties.
+ * React Flow fills .gcb-canvas, which must have a real size — hence the
+ * flex layout and the .gcb-root min-height fallback for standalone mounts.
+ */
+
+.gcb-root {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  font-family: system-ui, sans-serif;
+}
+
+/* ── Palette ─────────────────────────────────────────────────────────────── */
+.gcb-palette {
+  flex: 0 0 180px;
+  padding: 12px;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+.gcb-palette h4 {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+.gcb-add {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  margin: 4px 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+.gcb-add:hover { background: #f3f4f6; }
+
+/* ── Canvas (React Flow mounts here) ─────────────────────────────────────── */
+.gcb-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  position: relative;
+}
+
+/* ── Properties ──────────────────────────────────────────────────────────── */
+.gcb-props {
+  flex: 0 0 240px;
+  padding: 12px;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
+}
+.gcb-props h4 { margin: 0 0 10px; font-size: 14px; }
+.gcb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #374151;
+}
+.gcb-field input,
+.gcb-field select {
+  padding: 5px 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.gcb-empty { color: #9ca3af; font-size: 13px; }

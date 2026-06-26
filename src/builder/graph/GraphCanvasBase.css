@@ -20,6 +20,17 @@
   overflow-y: auto;
   border-right: 1px solid #e5e7eb;
 }
+.gcb-describe { display: flex; gap: 6px; margin-bottom: 10px; }
+.gcb-describe input {
+  flex: 1 1 auto; min-width: 0; padding: 6px 8px;
+  border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px;
+}
+.gcb-describe button {
+  flex: 0 0 auto; padding: 6px 9px; border: 1px solid #111827; border-radius: 6px;
+  background: #111827; color: #fff; cursor: pointer; font-size: 13px;
+}
+.gcb-describe button:disabled { opacity: 0.5; cursor: default; }
+
 .gcb-palette h4 {
   margin: 14px 0 6px;
   font-size: 11px;

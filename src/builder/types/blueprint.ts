@@ -34,6 +34,7 @@ export interface BlueprintMeta {
   pack: string;                        // which DomainPack owns this graph
   name: string;
   provider?: string;                   // cloud pack only: "aws" | "azure" | "gcp"
+  region?: string;                     // cloud pack only
 }
 
 export interface Blueprint {

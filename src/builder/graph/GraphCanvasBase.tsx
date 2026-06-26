@@ -36,6 +36,9 @@ import './GraphCanvasBase.css';
 import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
 import type { Blueprint } from '../types/blueprint';
 import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
+import { PlanReview } from '../run/PlanReview';
+import { simulatePlanFromHcl } from '../run/simulatePlan';
+import type { Plan } from '../run/planTypes';
 
 interface GraphCanvasBaseProps {
   pack: DomainPack;
@@ -47,6 +50,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>(toRFEdges(initial));
 
   const [compiled, setCompiled] = useState<string | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
@@ -87,6 +91,16 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
       return;
     }
     setCompiled(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
+  }
+
+  function planRun() {
+    const blocking = diagnostics.filter((d) => d.severity === 'block');
+    if (blocking.length) {
+      setCompiled('# Cannot plan — resolve blocking issues first:\n'
+        + blocking.map((d) => `#  • ${d.message}`).join('\n'));
+      return;
+    }
+    setPlan(simulatePlanFromHcl(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint'))));
   }
 
   // Enforce the source node's connection rules; tag the edge with its domain type.
@@ -150,6 +164,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
           </section>
         ))}
         <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
+        <button className="gcb-compile" onClick={planRun}>Plan ▸ review</button>
       </aside>
 
       {/* CANVAS — React Flow node/edge surface */}
@@ -171,6 +186,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
             <pre>{compiled}</pre>
           </div>
         )}
+        {plan && <PlanReview plan={plan} onClose={() => setPlan(null)} />}
         {diagnostics.length > 0 && (
           <div className="gcb-diagnostics">
             {diagnostics.map((d, i) => (

@@ -650,6 +650,7 @@ app.use(require('./routes/apiGenerate'));   // POST /v1/generate — headless AP
 app.use(require('./routes/webhooks'));      // /v1/webhooks — outbound webhook endpoints (Step 3)
 app.use(require('./routes/connector'));     // /v1/me, /v1/hooks/*, /v1/events/sample — connector REST hooks (Step 4)
 app.use(require('./routes/cloudConnect'));  // /v1/cloud/connections — Visual Cloud Builder connect-account (P5)
+app.use(require('./routes/cloudRun'));      // /v1/cloud/runs — terraform plan runs (P6)
 app.use(contactRouter);
 app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this line + backend/admin/ to disable
 

@@ -1,0 +1,51 @@
+.cna-root { font-family: system-ui, sans-serif; color: #111827; }
+.cna-root h2 { margin: 0 0 4px; }
+.cna-sub { margin: 0 0 18px; color: #6b7280; font-size: 14px; }
+
+.cna-error {
+  background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c;
+  padding: 8px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 13px;
+}
+
+.cna-card {
+  border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 14px;
+}
+.cna-card h3 { margin: 0 0 10px; font-size: 14px; }
+
+.cna-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.cna-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #374151; }
+
+.cna-input, .cna-row select {
+  padding: 7px 9px; border: 1px solid #d1d5db; border-radius: 7px; font-size: 13px;
+}
+.cna-input { flex: 1 1 320px; }
+
+.cna-btn {
+  padding: 7px 14px; border: 1px solid #d1d5db; border-radius: 7px; background: #fff;
+  cursor: pointer; font-size: 13px;
+}
+.cna-btn:hover { background: #f3f4f6; }
+.cna-btn.primary { background: #111827; color: #fff; border-color: #111827; }
+.cna-btn.primary:hover { background: #000; }
+.cna-btn.sm { padding: 4px 9px; font-size: 12px; }
+.cna-btn.danger { color: #b91c1c; border-color: #fecaca; }
+.cna-btn:disabled { opacity: 0.5; cursor: default; }
+
+.cna-params { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 8px 0 4px; font-size: 13px; }
+.cna-params dt { color: #6b7280; }
+.cna-params code, .cna-input::placeholder { font-family: ui-monospace, Menlo, monospace; }
+
+.cna-list { list-style: none; margin: 0; padding: 0; }
+.cna-list li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #f3f4f6; font-size: 13px; }
+.cna-empty { color: #9ca3af; font-size: 13px; }
+
+.cna-status {
+  text-transform: uppercase; font-size: 11px; letter-spacing: 0.03em;
+  padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #6b7280;
+}
+.cna-status.verified { background: #dcfce7; color: #15803d; }
+.cna-status.linked { background: #fef9c3; color: #a16207; }
+.cna-status.error { background: #fee2e2; color: #b91c1c; }
+.cna-acct { flex: 1 1 auto; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+.cna-region { color: #6b7280; }
+.cna-actions { display: flex; gap: 6px; }

@@ -3,14 +3,16 @@
 /**
  * backend/cloud/runner.js
  *
- * Ephemeral in-account `terraform plan` (P6). Assumes the customer's Connect
- * role, presigns a results URL on their state bucket, launches the CodeBuild
- * runner with the compiled HCL, polls to completion, fetches the plan, and
- * parses it. The runner is theirs and disposable; we hold nothing.
+ * Ephemeral in-account Terraform runs (P6 plan, P7 apply). Generic `runBuild`
+ * assumes the customer's Connect role, presigns a result URL on their state
+ * bucket, launches the CodeBuild runner with a buildspec, polls to completion,
+ * and returns the uploaded result. plan/apply differ only by buildspec.
+ *
+ * The runner is the customer's and disposable; we hold nothing. CodeBuild builds
+ * self-terminate (the project's TimeoutInMinutes is the TTL backstop).
  *
  * NOTE: the CodeBuild/STS path cannot be exercised without real AWS — it is
- * correct-by-construction and must be verified live. The route falls back to a
- * simulated plan (planSim.js) when no verified connection / credentials exist.
+ * correct-by-construction and must be verified live.
  */
 
 const https = require('https');
@@ -53,13 +55,15 @@ async function codebuild(action, payload, creds, region) {
   return JSON.parse(res.body);
 }
 
-/** Buildspec: materialize the HCL, init the S3 backend, plan as JSON, upload it. */
-function planBuildspec() {
+const credFields = (c) => ({
+  accessKeyId: c.accessKeyId,
+  secretAccessKey: c.secretAccessKey,
+  sessionToken: c.sessionToken,
+});
+
+/** Shared buildspec preamble: HCL → main.tf, S3 backend, terraform init. */
+function backendInitLines() {
   return [
-    'version: 0.2',
-    'phases:',
-    '  build:',
-    '    commands:',
     '      - echo "$TF_HCL_B64" | base64 -d > main.tf',
     '      - printf \'terraform {\\n  backend "s3" {}\\n}\\n\' > backend.tf',
     '      - terraform init -input=false'
@@ -67,27 +71,26 @@ function planBuildspec() {
       + ' -backend-config="key=$TF_STATE_KEY"'
       + ' -backend-config="region=$AWS_REGION"'
       + ' -backend-config="dynamodb_table=$TF_LOCK_TABLE"',
-    '      - terraform plan -input=false -no-color -json > plan.ndjson || true',
-    '      - curl -sS -X PUT --upload-file plan.ndjson "$TF_RESULT_URL"',
-  ].join('\n');
+  ];
 }
 
-const credFields = (c) => ({
-  accessKeyId: c.accessKeyId,
-  secretAccessKey: c.secretAccessKey,
-  sessionToken: c.sessionToken,
-});
+/** Wrap command lines in a CodeBuild buildspec. */
+function buildspec(commands) {
+  return ['version: 0.2', 'phases:', '  build:', '    commands:', ...backendInitLines(), ...commands].join('\n');
+}
+
+function planBuildspec() {
+  return buildspec([
+    '      - terraform plan -input=false -no-color -json > result.out || true',
+    '      - curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"',
+  ]);
+}
 
 /**
- * Run a real `terraform plan` in the customer's account.
- * @param {object} a
- * @param {object} a.connection  cloud_connections row (role_arn, external_id, region, id)
- * @param {string} a.hcl         compiled Terraform
- * @param {string} a.stateBucket
- * @param {string} a.lockTable
- * @param {string} a.runnerProject  CodeBuild project name
+ * Run a buildspec against the customer's account; return the uploaded result.
+ * @returns {Promise<{ buildId: string, body: string }>}
  */
-async function runPlan({ connection, hcl, stateBucket, lockTable, runnerProject }) {
+async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({
     roleArn: connection.role_arn,
@@ -95,14 +98,14 @@ async function runPlan({ connection, hcl, stateBucket, lockTable, runnerProject 
     region,
   });
 
-  const key = `results/plan-${connection.id}-${Date.now()}.ndjson`;
+  const key = `results/${connection.id}-${Date.now()}.out`;
   const host = `${stateBucket}.s3.${region}.amazonaws.com`;
   const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
   const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
 
   const started = await codebuild('StartBuild', {
     projectName: runnerProject,
-    buildspecOverride: planBuildspec(),
+    buildspecOverride: spec,
     environmentVariablesOverride: [
       { name: 'TF_HCL_B64', value: Buffer.from(hcl).toString('base64'), type: 'PLAINTEXT' },
       { name: 'TF_STATE_BUCKET', value: stateBucket, type: 'PLAINTEXT' },
@@ -115,8 +118,7 @@ async function runPlan({ connection, hcl, stateBucket, lockTable, runnerProject 
   const buildId = started.build && started.build.id;
   if (!buildId) throw new Error('CodeBuild did not return a build id.');
 
-  // Poll to completion (up to ~5 min).
-  for (let i = 0; i < 60; i += 1) {
+  for (let i = 0; i < 120; i += 1) {
     await sleep(5000);
     const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, credentials, region);
     const b = (got.builds && got.builds[0]) || {};
@@ -124,8 +126,13 @@ async function runPlan({ connection, hcl, stateBucket, lockTable, runnerProject 
   }
 
   const res = await httpsRequest('GET', getUrl, {}, null);
-  if (res.status !== 200) throw new Error('Plan output not available (build may have failed).');
-  return parsePlanJson(res.body);
+  if (res.status !== 200) throw new Error('Result not available (build may have failed).');
+  return { buildId, body: res.body };
 }
 
-module.exports = { runPlan, planBuildspec };
+async function runPlan(args) {
+  const { body } = await runBuild({ ...args, buildspec: planBuildspec() });
+  return parsePlanJson(body);
+}
+
+module.exports = { runBuild, runPlan, codebuild, httpsRequest, buildspec, planBuildspec };

@@ -22,3 +22,23 @@ create index if not exists cloud_connections_team_idx
 
 alter table public.cloud_connections enable row level security;
 -- No client policies: only the backend (service role) reads/writes these rows.
+
+-- Durable run history (P8): one row per plan/apply run, scoped per team.
+create table if not exists public.cloud_runs (
+  id            uuid primary key default gen_random_uuid(),
+  team_id       uuid not null references public.teams(id) on delete cascade,
+  connection_id uuid references public.cloud_connections(id) on delete set null,
+  name          text,
+  hcl           text,
+  status        text not null default 'running',  -- running|planned|applying|applied|error
+  simulated     boolean not null default false,
+  plan          jsonb,
+  outputs       jsonb,
+  error         text,
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists cloud_runs_team_idx on public.cloud_runs(team_id, created_at desc);
+
+alter table public.cloud_runs enable row level security;
+-- Server-side only (service role), same as cloud_connections.

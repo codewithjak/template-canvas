@@ -1,0 +1,20 @@
+.oo-root {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  max-width: 300px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+  font-family: system-ui, sans-serif;
+}
+.oo-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #166534; }
+.oo-dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; flex: 0 0 9px; }
+.oo-close { margin-left: auto; border: none; background: none; cursor: pointer; font-size: 16px; color: #15803d; }
+.oo-outputs { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.oo-out { display: flex; flex-direction: column; font: 11px/1.4 ui-monospace, Menlo, monospace; }
+.oo-out-k { color: #15803d; }
+.oo-out-v { color: #14532d; word-break: break-all; }

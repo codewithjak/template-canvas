@@ -37,7 +37,11 @@ import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
 import type { Blueprint } from '../types/blueprint';
 import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
 import { ApprovalGate } from '../run/ApprovalGate';
+import { OutcomeOverlay } from '../run/OutcomeOverlay';
 import { startRun, type RunHandle } from '../run/runController';
+import { blueprintSignature, appliedNodeIds } from '../run/outcome';
+import type { Plan } from '../run/planTypes';
+import type { AppliedResult } from '../run/simulateApply';
 
 interface GraphCanvasBaseProps {
   pack: DomainPack;
@@ -52,6 +56,8 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const [run, setRun] = useState<RunHandle | null>(null);
   const [intent, setIntent] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [appliedSig, setAppliedSig] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<{ count: number; nodeIds: Set<string>; outputs: Record<string, string> } | null>(null);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
@@ -75,9 +81,11 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const displayNodes = useMemo(
     () => nodes.map((n) => {
       const sev = worstByNode.get(n.id);
-      return sev ? { ...n, className: `gcb-diag-${sev}` } : n;
+      if (sev) return { ...n, className: `gcb-diag-${sev}` };
+      if (outcome?.nodeIds.has(n.id)) return { ...n, className: 'gcb-applied' };
+      return n;
     }),
-    [nodes, worstByNode],
+    [nodes, worstByNode, outcome],
   );
 
   function selectNode(id: string) {
@@ -101,10 +109,29 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
         + blocking.map((d) => `#  • ${d.message}`).join('\n'));
       return;
     }
+    const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
+    const sig = blueprintSignature(bp);
+
+    // Idempotency: unchanged since the last apply ⇒ no changes (real path gets
+    // this from terraform state; this is the local equivalent).
+    if (sig === appliedSig) {
+      const empty: Plan = { summary: { add: 0, change: 0, destroy: 0 }, resources: [], simulated: true };
+      setRun({ plan: empty, apply: async (): Promise<AppliedResult> => ({ created: [], outputs: {}, simulated: true }) });
+      return;
+    }
+
     setThinking(true);
     try {
-      const hcl = pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint'));
-      setRun(await startRun(hcl));
+      const handle = await startRun(pack.compile(bp));
+      setRun({
+        plan: handle.plan,
+        apply: async () => {
+          const result = await handle.apply();
+          setAppliedSig(sig);
+          setOutcome({ count: result.created.length, nodeIds: appliedNodeIds(bp, result.created), outputs: result.outputs });
+          return result;
+        },
+      });
     } finally {
       setThinking(false);
     }
@@ -221,6 +248,9 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
           </div>
         )}
         {run && <ApprovalGate plan={run.plan} onApply={run.apply} onClose={() => setRun(null)} />}
+        {outcome && !run && (
+          <OutcomeOverlay count={outcome.count} outputs={outcome.outputs} onClose={() => setOutcome(null)} />
+        )}
         {diagnostics.length > 0 && (
           <div className="gcb-diagnostics">
             {diagnostics.map((d, i) => (

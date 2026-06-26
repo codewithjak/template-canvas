@@ -36,7 +36,7 @@ import './GraphCanvasBase.css';
 import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
 import type { Blueprint } from '../types/blueprint';
 import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
-import { PlanReview } from '../run/PlanReview';
+import { ApprovalGate } from '../run/ApprovalGate';
 import { simulatePlanFromHcl } from '../run/simulatePlan';
 import type { Plan } from '../run/planTypes';
 
@@ -186,7 +186,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
             <pre>{compiled}</pre>
           </div>
         )}
-        {plan && <PlanReview plan={plan} onClose={() => setPlan(null)} />}
+        {plan && <ApprovalGate plan={plan} onClose={() => setPlan(null)} />}
         {diagnostics.length > 0 && (
           <div className="gcb-diagnostics">
             {diagnostics.map((d, i) => (

@@ -43,8 +43,8 @@ export function PlanReview({ plan, onClose, onApprove }: {
         <button className="pr-btn" onClick={onClose}>Close</button>
         <button
           className="pr-btn primary"
-          disabled={!onApprove || plan.simulated}
-          title={plan.simulated ? 'Connect a verified account to apply (P7)' : ''}
+          disabled={!onApprove}
+          title={plan.simulated ? 'Simulated apply — connect an account for a real apply' : ''}
           onClick={onApprove}
         >
           Approve &amp; Apply

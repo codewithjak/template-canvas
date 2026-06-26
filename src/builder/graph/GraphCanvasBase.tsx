@@ -21,7 +21,7 @@
  * See BUILDER_PLATFORM_ARCHITECTURE.md §3–4, VISUAL_CLOUD_BUILDER_ARCHITECTURE.md §3.2.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -35,7 +35,7 @@ import './GraphCanvasBase.css';
 
 import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
 import type { Blueprint } from '../types/blueprint';
-import { type RFNode, type RFEdge, toRFNodes, toRFEdges } from './graphConversions';
+import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
 
 interface GraphCanvasBaseProps {
   pack: DomainPack;
@@ -46,8 +46,14 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>(toRFNodes(initial, pack.catalog));
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>(toRFEdges(initial));
 
+  const [compiled, setCompiled] = useState<string | null>(null);
+
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
+
+  function compile() {
+    setCompiled(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
+  }
 
   // Enforce the source node's connection rules; tag the edge with its domain type.
   const onConnect = useCallback(
@@ -109,6 +115,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
             ))}
           </section>
         ))}
+        <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
       </aside>
 
       {/* CANVAS — React Flow node/edge surface */}
@@ -124,6 +131,12 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
           <Background />
           <Controls />
         </ReactFlow>
+        {compiled !== null && (
+          <div className="gcb-output">
+            <button className="gcb-output-close" onClick={() => setCompiled(null)}>×</button>
+            <pre>{compiled}</pre>
+          </div>
+        )}
       </main>
 
       {/* PROPERTIES — data-driven from the selected node's catalog fields */}

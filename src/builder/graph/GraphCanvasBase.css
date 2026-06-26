@@ -87,6 +87,42 @@
   cursor: pointer;
 }
 
+/* ── Diagnostics (linter findings) ───────────────────────────────────────── */
+.gcb-diagnostics {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40%;
+  overflow: auto;
+  z-index: 4;
+}
+.gcb-diag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.gcb-diag-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 8px; }
+.gcb-diag.block { border-left: 3px solid #dc2626; }
+.gcb-diag.block .gcb-diag-dot { background: #dc2626; }
+.gcb-diag.warn { border-left: 3px solid #d97706; }
+.gcb-diag.warn .gcb-diag-dot { background: #d97706; }
+
+/* Node outlines — React Flow applies node.className to the node wrapper. */
+.gcb-diag-block { outline: 2px solid #dc2626; border-radius: 4px; }
+.gcb-diag-warn { outline: 2px solid #d97706; border-radius: 4px; }
+
 /* ── Canvas (React Flow mounts here) ─────────────────────────────────────── */
 .gcb-canvas {
   flex: 1 1 auto;

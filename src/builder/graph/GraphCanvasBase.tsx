@@ -51,7 +51,41 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
 
+  // Live lint — pure, recomputed from the graph.
+  const diagnostics = useMemo(
+    () => pack.lint(toBlueprint(pack.id, nodes, edges, 'blueprint')),
+    [pack, nodes, edges],
+  );
+
+  // Worst severity per node, for outlining the offending nodes.
+  const worstByNode = useMemo(() => {
+    const m = new Map<string, 'block' | 'warn'>();
+    for (const d of diagnostics) {
+      if (!d.nodeId) continue;
+      if (d.severity === 'block' || !m.has(d.nodeId)) m.set(d.nodeId, d.severity);
+    }
+    return m;
+  }, [diagnostics]);
+
+  const displayNodes = useMemo(
+    () => nodes.map((n) => {
+      const sev = worstByNode.get(n.id);
+      return sev ? { ...n, className: `gcb-diag-${sev}` } : n;
+    }),
+    [nodes, worstByNode],
+  );
+
+  function selectNode(id: string) {
+    setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === id })));
+  }
+
   function compile() {
+    const blocking = diagnostics.filter((d) => d.severity === 'block');
+    if (blocking.length) {
+      setCompiled('# Cannot compile — resolve blocking issues first:\n'
+        + blocking.map((d) => `#  • ${d.message}`).join('\n'));
+      return;
+    }
     setCompiled(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
   }
 
@@ -121,7 +155,7 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
       {/* CANVAS — React Flow node/edge surface */}
       <main className="gcb-canvas">
         <ReactFlow
-          nodes={nodes}
+          nodes={displayNodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -135,6 +169,20 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
           <div className="gcb-output">
             <button className="gcb-output-close" onClick={() => setCompiled(null)}>×</button>
             <pre>{compiled}</pre>
+          </div>
+        )}
+        {diagnostics.length > 0 && (
+          <div className="gcb-diagnostics">
+            {diagnostics.map((d, i) => (
+              <button
+                key={`${d.code}-${d.nodeId ?? i}`}
+                className={`gcb-diag ${d.severity}`}
+                onClick={() => d.nodeId && selectNode(d.nodeId)}
+              >
+                <span className="gcb-diag-dot" />
+                {d.message}
+              </button>
+            ))}
           </div>
         )}
       </main>

@@ -133,6 +133,7 @@
 /* Node outlines — React Flow applies node.className to the node wrapper. */
 .gcb-diag-block { outline: 2px solid #dc2626; border-radius: 4px; }
 .gcb-diag-warn { outline: 2px solid #d97706; border-radius: 4px; }
+.gcb-applied { outline: 2px solid #22c55e; border-radius: 4px; }
 
 /* ── Canvas (React Flow mounts here) ─────────────────────────────────────── */
 .gcb-canvas {

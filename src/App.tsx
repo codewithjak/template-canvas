@@ -6,6 +6,7 @@ import Features from './pages/Features'
 import Careers from './pages/Careers'
 import Canvas from './pages/Canvas'
 import Builder from './pages/Builder'
+import BuilderConnect from './pages/BuilderConnect'
 import Settings from './pages/Settings'
 import Pricing from './pages/Pricing'
 import Login from './pages/Login'
@@ -32,6 +33,15 @@ function App() {
           <Route path="/invite" element={<AcceptInvite />} />
           {/* Graph-canvas builder preview (platform P1) — unguarded for now */}
           <Route path="/builder" element={<Builder />} />
+          {/* Connect-account flow (P5) — guarded: links a real cloud account */}
+          <Route
+            path="/builder/connect"
+            element={
+              <ProtectedRoute>
+                <BuilderConnect />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/canvas"
             element={

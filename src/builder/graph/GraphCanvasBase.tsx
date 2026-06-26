@@ -51,6 +51,8 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
 
   const [compiled, setCompiled] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [intent, setIntent] = useState('');
+  const [thinking, setThinking] = useState(false);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
@@ -101,6 +103,20 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
       return;
     }
     setPlan(simulatePlanFromHcl(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint'))));
+  }
+
+  async function describe() {
+    if (!pack.suggest || !intent.trim()) return;
+    setThinking(true);
+    try {
+      const bp = await pack.suggest(intent.trim());
+      if (bp) {
+        setNodes(toRFNodes(bp, pack.catalog));
+        setEdges(toRFEdges(bp));
+      }
+    } finally {
+      setThinking(false);
+    }
   }
 
   // Enforce the source node's connection rules; tag the edge with its domain type.
@@ -155,6 +171,19 @@ export function GraphCanvasBase({ pack, initial }: GraphCanvasBaseProps) {
     <div className="gcb-root" data-mode={pack.mode}>
       {/* PALETTE — derived from pack.catalog */}
       <aside className="gcb-palette">
+        {pack.suggest && (
+          <div className="gcb-describe">
+            <input
+              value={intent}
+              onChange={(e) => setIntent(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void describe(); }}
+              placeholder="Describe your app…"
+            />
+            <button disabled={thinking || !intent.trim()} onClick={() => void describe()}>
+              {thinking ? '…' : '✨'}
+            </button>
+          </div>
+        )}
         {groups.map(([group, entries]) => (
           <section key={group}>
             <h4>{group}</h4>

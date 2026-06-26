@@ -80,4 +80,6 @@ export interface DomainPack {
   compile: (bp: Blueprint) => string;
   lint: (bp: Blueprint) => Diagnostic[];
   run: (artifact: string, ctx: RunContext) => Promise<RunResult>;
+  /** Optional: natural-language intent → a starter blueprint (the LLM architect). */
+  suggest?: (intent: string) => Promise<Blueprint | null>;
 }

@@ -47,6 +47,7 @@ export default function ConnectAccount() {
   const ext = tmplFormat === 'json' ? 'json' : 'yaml';
   const cliCommand = bootstrap
     ? [
+      `curl -s "${API_BASE}/v1/cloud/bootstrap/template?format=${ext}" -o mapdoc-connect.${ext} && \\`,
       'aws cloudformation deploy \\',
       `  --template-file mapdoc-connect.${ext} \\`,
       '  --stack-name mapdoc-connect \\',
@@ -89,7 +90,14 @@ export default function ConnectAccount() {
             <dt>Region</dt><dd><code>{bootstrap.region}</code></dd>
           </dl>
 
+          {bootstrap.launchStackUrl && (
+            <a className="cna-launch" href={bootstrap.launchStackUrl} target="_blank" rel="noreferrer">
+              🚀 Launch Stack in AWS Console
+            </a>
+          )}
+
           <div className="cna-template">
+            <p className="cna-cli-label">{bootstrap.launchStackUrl ? 'Or deploy from the CLI:' : 'Deploy from the CLI:'}</p>
             <div className="cna-toggle">
               <span>Template</span>
               <button className={tmplFormat === 'yaml' ? 'on' : ''} onClick={() => setTmplFormat('yaml')}>YAML</button>
@@ -98,7 +106,6 @@ export default function ConnectAccount() {
                 Download .{tmplFormat}
               </a>
             </div>
-            <p className="cna-cli-label">Then deploy it from the CLI:</p>
             <pre className="cna-cli">{cliCommand}</pre>
             <button className="cna-btn sm" onClick={() => navigator.clipboard?.writeText(cliCommand)}>Copy command</button>
           </div>

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { API_BASE } from '../../services/config';
 import * as api from './cloudConnectApi';
 import type { Bootstrap, CloudConnection } from './cloudConnectApi';
 import './ConnectAccount.css';
@@ -24,6 +25,7 @@ export default function ConnectAccount() {
   const [region, setRegion] = useState('us-east-1');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tmplFormat, setTmplFormat] = useState<'yaml' | 'json'>('yaml');
 
   async function refresh() {
     try { setConnections(await api.listConnections()); } catch (e) { setError(errMsg(e)); }
@@ -41,6 +43,18 @@ export default function ConnectAccount() {
       setBootstrap(bootstrap); setActiveId(connection.id); setRoleArn('');
     });
   }
+
+  const ext = tmplFormat === 'json' ? 'json' : 'yaml';
+  const cliCommand = bootstrap
+    ? [
+      'aws cloudformation deploy \\',
+      `  --template-file mapdoc-connect.${ext} \\`,
+      '  --stack-name mapdoc-connect \\',
+      `  --parameter-overrides PlatformAccountId=${bootstrap.platformAccountId ?? '<account-id>'} ExternalId=${bootstrap.externalId} \\`,
+      '  --capabilities CAPABILITY_IAM \\',
+      `  --region ${bootstrap.region}`,
+    ].join('\n')
+    : '';
 
   return (
     <div className="cna-root">
@@ -74,6 +88,20 @@ export default function ConnectAccount() {
             <dt>ExternalId</dt><dd><code>{bootstrap.externalId}</code></dd>
             <dt>Region</dt><dd><code>{bootstrap.region}</code></dd>
           </dl>
+
+          <div className="cna-template">
+            <div className="cna-toggle">
+              <span>Template</span>
+              <button className={tmplFormat === 'yaml' ? 'on' : ''} onClick={() => setTmplFormat('yaml')}>YAML</button>
+              <button className={tmplFormat === 'json' ? 'on' : ''} onClick={() => setTmplFormat('json')}>JSON</button>
+              <a className="cna-btn sm" href={`${API_BASE}/v1/cloud/bootstrap/template?format=${tmplFormat}`} download>
+                Download .{tmplFormat}
+              </a>
+            </div>
+            <p className="cna-cli-label">Then deploy it from the CLI:</p>
+            <pre className="cna-cli">{cliCommand}</pre>
+            <button className="cna-btn sm" onClick={() => navigator.clipboard?.writeText(cliCommand)}>Copy command</button>
+          </div>
 
           <h3>3 · Paste the stack outputs</h3>
           <div className="cna-stack">

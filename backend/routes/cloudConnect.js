@@ -19,12 +19,28 @@
  */
 
 const express = require('express');
+const yaml = require('js-yaml');
 
 const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const conns = require('../cloud/connections');
 const { assumeConnectRole } = require('../cloud/sts');
+const bootstrapTemplate = require('../cloud/bootstrapTemplate');
 
 const router = express.Router();
+
+// Download the connect-account CloudFormation template (YAML or JSON) so users
+// can deploy it straight from the CLI/console. Public — it carries no secrets.
+router.get('/v1/cloud/bootstrap/template', (req, res) => {
+  const format = String((req.query && req.query.format) || 'yaml').toLowerCase();
+  if (format === 'json') {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="mapdoc-connect.json"');
+    return res.send(JSON.stringify(bootstrapTemplate, null, 2));
+  }
+  res.setHeader('Content-Type', 'text/yaml; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="mapdoc-connect.yaml"');
+  return res.send(yaml.dump(bootstrapTemplate, { lineWidth: 120 }));
+});
 
 const ROLE_ARN_RE = /^arn:aws:iam::\d{12}:role\/.+/;
 const platformAccountId = () => process.env.PLATFORM_AWS_ACCOUNT_ID || null;

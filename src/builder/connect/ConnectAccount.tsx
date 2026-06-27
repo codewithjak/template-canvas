@@ -18,6 +18,9 @@ export default function ConnectAccount() {
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [roleArn, setRoleArn] = useState('');
+  const [stateBucket, setStateBucket] = useState('');
+  const [lockTable, setLockTable] = useState('');
+  const [runnerProject, setRunnerProject] = useState('');
   const [region, setRegion] = useState('us-east-1');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,20 +75,23 @@ export default function ConnectAccount() {
             <dt>Region</dt><dd><code>{bootstrap.region}</code></dd>
           </dl>
 
-          <h3>3 · Paste the Connect-Role ARN</h3>
-          <div className="cna-row">
-            <input
-              className="cna-input"
-              placeholder="arn:aws:iam::123456789012:role/…"
-              value={roleArn}
-              onChange={(e) => setRoleArn(e.target.value)}
-            />
+          <h3>3 · Paste the stack outputs</h3>
+          <div className="cna-stack">
+            <input className="cna-input" placeholder="ConnectRoleArn  (arn:aws:iam::…:role/…)" value={roleArn} onChange={(e) => setRoleArn(e.target.value)} />
+            <input className="cna-input" placeholder="StateBucket" value={stateBucket} onChange={(e) => setStateBucket(e.target.value)} />
+            <input className="cna-input" placeholder="LockTable" value={lockTable} onChange={(e) => setLockTable(e.target.value)} />
+            <input className="cna-input" placeholder="RunnerProject" value={runnerProject} onChange={(e) => setRunnerProject(e.target.value)} />
             <button
               className="cna-btn"
               disabled={busy || !activeId || !roleArn.trim()}
-              onClick={() => activeId && run(() => api.saveRoleArn(activeId, roleArn.trim()))}
+              onClick={() => activeId && run(() => api.saveConnection(activeId, {
+                roleArn: roleArn.trim(),
+                stateBucket: stateBucket.trim() || undefined,
+                lockTable: lockTable.trim() || undefined,
+                runnerProject: runnerProject.trim() || undefined,
+              }))}
             >
-              Save ARN
+              Save
             </button>
           </div>
         </section>

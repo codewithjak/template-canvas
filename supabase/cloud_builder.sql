@@ -14,11 +14,20 @@ create table if not exists public.cloud_connections (
   role_arn    text,
   account_id  text,
   status      text not null default 'pending',   -- pending | linked | verified | error
+  -- per-connection stack outputs (from the connect-account CloudFormation stack)
+  state_bucket   text,
+  lock_table     text,
+  runner_project text,
   created_at  timestamptz not null default now()
 );
 
 create index if not exists cloud_connections_team_idx
   on public.cloud_connections(team_id);
+
+-- For DBs created before per-connection outputs were added:
+alter table public.cloud_connections add column if not exists state_bucket   text;
+alter table public.cloud_connections add column if not exists lock_table     text;
+alter table public.cloud_connections add column if not exists runner_project text;
 
 alter table public.cloud_connections enable row level security;
 -- No client policies: only the backend (service role) reads/writes these rows.

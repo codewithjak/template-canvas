@@ -12,7 +12,17 @@ export interface CloudConnection {
   status: 'pending' | 'linked' | 'verified' | 'error';
   role_arn?: string | null;
   account_id?: string | null;
+  state_bucket?: string | null;
+  lock_table?: string | null;
+  runner_project?: string | null;
   created_at?: string;
+}
+
+export interface ConnectionDetails {
+  roleArn: string;
+  stateBucket?: string;
+  lockTable?: string;
+  runnerProject?: string;
 }
 
 export interface Bootstrap {
@@ -43,10 +53,10 @@ export const beginConnection = (region: string) =>
     body: JSON.stringify({ region }),
   });
 
-export const saveRoleArn = (id: string, roleArn: string) =>
+export const saveConnection = (id: string, details: ConnectionDetails) =>
   call<{ connection: CloudConnection }>(`/v1/cloud/connections/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ roleArn }),
+    body: JSON.stringify(details),
   }).then((r) => r.connection);
 
 export const verifyConnection = (id: string) =>

@@ -59,18 +59,20 @@ router.get('/v1/cloud/connections', async (req, res) => {
   }
 });
 
-// Save the Connect-Role ARN from the stack output.
+// Save the stack outputs (Connect-Role ARN + optional state bucket/lock/runner).
 router.patch('/v1/cloud/connections/:id', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const roleArn = req.body && req.body.roleArn;
+    const { roleArn, stateBucket, lockTable, runnerProject } = req.body || {};
     if (!roleArn || !ROLE_ARN_RE.test(roleArn)) {
       throw httpError(400, 'A valid IAM role ARN is required.');
     }
-    const conn = await conns.updateConnection(sb, teamId, req.params.id, {
-      role_arn: roleArn,
-      status: 'linked',
-    });
+    const patch = { role_arn: roleArn, status: 'linked' };
+    if (stateBucket) patch.state_bucket = stateBucket;
+    if (lockTable) patch.lock_table = lockTable;
+    if (runnerProject) patch.runner_project = runnerProject;
+
+    const conn = await conns.updateConnection(sb, teamId, req.params.id, patch);
     res.json({ connection: conn });
   } catch (err) {
     sendError(res, '[cloud/connections patch]', err);

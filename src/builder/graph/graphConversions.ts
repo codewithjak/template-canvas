@@ -16,6 +16,7 @@ export interface GraphNodeData extends Record<string, unknown> {
   label: string;
   nodeType: string;
   props: Record<string, unknown>;
+  parentId?: string; // logical containment (compiler/lint); not React Flow nesting
 }
 export type RFNode = Node<GraphNodeData>;
 export type RFEdge = Edge;
@@ -25,11 +26,11 @@ export function toRFNodes(bp: Blueprint | undefined, catalog: NodeCatalog): RFNo
   return bp.nodes.map((n) => ({
     id: n.id,
     position: n.position ?? { x: 80, y: 80 },
-    parentId: n.parent,
     data: {
       label: catalog.find((e) => e.type === n.type)?.label ?? n.type,
       nodeType: n.type,
       props: n.props,
+      parentId: n.parent,
     },
   }));
 }
@@ -51,7 +52,7 @@ export function toBlueprint(
     nodes: nodes.map((n) => ({
       id: n.id,
       type: n.data.nodeType,
-      parent: n.parentId,
+      parent: n.data.parentId,
       props: n.data.props,
       position: n.position,
     })),

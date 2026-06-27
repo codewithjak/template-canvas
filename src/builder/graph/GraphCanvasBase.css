@@ -66,6 +66,20 @@
 }
 .gcb-compile:hover { background: #000; }
 
+.gcb-help-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+}
+.gcb-help-btn:hover { background: #f3f4f6; }
+
 /* Compiled-Terraform overlay over the canvas */
 .gcb-output {
   position: absolute;
@@ -98,18 +112,61 @@
   cursor: pointer;
 }
 
-/* ── Diagnostics (linter findings) ───────────────────────────────────────── */
+/* ── Diagnostics (linter findings) — compact panel, clear of the controls ── */
 .gcb-diagnostics {
   position: absolute;
-  left: 12px;
   right: 12px;
   bottom: 12px;
+  width: 320px;
+  max-width: calc(100% - 24px);
+  max-height: 45%;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  z-index: 4;
+}
+.gcb-diag-head {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+  color: #374151;
+}
+.gcb-diag-x {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+}
+.gcb-diag-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 40%;
+  padding: 8px;
   overflow: auto;
+}
+/* Collapsed pill — small, bottom-right, reopens the panel */
+.gcb-diag-pill {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
   z-index: 4;
+  padding: 6px 12px;
+  border: 1px solid #fca5a5;
+  border-radius: 999px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 .gcb-diag {
   display: flex;
@@ -166,3 +223,16 @@
   font-size: 13px;
 }
 .gcb-empty { color: #9ca3af; font-size: 13px; }
+
+.gcb-delete {
+  margin-top: 14px;
+  width: 100%;
+  padding: 7px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff;
+  color: #b91c1c;
+  font-size: 13px;
+  cursor: pointer;
+}
+.gcb-delete:hover { background: #fef2f2; }

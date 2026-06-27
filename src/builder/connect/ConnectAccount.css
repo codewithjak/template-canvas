@@ -20,6 +20,10 @@
 }
 .cna-input { flex: 1 1 320px; }
 
+.cna-stack { display: flex; flex-direction: column; gap: 8px; }
+.cna-stack .cna-input { flex: 1 1 auto; }
+.cna-stack .cna-btn { align-self: flex-start; }
+
 .cna-btn {
   padding: 7px 14px; border: 1px solid #d1d5db; border-radius: 7px; background: #fff;
   cursor: pointer; font-size: 13px;

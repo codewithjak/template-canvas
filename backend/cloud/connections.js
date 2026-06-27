@@ -10,7 +10,7 @@
 const { randomUUID } = require('crypto');
 
 const TABLE = 'cloud_connections';
-const PUBLIC_COLS = 'id, provider, region, status, role_arn, account_id, created_at';
+const PUBLIC_COLS = 'id, provider, region, status, role_arn, account_id, state_bucket, lock_table, runner_project, created_at';
 
 async function createConnection(sb, teamId, { provider = 'aws', region = 'us-east-1' }) {
   const { data, error } = await sb

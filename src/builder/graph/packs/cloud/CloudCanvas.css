@@ -1,0 +1,18 @@
+.cloud-canvas { display: flex; flex-direction: column; height: 100%; }
+.cloud-canvas-body { flex: 1 1 auto; min-height: 0; }
+
+.cb-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafafa;
+  font-size: 12px;
+  color: #374151;
+}
+.cb-bar select { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+.cb-live { color: #15803d; font-weight: 600; }
+.cb-sim { color: #6b7280; }
+.cb-link { margin-left: auto; color: #2563eb; text-decoration: none; }
+.cb-link:hover { text-decoration: underline; }

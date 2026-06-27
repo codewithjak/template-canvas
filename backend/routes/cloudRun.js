@@ -27,10 +27,11 @@ const history = require('../cloud/runHistory');
 
 const router = express.Router();
 
-const cfgFromEnv = () => ({
-  stateBucket: process.env.CLOUD_STATE_BUCKET,
-  lockTable: process.env.CLOUD_LOCK_TABLE,
-  runnerProject: process.env.CLOUD_RUNNER_PROJECT,
+// Per-connection stack outputs, falling back to global env if not stored.
+const cfgFor = (connection) => ({
+  stateBucket: (connection && connection.state_bucket) || process.env.CLOUD_STATE_BUCKET,
+  lockTable: (connection && connection.lock_table) || process.env.CLOUD_LOCK_TABLE,
+  runnerProject: (connection && connection.runner_project) || process.env.CLOUD_RUNNER_PROJECT,
 });
 
 router.post('/v1/cloud/runs', async (req, res) => {
@@ -40,7 +41,7 @@ router.post('/v1/cloud/runs', async (req, res) => {
     if (!hcl) throw httpError(400, 'Compiled HCL is required.');
 
     const connection = connectionId ? await conns.getConnection(sb, teamId, connectionId) : null;
-    const cfg = cfgFromEnv();
+    const cfg = cfgFor(connection);
     const canRunReal =
       connection && connection.status === 'verified'
       && process.env.AWS_ACCESS_KEY_ID && cfg.stateBucket && cfg.runnerProject;
@@ -96,7 +97,7 @@ router.post('/v1/cloud/runs/:id/apply', async (req, res) => {
 
     await history.updateRun(sb, teamId, r.id, { status: 'applying' });
     res.status(202).json({ runId: r.id, status: 'applying' });
-    runApplyAsync(sb, teamId, r, connection, cfgFromEnv());
+    runApplyAsync(sb, teamId, r, connection, cfgFor(connection));
   } catch (err) {
     sendError(res, '[cloud/runs apply]', err);
   }

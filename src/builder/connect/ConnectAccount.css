@@ -24,6 +24,19 @@
 .cna-stack .cna-input { flex: 1 1 auto; }
 .cna-stack .cna-btn { align-self: flex-start; }
 
+.cna-launch {
+  display: inline-block;
+  margin: 8px 0 6px;
+  padding: 9px 16px;
+  background: #ec7211;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.cna-launch:hover { background: #d96304; }
+
 .cna-template { margin: 10px 0 4px; }
 .cna-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6b7280; }
 .cna-toggle button {

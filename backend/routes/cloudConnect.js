@@ -45,6 +45,22 @@ router.get('/v1/cloud/bootstrap/template', (req, res) => {
 const ROLE_ARN_RE = /^arn:aws:iam::\d{12}:role\/.+/;
 const platformAccountId = () => process.env.PLATFORM_AWS_ACCOUNT_ID || null;
 
+// One-click "Launch Stack" deep link into the CloudFormation console quick-create
+// flow, with the template + params pre-filled. Requires the template to be hosted
+// at a public S3 URL (CLOUD_TEMPLATE_URL); returns null if not configured.
+function launchStackUrl(region, externalId) {
+  const templateUrl = process.env.CLOUD_TEMPLATE_URL;
+  if (!templateUrl) return null;
+  const q = [
+    `templateURL=${encodeURIComponent(templateUrl)}`,
+    'stackName=mapdoc-connect',
+    `param_PlatformAccountId=${encodeURIComponent(platformAccountId() || '')}`,
+    `param_ExternalId=${encodeURIComponent(externalId)}`,
+  ].join('&');
+  return `https://console.aws.amazon.com/cloudformation/home?region=${encodeURIComponent(region)}`
+    + `#/stacks/quickcreate?${q}`;
+}
+
 // Begin: create a pending connection and return the bootstrap parameters.
 router.post('/v1/cloud/connections', async (req, res) => {
   try {
@@ -59,6 +75,7 @@ router.post('/v1/cloud/connections', async (req, res) => {
         region,
         // The user launches infra/connect-account/stack.yaml with these params.
         parameters: { PlatformAccountId: platformAccountId(), ExternalId: conn.external_id },
+        launchStackUrl: launchStackUrl(region, conn.external_id),
       },
     });
   } catch (err) {

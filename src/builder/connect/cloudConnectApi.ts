@@ -30,6 +30,7 @@ export interface Bootstrap {
   externalId: string;
   region: string;
   parameters: Record<string, string | null>;
+  launchStackUrl?: string | null;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {

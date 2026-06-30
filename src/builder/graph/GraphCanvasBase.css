@@ -209,6 +209,9 @@
    selection color and from the red/amber/green diagnostic states. Box-shadow so
    it stacks with any outline. */
 .gcb-container { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.7); border-radius: 4px; }
+/* The selected node — a clear blue ring so selection stands out from the violet
+   container highlight and the red/amber/green diagnostic states. */
+.react-flow__node.selected { box-shadow: 0 0 0 2px #2563eb; border-radius: 4px; }
 
 /* ── Canvas (React Flow mounts here) ─────────────────────────────────────── */
 .gcb-canvas {

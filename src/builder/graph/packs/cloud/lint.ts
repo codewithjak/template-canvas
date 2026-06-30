@@ -16,6 +16,30 @@ type ById = Map<string, GraphNode>;
 
 const catalogByType = new Map(awsCatalog.map((e) => [e.type, e]));
 const labelOf = (type: string) => catalogByType.get(type)?.label ?? type;
+const hasInvariant = (type: string, id: string) => Boolean(catalogByType.get(type)?.invariants?.includes(id));
+
+// ── CIDR helpers (for cidr-within-vpc) ──────────────────────────────────────
+function ipToInt(ip: string): number | null {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) return null;
+  return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
+}
+function parseCidr(cidr: string): { base: number; prefix: number } | null {
+  const [ip, p] = String(cidr).split('/');
+  const prefix = Number(p);
+  const base = ip ? ipToInt(ip) : null;
+  if (base === null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) return null;
+  return { base, prefix };
+}
+/** Is `inner` fully inside `outer`? null when either is unparseable (then don't flag). */
+function cidrWithin(inner: string, outer: string): boolean | null {
+  const a = parseCidr(inner);
+  const b = parseCidr(outer);
+  if (!a || !b) return null;
+  if (a.prefix < b.prefix) return false; // inner range is larger than outer
+  const mask = b.prefix === 0 ? 0 : (0xffffffff << (32 - b.prefix)) >>> 0;
+  return ((a.base & mask) >>> 0) === ((b.base & mask) >>> 0);
+}
 
 const D = (
   severity: Diagnostic['severity'],
@@ -118,6 +142,41 @@ function ruleOpenAdminPort(bp: Blueprint): Diagnostic[] {
   return out;
 }
 
+/** Invariant: a subnet's CIDR must fall inside its VPC's CIDR. */
+function ruleCidrWithinVpc(bp: Blueprint, byId: ById): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const n of bp.nodes) {
+    if (n.type !== 'aws_subnet' || !hasInvariant(n.type, 'cidr-within-vpc')) continue;
+    const vpc = n.parent ? byId.get(n.parent) : undefined;
+    if (vpc?.type !== 'aws_vpc') continue; // containment rule handles missing/wrong parent
+    const subnetCidr = String(n.props.cidr ?? '');
+    const vpcCidr = String(vpc.props.cidr ?? '');
+    if (cidrWithin(subnetCidr, vpcCidr) === false) {
+      out.push(D('block', 'cidr-within-vpc', `${n.id} CIDR ${subnetCidr} is not inside ${vpc.id} CIDR ${vpcCidr}.`, n.id));
+    }
+  }
+  return out;
+}
+
+/** Invariant: RDS needs subnets in at least two AZs (its subnet group spans the VPC). */
+function ruleRdsTwoAzs(bp: Blueprint, byId: ById): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const n of bp.nodes) {
+    if (n.type !== 'aws_db_instance' || !hasInvariant(n.type, 'rds-needs-two-azs')) continue;
+    const vpcId = vpcIdOf(byId, n);
+    if (!vpcId) continue; // containment rule handles missing parent
+    const azs = new Set(
+      bp.nodes
+        .filter((s) => s.type === 'aws_subnet' && s.parent === vpcId && s.props.az)
+        .map((s) => String(s.props.az)),
+    );
+    if (azs.size < 2) {
+      out.push(D('block', 'rds-two-azs', `${n.id} needs subnets in at least 2 availability zones in ${vpcId} (found ${azs.size}).`, n.id));
+    }
+  }
+  return out;
+}
+
 /** Public-read buckets are usually a mistake. */
 function rulePublicBucket(bp: Blueprint): Diagnostic[] {
   return bp.nodes
@@ -130,6 +189,8 @@ export function lintCloud(bp: Blueprint): Diagnostic[] {
   return [
     ...ruleContainment(bp, byId),
     ...ruleSameVpc(bp, byId),
+    ...ruleCidrWithinVpc(bp, byId),
+    ...ruleRdsTwoAzs(bp, byId),
     ...rulePublicDb(bp),
     ...ruleDbInPublicSubnet(bp, byId),
     ...ruleMissingSecurityGroup(bp),

@@ -33,7 +33,7 @@ function node(
   group: string,
   defaults: Record<string, unknown>,
   fields: FieldDescriptor[],
-  rules: { container?: ContainerRule; connections?: ConnectionRule[] } = {},
+  rules: { container?: ContainerRule; connections?: ConnectionRule[]; invariants?: string[] } = {},
 ): CatalogEntry {
   const prefix = type.replace(/^aws_/, '');
   return {
@@ -43,6 +43,7 @@ function node(
     fields,
     container: rules.container,
     connections: rules.connections,
+    invariants: rules.invariants,
     create: (): GraphNode => ({ id: `${prefix}-${Date.now()}`, type, props: { ...defaults } }),
   };
 }
@@ -56,7 +57,7 @@ export const awsCatalog: NodeCatalog = [
   node('aws_subnet', 'Subnet', 'Network',
     { cidr: '10.0.1.0/24', az: 'us-east-1a', public: 'true' },
     [txt('cidr', 'CIDR block'), sel('az', 'Availability zone', AZS), sel('public', 'Public', ['true', 'false'])],
-    { container: inside(['aws_vpc']) }),
+    { container: inside(['aws_vpc']), invariants: ['cidr-within-vpc'] }),
 
   node('aws_security_group', 'Security Group', 'Network',
     { name: 'web', ingressPort: '443' },
@@ -91,7 +92,7 @@ export const awsCatalog: NodeCatalog = [
   node('aws_db_instance', 'RDS Database', 'Database',
     { engine: 'postgres', size: 'db.t3.micro', publicAccess: 'false' },
     [sel('engine', 'Engine', ['postgres', 'mysql', 'mariadb']), sel('size', 'Instance class', ['db.t3.micro', 'db.t3.small', 'db.t3.medium']), sel('publicAccess', 'Publicly accessible', ['false', 'true'])],
-    { container: inside(['aws_subnet']) }),
+    { container: inside(['aws_subnet']), invariants: ['rds-needs-two-azs'] }),
 
   // ── Storage ─────────────────────────────────────────────────────────────
   node('aws_s3_bucket', 'S3 Bucket', 'Storage',

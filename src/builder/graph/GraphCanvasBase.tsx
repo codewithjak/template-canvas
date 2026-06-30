@@ -101,12 +101,32 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     [nodes, worstByNode, outcome, selectedParentId],
   );
 
+  // Containment shown on the canvas as a dashed violet link (derived from each
+  // node's parent; visual only, not a real connection, never compiled).
+  const containmentEdges = useMemo<RFEdge[]>(
+    () => nodes
+      .filter((n) => n.data.parentId && nodes.some((p) => p.id === n.data.parentId))
+      .map((n) => ({
+        id: `contain-${n.id}`,
+        source: n.data.parentId as string,
+        target: n.id,
+        selectable: false,
+        deletable: false,
+        style: { stroke: '#a78bfa', strokeDasharray: '5 5' },
+      })),
+    [nodes],
+  );
+  const displayEdges = useMemo(() => [...edges, ...containmentEdges], [edges, containmentEdges]);
+
   function selectNode(id: string) {
     setNodes((nds) => nds.map((n) => ({ ...n, selected: n.id === id })));
   }
 
   function deleteNode(id: string) {
-    setNodes((nds) => nds.filter((n) => n.id !== id));
+    setNodes((nds) => nds
+      .filter((n) => n.id !== id)
+      // a deleted container must not leave children pointing at it
+      .map((n) => (n.data.parentId === id ? { ...n, data: { ...n.data, parentId: undefined } } : n)));
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
   }
 
@@ -274,7 +294,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
       <main className="gcb-canvas">
         <ReactFlow
           nodes={displayNodes}
-          edges={edges}
+          edges={displayEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}

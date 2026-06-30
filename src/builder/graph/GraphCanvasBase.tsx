@@ -192,15 +192,17 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     }
   }
 
+  function loadBlueprint(bp: Blueprint) {
+    setNodes(toRFNodes(bp, pack.catalog));
+    setEdges(toRFEdges(bp));
+  }
+
   async function describe() {
     if (!pack.suggest || !intent.trim()) return;
     setThinking(true);
     try {
       const bp = await pack.suggest(intent.trim());
-      if (bp) {
-        setNodes(toRFNodes(bp, pack.catalog));
-        setEdges(toRFEdges(bp));
-      }
+      if (bp) loadBlueprint(bp);
     } finally {
       setThinking(false);
     }
@@ -275,6 +277,19 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
               {thinking ? '…' : '✨'}
             </button>
           </div>
+        )}
+        {pack.templates && pack.templates.length > 0 && (
+          <select
+            className="gcb-template-select"
+            value=""
+            onChange={(e) => {
+              const t = pack.templates!.find((x) => x.id === e.target.value);
+              if (t) loadBlueprint(structuredClone(t.blueprint));
+            }}
+          >
+            <option value="">Load a template…</option>
+            {pack.templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
         )}
         {groups.map(([group, entries]) => (
           <section key={group}>

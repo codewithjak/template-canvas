@@ -94,4 +94,6 @@ export interface DomainPack {
   run: (artifact: string, ctx: RunContext) => Promise<RunResult>;
   /** Optional: natural-language intent → a starter blueprint (the LLM architect). */
   suggest?: (intent: string) => Promise<Blueprint | null>;
+  /** Optional: ready-made starter blueprints, loadable directly (no LLM). */
+  templates?: Array<{ id: string; title: string; blueprint: Blueprint }>;
 }

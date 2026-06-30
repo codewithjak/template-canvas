@@ -3,20 +3,16 @@
 /**
  * backend/cloud/sts.js
  *
- * STS AssumeRole for verifying a customer's Connect role — using the project's
- * own SigV4 signer (storage/s3SigV4.js), NOT the AWS SDK, to match the no-SDK
- * convention in s3Store.js.
+ * STS AssumeRole for verifying / using a customer's Connect role. Uses a proper
+ * header-signed POST (the AWS Query protocol), NOT the S3 presigned-URL style,
+ * so the signature matches what STS expects. No AWS SDK.
  *
- * We presign a GET to the regional STS endpoint for Action=AssumeRole with the
- * ExternalId, fetch it, and read the account id out of the returned ARN. This
- * proves the cross-account trust is wired correctly.
- *
- * NOTE: cannot be exercised without real platform AWS credentials + a real
- * customer account — verify against AWS in a live environment.
+ * NOTE: exercise against a real account; signing bugs surface as
+ * SignatureDoesNotMatch.
  */
 
 const https = require('https');
-const { presignUrl } = require('../storage/s3SigV4');
+const { signPost } = require('./awsSigv4');
 
 function platformCreds() {
   return {
@@ -26,15 +22,20 @@ function platformCreds() {
   };
 }
 
-function httpGet(url) {
+function httpsPost(url, headers, body) {
   return new Promise((resolve, reject) => {
-    https
-      .get(url, (res) => {
-        let body = '';
-        res.on('data', (c) => (body += c));
-        res.on('end', () => resolve({ status: res.statusCode, body }));
-      })
-      .on('error', reject);
+    const u = new URL(url);
+    const req = https.request(
+      { method: 'POST', hostname: u.hostname, path: u.pathname, headers },
+      (res) => {
+        let data = '';
+        res.on('data', (c) => (data += c));
+        res.on('end', () => resolve({ status: res.statusCode, body: data }));
+      },
+    );
+    req.on('error', reject);
+    req.write(body);
+    req.end();
   });
 }
 
@@ -46,7 +47,7 @@ function xmlField(body, tag) {
 
 /**
  * Assume the customer's Connect role with the ExternalId.
- * @returns {Promise<{ accountId: string|null, assumedRoleArn: string }>}
+ * @returns {Promise<{ accountId: string|null, assumedRoleArn: string, credentials: object }>}
  */
 async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) {
   const creds = platformCreds();
@@ -57,42 +58,38 @@ async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) 
     throw e;
   }
 
-  const host = `sts.${region}.amazonaws.com`;
-  const url = presignUrl({
-    method: 'GET',
-    host,
-    region,
+  const body = new URLSearchParams({
+    Action: 'AssumeRole',
+    Version: '2011-06-15',
+    RoleArn: roleArn,
+    RoleSessionName: 'mapdoc-connect-verify',
+    ExternalId: externalId,
+    DurationSeconds: '900',
+  }).toString();
+
+  const { url, headers } = signPost({
     service: 'sts',
-    key: '', // canonical URI '/'
-    accessKeyId: creds.accessKeyId,
-    secretAccessKey: creds.secretAccessKey,
-    sessionToken: creds.sessionToken,
-    expiresIn: 60,
-    query: {
-      Action: 'AssumeRole',
-      Version: '2011-06-15',
-      RoleArn: roleArn,
-      RoleSessionName: 'mapdoc-connect-verify',
-      ExternalId: externalId,
-      DurationSeconds: '900',
-    },
+    region,
+    contentType: 'application/x-www-form-urlencoded; charset=utf-8',
+    body,
+    creds,
   });
 
-  const { status, body } = await httpGet(url);
-  if (status !== 200) {
-    const e = new Error(xmlField(body, 'Message') || `STS AssumeRole failed (${status}).`);
+  const res = await httpsPost(url, headers, body);
+  if (res.status !== 200) {
+    const e = new Error(xmlField(res.body, 'Message') || `STS AssumeRole failed (${res.status}).`);
     e.code = 'ASSUME_FAILED';
     e.status = 400;
     throw e;
   }
 
-  const assumedRoleArn = xmlField(body, 'Arn') || ''; // arn:aws:sts::ACCOUNT:assumed-role/...
+  const assumedRoleArn = xmlField(res.body, 'Arn') || ''; // arn:aws:sts::ACCOUNT:assumed-role/...
   const accountId = assumedRoleArn.split(':')[4] || null;
   const credentials = {
-    accessKeyId: xmlField(body, 'AccessKeyId'),
-    secretAccessKey: xmlField(body, 'SecretAccessKey'),
-    sessionToken: xmlField(body, 'SessionToken'),
-    expiration: xmlField(body, 'Expiration'),
+    accessKeyId: xmlField(res.body, 'AccessKeyId'),
+    secretAccessKey: xmlField(res.body, 'SecretAccessKey'),
+    sessionToken: xmlField(res.body, 'SessionToken'),
+    expiration: xmlField(res.body, 'Expiration'),
   };
   return { accountId, assumedRoleArn, credentials };
 }

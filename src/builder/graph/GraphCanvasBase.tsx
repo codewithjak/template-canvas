@@ -66,6 +66,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
+  const selectedParentId = selected?.data.parentId;
 
   // Live lint — pure, recomputed from the graph.
   const diagnostics = useMemo(
@@ -85,12 +86,18 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
 
   const displayNodes = useMemo(
     () => nodes.map((n) => {
+      const classes: string[] = [];
       const sev = worstByNode.get(n.id);
-      if (sev) return { ...n, className: `gcb-diag-${sev}` };
-      if (outcome?.nodeIds.has(n.id)) return { ...n, className: 'gcb-applied' };
-      return n;
+      if (sev) classes.push(`gcb-diag-${sev}`);
+      else if (outcome?.nodeIds.has(n.id)) classes.push('gcb-applied');
+      if (n.id === selectedParentId) classes.push('gcb-container'); // this node contains the selection
+      return {
+        ...n,
+        className: classes.length ? classes.join(' ') : undefined,
+        data: { ...n.data, label: displayLabel(n) },
+      };
     }),
-    [nodes, worstByNode, outcome],
+    [nodes, worstByNode, outcome, selectedParentId],
   );
 
   function selectNode(id: string) {
@@ -111,7 +118,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
   const parentChoices = selectedEntry?.parents?.length
     ? nodes
       .filter((n) => selectedEntry.parents!.includes(n.data.nodeType) && n.id !== selected!.id)
-      .map((n) => ({ id: n.id, label: nodeLabel(pack, n) }))
+      .map((n) => ({ id: n.id, label: displayLabel(n) }))
     : undefined;
 
   function compile() {
@@ -204,15 +211,19 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
 
   function addNode(entry: CatalogEntry) {
     const node = entry.create();
-    setNodes((nds) => [
-      ...nds.map((n) => ({ ...n, selected: false })),
-      {
-        id: node.id,
-        position: node.position ?? { x: 120 + nds.length * 28, y: 80 + nds.length * 28 },
-        data: { label: entry.label, nodeType: node.type, props: node.props },
-        selected: true,
-      } satisfies RFNode,
-    ]);
+    setNodes((nds) => {
+      const id = nextNodeId(nds, node.type);                 // specific id: vpc-1, subnet-1, …
+      const props = withUniqueName(nds, node.type, node.props); // unique name: main, main-2, …
+      return [
+        ...nds.map((n) => ({ ...n, selected: false })),
+        {
+          id,
+          position: node.position ?? { x: 120 + nds.length * 28, y: 80 + nds.length * 28 },
+          data: { label: entry.label, nodeType: node.type, props },
+          selected: true,
+        } satisfies RFNode,
+      ];
+    });
   }
 
   function updateProp(key: string, value: unknown) {
@@ -350,6 +361,7 @@ function NodeProperties({ pack, node, onChange, onDelete, parents, onSetParent }
   return (
     <div>
       <h4>{entry?.label ?? node.data.nodeType}</h4>
+      <div className="gcb-node-id">id: {node.id}</div>
       {parents && (
         <label className="gcb-field">
           <span>Container ({parentTypes})</span>
@@ -387,11 +399,45 @@ function NodeProperties({ pack, node, onChange, onDelete, parents, onSetParent }
   );
 }
 
-/** A friendly label for a node in the container dropdown (type + its name). */
-function nodeLabel(pack: DomainPack, n: RFNode): string {
-  const base = pack.catalog.find((e) => e.type === n.data.nodeType)?.label ?? n.data.nodeType;
-  const name = n.data.props.name;
-  return name ? `${base} · ${String(name)}` : base;
+/** Short type token used in node ids, e.g. aws_instance -> instance. */
+function typeToken(type: string): string {
+  return type.replace(/^aws_/, '');
+}
+
+/** Next sequential, unique id for a type: vpc-1, vpc-2, subnet-1, … */
+function nextNodeId(nodes: RFNode[], type: string): string {
+  const token = typeToken(type);
+  const re = new RegExp(`^${token}-(\\d+)$`);
+  let max = 0;
+  for (const n of nodes) {
+    const m = n.id.match(re);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `${token}-${max + 1}`;
+}
+
+/** Auto-number a colliding default name (free-form `name` field only). */
+function withUniqueName(nodes: RFNode[], type: string, props: Record<string, unknown>): Record<string, unknown> {
+  const base = props.name;
+  if (typeof base !== 'string' || base === '') return props;
+  const taken = new Set(nodes.filter((n) => n.data.nodeType === type).map((n) => String(n.data.props.name ?? '')));
+  if (!taken.has(base)) return props;
+  let i = 2;
+  while (taken.has(`${base}-${i}`)) i += 1;
+  return { ...props, name: `${base}-${i}` };
+}
+
+/** The most identifying prop value for display (name, else cidr, else comment). */
+function nodeIdentity(n: RFNode): string | undefined {
+  const p = n.data.props;
+  const v = p.name ?? p.cidr ?? p.comment;
+  return v != null && v !== '' ? String(v) : undefined;
+}
+
+/** Canvas + dropdown label: the specific id plus its identity, e.g. "vpc-1 · main". */
+function displayLabel(n: RFNode): string {
+  const id = nodeIdentity(n);
+  return id ? `${n.id} · ${id}` : n.id;
 }
 
 /** Group catalog entries by their `group` for the palette. */

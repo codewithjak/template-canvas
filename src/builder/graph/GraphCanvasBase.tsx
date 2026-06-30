@@ -40,6 +40,7 @@ import { HelpOverlay } from './HelpOverlay';
 import { ApprovalGate } from '../run/ApprovalGate';
 import { OutcomeOverlay } from '../run/OutcomeOverlay';
 import { startRun, type RunHandle } from '../run/runController';
+import { downloadTerraform } from '../run/exportTerraform';
 import { blueprintSignature, appliedNodeIds } from '../run/outcome';
 import type { Plan } from '../run/planTypes';
 import type { AppliedResult } from '../run/simulateApply';
@@ -121,6 +122,11 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
       return;
     }
     setCompiled(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
+  }
+
+  // S4 (export-only): download runnable Terraform, fully client-side, no backend.
+  function exportTf() {
+    downloadTerraform(pack.compile(toBlueprint(pack.id, nodes, edges, 'blueprint')));
   }
 
   async function planRun() {
@@ -247,6 +253,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
         ))}
         <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
         <button className="gcb-compile" disabled={thinking} onClick={() => void planRun()}>Plan ▸ review</button>
+        <button className="gcb-compile" onClick={exportTf}>Export ▸ .tf</button>
         <button className="gcb-help-btn" onClick={() => setHelpOpen(true)}>? How to use</button>
       </aside>
 
@@ -270,6 +277,9 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
         </ReactFlow>
         {compiled !== null && (
           <div className="gcb-output">
+            {!compiled.startsWith('# Cannot') && (
+              <button className="gcb-output-dl" onClick={() => downloadTerraform(compiled)}>Download .tf</button>
+            )}
             <button className="gcb-output-close" onClick={() => setCompiled(null)}>×</button>
             <pre>{compiled}</pre>
           </div>

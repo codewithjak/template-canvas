@@ -111,6 +111,20 @@
   font-size: 16px;
   cursor: pointer;
 }
+.gcb-output-dl {
+  position: sticky;
+  top: 8px;
+  float: right;
+  margin: 8px 0;
+  padding: 4px 12px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
 
 /* ── Diagnostics (linter findings) — compact panel, clear of the controls ── */
 .gcb-diagnostics {

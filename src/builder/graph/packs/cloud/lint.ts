@@ -40,9 +40,9 @@ function ruleContainment(bp: Blueprint, byId: ById): Diagnostic[] {
     const parent = n.parent ? byId.get(n.parent) : undefined;
     const allowed = parents.map(labelOf).join(' or ');
     if (!parent) {
-      out.push(D('block', 'missing-parent', `${labelOf(n.type)} must be placed inside a ${allowed}.`, n.id));
+      out.push(D('block', 'missing-parent', `${n.id} must be placed inside a ${allowed}.`, n.id));
     } else if (!parents.includes(parent.type)) {
-      out.push(D('block', 'wrong-parent', `${labelOf(n.type)} can't be inside a ${labelOf(parent.type)}.`, n.id));
+      out.push(D('block', 'wrong-parent', `${n.id} can't be inside ${parent.id} (${labelOf(parent.type)}).`, n.id));
     }
   }
   return out;
@@ -52,7 +52,7 @@ function ruleContainment(bp: Blueprint, byId: ById): Diagnostic[] {
 function rulePublicDb(bp: Blueprint): Diagnostic[] {
   return bp.nodes
     .filter((n) => n.type === 'aws_db_instance' && n.props.publicAccess === 'true')
-    .map((n) => D('block', 'public-db', `Database "${String(n.props.name ?? n.id)}" is publicly accessible — make it private.`, n.id));
+    .map((n) => D('block', 'public-db', `${n.id} is publicly accessible. Make it private.`, n.id));
 }
 
 /** A database must not sit in a public subnet. */
@@ -62,7 +62,7 @@ function ruleDbInPublicSubnet(bp: Blueprint, byId: ById): Diagnostic[] {
     if (n.type !== 'aws_db_instance') continue;
     const parent = n.parent ? byId.get(n.parent) : undefined;
     if (parent?.type === 'aws_subnet' && parent.props.public === 'true') {
-      out.push(D('block', 'db-public-subnet', 'Database is in a public subnet — move it to a private subnet.', n.id));
+      out.push(D('block', 'db-public-subnet', `${n.id} is in a public subnet (${parent.id}). Move it to a private subnet.`, n.id));
     }
   }
   return out;
@@ -73,7 +73,7 @@ function ruleMissingSecurityGroup(bp: Blueprint): Diagnostic[] {
   const guarded = ['aws_instance', 'aws_db_instance', 'aws_ecs_service'];
   return bp.nodes
     .filter((n) => guarded.includes(n.type) && !hasSecurityGroup(bp, n.id))
-    .map((n) => D('warn', 'no-security-group', `${labelOf(n.type)} has no security group attached.`, n.id));
+    .map((n) => D('warn', 'no-security-group', `${n.id} has no security group attached.`, n.id));
 }
 
 /** Admin ports (SSH/RDP) open to the world — our SG ingress is always 0.0.0.0/0. */
@@ -82,8 +82,8 @@ function ruleOpenAdminPort(bp: Blueprint): Diagnostic[] {
   for (const n of bp.nodes) {
     if (n.type !== 'aws_security_group') continue;
     const port = Number(n.props.ingressPort);
-    if (port === 22) out.push(D('block', 'ssh-open', 'Security group opens SSH (22) to 0.0.0.0/0.', n.id));
-    if (port === 3389) out.push(D('block', 'rdp-open', 'Security group opens RDP (3389) to 0.0.0.0/0.', n.id));
+    if (port === 22) out.push(D('block', 'ssh-open', `${n.id} opens SSH (22) to 0.0.0.0/0.`, n.id));
+    if (port === 3389) out.push(D('block', 'rdp-open', `${n.id} opens RDP (3389) to 0.0.0.0/0.`, n.id));
   }
   return out;
 }
@@ -92,7 +92,7 @@ function ruleOpenAdminPort(bp: Blueprint): Diagnostic[] {
 function rulePublicBucket(bp: Blueprint): Diagnostic[] {
   return bp.nodes
     .filter((n) => n.type === 'aws_s3_bucket' && n.props.acl === 'public-read')
-    .map((n) => D('warn', 'public-bucket', `Bucket "${String(n.props.name ?? n.id)}" is public-read.`, n.id));
+    .map((n) => D('warn', 'public-bucket', `${n.id} is public-read.`, n.id));
 }
 
 export function lintCloud(bp: Blueprint): Diagnostic[] {

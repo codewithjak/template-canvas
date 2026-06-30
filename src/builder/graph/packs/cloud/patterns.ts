@@ -54,6 +54,21 @@ function makeBlueprint(name: string, parts: Part[]): Blueprint {
 
 export const PATTERNS: Pattern[] = [
   {
+    id: 'basic-web-server',
+    title: 'Basic web server',
+    description: 'A VPC with one public subnet, a security group, and an EC2 instance.',
+    tags: ['basic', 'simple', 'starter', 'minimal', 'web server', 'vm', 'ec2'],
+    blueprint: makeBlueprint('Basic web server', [{
+      nodes: [
+        { id: 'vpc', type: 'aws_vpc', props: { name: 'main', cidr: '10.0.0.0/16' } },
+        { id: 'subnet-pub', type: 'aws_subnet', parent: 'vpc', props: { cidr: '10.0.1.0/24', az: 'us-east-1a', public: 'true' } },
+        { id: 'sg-web', type: 'aws_security_group', parent: 'vpc', props: { name: 'web', ingressPort: '443' } },
+        { id: 'web', type: 'aws_instance', parent: 'subnet-pub', props: { name: 'web-1', ami: 'ami-0abc123', size: 't3.micro' } },
+      ],
+      edges: [{ id: 'e-sg-web', from: 'sg-web', to: 'web', type: 'attached_to' }],
+    }]),
+  },
+  {
     id: 'realtime-voice-app',
     title: 'Real-time voice agent',
     description: 'Public ALB + Fargate backend, private Postgres, and an S3 bucket for recordings — the infra for a live voice-agent app.',
@@ -102,3 +117,7 @@ export const PATTERNS: Pattern[] = [
 ];
 
 export const patternMeta = (): PatternMeta[] => PATTERNS.map(({ id, title, description }) => ({ id, title, description }));
+
+/** Directly loadable templates (id + title + the blueprint), for the picker. */
+export const templateList = (): Array<{ id: string; title: string; blueprint: Blueprint }> =>
+  PATTERNS.map(({ id, title, blueprint }) => ({ id, title, blueprint }));

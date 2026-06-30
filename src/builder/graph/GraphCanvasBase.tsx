@@ -34,6 +34,7 @@ import '@xyflow/react/dist/style.css';
 import './GraphCanvasBase.css';
 
 import type { CatalogEntry, DomainPack, NodeCatalog } from './spine/domainPack';
+import { connectionRule, containerTypes } from './spine/constraints';
 import type { Blueprint } from '../types/blueprint';
 import { type RFNode, type RFEdge, toRFNodes, toRFEdges, toBlueprint } from './graphConversions';
 import { HelpOverlay } from './HelpOverlay';
@@ -113,11 +114,11 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     setNodes((nds) => nds.map((n) => (n.id === childId ? { ...n, data: { ...n.data, parentId } } : n)));
   }
 
-  // Valid container nodes for the selection (types allowed by the catalog).
-  const selectedEntry = selected ? pack.catalog.find((e) => e.type === selected.data.nodeType) : undefined;
-  const parentChoices = selectedEntry?.parents?.length
+  // Valid container nodes for the selection (parent types the provider allows).
+  const allowedParents = selected ? containerTypes(pack, selected.data.nodeType) : [];
+  const parentChoices = selected && allowedParents.length
     ? nodes
-      .filter((n) => selectedEntry.parents!.includes(n.data.nodeType) && n.id !== selected!.id)
+      .filter((n) => allowedParents.includes(n.data.nodeType) && n.id !== selected.id)
       .map((n) => ({ id: n.id, label: displayLabel(n) }))
     : undefined;
 
@@ -191,9 +192,10 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
       const src = nodes.find((n) => n.id === c.source);
       const tgt = nodes.find((n) => n.id === c.target);
       if (!src || !tgt) return;
-      const entry = pack.catalog.find((e) => e.type === src.data.nodeType);
-      const rule = entry?.edges?.find((r) => r.to.includes(tgt.data.nodeType));
-      if (entry?.edges && !rule) return; // connection not permitted by the source's rules
+      const rule = connectionRule(pack, src.data.nodeType, tgt.data.nodeType);
+      // Only provider-defined connections are allowed. No VPC-to-subnet,
+      // VPC-to-VPC, etc. (containment is the Container dropdown, not an edge).
+      if (!rule) return;
       setEdges((eds) => {
         if (eds.some((e) => e.source === c.source && e.target === c.target)) return eds;
         return eds.concat({
@@ -202,7 +204,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
           target: c.target,
           sourceHandle: c.sourceHandle,
           targetHandle: c.targetHandle,
-          label: rule?.type,
+          label: rule.type,
         });
       });
     },
@@ -357,7 +359,7 @@ function NodeProperties({ pack, node, onChange, onDelete, parents, onSetParent }
 }) {
   const entry = pack.catalog.find((e) => e.type === node.data.nodeType);
   const fields = entry?.fields ?? [];
-  const parentTypes = entry?.parents?.map((t) => pack.catalog.find((e) => e.type === t)?.label ?? t).join(' or ');
+  const parentTypes = entry?.container?.types.map((t) => pack.catalog.find((e) => e.type === t)?.label ?? t).join(' or ');
   return (
     <div>
       <h4>{entry?.label ?? node.data.nodeType}</h4>

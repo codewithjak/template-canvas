@@ -29,20 +29,50 @@ function hasSecurityGroup(bp: Blueprint, nodeId: string): boolean {
   return bp.edges.some((e) => e.type === 'attached_to' && e.to === nodeId);
 }
 
+/** Walk the parent chain to the enclosing VPC id (for same-VPC checks). */
+function vpcIdOf(byId: ById, node: GraphNode): string | undefined {
+  let cur: GraphNode | undefined = node;
+  const seen = new Set<string>();
+  while (cur && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    if (cur.type === 'aws_vpc') return cur.id;
+    cur = cur.parent ? byId.get(cur.parent) : undefined;
+  }
+  return undefined;
+}
+
 // ── Rules ─────────────────────────────────────────────────────────────────────
 
-/** Required containment is present and of an allowed type (uses catalog.parents). */
+/** Containment derives from the service's `container` rule (types + required). */
 function ruleContainment(bp: Blueprint, byId: ById): Diagnostic[] {
   const out: Diagnostic[] = [];
   for (const n of bp.nodes) {
-    const parents = catalogByType.get(n.type)?.parents;
-    if (!parents?.length) continue; // top-level node — nothing to check
+    const container = catalogByType.get(n.type)?.container;
+    if (!container) continue; // top-level service — nothing to check
     const parent = n.parent ? byId.get(n.parent) : undefined;
-    const allowed = parents.map(labelOf).join(' or ');
+    const allowed = container.types.map(labelOf).join(' or ');
     if (!parent) {
-      out.push(D('block', 'missing-parent', `${n.id} must be placed inside a ${allowed}.`, n.id));
-    } else if (!parents.includes(parent.type)) {
+      if (container.required) out.push(D('block', 'missing-parent', `${n.id} must be placed inside a ${allowed}.`, n.id));
+    } else if (!container.types.includes(parent.type)) {
       out.push(D('block', 'wrong-parent', `${n.id} can't be inside ${parent.id} (${labelOf(parent.type)}).`, n.id));
+    }
+  }
+  return out;
+}
+
+/** Same-VPC invariant: a `sameVpc` connection's endpoints must share a VPC. */
+function ruleSameVpc(bp: Blueprint, byId: ById): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const e of bp.edges) {
+    const from = byId.get(e.from);
+    const to = byId.get(e.to);
+    if (!from || !to) continue;
+    const rule = catalogByType.get(from.type)?.connections?.find((r) => r.type === e.type && r.to.includes(to.type));
+    if (!rule?.sameVpc) continue;
+    const a = vpcIdOf(byId, from);
+    const b = vpcIdOf(byId, to);
+    if (a && b && a !== b) {
+      out.push(D('block', 'cross-vpc', `${from.id} and ${to.id} must be in the same VPC.`, to.id));
     }
   }
   return out;
@@ -99,6 +129,7 @@ export function lintCloud(bp: Blueprint): Diagnostic[] {
   const byId: ById = new Map(bp.nodes.map((n) => [n.id, n]));
   return [
     ...ruleContainment(bp, byId),
+    ...ruleSameVpc(bp, byId),
     ...rulePublicDb(bp),
     ...ruleDbInPublicSubnet(bp, byId),
     ...ruleMissingSecurityGroup(bp),

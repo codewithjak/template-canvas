@@ -31,7 +31,7 @@ export function ConnectionBar({ value, onChange }: {
         <option value="">Simulated (no real apply)</option>
         {verified.map((c) => (
           <option key={c.id} value={c.id}>
-            {(c.account_id ?? 'AWS')} · {c.region}
+            {(c.account_id ?? 'AWS')} · {c.region} (via Mapdoc)
           </option>
         ))}
       </select>

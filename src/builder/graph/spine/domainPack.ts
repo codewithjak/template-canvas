@@ -21,21 +21,33 @@ export interface FieldDescriptor {
   options?: string[]; // for kind: 'select'
 }
 
-/** A permitted outgoing connection from a node type — compiles to a ref/rule/flow. */
-export interface EdgeRule {
-  type: string;  // domain edge type, e.g. "connects_to" | "attached_to"
-  to: string[];  // target node types this edge may point at
+/** Where a service may be contained (the provider's containment rule). */
+export interface ContainerRule {
+  types: string[];   // allowed parent types, e.g. subnet -> ['aws_vpc']
+  required: boolean; // must it have a parent? (subnet: yes; s3 bucket: no)
 }
 
-/** One drawable node type — a maker + its property fields. Mirrors elementFactories.ts. */
+/** A permitted outgoing connection from a service — compiles to a ref/rule/flow. */
+export interface ConnectionRule {
+  type: string;       // domain edge type, e.g. "connects_to" | "attached_to"
+  to: string[];       // valid target node types
+  sameVpc?: boolean;  // both ends must share a VPC (e.g. security group <-> instance)
+  max?: number;       // optional cardinality cap per source
+}
+
+/**
+ * One drawable service — a maker, its property fields, and the provider's hard
+ * rules (container + connections + invariants). See CLOUD_CONSTRAINTS_ARCHITECTURE.md.
+ */
 export interface CatalogEntry {
   type: string;
   label: string;
-  group: string;              // palette grouping, e.g. "Compute"
-  create: () => GraphNode;    // a fresh node with defaults + a unique id
-  fields?: FieldDescriptor[]; // properties-panel schema
-  parents?: string[];         // node types this may be nested inside (omitted = top-level)
-  edges?: EdgeRule[];         // permitted outgoing connections (omitted = any)
+  group: string;                  // palette grouping, e.g. "Compute"
+  create: () => GraphNode;        // a fresh node with defaults + a unique id
+  fields?: FieldDescriptor[];     // properties-panel schema
+  container?: ContainerRule;      // containment rule (omitted = top-level)
+  connections?: ConnectionRule[]; // permitted outgoing connections (omitted = none)
+  invariants?: string[];          // named cross-cutting validators
 }
 
 export type NodeCatalog = CatalogEntry[];

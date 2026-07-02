@@ -53,7 +53,9 @@ export default function ConnectAccount() {
       '  --stack-name mapdoc-connect \\',
       `  --parameter-overrides PlatformAccountId=${bootstrap.platformAccountId ?? '<account-id>'} ExternalId=${bootstrap.externalId} \\`,
       '  --capabilities CAPABILITY_IAM \\',
-      `  --region ${bootstrap.region}`,
+      `  --region ${bootstrap.region} && \\`,
+      'aws cloudformation describe-stacks --stack-name mapdoc-connect \\',
+      `  --region ${bootstrap.region} --query "Stacks[0].Outputs" --output table`,
     ].join('\n')
     : '';
 

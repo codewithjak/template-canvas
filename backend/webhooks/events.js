@@ -12,7 +12,7 @@
  * sends, so the example matches production.
  */
 
-const KNOWN_EVENTS = ['document.generated', 'bulk.completed', 'bulk.failed'];
+const KNOWN_EVENTS = ['document.generated', 'bulk.completed', 'bulk.failed', 'cloud.drift.detected'];
 
 /** True when `event` is a recognised webhook event name. */
 function isKnownEvent(event) {
@@ -54,6 +54,19 @@ function sampleEvent(event) {
       jobId:     ZERO_UUID,
       rows:      100,
       error:     'Example failure reason',
+      createdAt,
+    };
+  }
+  if (event === 'cloud.drift.detected') {
+    return {
+      event:        'cloud.drift.detected',
+      teamId:       ZERO_UUID,
+      connectionId: ZERO_UUID,
+      provider:     'aws',
+      region:       'us-east-1',
+      count:        1,
+      newlyDrifted: ['aws_instance.web'],
+      resources:    [{ address: 'aws_instance.web', action: 'update' }],
       createdAt,
     };
   }

@@ -1,0 +1,38 @@
+{
+  "fields": {
+    "brand_name": "Judex Medical",
+    "brand_sub": "Medical Supplies & Services · Biomedical Engineering",
+    "customer_0": "Al Noor General Hospital",
+    "customer_1": "ICU — Biomedical Dept, Building B",
+    "customer_2": "Dubai, UAE",
+    "equipment": "Patient Monitor — Vital Signs",
+    "equipment_model": "Model VM-800 · S/N VM800-24417",
+    "report_no": "SR-2026-0418",
+    "visit_date": "Jul 4, 2026",
+    "service_type": "Preventive Maintenance",
+    "engineer": "Dima Haddad",
+    "asset_tag": "ANH-BME-1182",
+    "outcome": "Passed — In service",
+    "next_service": "Jan 4, 2027",
+    "findings_0": "All parameters within tolerance after calibration.",
+    "findings_1": "Recommend battery pack replacement at next PM cycle.",
+    "customer_signatory": "Biomedical Dept"
+  },
+  "collections": {
+    "tasks": {
+      "columns": ["task", "result", "remarks"],
+      "rows": [
+        { "task": "Visual inspection & cleaning", "result": "Pass", "remarks": "Enclosure and cabling intact" },
+        { "task": "ECG / SpO2 accuracy check", "result": "Pass", "remarks": "Within ±1% of simulator" },
+        { "task": "NIBP calibration", "result": "Adjusted", "remarks": "Re-calibrated to reference" },
+        { "task": "Alarm & display test", "result": "Pass", "remarks": "Audible + visual OK" },
+        { "task": "Battery capacity test", "result": "Warning", "remarks": "78% capacity — monitor" },
+        { "task": "Electrical safety (IEC 62353)", "result": "Pass", "remarks": "Leakage within limits" }
+      ]
+    }
+  },
+  "source": {
+    "type": "json",
+    "fileName": "equipment-service-report.data.json"
+  }
+}

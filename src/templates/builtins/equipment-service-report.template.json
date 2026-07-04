@@ -1,0 +1,357 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-equipment-service-report",
+    "name": "Equipment Service Report",
+    "createdAt": "2026-07-04T00:00:00.000Z",
+    "updatedAt": "2026-07-04T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Service Report",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 }
+      },
+      "footer": {
+        "enabled": true,
+        "scope": "this-page-and-overflow",
+        "repeatOnOverflow": true,
+        "boundaryY": 1040,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 0, "opacity": 1 }
+      },
+      "elements": [
+        {
+          "id": "b-1",
+          "type": "box",
+          "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 128, "borderWidth": 0, "borderColor": "#0e7490", "borderStyle": "solid", "backgroundColor": "#0e7490", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "b-2",
+          "type": "box",
+          "position": { "x": 0, "y": 128 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#f59e0b", "borderStyle": "solid", "backgroundColor": "#f59e0b", "borderRadius": 0, "opacity": 100 }
+        },
+        {
+          "id": "t-3",
+          "type": "text",
+          "content": "+",
+          "position": { "x": 66, "y": 34 },
+          "style": { "fontSize": 34, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif" }
+        },
+        {
+          "id": "t-4",
+          "type": "text",
+          "content": "{{brand_name}}",
+          "position": { "x": 108, "y": 42 },
+          "style": { "fontSize": 19, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-5",
+          "type": "text",
+          "content": "{{brand_sub}}",
+          "position": { "x": 108, "y": 74 },
+          "style": { "fontSize": 10.5, "fontWeight": "normal", "color": "#cffafe", "fontFamily": "Arial, sans-serif", "width": 400, "textAlign": "left" }
+        },
+        {
+          "id": "t-6",
+          "type": "text",
+          "content": "SERVICE REPORT",
+          "position": { "x": 394, "y": 40 },
+          "style": { "fontSize": 27, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "right" }
+        },
+        {
+          "id": "t-7",
+          "type": "text",
+          "content": "Medical equipment maintenance & repair",
+          "position": { "x": 394, "y": 82 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#cffafe", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "right" }
+        },
+        {
+          "id": "t-8",
+          "type": "text",
+          "content": "CUSTOMER / SITE",
+          "position": { "x": 60, "y": 158 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" }
+        },
+        {
+          "id": "t-9",
+          "type": "text",
+          "content": "{{customer_0}}",
+          "position": { "x": 60, "y": 176 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-10",
+          "type": "text",
+          "content": "{{customer_1}}",
+          "position": { "x": 60, "y": 194 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-11",
+          "type": "text",
+          "content": "{{customer_2}}",
+          "position": { "x": 60, "y": 211 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-12",
+          "type": "text",
+          "content": "EQUIPMENT",
+          "position": { "x": 60, "y": 240 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" }
+        },
+        {
+          "id": "t-13",
+          "type": "text",
+          "content": "{{equipment}}",
+          "position": { "x": 60, "y": 258 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-14",
+          "type": "text",
+          "content": "{{equipment_model}}",
+          "position": { "x": 60, "y": 276 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-15",
+          "type": "text",
+          "content": "Report No.",
+          "position": { "x": 430, "y": 158 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" }
+        },
+        {
+          "id": "t-16",
+          "type": "text",
+          "content": "{{report_no}}",
+          "position": { "x": 566, "y": 158 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" }
+        },
+        {
+          "id": "t-17",
+          "type": "text",
+          "content": "Visit Date",
+          "position": { "x": 430, "y": 179 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" }
+        },
+        {
+          "id": "t-18",
+          "type": "text",
+          "content": "{{visit_date}}",
+          "position": { "x": 566, "y": 179 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" }
+        },
+        {
+          "id": "t-19",
+          "type": "text",
+          "content": "Service Type",
+          "position": { "x": 430, "y": 200 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" }
+        },
+        {
+          "id": "t-20",
+          "type": "text",
+          "content": "{{service_type}}",
+          "position": { "x": 566, "y": 200 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" }
+        },
+        {
+          "id": "t-21",
+          "type": "text",
+          "content": "Engineer",
+          "position": { "x": 430, "y": 221 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" }
+        },
+        {
+          "id": "t-22",
+          "type": "text",
+          "content": "{{engineer}}",
+          "position": { "x": 566, "y": 221 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" }
+        },
+        {
+          "id": "t-23",
+          "type": "text",
+          "content": "Asset / Serial",
+          "position": { "x": 430, "y": 242 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 130, "textAlign": "left" }
+        },
+        {
+          "id": "t-24",
+          "type": "text",
+          "content": "{{asset_tag}}",
+          "position": { "x": 566, "y": 242 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 168, "textAlign": "right" }
+        },
+        {
+          "id": "t-25",
+          "type": "text",
+          "content": "SERVICE CHECKLIST",
+          "position": { "x": 60, "y": 321 },
+          "style": { "fontSize": 11, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 400, "textAlign": "left" }
+        },
+        {
+          "id": "tbl-26",
+          "type": "table",
+          "schemaVersion": 2,
+          "position": { "x": 60, "y": 341 },
+          "size": { "width": 674, "height": 150 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "Arial, sans-serif", "borderColor": "#e2e8f0", "borderWidth": 1, "showBorders": true },
+          "binding": { "enabled": true, "collectionKey": "tasks", "itemAlias": "item" },
+          "columns": [
+            { "id": "col-task", "width": 330, "alignment": "left" },
+            { "id": "col-result", "width": 130, "alignment": "center" },
+            { "id": "col-remarks", "width": 214, "alignment": "left" }
+          ],
+          "headerRow": {
+            "id": "row-head",
+            "height": 32,
+            "cells": [
+              { "id": "h-task", "content": { "type": "text", "value": "TASK / CHECK" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#0e7490" } },
+              { "id": "h-result", "content": { "type": "text", "value": "RESULT" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "center", "backgroundColor": "#0e7490" } },
+              { "id": "h-remarks", "content": { "type": "text", "value": "REMARKS" }, "style": { "fontSize": 10, "fontWeight": "bold", "color": "#ffffff", "textAlign": "left", "backgroundColor": "#0e7490" } }
+            ]
+          },
+          "rows": [
+            {
+              "id": "row-1",
+              "height": 30,
+              "cells": [
+                { "id": "r-task", "content": { "type": "text", "value": "{{task}}" }, "style": { "textAlign": "left", "color": "#334155" } },
+                { "id": "r-result", "content": { "type": "text", "value": "{{result}}" }, "style": { "textAlign": "center", "color": "#334155" } },
+                { "id": "r-remarks", "content": { "type": "text", "value": "{{remarks}}" }, "style": { "textAlign": "left", "color": "#334155" } }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "t-27",
+          "type": "text",
+          "content": "FINDINGS & RECOMMENDATIONS",
+          "position": { "x": 60, "y": 512 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-28",
+          "type": "text",
+          "content": "{{findings_0}}",
+          "position": { "x": 60, "y": 530 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "t-29",
+          "type": "text",
+          "content": "{{findings_1}}",
+          "position": { "x": 60, "y": 546 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 340, "textAlign": "left" }
+        },
+        {
+          "id": "b-30",
+          "type": "box",
+          "position": { "x": 430, "y": 508 },
+          "style": { "width": 304, "height": 78, "borderWidth": 1, "borderColor": "#0e7490", "borderStyle": "solid", "backgroundColor": "#ecfeff", "borderRadius": 6, "opacity": 100 }
+        },
+        {
+          "id": "t-31",
+          "type": "text",
+          "content": "OUTCOME",
+          "position": { "x": 446, "y": 520 },
+          "style": { "fontSize": 9, "fontWeight": "bold", "color": "#0e7490", "fontFamily": "Arial, sans-serif", "width": 272, "textAlign": "left" }
+        },
+        {
+          "id": "t-32",
+          "type": "text",
+          "content": "{{outcome}}",
+          "position": { "x": 446, "y": 534 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 272, "textAlign": "left" }
+        },
+        {
+          "id": "t-33",
+          "type": "text",
+          "content": "Next service due: {{next_service}}",
+          "position": { "x": 446, "y": 560 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 272, "textAlign": "left" }
+        },
+        {
+          "id": "l-34",
+          "type": "line",
+          "position": { "x": 60, "y": 940 },
+          "style": { "length": 190, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "t-35",
+          "type": "text",
+          "content": "{{engineer}}",
+          "position": { "x": 60, "y": 948 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" }
+        },
+        {
+          "id": "t-36",
+          "type": "text",
+          "content": "Service Engineer",
+          "position": { "x": 60, "y": 966 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" }
+        },
+        {
+          "id": "l-37",
+          "type": "line",
+          "position": { "x": 280, "y": 940 },
+          "style": { "length": 190, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" }
+        },
+        {
+          "id": "t-38",
+          "type": "text",
+          "content": "{{customer_signatory}}",
+          "position": { "x": 280, "y": 948 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" }
+        },
+        {
+          "id": "t-39",
+          "type": "text",
+          "content": "Customer / Accepted by",
+          "position": { "x": 280, "y": 966 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "Arial, sans-serif", "width": 190, "textAlign": "left" }
+        },
+        {
+          "id": "l-40",
+          "type": "line",
+          "position": { "x": 60, "y": 1044 },
+          "style": { "length": 674, "thickness": 1, "direction": "horizontal", "color": "#e2e8f0", "style": "solid" }
+        },
+        {
+          "id": "t-41",
+          "type": "text",
+          "content": "{{brand_name}} · Field Service Report",
+          "position": { "x": 60, "y": 1054 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" }
+        },
+        {
+          "id": "t-42",
+          "type": "text",
+          "content": "Please retain this report for your equipment maintenance records.",
+          "position": { "x": 60, "y": 1068 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "Arial, sans-serif", "width": 674, "textAlign": "left" }
+        }
+      ]
+    }
+  ]
+}

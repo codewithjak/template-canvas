@@ -40,6 +40,7 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const refresh = async () => {
     setLoading(true)
@@ -65,6 +66,19 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to open template.')
       setBusyId(null)
+    }
+  }
+
+  // The row's id is the template's API `templateId` (POST /v1/generate). Copying
+  // it here is the only in-app way to get that value for integrations.
+  const handleCopyId = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(id)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 1500)
+    } catch {
+      /* clipboard blocked — the id is still shown for manual selection */
     }
   }
 
@@ -135,6 +149,16 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
                 <div className="tlm-row-main">
                   <span className="tlm-name">{item.name}</span>
                   <span className="tlm-date">Updated {formatDate(item.updated_at)}</span>
+                  <button
+                    type="button"
+                    className="tlm-id"
+                    title="Copy template ID — use as templateId for the API / n8n integrations"
+                    onClick={(e) => void handleCopyId(e, item.id)}
+                  >
+                    <span className="tlm-id-label">ID</span>
+                    <code className="tlm-id-value">{item.id.slice(0, 8)}…</code>
+                    <span className="tlm-id-action">{copiedId === item.id ? 'Copied' : 'Copy'}</span>
+                  </button>
                 </div>
                 <div className="tlm-row-actions">
                   <button

@@ -39,6 +39,7 @@ import TemplatesLibraryModal from './TemplatesLibraryModal';
 import RebuildWithAiModal  from './RebuildWithAiModal';
 import PropertiesPanel     from './PropertiesPanel';
 import TextFormatBar       from './TextFormatBar';
+import CanvasStatusBar     from './CanvasStatusBar';
 import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
 import { usePlan } from '../../plan/PlanProvider';
@@ -1141,6 +1142,8 @@ function TemplateCanvas() {
           activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
           staticPlaceholders={staticPlaceholders}
         />
+
+        <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} />
 
       </div>
     </DndContext>

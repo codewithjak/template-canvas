@@ -556,3 +556,55 @@
   .tb-btn--primary  { width: 34px; padding: 0; }
   .tb-format-toggle { display: none; }
 }
+
+/* ── Labelled tool rail (icon + text rows, Canva-style) ─────── */
+
+/* Button labels are hidden everywhere except inside a labelled rail */
+.tb-btn__label { display: none; }
+
+.tb--rail.tb--labeled {
+  width      : 168px;
+  align-items: stretch;
+  padding    : 8px;
+}
+
+.tb--labeled .tb-group { align-items: stretch; }
+
+/* Stretch the tooltip/dropdown wrappers so their button fills the row */
+.tb--labeled .tb-tooltip-wrap,
+.tb--labeled .tb-shapes-wrap {
+  display: flex;
+  width  : 100%;
+}
+
+.tb--labeled .tb-btn,
+.tb--labeled .tb-btn[aria-expanded="true"] {
+  width          : 100%;
+  height         : 36px;
+  justify-content: flex-start;
+  gap            : 10px;
+  padding        : 0 10px;
+}
+
+.tb--labeled .tb-btn__label {
+  display       : inline-block;
+  flex          : 1;
+  min-width     : 0;
+  text-align    : left;
+  font-size     : 12.5px;
+  font-weight   : 500;
+  line-height   : 1;
+  white-space   : nowrap;
+  overflow      : hidden;
+  text-overflow : ellipsis;
+  font-family   : 'DM Sans', system-ui, sans-serif;
+}
+
+/* Dropdown chevrons sit at the far right of the row */
+.tb--labeled .tb-chevron { margin-left: auto; }
+
+/* Dividers span the full rail width */
+.tb--labeled .tb-divider { width: 100%; }
+
+/* The visible label already names each tool, so drop the hover tooltip */
+.tb--labeled .tb-tooltip { display: none; }

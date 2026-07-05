@@ -22,11 +22,32 @@
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
-  background: color-mix(in srgb, var(--color-background-primary) 88%, transparent);
+  background: linear-gradient(180deg, #ffffff 0%, #e6ecff 100%);
   backdrop-filter: saturate(140%) blur(8px);
-  border-bottom: 1px solid var(--color-border-tertiary);
+  border-bottom: 1px solid #d6def7;
 }
 .settings__title { font-size: 18px; font-weight: 700; margin: 0; }
+
+/* Branded "Back to canvas" button, matching the canvas header */
+.settings__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  border: 1px solid #cdd8f5;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--color-accent);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.settings__back:hover {
+  background: var(--color-accent-bg);
+  border-color: var(--color-accent-border);
+}
 .settings__main { max-width: 760px; margin: 0 auto; padding: 28px 24px 64px; }
 .settings__muted { color: var(--color-text-muted); font-size: 14px; }
 

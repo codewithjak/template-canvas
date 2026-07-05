@@ -331,9 +331,9 @@ export default function Settings() {
   return (
     <div className="settings">
       <header className="settings__bar">
-        <button onClick={() => navigate('/canvas')} className="btn btn--ghost btn--sm">
+        <button onClick={() => navigate('/canvas')} className="settings__back">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Back to editor
+          Back to canvas
         </button>
         <h1 className="settings__title">Settings</h1>
       </header>

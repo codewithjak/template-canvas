@@ -244,3 +244,26 @@
   background   : rgba(238, 242, 255, 0.92);
   border-color : var(--color-accent-border);
 }
+
+/* ── Full-width property bars: scroll horizontally, add text/date inputs ── */
+.tfb {
+  max-width : calc(100vw - 400px);
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.tfb-input {
+  height        : 32px;
+  padding       : 0 8px;
+  border        : 1px solid var(--color-border-primary);
+  border-radius : 8px;
+  background    : var(--color-background-primary);
+  color         : var(--color-text-primary);
+  font-size     : 13px;
+  outline       : none;
+}
+.tfb-input:focus {
+  border-color : var(--color-accent);
+  box-shadow   : 0 0 0 3px var(--color-accent-ring);
+}
+.tfb-src { width: 160px; }

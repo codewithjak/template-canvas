@@ -104,6 +104,38 @@ export default function TextFormatBar({ element, onUpdate }: Props) {
               </button>
             ))}
           </div>
+
+          <span className="tfb-divider" />
+          <div className="tfb-field">
+            <span className="tfb-label">W</span>
+            <input className="tfb-num" type="number" min={50} max={794}
+              value={element.style.width ?? 240}
+              onChange={e => setStyle({ width: Number(e.target.value) || 50 })} aria-label="Width" />
+          </div>
+          <div className="tfb-field">
+            <span className="tfb-label">Opacity</span>
+            <input className="tfb-num" type="number" min={0} max={100}
+              value={element.style.opacity ?? 100}
+              onChange={e => setStyle({ opacity: Number(e.target.value) })} aria-label="Opacity" />
+          </div>
+          <div className="tfb-field">
+            <span className="tfb-label">Rotate</span>
+            <input className="tfb-num" type="number" min={-180} max={180}
+              value={element.style.rotation ?? 0}
+              onChange={e => setStyle({ rotation: Number(e.target.value) })} aria-label="Rotation" />
+          </div>
+        </>
+      )}
+
+      {element.type === 'paragraph' && (
+        <>
+          <span className="tfb-divider" />
+          <div className="tfb-field">
+            <span className="tfb-label">Line</span>
+            <input className="tfb-num" type="number" min={1} max={3} step={0.1}
+              value={element.style.lineHeight ?? 1.4}
+              onChange={e => setStyle({ lineHeight: Number(e.target.value) || 1 })} aria-label="Line height" />
+          </div>
         </>
       )}
     </div>

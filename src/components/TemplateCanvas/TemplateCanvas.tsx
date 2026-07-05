@@ -1167,19 +1167,29 @@ function TemplateCanvas() {
           )}
 
         {selectedElement &&
-          (selectedElement.type === 'image' || selectedElement.type === 'box' ||
-           selectedElement.type === 'line' || selectedElement.type === 'table') && (
-            <ElementFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
+          ['image', 'box', 'line', 'table', 'barcode', 'radio', 'checkbox', 'date'].includes(selectedElement.type) && (
+            <ElementFormatBar
+              element={selectedElement as any}
+              onUpdate={handleUpdateElement}
+              staticPlaceholders={staticPlaceholders}
+            />
           )}
 
-        <PropertiesPanel
-          selectedElement={selectedElement as any}
-          onUpdate={handleUpdateElement}
-          layoutTableActiveCell={layoutTableCellSelection}
-          layoutTableRange={layoutTableRange}
-          activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
-          staticPlaceholders={staticPlaceholders}
-        />
+        {/* Properties panel is kept only for tables, charts, and page-number text.
+            Everything else is edited from the format bars above. */}
+        {selectedElement &&
+          (selectedElement.type === 'chart' ||
+           selectedElement.type === 'table' ||
+           (selectedElement.type === 'text' && (selectedElement as any).pageNumber?.enabled)) && (
+            <PropertiesPanel
+              selectedElement={selectedElement as any}
+              onUpdate={handleUpdateElement}
+              layoutTableActiveCell={layoutTableCellSelection}
+              layoutTableRange={layoutTableRange}
+              activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
+              staticPlaceholders={staticPlaceholders}
+            />
+          )}
 
         <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} />
 

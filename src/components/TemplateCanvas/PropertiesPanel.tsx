@@ -52,7 +52,18 @@ function PropertiesPanel({
     return (
       <div className="properties-panel">
         <div className="properties-panel-header">Properties</div>
-        <div className="properties-panel-empty">No element selected</div>
+        <div className="properties-panel-empty">
+          <div className="properties-panel-empty__icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M6 3l13 8-5.5 1.5L11 18 6 3z" stroke="currentColor"
+                strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="properties-panel-empty__title">Nothing selected</div>
+          <p className="properties-panel-empty__text">
+            Select an element on the canvas to edit it, or add one from the tool rail.
+          </p>
+        </div>
       </div>
     );
   }

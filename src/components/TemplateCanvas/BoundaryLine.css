@@ -6,6 +6,17 @@
   width          : 100%;
   z-index        : 50;
   pointer-events : none;
+
+  /* Recede by default so the canvas reads as a clean sheet, not a wireframe.
+     Comes forward on hover, or whenever the zone is enabled or selected. */
+  opacity        : 0.4;
+  transition     : opacity 0.15s ease;
+}
+
+.boundary-line:hover,
+.boundary-line--enabled,
+.boundary-line--selected {
+  opacity        : 1;
 }
 
 /* ── Track (the draggable line) ── */

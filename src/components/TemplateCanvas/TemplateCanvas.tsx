@@ -1037,6 +1037,15 @@ function TemplateCanvas() {
                 >
                   {renderElements(page.elements, page.pageId)}
 
+                  {page.elements.length === 0 && (
+                    <div className="canvas-empty-hint">
+                      <div className="canvas-empty-hint__title">This page is empty</div>
+                      <div className="canvas-empty-hint__text">
+                        Pick a tool from the rail on the right to add text, tables, images and more.
+                      </div>
+                    </div>
+                  )}
+
                   <BoundaryLine
                     type="header"
                     config={page.header}

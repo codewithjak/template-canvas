@@ -284,6 +284,34 @@
   z-index        : 10;
 }
 
+/* ── Empty-page hint ─────────────────────────────────────────────────────────*/
+.canvas-empty-hint {
+  position       : absolute;
+  inset          : 0;
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  gap            : 6px;
+  padding        : 24px;
+  text-align     : center;
+  pointer-events : none;   /* never blocks clicks on the canvas */
+  z-index        : 5;      /* sits under the boundary pills (z 50) */
+}
+
+.canvas-empty-hint__title {
+  font-size      : 17px;
+  font-weight    : 600;
+  color          : var(--color-text-muted);
+}
+
+.canvas-empty-hint__text {
+  font-size      : 13px;
+  line-height    : 1.5;
+  max-width      : 300px;
+  color          : var(--color-text-tertiary);
+}
+
 .canvas-zone--header {
   top            : 0;
   /* background and border set dynamically via inline style */

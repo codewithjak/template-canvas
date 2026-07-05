@@ -64,7 +64,8 @@ export default function Toolbar({
   const hasShapes = onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse;
 
   return (
-    <div className="tb" role="toolbar" aria-label="Document toolbar">
+    <>
+    <div className="tb tb--rail" role="toolbar" aria-label="Document tools">
 
       {/* ── Page Size ── */}
       {onPageSizeChange && (
@@ -177,10 +178,22 @@ export default function Toolbar({
         )}
       </div>
 
-      {/* ── Export — primary CTA ── */}
-      {onExportPDF && (
+      {/* ── Delete ── */}
+      {hasSelection && onDelete && (
         <>
           <Divider />
+          <div className="tb-group">
+            <IconBtn icon={<Icons.Delete />} label="Delete selected" shortcut="⌫"
+              onClick={onDelete} variant="danger" />
+          </div>
+        </>
+      )}
+
+    </div>
+
+      {/* ── Export bar — stays top-right, separate from the tool rail ── */}
+      {onExportPDF && (
+        <div className="tb tb--export" role="toolbar" aria-label="Export">
           <div className="tb-group tb-export-group">
             {onExportFormatChange && (
               <div className="tb-format-toggle">
@@ -214,20 +227,8 @@ export default function Toolbar({
               </button>
             </Tooltip>
           </div>
-        </>
+        </div>
       )}
-
-      {/* ── Delete ── */}
-      {hasSelection && onDelete && (
-        <>
-          <Divider />
-          <div className="tb-group">
-            <IconBtn icon={<Icons.Delete />} label="Delete selected" shortcut="⌫"
-              onClick={onDelete} variant="danger" />
-          </div>
-        </>
-      )}
-
-    </div>
+    </>
   );
 }

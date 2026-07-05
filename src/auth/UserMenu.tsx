@@ -14,7 +14,44 @@ export default function UserMenu() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  // True when the provider "photo" is actually a generated monogram (a flat
+  // 2-3 colour letter avatar) rather than a real uploaded photo. We only show
+  // the picture when it's a real photo; monograms fall back to our branded
+  // initial. Google gives both the same URL format, so we tell them apart by
+  // sampling the pixels: a monogram has very few distinct colours.
+  const [isMonogram, setIsMonogram] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const meta = user?.user_metadata ?? {}
+    const url: string | undefined = meta.avatar_url || meta.picture
+    if (!url) { setIsMonogram(false); return }
+
+    let cancelled = false
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      try {
+        const s = 20
+        const canvas = document.createElement('canvas')
+        canvas.width = s; canvas.height = s
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(img, 0, 0, s, s)
+        const { data } = ctx.getImageData(0, 0, s, s)
+        const colours = new Set<number>()
+        for (let i = 0; i < data.length; i += 4) {
+          // Quantise to 3 bits per channel so anti-aliasing doesn't inflate the count.
+          colours.add(((data[i] >> 5) << 6) | ((data[i + 1] >> 5) << 3) | (data[i + 2] >> 5))
+        }
+        if (!cancelled) setIsMonogram(colours.size <= 12)
+      } catch {
+        // Cross-origin taint: can't inspect, so assume it's a real photo and show it.
+      }
+    }
+    img.src = url
+    return () => { cancelled = true }
+  }, [user])
 
   // Close on outside click or Escape.
   useEffect(() => {
@@ -42,6 +79,8 @@ export default function UserMenu() {
   const initial = (name || email || '?').trim().charAt(0).toUpperCase()
   // Same gradient as the header logo tile so the avatar matches it exactly.
   const accent = 'linear-gradient(135deg, #2355f4, #1740d0)'
+  // Show the real photo only when it isn't a generated monogram.
+  const showPhoto = !!avatarUrl && !isMonogram
 
   const handleSignOut = async () => {
     setOpen(false)
@@ -68,7 +107,7 @@ export default function UserMenu() {
           cursor: 'pointer',
         }}
       >
-        {avatarUrl ? (
+        {showPhoto ? (
           <img
             src={avatarUrl}
             alt=""

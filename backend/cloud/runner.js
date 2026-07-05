@@ -135,4 +135,23 @@ async function runPlan(args) {
   return parsePlanJson(body);
 }
 
-module.exports = { runBuild, runPlan, codebuild, httpsRequest, buildspec, planBuildspec };
+/**
+ * Drift check: `plan -refresh-only -json` refreshes state from the live account
+ * and reports only out-of-band changes (no config-driven changes). Same runner,
+ * same parser — the diff is interpreted as a health signal, not a proposal.
+ */
+function driftBuildspec() {
+  return buildspec([
+    '      - terraform plan -input=false -refresh-only -no-color -json > result.out || true',
+    '      - curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"',
+  ]);
+}
+
+async function runDrift(args) {
+  const { body } = await runBuild({ ...args, buildspec: driftBuildspec() });
+  return parsePlanJson(body);
+}
+
+module.exports = {
+  runBuild, runPlan, runDrift, codebuild, httpsRequest, buildspec, planBuildspec, driftBuildspec,
+};

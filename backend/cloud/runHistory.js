@@ -9,14 +9,47 @@
 
 const TABLE = 'cloud_runs';
 // hcl is intentionally excluded from the public projection (large; server-only).
-const PUBLIC = 'id, status, simulated, plan, outputs, error, name, connection_id, created_at';
+const PUBLIC = 'id, kind, status, simulated, plan, outputs, error, name, connection_id, created_at';
 
-async function createRun(sb, teamId, { connectionId = null, name = null, hcl = null, status = 'running', plan = null, simulated = false }) {
+async function createRun(sb, teamId, { connectionId = null, name = null, hcl = null, status = 'running', kind = 'plan', plan = null, simulated = false }) {
   const { data, error } = await sb
     .from(TABLE)
-    .insert({ team_id: teamId, connection_id: connectionId, name, hcl, status, plan, simulated })
+    .insert({ team_id: teamId, connection_id: connectionId, name, hcl, status, kind, plan, simulated })
     .select(PUBLIC)
     .single();
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * The deployment for a connection: its last successfully applied run (incl. hcl,
+ * for re-planning against live state). null if nothing was ever applied.
+ */
+async function latestApplied(sb, teamId, connectionId) {
+  const { data, error } = await sb
+    .from(TABLE)
+    .select(`${PUBLIC}, hcl`)
+    .eq('team_id', teamId)
+    .eq('connection_id', connectionId)
+    .eq('status', 'applied')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/** The most recent drift check for a connection (public projection). */
+async function latestDrift(sb, teamId, connectionId) {
+  const { data, error } = await sb
+    .from(TABLE)
+    .select(PUBLIC)
+    .eq('team_id', teamId)
+    .eq('connection_id', connectionId)
+    .eq('kind', 'drift')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -56,4 +89,4 @@ async function listRuns(sb, teamId, limit = 20) {
   return data || [];
 }
 
-module.exports = { createRun, getRun, updateRun, listRuns };
+module.exports = { createRun, getRun, updateRun, listRuns, latestApplied, latestDrift };

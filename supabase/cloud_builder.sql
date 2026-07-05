@@ -40,6 +40,7 @@ create table if not exists public.cloud_runs (
   name          text,
   hcl           text,
   status        text not null default 'running',  -- running|planned|applying|applied|error
+  kind          text not null default 'plan',      -- plan|apply|drift (a drift check is a plan interpreted as a health signal)
   simulated     boolean not null default false,
   plan          jsonb,
   outputs       jsonb,
@@ -47,7 +48,12 @@ create table if not exists public.cloud_runs (
   created_at    timestamptz not null default now()
 );
 
+-- Idempotent add for databases created before `kind` existed.
+alter table public.cloud_runs add column if not exists kind text not null default 'plan';
+
 create index if not exists cloud_runs_team_idx on public.cloud_runs(team_id, created_at desc);
+-- Fast lookup of the latest drift check per connection.
+create index if not exists cloud_runs_conn_kind_idx on public.cloud_runs(team_id, connection_id, kind, created_at desc);
 
 alter table public.cloud_runs enable row level security;
 -- Server-side only (service role), same as cloud_connections.

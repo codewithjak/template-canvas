@@ -41,8 +41,9 @@ import { HelpOverlay } from './HelpOverlay';
 import { ApprovalGate } from '../run/ApprovalGate';
 import { OutcomeOverlay } from '../run/OutcomeOverlay';
 import { startRun, type RunHandle } from '../run/runController';
+import { checkDrift } from '../run/driftController';
 import { downloadTerraform } from '../run/exportTerraform';
-import { blueprintSignature, appliedNodeIds } from '../run/outcome';
+import { blueprintSignature, appliedNodeIds, tname } from '../run/outcome';
 import type { Plan } from '../run/planTypes';
 import type { AppliedResult } from '../run/simulateApply';
 
@@ -64,6 +65,10 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
   const [helpOpen, setHelpOpen] = useState(false);
   const [appliedSig, setAppliedSig] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<{ count: number; nodeIds: Set<string>; outputs: Record<string, string> } | null>(null);
+  // Latest drift check: `plan` is the drift diff (empty resources ⇒ in sync);
+  // `nodeIds` are the drifted nodes to outline. null ⇒ never checked this session.
+  const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string> } | null>(null);
+  const [driftPanelOpen, setDriftPanelOpen] = useState(true);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
@@ -90,6 +95,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
       const classes: string[] = [];
       const sev = worstByNode.get(n.id);
       if (sev) classes.push(`gcb-diag-${sev}`);
+      else if (drift?.nodeIds.has(n.id)) classes.push('gcb-drifted');
       else if (outcome?.nodeIds.has(n.id)) classes.push('gcb-applied');
       if (n.id === selectedParentId) classes.push('gcb-container'); // this node contains the selection
       return {
@@ -98,7 +104,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
         data: { ...n.data, label: displayLabel(n) },
       };
     }),
-    [nodes, worstByNode, outcome, selectedParentId],
+    [nodes, worstByNode, drift, outcome, selectedParentId],
   );
 
   // Containment shown on the canvas as a dashed violet link (derived from each
@@ -187,6 +193,23 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
           return result;
         },
       });
+    } finally {
+      setThinking(false);
+    }
+  }
+
+  // Drift check: re-plan the deployment against live state and outline any nodes
+  // that changed outside Mapdoc. Empty diff ⇒ in sync. Reuses the address→node
+  // map (type.tname) that outcome reflection already relies on.
+  async function checkDriftRun() {
+    if (!connectionId) return;
+    setThinking(true);
+    try {
+      const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
+      const { plan } = await checkDrift(connectionId);
+      const nodeIds = appliedNodeIds(bp, plan.resources.map((r) => r.address));
+      setDrift({ plan, nodeIds });
+      setDriftPanelOpen(true);
     } finally {
       setThinking(false);
     }
@@ -301,6 +324,9 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
         ))}
         <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
         <button className="gcb-compile" disabled={thinking} onClick={() => void planRun()}>Plan ▸ review</button>
+        {connectionId && (
+          <button className="gcb-compile" disabled={thinking} onClick={() => void checkDriftRun()}>Check drift</button>
+        )}
         <button className="gcb-compile" onClick={exportTf}>Export ▸ .tf</button>
         <button className="gcb-help-btn" onClick={() => setHelpOpen(true)}>? How to use</button>
       </aside>
@@ -361,6 +387,43 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
           <button className="gcb-diag-pill" onClick={() => setDiagOpen(true)}>
             ⚠ {diagnostics.length}
           </button>
+        )}
+
+        {/* Drift status — a check result: green "In sync" or an orange panel
+            listing what changed in the account outside Mapdoc. */}
+        {drift && drift.plan.resources.length === 0 && (
+          <button className="gcb-drift-pill in-sync" onClick={() => setDrift(null)} title="Deployment matches live state">
+            ✓ In sync
+          </button>
+        )}
+        {drift && drift.plan.resources.length > 0 && (
+          driftPanelOpen ? (
+            <div className="gcb-drift-panel">
+              <div className="gcb-diag-head">
+                <strong>Drift detected ({drift.plan.resources.length})</strong>
+                <button className="gcb-diag-x" onClick={() => setDriftPanelOpen(false)}>×</button>
+              </div>
+              <div className="gcb-diag-list">
+                {drift.plan.resources.map((r, i) => (
+                  <button
+                    key={`${r.address}-${i}`}
+                    className="gcb-diag drift"
+                    onClick={() => {
+                      const n = nodes.find((x) => `${x.data.nodeType}.${tname(x.id)}` === r.address);
+                      if (n) selectNode(n.id);
+                    }}
+                  >
+                    <span className="gcb-diag-dot" />
+                    {r.address} — {r.action} outside Mapdoc
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <button className="gcb-drift-pill drifted" onClick={() => setDriftPanelOpen(true)}>
+              ⟳ Drift ({drift.plan.resources.length})
+            </button>
+          )
         )}
       </main>
 

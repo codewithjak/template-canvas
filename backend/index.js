@@ -651,6 +651,7 @@ app.use(require('./routes/webhooks'));      // /v1/webhooks — outbound webhook
 app.use(require('./routes/connector'));     // /v1/me, /v1/hooks/*, /v1/events/sample — connector REST hooks (Step 4)
 app.use(require('./routes/cloudConnect'));  // /v1/cloud/connections — Visual Cloud Builder connect-account (P5)
 app.use(require('./routes/cloudRun'));      // /v1/cloud/runs — terraform plan/apply runs (P6/P7)
+app.use(require('./routes/cloudDrift'));    // /v1/cloud/drift — drift detection (keeping the canvas in sync)
 app.use(require('./routes/cloudArchitect')); // /v1/cloud/architect — LLM architect (P10)
 app.use(contactRouter);
 app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this line + backend/admin/ to disable

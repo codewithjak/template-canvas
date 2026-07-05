@@ -10,15 +10,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
-/** Deterministic accent color from a string, so each user gets a stable hue. */
-function colorFromString(input: string): string {
-  let hash = 0
-  for (let i = 0; i < input.length; i++) {
-    hash = input.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return `hsl(${Math.abs(hash) % 360}, 60%, 45%)`
-}
-
 export default function UserMenu() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
@@ -49,7 +40,8 @@ export default function UserMenu() {
   const email = user.email ?? ''
   const avatarUrl: string | undefined = meta.avatar_url || meta.picture
   const initial = (name || email || '?').trim().charAt(0).toUpperCase()
-  const accent = colorFromString(email || name || 'user')
+  // Same gradient as the header logo tile so the avatar matches it exactly.
+  const accent = 'linear-gradient(135deg, #2355f4, #1740d0)'
 
   const handleSignOut = async () => {
     setOpen(false)

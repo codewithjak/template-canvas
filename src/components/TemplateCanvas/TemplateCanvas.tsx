@@ -40,6 +40,7 @@ import RebuildWithAiModal  from './RebuildWithAiModal';
 import PropertiesPanel     from './PropertiesPanel';
 import TextFormatBar       from './TextFormatBar';
 import ElementFormatBar    from './ElementFormatBar';
+import ElementQuickBar     from './ElementQuickBar';
 import CanvasStatusBar     from './CanvasStatusBar';
 import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
@@ -469,6 +470,26 @@ function TemplateCanvas() {
     if (selectedElementId === id)                 setSelectedElementId(null);
     if (layoutTableCellSelection?.tableId === id) setLayoutTableCellSelection(null);
     if (layoutTableRange?.tableId         === id) setLayoutTableRange(null);
+  };
+
+  // Duplicate an element in place, offset a little so it's visible, then select
+  // the copy. (Tables are excluded by the quick bar to avoid nested-id clashes.)
+  const handleDuplicateElement = (id: string) => {
+    const pageId = findPageOfElement(pages, id);
+    if (!pageId) return;
+    let cloneId: string | null = null;
+    setPages(prev => updatePageElements(prev, pageId, els => {
+      const orig = els.find(e => e.id === id);
+      if (!orig) return els;
+      cloneId = `${orig.type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const clone = {
+        ...structuredClone(orig),
+        id: cloneId,
+        position: { x: (orig.position?.x ?? 0) + 16, y: (orig.position?.y ?? 0) + 16 },
+      };
+      return [...els, clone];
+    }));
+    if (cloneId) setTimeout(() => setSelectedElementId(cloneId), 0);
   };
 
   const clearAllSelections = () => {
@@ -1039,6 +1060,16 @@ function TemplateCanvas() {
                   }}
                 >
                   {renderElements(page.elements, page.pageId)}
+
+                  {selectedElement && selectedElementPageId === page.pageId && selectedElement.position && (
+                    <ElementQuickBar
+                      x={selectedElement.position.x}
+                      y={selectedElement.position.y}
+                      canDuplicate={selectedElement.type !== 'table'}
+                      onDuplicate={() => handleDuplicateElement(selectedElement.id)}
+                      onDelete={() => handleDeleteElement(selectedElement.id)}
+                    />
+                  )}
 
                   {page.elements.length === 0 && (
                     <div className="canvas-empty-hint">

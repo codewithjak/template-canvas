@@ -27,16 +27,19 @@
 
 /* ── Vertical rail variant (sits to the right of the canvas) ── */
 .tb--rail {
-  top       : 50%;
+  top       : 68px;          /* align with the Properties panel, below the header */
   right     : 16px;
   left      : auto;
-  transform : translateY(-50%);
+  bottom    : auto;
+  transform : none;
 
   flex-direction: column;
   height    : auto;
   width     : auto;
   padding   : 8px 7px;
   gap       : 4px;
+  /* No overflow scroll: the shapes/page-size menus open to the left and would
+     be clipped by it. The rail is top-aligned and sized to its content. */
 }
 
 .tb--rail .tb-group { flex-direction: column; gap: 2px; }
@@ -608,3 +611,8 @@
 
 /* The visible label already names each tool, so drop the hover tooltip */
 .tb--labeled .tb-tooltip { display: none; }
+/* ── Brand-tinted tool rail ─────────────────────────────────── */
+.tb--rail {
+  background   : rgba(238, 242, 255, 0.92);
+  border-color : var(--color-accent-border);
+}

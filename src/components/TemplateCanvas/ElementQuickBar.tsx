@@ -14,11 +14,13 @@ interface Props {
   x: number;
   y: number;
   canDuplicate: boolean;
+  onBringToFront: () => void;
+  onSendToBack: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
 }
 
-export default function ElementQuickBar({ x, y, canDuplicate, onDuplicate, onDelete }: Props) {
+export default function ElementQuickBar({ x, y, canDuplicate, onBringToFront, onSendToBack, onDuplicate, onDelete }: Props) {
   // Prefer to sit above the element; if there's no room, tuck just inside the top.
   const top = y >= 44 ? y - 40 : y + 6;
 
@@ -30,6 +32,19 @@ export default function ElementQuickBar({ x, y, canDuplicate, onDuplicate, onDel
       aria-label="Element actions"
       onClick={e => e.stopPropagation()}
     >
+      <button className="eqb-btn" onClick={onBringToFront} title="Bring to front" aria-label="Bring to front">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2.5v6M5.5 5 8 2.5 10.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <rect x="3" y="9.5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.4" />
+        </svg>
+      </button>
+      <button className="eqb-btn" onClick={onSendToBack} title="Send to back" aria-label="Send to back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <rect x="3" y="2.5" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.4" />
+          <path d="M8 13.5v-6M5.5 11 8 13.5 10.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
       {canDuplicate && (
         <button className="eqb-btn" onClick={onDuplicate} title="Duplicate" aria-label="Duplicate">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

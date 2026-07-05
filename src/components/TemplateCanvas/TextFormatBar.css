@@ -2,10 +2,10 @@
 
 .tfb {
   position        : fixed;
-  top             : 12px;
+  top             : 84px;   /* its own row, with clear separation below the header toolbar */
   left            : 50%;
   transform       : translateX(-50%);
-  z-index         : 1001;
+  z-index         : 1000;
 
   display         : flex;
   align-items     : center;
@@ -239,10 +239,24 @@
   color        : var(--color-accent-strong);
 }
 
-/* ── Brand-tinted format bars ───────────────────────────────── */
+/* ── Format bar look — elevated, lightly branded ──────────────── */
 .tfb {
-  background   : rgba(238, 242, 255, 0.92);
-  border-color : var(--color-accent-border);
+  height        : 50px;
+  padding       : 0 12px;
+  gap           : 5px;
+  background    : linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(246, 249, 255, 0.97));
+  border        : 1px solid rgba(35, 85, 244, 0.16);
+  border-radius : 16px;
+  box-shadow    :
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 12px 30px rgba(15, 23, 42, 0.12),
+    0 3px 10px rgba(35, 85, 244, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Softer, brand-tinted dividers to match */
+.tfb .tfb-divider {
+  background: linear-gradient(180deg, rgba(35, 85, 244, 0.06), rgba(35, 85, 244, 0.18), rgba(35, 85, 244, 0.06));
 }
 
 /* ── Full-width property bars: scroll horizontally, add text/date inputs ── */

@@ -14,7 +14,6 @@
 .canvas-image-element.selected {
   outline: 2px solid #007bff;
   outline-offset: 2px;
-  z-index: 100;
 }
 
 .canvas-image-element.dragging {

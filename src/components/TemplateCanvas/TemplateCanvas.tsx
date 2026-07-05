@@ -46,7 +46,6 @@ import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
 import { usePlan } from '../../plan/PlanProvider';
 import CloudStatusToast from './CloudStatusToast';
-import BatchExportBar from './BatchExportBar';
 import CanvasElementView from './CanvasElementView';
 import type { PageSizeConfig } from '../../types/canvas';
 import { defaultPageSize, PAGE_SIZE_PRESETS, customPageSize } from '../../types/canvas';
@@ -92,6 +91,7 @@ import {
   detectRelationships,
   buildRelatedCollectionsConfig,
 } from '../../utils/relationshipDetector';
+import { useHistoryState } from '../../utils/useUndoRedo';
 
 // ── NEW: RuntimeDataStructure imports ────────────────────────────────────────
 import type { RuntimeDataStructure } from '../../types/runtimeDataStructure';
@@ -147,7 +147,14 @@ function TemplateCanvas() {
 
   // ── Core state ────────────────────────────────────────────────────────────
 
-  const [pages, setPages] = useState<CanvasPage[]>([
+  const {
+    state: pages,
+    set: setPages,
+    undo: undoHistory,
+    redo: redoHistory,
+    canUndo,
+    canRedo,
+  } = useHistoryState<CanvasPage[]>([
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
@@ -492,6 +499,27 @@ function TemplateCanvas() {
     if (cloneId) setTimeout(() => setSelectedElementId(cloneId), 0);
   };
 
+  // Layer order — array order is stacking order (later in the array = on top).
+  const handleBringToFront = (id: string) => {
+    const pageId = findPageOfElement(pages, id);
+    if (!pageId) return;
+    setPages(prev => updatePageElements(prev, pageId, els => {
+      const el = els.find(e => e.id === id);
+      if (!el) return els;
+      return [...els.filter(e => e.id !== id), el];
+    }));
+  };
+
+  const handleSendToBack = (id: string) => {
+    const pageId = findPageOfElement(pages, id);
+    if (!pageId) return;
+    setPages(prev => updatePageElements(prev, pageId, els => {
+      const el = els.find(e => e.id === id);
+      if (!el) return els;
+      return [el, ...els.filter(e => e.id !== id)];
+    }));
+  };
+
   const clearAllSelections = () => {
     setSelectedElementId(null);
     setSelectedPageBreakId(null);
@@ -502,15 +530,28 @@ function TemplateCanvas() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId) {
-        if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
-          handleDeleteElement(selectedElementId);
-        }
+      const t = e.target as HTMLElement | null;
+      const inField = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || !!t?.isContentEditable;
+
+      // Undo / redo — ⌘Z / ⌘⇧Z (and Ctrl+Y)
+      if ((e.metaKey || e.ctrlKey) && !inField && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redoHistory(); else undoHistory();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && !inField && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redoHistory();
+        return;
+      }
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElementId && !inField) {
+        handleDeleteElement(selectedElementId);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedElementId]);
+  }, [selectedElementId, undoHistory, redoHistory]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -878,6 +919,41 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onOpenTemplates={() => setLibraryMode('builtin')}
           onOpenProjects={() => setLibraryMode('projects')}
+          onUndo={undoHistory}
+          onRedo={redoHistory}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          dataMapped={!!ir}
+          isSingleMode={rds?.executionPlan.mode === 'single'}
+          totalRows={totalRows}
+          previewRowIndex={previewRowIndex}
+          isExporting={isExporting}
+          onPrevRow={() => setPreviewRowIndex(i => Math.max(0, i - 1))}
+          onNextRow={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
+          onViewStructure={() => setShowDataStructureViewer(true)}
+          onSendEmail={() => {
+            if (!can('delivery')) {
+              promptUpgrade({
+                capability: 'delivery',
+                title: 'Email delivery is a Pro feature',
+                message: 'Email your exports (with an optional response deadline) on the Pro plan and above.',
+              });
+              return;
+            }
+            setSendPanelOpen(true);
+          }}
+          onBulkExport={() => {
+            if (!can('bulk')) {
+              promptUpgrade({
+                capability: 'bulk',
+                title: 'Bulk generation is a Pro feature',
+                message: 'Generate one document per row from your whole dataset on the Pro plan and above.',
+              });
+              return;
+            }
+            setBulkPanelOpen(true);
+          }}
+          onClearData={handleClearData}
           onLoad={handleLoadTemplate}
           onRebuildWithAi={() => {
             if (atLimit('aiBuildsThisMonth')) {
@@ -954,42 +1030,7 @@ function TemplateCanvas() {
           />
         )}
 
-        {ir && (
-          <BatchExportBar
-            isSingleMode={rds?.executionPlan.mode === 'single'}
-            totalRows={totalRows}
-            previewRowIndex={previewRowIndex}
-            isExporting={isExporting}
-            hasElements={allElements.length > 0}
-            onPrevRow={() => setPreviewRowIndex(i => Math.max(0, i - 1))}
-            onNextRow={() => setPreviewRowIndex(i => Math.min(totalRows - 1, i + 1))}
-            onViewStructure={() => setShowDataStructureViewer(true)}
-            onExport={handleExportDocument}
-            onSendEmail={() => {
-              if (!can('delivery')) {
-                promptUpgrade({
-                  capability: 'delivery',
-                  title: 'Email delivery is a Pro feature',
-                  message: 'Email your exports (with an optional response deadline) on the Pro plan and above.',
-                });
-                return;
-              }
-              setSendPanelOpen(true);
-            }}
-            onBulkExport={() => {
-              if (!can('bulk')) {
-                promptUpgrade({
-                  capability: 'bulk',
-                  title: 'Bulk generation is a Pro feature',
-                  message: 'Generate one document per row from your whole dataset on the Pro plan and above.',
-                });
-                return;
-              }
-              setBulkPanelOpen(true);
-            }}
-            onClearData={handleClearData}
-          />
-        )}
+        {/* Batch/data controls moved into the top toolbar (shown when data is mapped). */}
 
         {isExporting && (
           <div className="export-overlay">
@@ -1070,6 +1111,8 @@ function TemplateCanvas() {
                       x={selectedElement.position.x}
                       y={selectedElement.position.y}
                       canDuplicate={selectedElement.type !== 'table'}
+                      onBringToFront={() => handleBringToFront(selectedElement.id)}
+                      onSendToBack={() => handleSendToBack(selectedElement.id)}
                       onDuplicate={() => handleDuplicateElement(selectedElement.id)}
                       onDelete={() => handleDeleteElement(selectedElement.id)}
                     />

@@ -1,40 +1,62 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import type { SetStateAction } from 'react';
 
-export const useUndoRedo = (initialState: any) => {
-  const [state, setState] = useState(initialState);
-  const [redoStack, setRedoStack] = useState<any[]>([]);
+/**
+ * useHistoryState — a drop-in replacement for useState that records an
+ * undo/redo history of the value. It accepts both direct values and functional
+ * updaters, so existing `setX(prev => ...)` call sites keep working unchanged.
+ *
+ * History is kept in refs (past / future stacks) and the "next" value is
+ * computed eagerly from a ref of the latest state, so it stays correct even
+ * when several updates fire synchronously in one event handler.
+ */
+export function useHistoryState<T>(initial: T) {
+  const [state, setState] = useState<T>(initial);
 
-  const createSnapshot = () => {
-    return JSON.parse(JSON.stringify(state));
-  };
+  // Always points at the latest committed value (updated during render and,
+  // eagerly, inside set/undo/redo so back-to-back updates chain correctly).
+  const stateRef = useRef<T>(state);
+  stateRef.current = state;
 
-  const canUndo = redoStack.length > 0;
+  const past = useRef<T[]>([]);
+  const future = useRef<T[]>([]);
+  const LIMIT = 100;
 
-  const undo = () => {
-    if (canUndo) {
-      setRedoStack(prev => [...prev, state]);
-      setState(redoStack.pop());
-    }
-  };
+  const set = useCallback((updater: SetStateAction<T>) => {
+    const prev = stateRef.current;
+    const next = typeof updater === 'function'
+      ? (updater as (p: T) => T)(prev)
+      : updater;
+    if (Object.is(next, prev)) return;
+    past.current.push(prev);
+    if (past.current.length > LIMIT) past.current.shift();
+    future.current = [];
+    stateRef.current = next;
+    setState(next);
+  }, []);
 
-  const redo = () => {
-    if (redoStack.length > 0) {
-      setRedoStack(prev => prev.filter((_, i) => i !== 0));
-      setState(redoStack.pop());
-    }
-  };
+  const undo = useCallback(() => {
+    if (past.current.length === 0) return;
+    const prev = past.current.pop() as T;
+    future.current.push(stateRef.current);
+    stateRef.current = prev;
+    setState(prev);
+  }, []);
 
-  const executeAction = (newState: any) => {
-    setRedoStack([]);
-    setState(createSnapshot());
-    setState(newState);
-  };
+  const redo = useCallback(() => {
+    if (future.current.length === 0) return;
+    const next = future.current.pop() as T;
+    past.current.push(stateRef.current);
+    stateRef.current = next;
+    setState(next);
+  }, []);
 
   return {
     state,
-    canUndo,
+    set,
     undo,
     redo,
-    executeAction
-  };
-};
+    canUndo: past.current.length > 0,
+    canRedo: future.current.length > 0,
+  } as const;
+}

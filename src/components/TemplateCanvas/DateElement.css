@@ -12,7 +12,6 @@
 .canvas-date-element.selected {
   outline: 2px solid #007bff;
   outline-offset: 2px;
-  z-index: 100;
 }
 
 .canvas-date-element.dragging {

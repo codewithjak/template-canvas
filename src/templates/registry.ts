@@ -52,6 +52,8 @@ import medicalCertificateDoc from './builtins/medical-certificate.template.json'
 import medicalCertificateData from './builtins/medical-certificate.data.json'
 import healthcareInvoiceDoc from './builtins/healthcare-invoice.template.json'
 import healthcareInvoiceData from './builtins/healthcare-invoice.data.json'
+import equipmentServiceReportDoc from './builtins/equipment-service-report.template.json'
+import equipmentServiceReportData from './builtins/equipment-service-report.data.json'
 import procurementReportDoc from './builtins/procurement-report.template.json'
 import procurementReportData from './builtins/procurement-report.data.json'
 import qualityInspectionReportDoc from './builtins/quality-inspection-report.template.json'
@@ -322,6 +324,15 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: healthcareInvoiceDoc as unknown as TemplateDocument,
     data: healthcareInvoiceData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-equipment-service-report',
+    name: 'Equipment Service Report',
+    description: 'Biomedical field-service report: equipment details, service checklist, findings and sign-off.',
+    category: 'Healthcare',
+    sizeLabel: 'A4',
+    doc: equipmentServiceReportDoc as unknown as TemplateDocument,
+    data: equipmentServiceReportData as unknown as CanonicalDocument,
   },
   // ── Manufacturing ──
   {

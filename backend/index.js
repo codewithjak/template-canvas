@@ -665,4 +665,9 @@ app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this
 // DB, so retries survive restarts). No-op when Supabase isn't configured.
 startRetryWorker();
 
+// Continuous drift sweeper: re-plans each verified deployment against live state
+// and fires `cloud.drift.detected` on new drift. No-op unless the cloud runner
+// is configured (AWS creds + state bucket). See cloud/driftWorker.js.
+require('./cloud/driftWorker').startDriftWorker();
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

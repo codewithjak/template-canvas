@@ -21,7 +21,7 @@
  * See BUILDER_PLATFORM_ARCHITECTURE.md §3–4, VISUAL_CLOUD_BUILDER_ARCHITECTURE.md §3.2.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -42,6 +42,7 @@ import { ApprovalGate } from '../run/ApprovalGate';
 import { OutcomeOverlay } from '../run/OutcomeOverlay';
 import { startRun, type RunHandle } from '../run/runController';
 import { checkDrift } from '../run/driftController';
+import { getDrift } from '../run/driftApi';
 import { downloadTerraform } from '../run/exportTerraform';
 import { blueprintSignature, appliedNodeIds, tname } from '../run/outcome';
 import type { Plan } from '../run/planTypes';
@@ -69,6 +70,24 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
   // `nodeIds` are the drifted nodes to outline. null ⇒ never checked this session.
   const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string> } | null>(null);
   const [driftPanelOpen, setDriftPanelOpen] = useState(true);
+
+  // Phase 2: surface the continuous worker's latest stored drift on load, so a
+  // scheduled finding shows on the canvas without an explicit check. Once per
+  // connection; the graph at mount is enough to map addresses back to nodes.
+  useEffect(() => {
+    if (!connectionId) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getDrift(connectionId);
+        if (cancelled || !r.plan || r.status === 'none') return;
+        const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
+        setDrift({ plan: r.plan, nodeIds: appliedNodeIds(bp, r.plan.resources.map((x) => x.address)) });
+      } catch { /* best-effort — drift never blocks the editor */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionId]);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;

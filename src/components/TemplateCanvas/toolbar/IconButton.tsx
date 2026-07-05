@@ -53,6 +53,8 @@ export function IconBtn({ icon, label, shortcut, onClick, disabled, variant = 'd
         aria-pressed={active}
       >
         {icon}
+        {/* Hidden by default; shown beside the icon only inside a .tb--labeled rail */}
+        <span className="tb-btn__label">{label}</span>
       </button>
     </Tooltip>
   );

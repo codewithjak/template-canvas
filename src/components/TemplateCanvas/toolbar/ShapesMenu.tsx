@@ -50,6 +50,7 @@ function ShapesMenu({ onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddE
           aria-haspopup="true"
         >
           <Icons.Shapes />
+          <span className="tb-btn__label">Shapes</span>
           <svg className="tb-chevron" width="10" height="10" viewBox="0 0 10 10" fill="none">
             <path d="M2.5 3.5 5 6l2.5-2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>

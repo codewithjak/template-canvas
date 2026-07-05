@@ -65,7 +65,7 @@ export default function Toolbar({
 
   return (
     <>
-    <div className="tb tb--rail" role="toolbar" aria-label="Document tools">
+    <div className="tb tb--rail tb--labeled" role="toolbar" aria-label="Document tools">
 
       {/* ── Page Size ── */}
       {onPageSizeChange && (

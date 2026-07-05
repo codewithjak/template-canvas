@@ -1,0 +1,163 @@
+/* TextFormatBar.css — contextual text formatting bar (top-centre) */
+
+.tfb {
+  position        : fixed;
+  top             : 12px;
+  left            : 50%;
+  transform       : translateX(-50%);
+  z-index         : 1001;
+
+  display         : flex;
+  align-items     : center;
+  gap             : 4px;
+
+  height          : 48px;
+  padding         : 0 10px;
+
+  background      : rgba(255, 255, 255, 0.88);
+  backdrop-filter : blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+
+  border          : 1px solid rgba(15, 23, 42, 0.09);
+  border-radius   : 14px;
+  box-shadow      :
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 16px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  font-family     : 'DM Sans', system-ui, sans-serif;
+}
+
+.tfb-divider {
+  width         : 1px;
+  height        : 22px;
+  background    : rgba(15, 23, 42, 0.1);
+  margin        : 0 4px;
+  border-radius : 999px;
+  flex-shrink   : 0;
+}
+
+/* ── Font family ── */
+.tfb-font {
+  height        : 32px;
+  max-width     : 150px;
+  padding       : 0 8px;
+  border        : 1px solid var(--color-border-primary);
+  border-radius : 8px;
+  background    : var(--color-background-primary);
+  color         : var(--color-text-primary);
+  font-size     : 13px;
+  cursor        : pointer;
+  outline       : none;
+}
+
+.tfb-font:focus {
+  border-color  : var(--color-accent);
+  box-shadow    : 0 0 0 3px var(--color-accent-ring);
+}
+
+/* ── Size stepper ── */
+.tfb-size {
+  display     : flex;
+  align-items : center;
+  gap         : 2px;
+}
+
+.tfb-step {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 28px;
+  height         : 30px;
+  border         : none;
+  border-radius  : 6px;
+  background     : transparent;
+  color          : var(--color-text-secondary);
+  font-size      : 16px;
+  line-height    : 1;
+  cursor         : pointer;
+  transition     : background 0.15s ease, color 0.15s ease;
+}
+
+.tfb-step:hover {
+  background : rgba(35, 85, 244, 0.07);
+  color      : var(--color-accent);
+}
+
+.tfb-size-input {
+  width         : 46px;
+  height        : 30px;
+  text-align    : center;
+  border        : 1px solid var(--color-border-primary);
+  border-radius : 6px;
+  background    : var(--color-background-primary);
+  color         : var(--color-text-primary);
+  font-size     : 13px;
+  outline       : none;
+}
+
+.tfb-size-input:focus {
+  border-color  : var(--color-accent);
+  box-shadow    : 0 0 0 2px var(--color-accent-ring);
+}
+
+.tfb-size-input::-webkit-inner-spin-button,
+.tfb-size-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tfb-size-input[type='number'] { -moz-appearance: textfield; }
+
+/* ── Icon buttons (bold, alignment) ── */
+.tfb-btn {
+  display        : inline-flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 32px;
+  height         : 32px;
+  padding        : 0;
+  border         : 1px solid transparent;
+  border-radius  : 8px;
+  background     : transparent;
+  color          : var(--color-text-secondary);
+  font-size      : 14px;
+  cursor         : pointer;
+  transition     : background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.tfb-btn:hover {
+  background   : rgba(35, 85, 244, 0.07);
+  border-color : rgba(35, 85, 244, 0.15);
+  color        : var(--color-accent);
+}
+
+.tfb-btn--active {
+  background   : var(--color-accent-bg);
+  border-color : var(--color-accent-border);
+  color        : var(--color-accent-strong);
+}
+
+.tfb-align {
+  display     : flex;
+  align-items : center;
+  gap         : 2px;
+}
+
+/* ── Colour swatch (clip a larger native picker into a neat square) ── */
+.tfb-color {
+  display        : inline-flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 32px;
+  height         : 32px;
+  border         : 1px solid var(--color-border-primary);
+  border-radius  : 8px;
+  overflow       : hidden;
+  cursor         : pointer;
+}
+
+.tfb-color input[type='color'] {
+  width   : 46px;
+  height  : 46px;
+  border  : none;
+  padding : 0;
+  background: none;
+  cursor  : pointer;
+}

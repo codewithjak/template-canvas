@@ -42,3 +42,22 @@
   background    : var(--color-text-tertiary);
   flex-shrink   : 0;
 }
+
+/* Add-page button inside the status chip */
+.canvas-statusbar__add {
+  display        : inline-flex;
+  align-items    : center;
+  gap            : 5px;
+  padding        : 3px 8px 3px 6px;
+  margin         : -2px -6px -2px 0;
+  border         : none;
+  border-radius  : 999px;
+  background      : transparent;
+  color          : var(--color-accent);
+  font-family    : inherit;
+  font-size      : 12.5px;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : background 0.15s ease;
+}
+.canvas-statusbar__add:hover { background: var(--color-accent-bg); }

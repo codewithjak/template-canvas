@@ -74,6 +74,13 @@ function subnetIdsInVpc(ctx: Ctx, vpcId: string): string[] {
     .map((n) => `aws_subnet.${tname(n.id)}.id`);
 }
 
+/** Subnet id refs in a VPC filtered by public/private (for ALB placement). */
+function subnetIdsByAccess(ctx: Ctx, vpcId: string, wantPublic: boolean): string[] {
+  return ctx.bp.nodes
+    .filter((n) => n.type === 'aws_subnet' && n.parent === vpcId && (n.props.public === 'true') === wantPublic)
+    .map((n) => `aws_subnet.${tname(n.id)}.id`);
+}
+
 const dbPort = (engine: unknown) => (engine === 'mysql' || engine === 'mariadb' ? 3306 : 5432);
 
 // ── Per-node emitters (one per type) ─────────────────────────────────────────
@@ -200,17 +207,21 @@ function emitIamRole(n: GraphNode, ctx: Ctx): string {
 
 function emitLb(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
+  const internal = p.scheme === 'internal';
   const vpcId = vpcIdOf(ctx, n);
-  const subnetIds = vpcId ? subnetIdsInVpc(ctx, vpcId) : [];
-  const sgs = sgIdsAttachedTo(ctx, n.id);
+  // Internet-facing ALBs must sit in PUBLIC subnets (a private one has no IGW
+  // route and the apply fails); internal ALBs sit in private subnets.
+  const subnetIds = vpcId ? subnetIdsByAccess(ctx, vpcId, !internal) : [];
+  // Its own synthesized SG (emitLbCompletion) plus any the user attached.
+  const sgs = [...(vpcId ? [`aws_security_group.${tname(n.id)}_sg.id`] : []), ...sgIdsAttachedTo(ctx, n.id)];
   return resource('aws_lb', tname(n.id), [
     `name               = ${q(p.name)}`,
-    `internal           = ${p.scheme === 'internal'}`,
+    `internal           = ${internal}`,
     'load_balancer_type = "application"',
     ...(sgs.length ? [`security_groups    = [${sgs.join(', ')}]`] : []),
     subnetIds.length
       ? `subnets            = [${subnetIds.join(', ')}]`
-      : '# subnets: add subnets to the VPC (an ALB needs ≥2 AZs)',
+      : `# subnets: add ≥2 ${internal ? 'private' : 'public'} subnets to the VPC (an ALB needs 2 AZs)`,
   ]);
 }
 
@@ -263,11 +274,12 @@ function emitEcs(n: GraphNode, ctx: Ctx): string {
   const lbEdge = ctx.bp.edges.find(
     (e) => e.type === 'routes_to' && e.to === n.id && ctx.byId.get(e.from)?.type === 'aws_lb',
   );
-  const lbBlock = lbEdge ? [
+  const lbNode = lbEdge ? ctx.byId.get(lbEdge.from) : undefined;
+  const lbBlock = lbNode ? [
     '  load_balancer {',
-    `    target_group_arn = aws_lb_target_group.${tname(lbEdge.from)}_tg.arn`,
+    `    target_group_arn = aws_lb_target_group.${tname(lbNode.id)}_tg.arn`,
     `    container_name   = ${q(p.name)}`,
-    '    container_port   = 80',
+    `    container_port   = ${Number(lbNode.props.targetPort) || 80}`,
     '  }',
   ] : [];
   const service = [
@@ -372,25 +384,42 @@ function emitVpcNetworking(vpc: GraphNode, ctx: Ctx): string[] {
 }
 
 /**
- * ALB delivery: a target group + HTTP listener, plus attachments for each
- * "routes_to" target. An ALB alone routes nowhere; these are what connect it to
- * the instances/services it points at. (ECS targets register via their own
- * load_balancer block in emitEcs.)
+ * ALB delivery + security coherence. An ALB needs its own security group
+ * (inbound 80 from the internet) or nothing reaches it; and each target's
+ * security group must admit the ALB on the target port or traffic is dropped at
+ * the instance. So this synthesizes: the ALB SG (always), and — when the ALB
+ * routes somewhere — a target group + HTTP listener, per-instance attachments,
+ * and a least-privilege ingress rule opening each target's SG to the ALB SG on
+ * the target port. (ECS targets register via their load_balancer block in emitEcs.)
  */
 function emitLbCompletion(lb: GraphNode, ctx: Ctx): string[] {
-  const routes = ctx.bp.edges.filter((e) => e.type === 'routes_to' && e.from === lb.id);
-  if (!routes.length) return [];
-  const targets = routes.map((e) => ctx.byId.get(e.to)).filter((n): n is GraphNode => !!n);
   const ln = tname(lb.id);
   const vpcId = vpcIdOf(ctx, lb);
-  const targetType = targets.some((t) => t.type === 'aws_ecs_service') ? 'ip' : 'instance';
+  if (!vpcId) return []; // an ALB must be in a VPC to get an SG / target group
+  const label = String(lb.props.name || ln);
+  const targetPort = Number(lb.props.targetPort) || 80;
   const out: string[] = [];
 
+  // ALB security group: inbound 80 from the internet, egress all.
+  out.push(resource('aws_security_group', `${ln}_sg`, [
+    `name   = ${q(label + '-alb-sg')}`,
+    `vpc_id = aws_vpc.${tname(vpcId)}.id`,
+    'ingress {\n    from_port   = 80\n    to_port     = 80\n    protocol    = "tcp"\n    cidr_blocks = ["0.0.0.0/0"]\n  }',
+    egressAll,
+  ]));
+
+  const targets = ctx.bp.edges
+    .filter((e) => e.type === 'routes_to' && e.from === lb.id)
+    .map((e) => ctx.byId.get(e.to))
+    .filter((n): n is GraphNode => !!n);
+  if (!targets.length) return out; // SG only; nothing to route yet
+
+  const targetType = targets.some((t) => t.type === 'aws_ecs_service') ? 'ip' : 'instance';
   out.push(resource('aws_lb_target_group', `${ln}_tg`, [
-    `name        = ${q(String(lb.props.name || ln) + '-tg')}`,
-    'port        = 80',
+    `name        = ${q(label + '-tg')}`,
+    `port        = ${targetPort}`,
     'protocol    = "HTTP"',
-    ...(vpcId ? [`vpc_id      = aws_vpc.${tname(vpcId)}.id`] : []),
+    `vpc_id      = aws_vpc.${tname(vpcId)}.id`,
     `target_type = ${q(targetType)}`,
   ]));
   out.push(resource('aws_lb_listener', `${ln}_listener`, [
@@ -404,6 +433,18 @@ function emitLbCompletion(lb: GraphNode, ctx: Ctx): string[] {
       out.push(resource('aws_lb_target_group_attachment', `${ln}_${tname(t.id)}`, [
         `target_group_arn = aws_lb_target_group.${ln}_tg.arn`,
         `target_id        = aws_instance.${tname(t.id)}.id`,
+      ]));
+    }
+    // Open the target's SG to the ALB on the target port (least-privilege).
+    const targetSg = sgIdsAttachedTo(ctx, t.id)[0];
+    if (targetSg) {
+      out.push(resource('aws_security_group_rule', `${ln}_to_${tname(t.id)}`, [
+        'type                     = "ingress"',
+        `from_port                = ${targetPort}`,
+        `to_port                  = ${targetPort}`,
+        'protocol                 = "tcp"',
+        `security_group_id        = ${targetSg}`,
+        `source_security_group_id = aws_security_group.${ln}_sg.id`,
       ]));
     }
   }

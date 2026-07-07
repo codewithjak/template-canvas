@@ -68,8 +68,8 @@ export const awsCatalog: NodeCatalog = [
     }),
 
   node('aws_lb', 'Load Balancer (ALB)', 'Network',
-    { name: 'web-alb', scheme: 'internet-facing' },
-    [txt('name', 'Name'), sel('scheme', 'Scheme', ['internet-facing', 'internal'])],
+    { name: 'web-alb', scheme: 'internet-facing', targetPort: '80' },
+    [txt('name', 'Name'), sel('scheme', 'Scheme', ['internet-facing', 'internal']), num('targetPort', 'Target port')],
     { container: inside(['aws_vpc']), connections: [{ type: 'routes_to', to: ['aws_instance', 'aws_ecs_service'] }] }),
 
   node('aws_cloudfront_distribution', 'CloudFront', 'Network',

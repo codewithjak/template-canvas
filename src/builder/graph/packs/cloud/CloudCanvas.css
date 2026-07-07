@@ -12,6 +12,13 @@
   color: #374151;
 }
 .cb-bar select { padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; }
+.tb-name {
+  padding: 4px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 12px;
+  min-width: 160px;
+}
 .cb-live { color: #15803d; font-weight: 600; }
 .cb-sim { color: #6b7280; }
 .cb-link { margin-left: auto; color: #2563eb; text-decoration: none; }

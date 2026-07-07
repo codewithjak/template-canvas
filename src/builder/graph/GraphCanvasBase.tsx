@@ -52,9 +52,11 @@ interface GraphCanvasBaseProps {
   pack: DomainPack;
   initial?: Blueprint;
   connectionId?: string; // run target (cloud pack): which account Plan/Apply use
+  templateId?: string;   // the design being edited; identifies the deployment for run/drift
+  onSave?: (bp: Blueprint) => Promise<void> | void; // persist the current blueprint
 }
 
-export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBaseProps) {
+export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSave }: GraphCanvasBaseProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>(toRFNodes(initial, pack.catalog));
   const [edges, setEdges, onEdgesChange] = useEdgesState<RFEdge>(toRFEdges(initial));
 
@@ -62,6 +64,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
   const [run, setRun] = useState<RunHandle | null>(null);
   const [intent, setIntent] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [diagOpen, setDiagOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [appliedSig, setAppliedSig] = useState<string | null>(null);
@@ -81,7 +84,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     let cancelled = false;
     void (async () => {
       try {
-        const r = await getDrift(connectionId);
+        const r = await getDrift(connectionId, templateId);
         if (cancelled || !r.plan || r.status === 'none') return;
         const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
         setDrift({ plan: r.plan, nodeIds: appliedNodeIds(bp, r.plan.resources.map((x) => x.address)) });
@@ -89,7 +92,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionId]);
+  }, [connectionId, templateId]);
 
   const groups = useMemo(() => groupByGroup(pack.catalog), [pack.catalog]);
   const selected = nodes.find((n) => n.selected) ?? null;
@@ -204,7 +207,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
 
     setThinking(true);
     try {
-      const handle = await startRun(pack.compile(bp), connectionId);
+      const handle = await startRun(pack.compile(bp), connectionId, templateId);
       setRun({
         plan: handle.plan,
         apply: async () => {
@@ -227,7 +230,7 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     setThinking(true);
     try {
       const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
-      const res = await checkDrift(connectionId);
+      const res = await checkDrift(connectionId, templateId);
       if (res.status === 'unavailable') {
         // Could not observe live state — show a neutral pill, never green "in sync".
         setDrift({ plan: res.plan, nodeIds: new Set(), unavailable: true });
@@ -238,6 +241,16 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
       setDriftPanelOpen(true);
     } finally {
       setThinking(false);
+    }
+  }
+
+  async function save() {
+    if (!onSave) return;
+    setSaving(true);
+    try {
+      await onSave(toBlueprint(pack.id, nodes, edges, 'blueprint'));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -348,6 +361,9 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
             ))}
           </section>
         ))}
+        {onSave && (
+          <button className="gcb-compile" disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save'}</button>
+        )}
         <button className="gcb-compile" onClick={compile}>Compile ▸ Terraform</button>
         <button className="gcb-compile" disabled={thinking} onClick={() => void planRun()}>Plan ▸ review</button>
         {connectionId && (

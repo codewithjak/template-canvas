@@ -85,11 +85,21 @@ router.post('/v1/cloud/drift', async (req, res) => {
 router.get('/v1/cloud/drift/:connectionId', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const { deploymentId } = req.query;
+    const { connectionId } = req.params;
+    let { deploymentId } = req.query;
+    const { templateId } = req.query;
+
+    // Resolve a per-infra target: explicit deployment, or (connection, template).
+    if (!deploymentId && templateId) {
+      const dep = await deps.findByIdentity(sb, teamId, connectionId, templateId);
+      if (!dep) return res.json({ connectionId, deploymentId: null, status: 'none' });
+      deploymentId = dep.id;
+    }
+
     const r = deploymentId
       ? await history.latestDriftForDeployment(sb, teamId, deploymentId)
-      : await history.latestDrift(sb, teamId, req.params.connectionId);
-    if (!r) return res.json({ connectionId: req.params.connectionId, deploymentId: deploymentId || null, status: 'none' });
+      : await history.latestDrift(sb, teamId, connectionId);
+    if (!r) return res.json({ connectionId, deploymentId: deploymentId || null, status: 'none' });
     res.json({
       runId: r.id,
       connectionId: req.params.connectionId,

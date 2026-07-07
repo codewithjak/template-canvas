@@ -33,8 +33,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const startDrift = (connectionId: string) =>
-  call<DriftResponse>('/v1/cloud/drift', { method: 'POST', body: JSON.stringify({ connectionId }) });
+export const startDrift = (connectionId: string, templateId?: string) =>
+  call<DriftResponse>('/v1/cloud/drift', { method: 'POST', body: JSON.stringify({ connectionId, templateId }) });
 
-export const getDrift = (connectionId: string) =>
-  call<DriftResponse>(`/v1/cloud/drift/${connectionId}`);
+export const getDrift = (connectionId: string, templateId?: string) =>
+  call<DriftResponse>(`/v1/cloud/drift/${connectionId}${templateId ? `?templateId=${encodeURIComponent(templateId)}` : ''}`);

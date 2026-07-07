@@ -21,19 +21,19 @@ export interface DriftHandle {
 const EMPTY: Plan = { summary: { add: 0, change: 0, destroy: 0 }, resources: [], simulated: true };
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function poll(connectionId: string, tries = 90): Promise<DriftResponse> {
+async function poll(connectionId: string, templateId: string | undefined, tries = 90): Promise<DriftResponse> {
   for (let i = 0; i < tries; i += 1) {
-    const r = await getDrift(connectionId);
+    const r = await getDrift(connectionId, templateId);
     if (r.status === 'planned' || r.status === 'error') return r;
     await wait(2000);
   }
   throw new Error('Drift check timed out.');
 }
 
-export async function checkDrift(connectionId: string): Promise<DriftHandle> {
+export async function checkDrift(connectionId: string, templateId?: string): Promise<DriftHandle> {
   try {
-    let r = await startDrift(connectionId);
-    if (r.status === 'running') r = await poll(connectionId);
+    let r = await startDrift(connectionId, templateId);
+    if (r.status === 'running') r = await poll(connectionId, templateId);
     if (r.status !== 'planned' || !r.plan) throw new Error(r.error || 'Drift check failed.');
     return { status: 'checked', plan: r.plan, simulated: Boolean(r.simulated) };
   } catch {

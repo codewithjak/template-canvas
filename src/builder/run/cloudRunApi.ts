@@ -30,8 +30,8 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
-export const createRun = (hcl: string, connectionId?: string) =>
-  call<RunResponse>('/v1/cloud/runs', { method: 'POST', body: JSON.stringify({ hcl, connectionId }) });
+export const createRun = (hcl: string, connectionId?: string, templateId?: string) =>
+  call<RunResponse>('/v1/cloud/runs', { method: 'POST', body: JSON.stringify({ hcl, connectionId, templateId }) });
 
 export const getRun = (id: string) => call<RunResponse>(`/v1/cloud/runs/${id}`);
 

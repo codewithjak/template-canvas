@@ -29,9 +29,9 @@ async function poll(runId: string, until: RunResponse['status'][], tries = 90): 
   throw new Error('Run timed out.');
 }
 
-export async function startRun(hcl: string, connectionId?: string): Promise<RunHandle> {
+export async function startRun(hcl: string, connectionId?: string, templateId?: string): Promise<RunHandle> {
   try {
-    let r = await createRun(hcl, connectionId);
+    let r = await createRun(hcl, connectionId, templateId);
     if (r.status === 'running') r = await poll(r.runId, ['planned', 'error']);
     if (r.status !== 'planned' || !r.plan) throw new Error(r.error || 'Plan failed.');
     const { runId, plan } = r;

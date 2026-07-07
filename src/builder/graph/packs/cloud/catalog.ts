@@ -51,8 +51,8 @@ function node(
 export const awsCatalog: NodeCatalog = [
   // ── Network ─────────────────────────────────────────────────────────────
   node('aws_vpc', 'VPC', 'Network',
-    { name: 'main', cidr: '10.0.0.0/16' },
-    [txt('name', 'Name'), txt('cidr', 'CIDR block')]),
+    { name: 'main', cidr: '10.0.0.0/16', nat: 'false' },
+    [txt('name', 'Name'), txt('cidr', 'CIDR block'), sel('nat', 'NAT egress (private subnets)', ['false', 'true'])]),
 
   node('aws_subnet', 'Subnet', 'Network',
     { cidr: '10.0.1.0/24', az: 'us-east-1a', public: 'true' },
@@ -81,7 +81,13 @@ export const awsCatalog: NodeCatalog = [
   node('aws_instance', 'EC2 Instance', 'Compute',
     { name: 'web-1', ami: 'ami-0abc123', size: 't3.micro' },
     [txt('name', 'Name'), txt('ami', 'AMI'), sel('size', 'Instance type', ['t3.micro', 't3.small', 't3.medium', 't3.large'])],
-    { container: inside(['aws_subnet']), connections: [{ type: 'connects_to', to: ['aws_db_instance'] }] }),
+    {
+      container: inside(['aws_subnet']),
+      connections: [
+        { type: 'connects_to', to: ['aws_db_instance'] },
+        { type: 'uses_role', to: ['aws_iam_role'], max: 1 },
+      ],
+    }),
 
   node('aws_ecs_service', 'ECS Service (Fargate)', 'Compute',
     { name: 'app', desiredCount: '2', cpu: '256', memory: '512' },
@@ -101,6 +107,6 @@ export const awsCatalog: NodeCatalog = [
 
   // ── Security ────────────────────────────────────────────────────────────
   node('aws_iam_role', 'IAM Role', 'Security',
-    { name: 'app-role' },
-    [txt('name', 'Name')]),
+    { name: 'app-role', managedPolicyArn: '' },
+    [txt('name', 'Name'), txt('managedPolicyArn', 'Managed policy ARN (optional)')]),
 ];

@@ -107,15 +107,24 @@ function emitSecurityGroup(n: GraphNode, ctx: Ctx): string {
   ]);
 }
 
+/** The role an instance/service uses (outgoing "uses_role" edge), or undefined. */
+function roleUsedBy(ctx: Ctx, nodeId: string): GraphNode | undefined {
+  const e = ctx.bp.edges.find((edge) => edge.type === 'uses_role' && edge.from === nodeId);
+  return e ? ctx.byId.get(e.to) : undefined;
+}
+
 function emitInstance(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
   const subnet = refId(ctx, n.parent);
   const sgs = sgIdsAttachedTo(ctx, n.id);
+  const role = roleUsedBy(ctx, n.id);
   return resource('aws_instance', tname(n.id), [
     `ami                    = ${q(p.ami)}`,
     `instance_type          = ${q(p.size)}`,
     ...(subnet ? [`subnet_id              = ${subnet}`] : []),
     ...(sgs.length ? [`vpc_security_group_ids = [${sgs.join(', ')}]`] : []),
+    // Instance profile is synthesized in emitIamRole (below).
+    ...(role ? [`iam_instance_profile   = aws_iam_instance_profile.${tname(role.id)}_profile.name`] : []),
     `tags                   = ${tag(p.name ?? n.id)}`,
   ]);
 }
@@ -157,7 +166,8 @@ function emitS3(n: GraphNode): string {
   ]);
 }
 
-function emitIamRole(n: GraphNode): string {
+function emitIamRole(n: GraphNode, ctx: Ctx): string {
+  const tn = tname(n.id);
   const policy =
     'assume_role_policy = jsonencode({\n'
     + '    Version = "2012-10-17"\n'
@@ -167,7 +177,25 @@ function emitIamRole(n: GraphNode): string {
     + '      Principal = { Service = "ec2.amazonaws.com" }\n'
     + '    }]\n'
     + '  })';
-  return resource('aws_iam_role', tname(n.id), [`name = ${q(n.props.name)}`, policy]);
+  const blocks = [resource('aws_iam_role', tn, [`name = ${q(n.props.name)}`, policy])];
+
+  // Attach a managed policy so the role actually grants something.
+  if (n.props.managedPolicyArn) {
+    blocks.push(resource('aws_iam_role_policy_attachment', `${tn}_attach`, [
+      `role       = aws_iam_role.${tn}.name`,
+      `policy_arn = ${q(n.props.managedPolicyArn)}`,
+    ]));
+  }
+  // An instance can only assume a role through an instance profile — synthesize
+  // one when any instance uses this role (referenced by emitInstance above).
+  const usedByInstance = ctx.bp.edges.some((e) => e.type === 'uses_role' && e.to === n.id);
+  if (usedByInstance) {
+    blocks.push(resource('aws_iam_instance_profile', `${tn}_profile`, [
+      `name = ${q(tn + '-profile')}`,
+      `role = aws_iam_role.${tn}.name`,
+    ]));
+  }
+  return blocks.join('\n\n');
 }
 
 function emitLb(n: GraphNode, ctx: Ctx): string {
@@ -231,6 +259,17 @@ function emitEcs(n: GraphNode, ctx: Ctx): string {
   const subnetIds = vpcId ? subnetIdsInVpc(ctx, vpcId) : [];
   const sgs = sgIdsAttachedTo(ctx, n.id);
   const cluster = resource('aws_ecs_cluster', `${tn}_cluster`, [`name = ${q(String(p.name) + '-cluster')}`]);
+  // If an ALB routes to this service, register it in the ALB's target group.
+  const lbEdge = ctx.bp.edges.find(
+    (e) => e.type === 'routes_to' && e.to === n.id && ctx.byId.get(e.from)?.type === 'aws_lb',
+  );
+  const lbBlock = lbEdge ? [
+    '  load_balancer {',
+    `    target_group_arn = aws_lb_target_group.${tname(lbEdge.from)}_tg.arn`,
+    `    container_name   = ${q(p.name)}`,
+    '    container_port   = 80',
+    '  }',
+  ] : [];
   const service = [
     `resource "aws_ecs_service" "${tn}" {`,
     `  name            = ${q(p.name)}`,
@@ -239,6 +278,7 @@ function emitEcs(n: GraphNode, ctx: Ctx): string {
     '  launch_type     = "FARGATE"',
     '  # task_definition is your container/app — out of infra scope (the user supplies it)',
     '  task_definition = "REPLACE_WITH_TASK_DEFINITION_ARN"',
+    ...lbBlock,
     '  network_configuration {',
     `    subnets         = [${subnetIds.join(', ')}]`,
     ...(sgs.length ? [`    security_groups = [${sgs.join(', ')}]`] : ['    # security_groups: attach one']),
@@ -271,6 +311,101 @@ function emitConnectRules(ctx: Ctx): string[] {
       `security_group_id        = ${bSg}`,
       `source_security_group_id = ${aSg}`,
     ]));
+  }
+  return out;
+}
+
+// ── Completion synthesis (resources the drawn nodes need to actually work) ────
+/**
+ * VPC internet + routing: an IGW + public route table for public subnets (so
+ * "public" actually means reachable), and — when the VPC opts into NAT and has
+ * both public and private subnets — a NAT gateway + private route table for
+ * private-subnet egress. All synthesized; the user only drew the VPC and subnets.
+ */
+function emitVpcNetworking(vpc: GraphNode, ctx: Ctx): string[] {
+  const vp = tname(vpc.id);
+  const vpcRef = `aws_vpc.${vp}.id`;
+  const label = String(vpc.props.name ?? 'main');
+  const subnets = ctx.bp.nodes.filter((n) => n.type === 'aws_subnet' && n.parent === vpc.id);
+  const publicSubnets = subnets.filter((s) => s.props.public === 'true');
+  const privateSubnets = subnets.filter((s) => s.props.public !== 'true');
+  const out: string[] = [];
+
+  if (publicSubnets.length) {
+    out.push(resource('aws_internet_gateway', `${vp}_igw`, [
+      `vpc_id = ${vpcRef}`,
+      `tags   = ${tag(label + '-igw')}`,
+    ]));
+    out.push(resource('aws_route_table', `${vp}_public`, [
+      `vpc_id = ${vpcRef}`,
+      `route {\n    cidr_block = "0.0.0.0/0"\n    gateway_id = aws_internet_gateway.${vp}_igw.id\n  }`,
+      `tags   = ${tag(label + '-public')}`,
+    ]));
+    for (const s of publicSubnets) {
+      out.push(resource('aws_route_table_association', `${tname(s.id)}_public`, [
+        `subnet_id      = aws_subnet.${tname(s.id)}.id`,
+        `route_table_id = aws_route_table.${vp}_public.id`,
+      ]));
+    }
+  }
+
+  if (vpc.props.nat === 'true' && privateSubnets.length && publicSubnets.length) {
+    out.push(resource('aws_eip', `${vp}_nat`, ['domain = "vpc"']));
+    out.push(resource('aws_nat_gateway', `${vp}_nat`, [
+      `allocation_id = aws_eip.${vp}_nat.id`,
+      `subnet_id     = aws_subnet.${tname(publicSubnets[0].id)}.id`,
+      `tags          = ${tag(label + '-nat')}`,
+    ]));
+    out.push(resource('aws_route_table', `${vp}_private`, [
+      `vpc_id = ${vpcRef}`,
+      `route {\n    cidr_block     = "0.0.0.0/0"\n    nat_gateway_id = aws_nat_gateway.${vp}_nat.id\n  }`,
+      `tags   = ${tag(label + '-private')}`,
+    ]));
+    for (const s of privateSubnets) {
+      out.push(resource('aws_route_table_association', `${tname(s.id)}_private`, [
+        `subnet_id      = aws_subnet.${tname(s.id)}.id`,
+        `route_table_id = aws_route_table.${vp}_private.id`,
+      ]));
+    }
+  }
+  return out;
+}
+
+/**
+ * ALB delivery: a target group + HTTP listener, plus attachments for each
+ * "routes_to" target. An ALB alone routes nowhere; these are what connect it to
+ * the instances/services it points at. (ECS targets register via their own
+ * load_balancer block in emitEcs.)
+ */
+function emitLbCompletion(lb: GraphNode, ctx: Ctx): string[] {
+  const routes = ctx.bp.edges.filter((e) => e.type === 'routes_to' && e.from === lb.id);
+  if (!routes.length) return [];
+  const targets = routes.map((e) => ctx.byId.get(e.to)).filter((n): n is GraphNode => !!n);
+  const ln = tname(lb.id);
+  const vpcId = vpcIdOf(ctx, lb);
+  const targetType = targets.some((t) => t.type === 'aws_ecs_service') ? 'ip' : 'instance';
+  const out: string[] = [];
+
+  out.push(resource('aws_lb_target_group', `${ln}_tg`, [
+    `name        = ${q(String(lb.props.name || ln) + '-tg')}`,
+    'port        = 80',
+    'protocol    = "HTTP"',
+    ...(vpcId ? [`vpc_id      = aws_vpc.${tname(vpcId)}.id`] : []),
+    `target_type = ${q(targetType)}`,
+  ]));
+  out.push(resource('aws_lb_listener', `${ln}_listener`, [
+    `load_balancer_arn = aws_lb.${ln}.arn`,
+    'port              = 80',
+    'protocol          = "HTTP"',
+    `default_action {\n    type             = "forward"\n    target_group_arn = aws_lb_target_group.${ln}_tg.arn\n  }`,
+  ]));
+  for (const t of targets) {
+    if (t.type === 'aws_instance') {
+      out.push(resource('aws_lb_target_group_attachment', `${ln}_${tname(t.id)}`, [
+        `target_group_arn = aws_lb_target_group.${ln}_tg.arn`,
+        `target_id        = aws_instance.${tname(t.id)}.id`,
+      ]));
+    }
   }
   return out;
 }
@@ -320,6 +455,12 @@ export function compileToTerraform(bp: Blueprint): string {
   for (const n of bp.nodes) {
     const emit = EMITTERS[n.type];
     parts.push(emit ? emit(n, ctx) : `# unsupported node type: ${n.type}`);
+  }
+  // Completion synthesis: routing/gateways for VPCs, target groups/listeners for
+  // ALBs — the plumbing the drawn nodes need to actually function.
+  for (const n of bp.nodes) {
+    if (n.type === 'aws_vpc') parts.push(...emitVpcNetworking(n, ctx));
+    if (n.type === 'aws_lb') parts.push(...emitLbCompletion(n, ctx));
   }
   parts.push(...emitConnectRules(ctx));
   if (bp.nodes.some((n) => n.type === 'aws_db_instance')) parts.push(DB_PASSWORD_VAR);

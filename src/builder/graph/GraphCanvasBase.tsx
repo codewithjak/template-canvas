@@ -67,8 +67,10 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
   const [appliedSig, setAppliedSig] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<{ count: number; nodeIds: Set<string>; outputs: Record<string, string> } | null>(null);
   // Latest drift check: `plan` is the drift diff (empty resources ⇒ in sync);
-  // `nodeIds` are the drifted nodes to outline. null ⇒ never checked this session.
-  const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string> } | null>(null);
+  // `nodeIds` are the drifted nodes to outline. `unavailable` ⇒ the check could
+  // not run (shown as a neutral pill, never a green "in sync"). null ⇒ never
+  // checked this session.
+  const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string>; unavailable?: boolean } | null>(null);
   const [driftPanelOpen, setDriftPanelOpen] = useState(true);
 
   // Phase 2: surface the continuous worker's latest stored drift on load, so a
@@ -225,9 +227,14 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
     setThinking(true);
     try {
       const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
-      const { plan } = await checkDrift(connectionId);
-      const nodeIds = appliedNodeIds(bp, plan.resources.map((r) => r.address));
-      setDrift({ plan, nodeIds });
+      const res = await checkDrift(connectionId);
+      if (res.status === 'unavailable') {
+        // Could not observe live state — show a neutral pill, never green "in sync".
+        setDrift({ plan: res.plan, nodeIds: new Set(), unavailable: true });
+        return;
+      }
+      const nodeIds = appliedNodeIds(bp, res.plan.resources.map((r) => r.address));
+      setDrift({ plan: res.plan, nodeIds });
       setDriftPanelOpen(true);
     } finally {
       setThinking(false);
@@ -408,14 +415,20 @@ export function GraphCanvasBase({ pack, initial, connectionId }: GraphCanvasBase
           </button>
         )}
 
-        {/* Drift status — a check result: green "In sync" or an orange panel
-            listing what changed in the account outside Mapdoc. */}
-        {drift && drift.plan.resources.length === 0 && (
+        {/* Drift status — a check result: neutral "unavailable" when the check
+            couldn't run, green "In sync" for a real empty diff, or an orange
+            panel listing what changed in the account outside Mapdoc. */}
+        {drift && drift.unavailable && (
+          <button className="gcb-drift-pill unavailable" onClick={() => setDrift(null)} title="Could not check live state — try again">
+            — Drift check unavailable
+          </button>
+        )}
+        {drift && !drift.unavailable && drift.plan.resources.length === 0 && (
           <button className="gcb-drift-pill in-sync" onClick={() => setDrift(null)} title="Deployment matches live state">
             ✓ In sync
           </button>
         )}
-        {drift && drift.plan.resources.length > 0 && (
+        {drift && !drift.unavailable && drift.plan.resources.length > 0 && (
           driftPanelOpen ? (
             <div className="gcb-drift-panel">
               <div className="gcb-diag-head">

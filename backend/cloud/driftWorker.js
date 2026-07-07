@@ -4,11 +4,13 @@
  * backend/cloud/driftWorker.js
  *
  * Phase 2 of drift detection (CLOUD_DRIFT_ARCHITECTURE.md §7): a durable,
- * continuous sweeper. On a timer it runs a drift check for every verified
- * connection that has a real deployment, stores the latest result in cloud_runs
- * (kind='drift'), and fires a `cloud.drift.detected` webhook when NEW drift
- * appears — a resource drifting that was not drifting on the previous check
- * (so a persistent, already-notified drift does not re-alert every sweep).
+ * continuous sweeper. On a timer it runs drift checks for verified connections
+ * that have a real deployment, least-recently-checked first and capped at BATCH
+ * real checks per sweep so no connection starves and cost stays bounded. It
+ * stores each result in cloud_runs (kind='drift') and fires a
+ * `cloud.drift.detected` webhook when NEW drift appears — a resource drifting
+ * that was not drifting on the previous check (so a persistent, already-notified
+ * drift does not re-alert every sweep).
  *
  * Like the webhook retry worker it is idempotent, overlap-guarded, and carries
  * no in-memory schedule: every input (connections, deployments, prior drift)
@@ -25,6 +27,8 @@ const history = require('./runHistory');
 const { dispatchWebhook } = require('../webhooks/dispatch');
 
 const INTERVAL_MS = parseInt(process.env.DRIFT_CHECK_INTERVAL_MS, 10) || 6 * 60 * 60 * 1000; // 6h
+// Max real drift checks (CodeBuild runs) per sweep. Connections beyond this cap
+// aren't dropped — they're picked up on later sweeps, least-recently-checked first.
 const BATCH = parseInt(process.env.DRIFT_CHECK_BATCH, 10) || 25;
 
 // Per-connection stack outputs, falling back to global env (mirrors the route).
@@ -36,14 +40,20 @@ const cfgFor = (c) => ({
 
 const addrsOf = (plan) => new Set(((plan && plan.resources) || []).map((r) => r.address));
 
-/** Verified connections across all teams (admin scope). Never throws → []. */
+/**
+ * All verified connections across all teams (admin scope). Fetches the full set
+ * (a cheap indexed read) rather than an arbitrary page, so `runDriftSweep` can
+ * order them fairly; the expensive CodeBuild work is capped separately, per
+ * sweep. Stable `created_at` order for deterministic tie-breaking. Never
+ * throws → [].
+ */
 async function fetchVerifiedConnections(sb) {
   try {
     const { data, error } = await sb
       .from('cloud_connections')
       .select('id, team_id, provider, region, status, role_arn, external_id, state_bucket, lock_table, runner_project')
       .eq('status', 'verified')
-      .limit(BATCH);
+      .order('created_at', { ascending: true });
     return error ? [] : (data || []);
   } catch {
     return [];
@@ -51,10 +61,31 @@ async function fetchVerifiedConnections(sb) {
 }
 
 /**
+ * Order connections least-recently-drift-checked first (never-checked → first),
+ * pairing each with its last drift check so the sweep doesn't re-query it. This
+ * is what guarantees every verified connection eventually gets swept instead of
+ * an arbitrary subset starving forever. Priority comes from the DB each sweep,
+ * so it survives restarts. Returns `[{ connection, prev }]`.
+ */
+async function prioritizeByOldestCheck(sb, connections) {
+  const withPrev = await Promise.all(
+    connections.map(async (connection) => ({
+      connection,
+      prev: await history.latestDrift(sb, connection.team_id, connection.id),
+    })),
+  );
+  const checkedAt = (p) => (p && p.created_at ? Date.parse(p.created_at) : 0); // never checked ⇒ 0 ⇒ first
+  return withPrev.sort((a, b) => checkedAt(a.prev) - checkedAt(b.prev));
+}
+
+/**
  * Run a drift check for one connection, store it, and notify on new drift.
+ * `prev` (the connection's last drift check) may be supplied by the caller to
+ * avoid a duplicate lookup; when omitted it is fetched here so the function is
+ * usable standalone.
  * @returns {Promise<boolean>} true if a check actually ran (had a real deployment).
  */
-async function checkConnection(sb, connection) {
+async function checkConnection(sb, connection, prev) {
   const teamId = connection.team_id;
   const deployment = await history.latestApplied(sb, teamId, connection.id);
   if (!deployment || deployment.simulated) return false; // nothing real to compare against
@@ -62,7 +93,7 @@ async function checkConnection(sb, connection) {
   const cfg = cfgFor(connection);
   if (!process.env.AWS_ACCESS_KEY_ID || !cfg.stateBucket || !cfg.runnerProject) return false;
 
-  const prev = await history.latestDrift(sb, teamId, connection.id);
+  if (prev === undefined) prev = await history.latestDrift(sb, teamId, connection.id);
   const plan = await runner.runDrift({ connection, hcl: deployment.hcl, ...cfg });
   await history.createRun(sb, teamId, {
     connectionId: connection.id, kind: 'drift', name: 'Drift check (scheduled)', status: 'planned', plan,
@@ -88,15 +119,22 @@ async function checkConnection(sb, connection) {
   return true;
 }
 
-/** One sweep over all verified connections. Returns how many were checked. */
+/**
+ * One sweep: check the least-recently-checked connections first, up to BATCH
+ * *actual* checks (the real CodeBuild cost). Connections without a real
+ * deployment return early and cheaply, so they don't consume the budget; the
+ * rest rotate in on subsequent sweeps. Returns how many were checked.
+ */
 async function runDriftSweep(sb) {
   const connections = await fetchVerifiedConnections(sb);
+  const prioritized = await prioritizeByOldestCheck(sb, connections);
   let checked = 0;
-  for (const c of connections) {
+  for (const { connection, prev } of prioritized) {
+    if (checked >= BATCH) break; // cap expensive checks per sweep, not cheap skips
     try {
-      if (await checkConnection(sb, c)) checked += 1;
+      if (await checkConnection(sb, connection, prev)) checked += 1;
     } catch (err) {
-      console.warn(`[drift] check failed for connection ${c.id}:`, err.message);
+      console.warn(`[drift] check failed for connection ${connection.id}:`, err.message);
     }
   }
   return checked;

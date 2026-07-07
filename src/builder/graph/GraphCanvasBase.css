@@ -249,6 +249,8 @@
 }
 .gcb-drift-pill.in-sync { border: 1px solid #86efac; color: #15803d; }
 .gcb-drift-pill.drifted { border: 1px solid #fdba74; color: #c2410c; }
+/* Neutral — the check could not run, so we make no health claim either way. */
+.gcb-drift-pill.unavailable { border: 1px solid #d1d5db; color: #6b7280; }
 
 /* Node outlines — React Flow applies node.className to the node wrapper. */
 .gcb-diag-block { outline: 2px solid #dc2626; border-radius: 4px; }

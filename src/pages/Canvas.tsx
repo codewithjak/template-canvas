@@ -29,7 +29,7 @@ function Canvas() {
               height: '26px',
               borderRadius: '7px',
               background: 'linear-gradient(135deg, #2355f4, #1740d0)',
-              color: '#fff',
+              color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

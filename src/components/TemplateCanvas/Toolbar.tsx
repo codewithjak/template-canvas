@@ -53,9 +53,9 @@ export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
   onAddText, onAddTable, onAddImage, onAddBarcode, onAddChart, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
-  onDelete, onSave, onOpenTemplates, onLoad, onRebuildWithAi, onUpload, onExportPDF, onAddPage,
+  onSave, onOpenTemplates, onLoad, onRebuildWithAi, onUpload, onExportPDF, onAddPage,
   onToggleRulers, showRulers,
-  hasSelection, hasElements,
+  hasElements,
   onPageSizeChange, currentPageSize,
   onCustomPageSize, customPageWidth, customPageHeight,
   exportFormat, onExportFormatChange,
@@ -178,16 +178,7 @@ export default function Toolbar({
         )}
       </div>
 
-      {/* ── Delete ── */}
-      {hasSelection && onDelete && (
-        <>
-          <Divider />
-          <div className="tb-group">
-            <IconBtn icon={<Icons.Delete />} label="Delete selected" shortcut="⌫"
-              onClick={onDelete} variant="danger" />
-          </div>
-        </>
-      )}
+      {/* Delete moved to the floating quick-action bar above the selected element */}
 
     </div>
 

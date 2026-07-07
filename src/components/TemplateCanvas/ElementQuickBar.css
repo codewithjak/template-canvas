@@ -1,0 +1,41 @@
+/* ElementQuickBar.css — floating action bar above the selected element */
+
+.eqb {
+  position        : absolute;
+  z-index         : 60;               /* above elements + boundary lines */
+  display         : flex;
+  align-items     : center;
+  gap             : 2px;
+  padding         : 3px;
+
+  /* Brand-tinted glass */
+  background      : rgba(35, 85, 244, 0.94);
+  backdrop-filter : blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius   : 9px;
+  box-shadow      : 0 4px 14px rgba(35, 85, 244, 0.35);
+
+  pointer-events  : all;
+}
+
+.eqb-btn {
+  display        : inline-flex;
+  align-items    : center;
+  justify-content: center;
+  width          : 28px;
+  height         : 28px;
+  border         : none;
+  border-radius  : 6px;
+  background     : transparent;
+  color          : #ffffff;
+  cursor         : pointer;
+  transition     : background 0.15s ease;
+}
+
+.eqb-btn:hover {
+  background : rgba(255, 255, 255, 0.18);
+}
+
+.eqb-btn--danger:hover {
+  background : rgba(239, 68, 68, 0.9);
+}

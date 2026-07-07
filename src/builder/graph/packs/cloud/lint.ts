@@ -208,6 +208,20 @@ function ruleLambdaCode(bp: Blueprint): Diagnostic[] {
   return out;
 }
 
+/** A standard SNS topic (the only kind we model) can't deliver to a FIFO queue. */
+function ruleSnsFifo(bp: Blueprint, byId: ById): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const e of bp.edges) {
+    if (e.type !== 'publishes_to') continue;
+    const topic = byId.get(e.from);
+    const queue = byId.get(e.to);
+    if (topic?.type === 'aws_sns_topic' && queue?.type === 'aws_sqs_queue' && queue.props.fifo === 'true') {
+      out.push(D('block', 'sns-fifo', `${topic.id} is a standard SNS topic and can't publish to the FIFO queue ${queue.id}.`, queue.id));
+    }
+  }
+  return out;
+}
+
 /** An API Gateway with no routes exposes nothing. */
 function ruleApiNoRoutes(bp: Blueprint): Diagnostic[] {
   return bp.nodes
@@ -253,6 +267,7 @@ export function lintCloud(bp: Blueprint): Diagnostic[] {
     ...rulePublicBucket(bp),
     ...ruleLambdaNeedsRole(bp),
     ...ruleLambdaCode(bp),
+    ...ruleSnsFifo(bp, byId),
     ...ruleApiNoRoutes(bp),
     ...ruleApiRoutes(bp, byId),
   ];

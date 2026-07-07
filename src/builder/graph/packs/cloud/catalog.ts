@@ -133,8 +133,8 @@ export const awsCatalog: NodeCatalog = [
 
   // ── Data ──────────────────────────────────────────────────────────────────
   node('aws_dynamodb_table', 'DynamoDB Table', 'Database',
-    { name: 'table', hashKey: 'id', billingMode: 'PAY_PER_REQUEST' },
-    [txt('name', 'Name'), txt('hashKey', 'Partition key'), sel('billingMode', 'Billing mode', ['PAY_PER_REQUEST', 'PROVISIONED'])]),
+    { name: 'table', hashKey: 'id', billingMode: 'PAY_PER_REQUEST', readCapacity: '5', writeCapacity: '5' },
+    [txt('name', 'Name'), txt('hashKey', 'Partition key'), sel('billingMode', 'Billing mode', ['PAY_PER_REQUEST', 'PROVISIONED']), num('readCapacity', 'Read capacity (PROVISIONED)'), num('writeCapacity', 'Write capacity (PROVISIONED)')]),
 
   // ── Observability ─────────────────────────────────────────────────────────
   node('aws_cloudwatch_log_group', 'CloudWatch Log Group', 'Observability',

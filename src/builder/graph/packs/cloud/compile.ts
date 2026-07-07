@@ -246,19 +246,62 @@ function emitCloudFront(n: GraphNode, ctx: Ctx): string {
   const tn = tname(n.id);
   const originEdge = ctx.bp.edges.find((e) => e.type === 'origin' && e.from === n.id);
   const target = originEdge ? ctx.byId.get(originEdge.to) : undefined;
+  const isS3 = target?.type === 'aws_s3_bucket';
   const originId = target ? tname(target.id) : 'origin';
   const domain = !target
     ? '"example.com"'
-    : target.type === 'aws_s3_bucket'
+    : isS3
       ? `aws_s3_bucket.${tname(target.id)}.bucket_regional_domain_name`
       : `aws_lb.${tname(target.id)}.dns_name`;
-  return [
+
+  // Each origin TYPE needs different plumbing to be valid + actually serve:
+  //  • S3 (private bucket) → an origin access control + a bucket policy, else 403.
+  //  • custom (ALB) → a custom_origin_config, else terraform validate fails.
+  const originExtra: string[] = [];
+  const extra: string[] = [];
+  if (isS3 && target) {
+    const bn = tname(target.id);
+    extra.push(resource('aws_cloudfront_origin_access_control', `${tn}_oac`, [
+      `name                              = ${q(tn + '-oac')}`,
+      'origin_access_control_origin_type = "s3"',
+      'signing_behavior                  = "always"',
+      'signing_protocol                  = "sigv4"',
+    ]));
+    originExtra.push(`    origin_access_control_id = aws_cloudfront_origin_access_control.${tn}_oac.id`);
+    extra.push(resource('aws_s3_bucket_policy', `${bn}_cf`, [
+      `bucket = aws_s3_bucket.${bn}.id`,
+      'policy = jsonencode({\n'
+      + '    Version = "2012-10-17"\n'
+      + '    Statement = [{\n'
+      + '      Effect    = "Allow"\n'
+      + '      Principal = { Service = "cloudfront.amazonaws.com" }\n'
+      + '      Action    = "s3:GetObject"\n'
+      + `      Resource  = "\${aws_s3_bucket.${bn}.arn}/*"\n`
+      + `      Condition = { StringEquals = { "AWS:SourceArn" = aws_cloudfront_distribution.${tn}.arn } }\n`
+      + '    }]\n'
+      + '  })',
+    ]));
+  } else if (target && !isS3) {
+    // ALB origin: our ALB completion only creates an HTTP:80 listener, so reach
+    // it over HTTP (https-only here would 502 against a listener that isn't there).
+    originExtra.push(
+      '    custom_origin_config {',
+      '      http_port              = 80',
+      '      https_port             = 443',
+      '      origin_protocol_policy = "http-only"',
+      '      origin_ssl_protocols   = ["TLSv1.2"]',
+      '    }',
+    );
+  }
+
+  const dist = [
     `resource "aws_cloudfront_distribution" "${tn}" {`,
     '  enabled = true',
     `  comment = ${q(n.props.comment)}`,
     '  origin {',
     `    domain_name = ${domain}`,
     `    origin_id   = ${q(originId)}`,
+    ...originExtra,
     '  }',
     '  default_cache_behavior {',
     `    target_origin_id       = ${q(originId)}`,
@@ -278,6 +321,7 @@ function emitCloudFront(n: GraphNode, ctx: Ctx): string {
     '  }',
     '}',
   ].join('\n');
+  return [dist, ...extra].join('\n\n');
 }
 
 function emitEcs(n: GraphNode, ctx: Ctx): string {
@@ -461,9 +505,16 @@ function emitApiRoutes(ctx: Ctx): string[] {
 function emitDynamo(n: GraphNode): string {
   const p = n.props;
   const hashKey = String(p.hashKey || 'id');
+  const billing = String(p.billingMode || 'PAY_PER_REQUEST');
+  // PROVISIONED requires explicit capacities (PAY_PER_REQUEST must not set them).
+  const provisioned = billing === 'PROVISIONED';
   return resource('aws_dynamodb_table', tname(n.id), [
     `name         = ${q(p.name)}`,
-    `billing_mode = ${q(p.billingMode || 'PAY_PER_REQUEST')}`,
+    `billing_mode = ${q(billing)}`,
+    ...(provisioned ? [
+      `read_capacity  = ${Number(p.readCapacity) || 5}`,
+      `write_capacity = ${Number(p.writeCapacity) || 5}`,
+    ] : []),
     `hash_key     = ${q(hashKey)}`,
     `attribute {\n    name = ${q(hashKey)}\n    type = "S"\n  }`,
   ]);

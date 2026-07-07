@@ -8,7 +8,6 @@ const multer  = require('multer');
 const archiver = require('archiver');
 const fs       = require('fs');
 const path     = require('path');
-const os       = require('os');
 const { v4: uuidv4 } = require('uuid');
 
 const { parseDataSource, validateBindings } = require('./parsers/index');
@@ -39,7 +38,7 @@ const deliveryRateLimited = makeRateLimiter(20, 60 * 60 * 1000);
 const contactRouter         = require('./routes/contact');
 const teamApiRouter         = require('./routes/teamApi');
 const artifactStore         = require('./storage/artifactStore');
-const { dispatchWebhook, startRetryWorker } = require('./webhooks/dispatch');
+const { startRetryWorker } = require('./webhooks/dispatch');
 
 const app    = express();
 const PORT   = process.env.PORT || 3001;
@@ -55,47 +54,13 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Async job registry
+// Async job registry + bulk engine — shared with the connector endpoint
+// (/v1/generate/bulk) via lib/bulkJobs.js. The `jobs` Map is a singleton, so the
+// status/download endpoints below read the same records regardless of who
+// created the job (browser JWT or API key).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const JOBS_DIR = path.join(os.tmpdir(), 'bulk-jobs');
-fs.mkdirSync(JOBS_DIR, { recursive: true });
-
-const jobs = new Map();
-
-// Auto-cleanup stale jobs every 5 minutes (TTL: 30 minutes)
-const JOB_TTL_MS = 30 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [jobId, job] of jobs) {
-    if (now - (job.createdAt || 0) > JOB_TTL_MS) {
-      if (job.zipPath) fs.unlink(job.zipPath, () => {});
-      jobs.delete(jobId);
-    }
-  }
-}, 5 * 60 * 1000);
-
-// Notify subscribers that a bulk job finished. Fire-and-forget: a presigned
-// download URL is minted and the 'bulk.completed' event dispatched. Never throws.
-async function notifyBulkComplete(jobId, job) {
-  try {
-    const { url, expiresAt } = await artifactStore.downloadTarget(jobId, {
-      fileName: job.zipFileName, expiresInMs: ARTIFACT_URL_TTL_MS,
-    });
-    dispatchWebhook(job.teamId, 'bulk.completed', {
-      event:       'bulk.completed',
-      teamId:      job.teamId,
-      jobId,
-      rows:        job.total,
-      generated:   job.current,
-      downloadUrl: url,
-      expiresAt,
-      createdAt:   new Date().toISOString(),
-    });
-  } catch (err) {
-    console.warn('[bulk-async] completion notify failed:', err.message);
-  }
-}
+const { jobs, JOBS_DIR, runBulkJob } = require('./lib/bulkJobs');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /parse-data
@@ -525,9 +490,21 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
   const jobId   = uuidv4();
   const zipPath = path.join(JOBS_DIR, `${jobId}.zip`);
 
+  // Stash every render input on the job record so the shared engine
+  // (lib/bulkJobs.runBulkJob) can run the fan-out loop identically for the
+  // browser and the connector (/v1/generate/bulk) paths.
   jobs.set(jobId, {
     status: 'running', current: 0, total, zipPath, zipFileName, createdAt: Date.now(),
     teamId: gate.teamId, source: 'browser',
+    rows, driverCollectionKey, relatedCollections,
+    ir: normalised.ir,
+    templateElements:        normalised.templateElements,
+    fieldMapping:            normalised.fieldMapping,
+    tableCollectionBindings: normalised.tableCollectionBindings,
+    collectionMappings:      normalised.collectionMappings,
+    pageConfigs:             normalised.pageConfigs,
+    pageSize:                normalised.pageSize,
+    format, fileExt, dpi, jpegQuality, fileNameTemplate, gate,
   });
 
   // Tamper-proof usage tracking (fire-and-forget; team derived from JWT).
@@ -535,74 +512,7 @@ app.post('/generate-bulk-documents/async', async (req, res) => {
 
   res.json({ jobId });
 
-  ;(async () => {
-    const job = jobs.get(jobId);
-    try {
-      const output    = fs.createWriteStream(zipPath);
-      const archive   = archiver('zip', { store: true });
-      const usedNames = new Set();
-
-      archive.pipe(output);
-
-      for (let i = 0; i < rows.length; i++) {
-        if (job.status === 'cancelled') break;
-
-        const row   = rows[i] || {};
-        const rowIr = buildRowIr(normalised.ir, driverCollectionKey, row, i, relatedCollections);
-
-        try {
-          const entries = await renderDocEntries({
-            format, gate, dpi, jpegQuality,
-            genArgs: {
-              ir:                      rowIr,
-              templateElements:        normalised.templateElements,
-              fieldMapping:            normalised.fieldMapping,
-              tableCollectionBindings: normalised.tableCollectionBindings,
-              collectionMappings:      normalised.collectionMappings,
-              pageConfigs:             normalised.pageConfigs,
-              pageSize:                normalised.pageSize,
-            },
-          });
-          const resolvedName = replacePlaceholders(fileNameTemplate, rowIr.fields, {});
-          const safeBase     = sanitizeFileName(resolvedName, `document-${i + 1}${fileExt}`, fileExt);
-          for (const e of entries) {
-            const name = uniqueFileName(withPageSuffix(safeBase, fileExt, e.pageIndex, e.multi), usedNames);
-            archive.append(e.buffer, { name });
-          }
-          job.current = i + 1;
-        } catch (rowErr) {
-          console.error(`[bulk-async] row ${i} failed:`, rowErr.message);
-        }
-      }
-
-      await archive.finalize();
-
-      await new Promise((resolve, reject) => {
-        output.on('close', resolve);
-        output.on('error', reject);
-      });
-
-      // Persist to S3 (resilient: retries + existence check), then drop the
-      // local staging copy — S3 is now the source of truth for the artifact.
-      await artifactStore.put(jobId, { filePath: zipPath, contentType: 'application/zip' });
-      fs.unlink(zipPath, () => {});
-
-      job.status = 'done';
-      notifyBulkComplete(jobId, job);
-    } catch (err) {
-      console.error('[bulk-async] job failed:', err);
-      job.status  = 'error';
-      job.message = err.message;
-      dispatchWebhook(job.teamId, 'bulk.failed', {
-        event:     'bulk.failed',
-        teamId:    job.teamId,
-        jobId,
-        rows:      job.total,
-        error:     err.message,
-        createdAt: new Date().toISOString(),
-      });
-    }
-  })();
+  runBulkJob(jobId);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -647,6 +557,7 @@ app.get('/bulk-jobs/:jobId/download', async (req, res) => {
 
 app.use(teamApiRouter);
 app.use(require('./routes/apiGenerate'));   // POST /v1/generate — headless API generation (Step 1)
+app.use(require('./routes/apiGenerateBulk')); // POST /v1/generate/bulk — headless API bulk fan-out (Step 1, Mode A)
 app.use(require('./routes/webhooks'));      // /v1/webhooks — outbound webhook endpoints (Step 3)
 app.use(require('./routes/connector'));     // /v1/me, /v1/hooks/*, /v1/events/sample — connector REST hooks (Step 4)
 app.use(require('./routes/cloudConnect'));  // /v1/cloud/connections — Visual Cloud Builder connect-account (P5)

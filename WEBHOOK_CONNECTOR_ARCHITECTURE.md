@@ -94,7 +94,19 @@ the bridge entirely and call `/v1/generate` + subscribe a webhook directly.
 
 ---
 
-## Step 1 — Add `POST /v1/generate` (a sibling to ingest; ingest stays as-is)
+## Step 1 — Add `POST /v1/generate` (a sibling to ingest; ingest stays as-is)  ✅ _built_
+
+> **Implemented as two sibling endpoints.** `POST /v1/generate`
+> (`routes/apiGenerate.js`) renders a single document synchronously and returns
+> the file. `POST /v1/generate/bulk` (`routes/apiGenerateBulk.js`) is the async
+> **Mode A** fan-out — one template, N records (a driver collection) → one zip —
+> returning `{ jobId }` and firing `bulk.completed` on completion. Both reuse the
+> browser's assembly (`lib/templateAssembly`); the bulk endpoint additionally
+> shares the browser's job engine, now extracted to `lib/bulkJobs.js` (the
+> `jobs` registry + `runBulkJob` loop) so the two paths fan out identically.
+> **Mode B** (N records → N *different* templates) is intentionally NOT an API
+> shape: it is expressed as a connector workflow that loops `/v1/generate` once
+> per record with its own `templateId`.
 
 ### Today
 The browser assembles the pieces (template, mapping, data — all already
@@ -437,7 +449,7 @@ to a delivered document, with no MapDoc-built per-system integrations.
 
 | Order | Step | Status | Notes |
 |---|---|---|---|
-| 1 | `/v1/generate` (Step 1) | ✅ built | Unblocks everything; shippable as raw API value on its own |
+| 1 | `/v1/generate` (Step 1) | ✅ built | Single (`/v1/generate`) + async bulk fan-out (`/v1/generate/bulk`); unblocks everything |
 | 2 | Webhook tables + dispatcher (Step 3) | ✅ built | Dispatcher, signing, retries, `webhook_deliveries` audit |
 | 3 | hooks / me endpoints (Step 4) | ✅ built | `/v1/me`, `/v1/hooks/*`, `/v1/events/sample` |
 | 4 | S3 artifact durability (Step 2) | ✅ built | S3-only, no-SDK SigV4, option-A presigned URLs (`S3_SETUP.md`) |

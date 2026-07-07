@@ -87,8 +87,38 @@ curl -X POST $API_BASE/v1/generate \
 ```
 Use `/v1/ingest` instead to only *park* data for later generation in the app.
 
-A full loop chains B → A: *new order in n8n* → `POST /v1/generate` (or a bulk run)
-→ MapDoc fires `bulk.completed` → n8n Webhook node → email the PDF.
+### Bulk: one template, many records → one zip
+
+`POST /v1/generate/bulk` fans a driver collection out into one document per row
+(Mode A, "500 records → 1 template"). It is **async**: it returns a `jobId`
+immediately and delivers the zip via the `bulk.completed` webhook (section A).
+
+- `POST {{API_BASE}}/v1/generate/bulk`, header `X-API-Key: tc_live_xxx`
+- JSON body `{ "templateId": "<uuid>", "data": <array or object with a collection>, "format": "pdf" }`
+- `driverCollectionKey` is auto-detected when the data has exactly one collection
+  (a bare JSON array becomes the `items` collection); send it explicitly when the
+  data has several.
+
+```bash
+curl -X POST $API_BASE/v1/generate/bulk \
+  -H "X-API-Key: tc_live_xxx" -H "Content-Type: application/json" \
+  -d '{"templateId":"<uuid>","format":"pdf",
+       "data":{"invoices":[{"name":"Acme","total":"99.00"},{"name":"Globex","total":"12.00"}]}}'
+# → 202 { "jobId": "…", "rows": 2 }   (zip arrives via the bulk.completed webhook)
+```
+Optional: `fileNameTemplate` (per-file name, supports `{{__index}}` and field
+tokens), `zipFileName`, `relatedCollections`, and `dpi`/`jpegQuality` for image
+formats. Bulk requires the **Business** plan and is subject to your per-job row
+ceiling + monthly export cap.
+
+> **10 records → 10 different templates?** That is an n8n workflow, not an API
+> shape: loop your records and call the single-document `POST /v1/generate` once
+> per record, each with its own `templateId`. `/v1/generate/bulk` is deliberately
+> one-template fan-out.
+
+A full loop chains B → A: *new orders in n8n* → `POST /v1/generate/bulk`
+→ MapDoc fires `bulk.completed` → n8n Webhook node → `GET {{downloadUrl}}` → email
+the zip.
 
 ---
 

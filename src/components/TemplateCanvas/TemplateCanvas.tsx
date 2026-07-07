@@ -225,7 +225,7 @@ function TemplateCanvas() {
   // ── Cloud persistence (Supabase, team-scoped) ──────────────────────────────
 
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
-  const [templatesLibraryOpen, setTemplatesLibraryOpen] = useState(false);
+  const [libraryMode, setLibraryMode] = useState<'builtin' | 'projects' | null>(null);
   const [rebuildAiOpen, setRebuildAiOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -624,7 +624,7 @@ function TemplateCanvas() {
   const handleOpenCloudTemplate = (record: TemplateRecord) => {
     applyDocument(record.body_json);
     setCurrentTemplateId(record.id);
-    setTemplatesLibraryOpen(false);
+    setLibraryMode(null);
   };
 
   // Open a bundled built-in template. The template ships tokenized
@@ -637,7 +637,7 @@ function TemplateCanvas() {
   const handleOpenBuiltin = (template: BuiltinTemplate) => {
     applyDocument(template.doc);
     setCurrentTemplateId(null);
-    setTemplatesLibraryOpen(false);
+    setLibraryMode(null);
 
     // Load the template's bundled sample data through the SAME path a data
     // upload uses (handleDataConfirm), so it renders filled-in on the canvas
@@ -716,7 +716,7 @@ function TemplateCanvas() {
   };
 
   /** Build the export request params for the current preview row (rds-aware). */
-  const buildExportParams = (): GenerateDocumentParams => {
+  const buildExportParams = (format: 'pdf' | 'zpl' | 'png' | 'jpeg' = exportFormat): GenerateDocumentParams => {
     const cleanFieldMapping = removeEmptyMappings(fieldMapping);
 
     if (ir) {
@@ -752,7 +752,7 @@ function TemplateCanvas() {
       return {
         pages: exportPages, ir: scopedIr, outputFileName,
         rowIndex: 0, driverCollectionKey: undefined, relatedCollections: {},
-        pageSize, format: exportFormat,
+        pageSize, format,
       };
     }
 
@@ -761,12 +761,14 @@ function TemplateCanvas() {
     return {
       pages: exportPages, ir: exportIr, outputFileName,
       rowIndex: previewRowIndex, driverCollectionKey, relatedCollections: relatedCollectionsConfig,
-      pageSize, format: exportFormat,
+      pageSize, format,
     };
   };
 
-  const handleExportDocument = async () => {
+  const handleExportDocument = async (formatOverride?: 'pdf' | 'zpl' | 'png' | 'jpeg') => {
     if (allElements.length === 0) { notify.warning('export.nothingToExport'); return; }
+    const fmt = formatOverride ?? exportFormat;
+    if (formatOverride) setExportFormat(formatOverride);
     try {
       setIsExporting(true);
       setExportStatus(
@@ -774,9 +776,9 @@ function TemplateCanvas() {
           ? `Generating document — record ${previewRowIndex + 1} of ${totalRows}…`
           : 'Generating document…'
       );
-      const params = buildExportParams();
+      const params = buildExportParams(fmt);
       const blob   = await generateDocument(params);
-      downloadBlob(blob, `${params.outputFileName}.${extFromBlob(blob, exportFormat)}`);
+      downloadBlob(blob, `${params.outputFileName}.${extFromBlob(blob, fmt)}`);
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('export.failed'));
     } finally {
@@ -874,7 +876,8 @@ function TemplateCanvas() {
           onAddEllipse={handleAddEllipse}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
-          onOpenTemplates={() => setTemplatesLibraryOpen(true)}
+          onOpenTemplates={() => setLibraryMode('builtin')}
+          onOpenProjects={() => setLibraryMode('projects')}
           onLoad={handleLoadTemplate}
           onRebuildWithAi={() => {
             if (atLimit('aiBuildsThisMonth')) {
@@ -1012,12 +1015,13 @@ function TemplateCanvas() {
         )}
 
 
-        {templatesLibraryOpen && (
+        {libraryMode && (
           <TemplatesLibraryModal
+            mode={libraryMode}
             currentTemplateId={currentTemplateId}
             onOpen={handleOpenCloudTemplate}
             onOpenBuiltin={handleOpenBuiltin}
-            onClose={() => setTemplatesLibraryOpen(false)}
+            onClose={() => setLibraryMode(null)}
           />
         )}
 
@@ -1191,7 +1195,7 @@ function TemplateCanvas() {
             />
           )}
 
-        <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} />
+        <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} onAddPage={handleAddPage} />
 
       </div>
     </DndContext>

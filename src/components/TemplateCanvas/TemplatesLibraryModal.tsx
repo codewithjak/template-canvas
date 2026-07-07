@@ -17,6 +17,8 @@ import { confirm } from '../../notify'
 import './TemplatesLibraryModal.css'
 
 interface Props {
+  /** 'builtin' shows the ready-made Templates; 'projects' shows the user's saved ones. */
+  mode: 'builtin' | 'projects'
   currentTemplateId: string | null
   onOpen: (record: TemplateRecord) => void
   onOpenBuiltin: (template: BuiltinTemplate) => void
@@ -35,7 +37,7 @@ function formatDate(iso: string): string {
       })
 }
 
-const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onOpenBuiltin, onClose }) => {
+const TemplatesLibraryModal: React.FC<Props> = ({ mode, currentTemplateId, onOpen, onOpenBuiltin, onClose }) => {
   const [items, setItems] = useState<TemplateSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,8 +57,10 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
   }
 
   useEffect(() => {
-    void refresh()
-  }, [])
+    // Only the Projects view needs the user's saved templates from Supabase.
+    if (mode === 'projects') void refresh()
+    else setLoading(false)
+  }, [mode])
 
   const handleOpen = async (id: string) => {
     setBusyId(id)
@@ -100,15 +104,15 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
     <div className="tlm-backdrop" onClick={onClose}>
       <div className="tlm-card" onClick={(e) => e.stopPropagation()}>
         <div className="tlm-header">
-          <h2 className="tlm-title">Templates</h2>
+          <h2 className="tlm-title">{mode === 'builtin' ? 'Templates' : 'My projects'}</h2>
           <button className="tlm-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>
 
         <div className="tlm-body">
+        {mode === 'builtin' && (
         <section className="tlm-section">
-          <h3 className="tlm-section-title">Built-in Templates</h3>
           <p className="tlm-section-sub">Start from a ready-made design — opens as a new, editable copy.</p>
           <div className="tlm-gallery">
             {BUILTIN_TEMPLATES.map((t) => (
@@ -126,14 +130,14 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
             ))}
           </div>
         </section>
+        )}
 
-        <h3 className="tlm-section-title">My Templates</h3>
-
+        {mode === 'projects' && <>
         {loading && <p className="tlm-msg">Loading…</p>}
         {error && <p className="tlm-msg tlm-msg--error">{error}</p>}
 
         {!loading && !error && items.length === 0 && (
-          <p className="tlm-msg">No saved templates yet. Use Save to create one.</p>
+          <p className="tlm-msg">No saved projects yet. Use Save to create one.</p>
         )}
 
         {!loading && !error && items.length > 0 && (
@@ -184,6 +188,7 @@ const TemplatesLibraryModal: React.FC<Props> = ({ currentTemplateId, onOpen, onO
             ))}
           </ul>
         )}
+        </>}
         </div>
       </div>
     </div>

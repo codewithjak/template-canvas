@@ -7,13 +7,14 @@
   z-index        : 50;
   pointer-events : none;
 
-  /* Recede by default so the canvas reads as a clean sheet, not a wireframe.
-     Comes forward on hover, or whenever the zone is enabled or selected. */
-  opacity        : 0.4;
+  /* Fully hidden by default so the page reads as a clean white sheet.
+     They appear only while the pointer is over the page, or when the zone is
+     actually enabled or selected. */
+  opacity        : 0;
   transition     : opacity 0.15s ease;
 }
 
-.boundary-line:hover,
+.template-canvas:hover .boundary-line,
 .boundary-line--enabled,
 .boundary-line--selected {
   opacity        : 1;

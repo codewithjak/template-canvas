@@ -48,6 +48,14 @@ import { blueprintSignature, appliedNodeIds, tname } from '../run/outcome';
 import type { Plan } from '../run/planTypes';
 import type { AppliedResult } from '../run/simulateApply';
 
+/** Map a drift plan's resource addresses back to node ids: all drifted nodes,
+ *  and (separately) those deleted outside Mapdoc, for a distinct "missing" state. */
+function driftSets(bp: Blueprint, plan: Plan) {
+  const nodeIds = appliedNodeIds(bp, plan.resources.map((r) => r.address));
+  const deletedNodeIds = appliedNodeIds(bp, plan.resources.filter((r) => r.action === 'delete').map((r) => r.address));
+  return { nodeIds, deletedNodeIds };
+}
+
 interface GraphCanvasBaseProps {
   pack: DomainPack;
   initial?: Blueprint;
@@ -70,10 +78,11 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
   const [appliedSig, setAppliedSig] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<{ count: number; nodeIds: Set<string>; outputs: Record<string, string> } | null>(null);
   // Latest drift check: `plan` is the drift diff (empty resources ⇒ in sync);
-  // `nodeIds` are the drifted nodes to outline. `unavailable` ⇒ the check could
-  // not run (shown as a neutral pill, never a green "in sync"). null ⇒ never
+  // `nodeIds` are the drifted nodes to outline (orange), `deletedNodeIds` those
+  // deleted outside Mapdoc (greyed as missing, doc §5). `unavailable` ⇒ the check
+  // could not run (shown as a neutral pill, never a green "in sync"). null ⇒ never
   // checked this session.
-  const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string>; unavailable?: boolean } | null>(null);
+  const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string>; deletedNodeIds: Set<string>; unavailable?: boolean } | null>(null);
   const [driftPanelOpen, setDriftPanelOpen] = useState(true);
 
   // Phase 2: surface the continuous worker's latest stored drift on load, so a
@@ -87,7 +96,7 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
         const r = await getDrift(connectionId, templateId);
         if (cancelled || !r.plan || r.status === 'none') return;
         const bp = toBlueprint(pack.id, nodes, edges, 'blueprint');
-        setDrift({ plan: r.plan, nodeIds: appliedNodeIds(bp, r.plan.resources.map((x) => x.address)) });
+        setDrift({ plan: r.plan, ...driftSets(bp, r.plan) });
       } catch { /* best-effort — drift never blocks the editor */ }
     })();
     return () => { cancelled = true; };
@@ -119,6 +128,7 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
       const classes: string[] = [];
       const sev = worstByNode.get(n.id);
       if (sev) classes.push(`gcb-diag-${sev}`);
+      else if (drift?.deletedNodeIds.has(n.id)) classes.push('gcb-deleted');
       else if (drift?.nodeIds.has(n.id)) classes.push('gcb-drifted');
       else if (outcome?.nodeIds.has(n.id)) classes.push('gcb-applied');
       if (n.id === selectedParentId) classes.push('gcb-container'); // this node contains the selection
@@ -233,11 +243,10 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
       const res = await checkDrift(connectionId, templateId);
       if (res.status === 'unavailable') {
         // Could not observe live state — show a neutral pill, never green "in sync".
-        setDrift({ plan: res.plan, nodeIds: new Set(), unavailable: true });
+        setDrift({ plan: res.plan, nodeIds: new Set(), deletedNodeIds: new Set(), unavailable: true });
         return;
       }
-      const nodeIds = appliedNodeIds(bp, res.plan.resources.map((r) => r.address));
-      setDrift({ plan: res.plan, nodeIds });
+      setDrift({ plan: res.plan, ...driftSets(bp, res.plan) });
       setDriftPanelOpen(true);
     } finally {
       setThinking(false);
@@ -462,7 +471,7 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
                     }}
                   >
                     <span className="gcb-diag-dot" />
-                    {r.address} — {r.action} outside Mapdoc
+                    {r.address} — {r.action === 'delete' ? 'deleted' : r.action} outside Mapdoc
                   </button>
                 ))}
               </div>

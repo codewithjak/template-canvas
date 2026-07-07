@@ -23,6 +23,7 @@ const txt = (key: string, label: string): FieldDescriptor => ({ key, label, kind
 const num = (key: string, label: string): FieldDescriptor => ({ key, label, kind: 'number' });
 const sel = (key: string, label: string, options: string[]): FieldDescriptor =>
   ({ key, label, kind: 'select', options });
+const code = (key: string, label: string): FieldDescriptor => ({ key, label, kind: 'textarea' });
 
 /** Containment helper: contained in one of `types`, required by default. */
 const inside = (types: string[], required = true): ContainerRule => ({ types, required });
@@ -110,10 +111,24 @@ export const awsCatalog: NodeCatalog = [
     { name: 'app-role', managedPolicyArn: '' },
     [txt('name', 'Name'), txt('managedPolicyArn', 'Managed policy ARN (optional)')]),
 
-  // ── Serverless compute ────────────────────────────────────────────────────
+  // ── API + serverless compute ──────────────────────────────────────────────
+  node('aws_apigatewayv2_api', 'API Gateway (HTTP)', 'Network',
+    { name: 'http-api' },
+    [txt('name', 'Name')],
+    { connections: [{ type: 'route', to: ['aws_lambda_function'] }] }),
+
   node('aws_lambda_function', 'Lambda Function', 'Compute',
-    { name: 'fn', runtime: 'nodejs20.x', handler: 'index.handler', memory: '128', timeout: '3' },
-    [txt('name', 'Name'), sel('runtime', 'Runtime', ['nodejs20.x', 'python3.12', 'go1.x', 'java21']), txt('handler', 'Handler'), num('memory', 'Memory (MB)'), num('timeout', 'Timeout (s)')],
+    {
+      name: 'fn', runtime: 'nodejs20.x', handler: 'index.handler', memory: '128', timeout: '3',
+      method: 'GET', path: '/',
+      code: 'exports.handler = async (event) => ({\n  statusCode: 200,\n  headers: { "content-type": "application/json" },\n  body: JSON.stringify({ message: "hello from mapdoc" }),\n});',
+    },
+    [
+      txt('name', 'Name'), sel('runtime', 'Runtime', ['nodejs20.x', 'python3.12', 'go1.x', 'java21']),
+      txt('handler', 'Handler'), num('memory', 'Memory (MB)'), num('timeout', 'Timeout (s)'),
+      sel('method', 'HTTP method', ['GET', 'POST', 'PUT', 'DELETE', 'ANY']), txt('path', 'Route path'),
+      code('code', 'Handler code'),
+    ],
     { connections: [{ type: 'uses_role', to: ['aws_iam_role'], max: 1 }] }),
 
   // ── Data ──────────────────────────────────────────────────────────────────

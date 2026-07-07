@@ -548,6 +548,14 @@ function NodeProperties({ pack, node, onChange, onDelete, parents, onSetParent }
             >
               {(f.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+          ) : f.kind === 'textarea' ? (
+            <textarea
+              className="gcb-code"
+              rows={6}
+              spellCheck={false}
+              value={String(node.data.props[f.key] ?? '')}
+              onChange={(ev) => onChange(f.key, ev.target.value)}
+            />
           ) : (
             <input
               type={f.kind === 'number' ? 'number' : 'text'}

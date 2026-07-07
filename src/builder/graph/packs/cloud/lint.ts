@@ -184,6 +184,61 @@ function rulePublicBucket(bp: Blueprint): Diagnostic[] {
     .map((n) => D('warn', 'public-bucket', `${n.id} is public-read.`, n.id));
 }
 
+/** A Lambda requires an execution role — without one the apply fails. */
+function ruleLambdaNeedsRole(bp: Blueprint): Diagnostic[] {
+  const hasRole = (id: string) => bp.edges.some((e) => e.type === 'uses_role' && e.from === id);
+  return bp.nodes
+    .filter((n) => n.type === 'aws_lambda_function' && !hasRole(n.id))
+    .map((n) => D('block', 'lambda-no-role', `${n.id} needs an IAM role — connect one (uses role).`, n.id));
+}
+
+/** Inline code only zips for interpreted runtimes; empty code has nothing to run. */
+function ruleLambdaCode(bp: Blueprint): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  for (const n of bp.nodes) {
+    if (n.type !== 'aws_lambda_function') continue;
+    const runtime = String(n.props.runtime ?? '');
+    const interpreted = runtime.startsWith('nodejs') || runtime.startsWith('python');
+    if (!interpreted) {
+      out.push(D('warn', 'lambda-compiled-runtime', `${n.id} uses ${runtime || 'a compiled runtime'} — inline code isn't supported; supply a deployment package.`, n.id));
+    } else if (!String(n.props.code ?? '').trim()) {
+      out.push(D('warn', 'lambda-no-code', `${n.id} has no handler code.`, n.id));
+    }
+  }
+  return out;
+}
+
+/** An API Gateway with no routes exposes nothing. */
+function ruleApiNoRoutes(bp: Blueprint): Diagnostic[] {
+  return bp.nodes
+    .filter((n) => n.type === 'aws_apigatewayv2_api' && !bp.edges.some((e) => e.type === 'route' && e.from === n.id))
+    .map((n) => D('warn', 'api-no-routes', `${n.id} has no routes — it exposes nothing.`, n.id));
+}
+
+/** Route key = "METHOD path": paths must start with "/", and keys must be unique
+ *  per API (a duplicate route_key is a hard Terraform error). */
+function ruleApiRoutes(bp: Blueprint, byId: ById): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const seen = new Map<string, Set<string>>(); // apiId → route keys already used
+  for (const e of bp.edges) {
+    if (e.type !== 'route') continue;
+    const api = byId.get(e.from);
+    const fn = byId.get(e.to);
+    if (api?.type !== 'aws_apigatewayv2_api' || fn?.type !== 'aws_lambda_function') continue;
+    const method = String(fn.props.method || 'GET').toUpperCase();
+    const path = String(fn.props.path || '/');
+    if (!path.startsWith('/')) {
+      out.push(D('block', 'route-path', `${fn.id} route path "${path}" must start with "/".`, fn.id));
+    }
+    const key = `${method} ${path}`;
+    const keys = seen.get(api.id) ?? new Set<string>();
+    if (keys.has(key)) out.push(D('block', 'route-conflict', `${api.id} has two routes for "${key}".`, fn.id));
+    keys.add(key);
+    seen.set(api.id, keys);
+  }
+  return out;
+}
+
 export function lintCloud(bp: Blueprint): Diagnostic[] {
   const byId: ById = new Map(bp.nodes.map((n) => [n.id, n]));
   return [
@@ -196,5 +251,9 @@ export function lintCloud(bp: Blueprint): Diagnostic[] {
     ...ruleMissingSecurityGroup(bp),
     ...ruleOpenAdminPort(bp),
     ...rulePublicBucket(bp),
+    ...ruleLambdaNeedsRole(bp),
+    ...ruleLambdaCode(bp),
+    ...ruleApiNoRoutes(bp),
+    ...ruleApiRoutes(bp, byId),
   ];
 }

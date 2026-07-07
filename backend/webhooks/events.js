@@ -62,6 +62,7 @@ function sampleEvent(event) {
       event:        'cloud.drift.detected',
       teamId:       ZERO_UUID,
       connectionId: ZERO_UUID,
+      deploymentId: ZERO_UUID,
       provider:     'aws',
       region:       'us-east-1',
       count:        1,

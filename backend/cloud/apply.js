@@ -23,7 +23,7 @@ function applyBuildspec() {
 /**
  * @returns {Promise<{ outputs: object }>}  terraform outputs (endpoints, ARNs…)
  */
-async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject }) {
+async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject, stateKey }) {
   const { body } = await runBuild({
     connection,
     hcl,
@@ -31,6 +31,7 @@ async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject
     stateBucket,
     lockTable,
     runnerProject,
+    stateKey,
   });
   let outputs = {};
   try { outputs = JSON.parse(body); } catch { /* output may be empty on no-op */ }

@@ -27,11 +27,21 @@ async function currentUserId(): Promise<string> {
   return data.user.id
 }
 
-/** List the team's templates, most recently updated first. */
-export async function listTemplates(): Promise<TemplateSummary[]> {
+/**
+ * Which builder surface a template belongs to. Templates are shared across
+ * surfaces in one table, discriminated by this column (see
+ * CLOUD_BUILDER_DEPLOYMENTS_ARCHITECTURE.md §5.1).
+ */
+export type TemplateEnvironment = 'document' | 'cloud'
+
+/** List the team's templates for a surface, most recently updated first. */
+export async function listTemplates(
+  environment: TemplateEnvironment = 'document',
+): Promise<TemplateSummary[]> {
   const { data, error } = await supabase
     .from('templates')
     .select('id, name, updated_at')
+    .eq('environment', environment)
     .order('updated_at', { ascending: false })
 
   if (error) throw error
@@ -50,8 +60,12 @@ export async function getTemplate(id: string): Promise<TemplateRecord> {
   return data as TemplateRecord
 }
 
-/** Create a new template; returns its id. */
-export async function createTemplate(name: string, body: unknown): Promise<string> {
+/** Create a new template for a surface; returns its id. */
+export async function createTemplate(
+  name: string,
+  body: unknown,
+  environment: TemplateEnvironment = 'document',
+): Promise<string> {
   const [teamId, userId] = await Promise.all([getActiveTeamId(), currentUserId()])
 
   const { data, error } = await supabase
@@ -59,6 +73,7 @@ export async function createTemplate(name: string, body: unknown): Promise<strin
     .insert({
       team_id: teamId,
       name,
+      environment,
       body_json: body,
       created_by: userId,
       updated_by: userId,
@@ -68,7 +83,7 @@ export async function createTemplate(name: string, body: unknown): Promise<strin
 
   if (error) throw error
 
-  void logEvent('template_created', { template_id: data.id, name })
+  void logEvent('template_created', { template_id: data.id, name, environment })
   return data.id as string
 }
 

@@ -20,6 +20,7 @@ const express = require('express');
 
 const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const conns = require('../cloud/connections');
+const deps = require('../cloud/deployments');
 const runner = require('../cloud/runner');
 const { runApply } = require('../cloud/apply');
 const { simulatePlanFromHcl } = require('../cloud/planSim');
@@ -37,10 +38,23 @@ const cfgFor = (connection) => ({
 router.post('/v1/cloud/runs', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const { connectionId, hcl, name } = req.body || {};
+    const { connectionId, deploymentId, templateId, hcl, name } = req.body || {};
     if (!hcl) throw httpError(400, 'Compiled HCL is required.');
 
     const connection = connectionId ? await conns.getConnection(sb, teamId, connectionId) : null;
+
+    // A run against a connection belongs to a deployment (a template applied to
+    // that connection). Resolve it — creating it on first use — so its state key
+    // isolates this infra from others in the same account.
+    let deployment = null;
+    if (connection) {
+      deployment = deploymentId
+        ? await deps.getDeployment(sb, teamId, deploymentId)
+        : await deps.findOrCreate(sb, teamId, { connectionId, templateId: templateId || null, name: name || 'Untitled' });
+    }
+    const depId = deployment ? deployment.id : null;
+    const stateKey = deployment ? deps.stateKeyFor(deployment) : undefined;
+
     const cfg = cfgFor(connection);
     const canRunReal =
       connection && connection.status === 'verified'
@@ -48,13 +62,13 @@ router.post('/v1/cloud/runs', async (req, res) => {
 
     if (!canRunReal) {
       const plan = simulatePlanFromHcl(hcl);
-      const row = await history.createRun(sb, teamId, { connectionId, name, hcl, status: 'planned', plan, simulated: true });
-      return res.status(201).json({ runId: row.id, status: 'planned', plan, simulated: true });
+      const row = await history.createRun(sb, teamId, { connectionId, deploymentId: depId, name, hcl, status: 'planned', plan, simulated: true });
+      return res.status(201).json({ runId: row.id, deploymentId: depId, status: 'planned', plan, simulated: true });
     }
 
-    const row = await history.createRun(sb, teamId, { connectionId, name, hcl, status: 'running' });
-    res.status(202).json({ runId: row.id, status: 'running' });
-    runPlanAsync(sb, teamId, row.id, connection, hcl, cfg);
+    const row = await history.createRun(sb, teamId, { connectionId, deploymentId: depId, name, hcl, status: 'running' });
+    res.status(202).json({ runId: row.id, deploymentId: depId, status: 'running' });
+    runPlanAsync(sb, teamId, row.id, connection, hcl, cfg, stateKey);
   } catch (err) {
     sendError(res, '[cloud/runs create]', err);
   }
@@ -103,9 +117,9 @@ router.post('/v1/cloud/runs/:id/apply', async (req, res) => {
   }
 });
 
-async function runPlanAsync(sb, teamId, id, connection, hcl, cfg) {
+async function runPlanAsync(sb, teamId, id, connection, hcl, cfg, stateKey) {
   try {
-    const plan = await runner.runPlan({ connection, hcl, ...cfg });
+    const plan = await runner.runPlan({ connection, hcl, ...cfg, stateKey });
     await history.updateRun(sb, teamId, id, { status: 'planned', plan });
   } catch (e) {
     await history.updateRun(sb, teamId, id, { status: 'error', error: e.message });
@@ -114,8 +128,12 @@ async function runPlanAsync(sb, teamId, id, connection, hcl, cfg) {
 
 async function runApplyAsync(sb, teamId, run, connection, cfg) {
   try {
-    const { outputs } = await runApply({ connection, hcl: run.hcl, ...cfg });
+    // Apply into the run's deployment state key (isolates this infra's state).
+    const deployment = run.deployment_id ? await deps.getDeployment(sb, teamId, run.deployment_id) : null;
+    const stateKey = deployment ? deps.stateKeyFor(deployment) : undefined;
+    const { outputs } = await runApply({ connection, hcl: run.hcl, ...cfg, stateKey });
     await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs });
+    if (deployment) await deps.updateDeployment(sb, teamId, deployment.id, { last_run_id: run.id });
   } catch (e) {
     await history.updateRun(sb, teamId, run.id, { status: 'error', error: e.message });
   }

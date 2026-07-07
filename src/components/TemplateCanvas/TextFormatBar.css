@@ -161,3 +161,55 @@
   background: none;
   cursor  : pointer;
 }
+
+/* ── Extras used by ElementFormatBar (image / box / line) ── */
+.tfb-field {
+  display     : flex;
+  align-items : center;
+  gap         : 6px;
+}
+
+.tfb-label {
+  font-size   : 12px;
+  font-weight : 500;
+  color       : var(--color-text-muted);
+  white-space : nowrap;
+}
+
+.tfb-select {
+  height        : 32px;
+  padding       : 0 8px;
+  border        : 1px solid var(--color-border-primary);
+  border-radius : 8px;
+  background    : var(--color-background-primary);
+  color         : var(--color-text-primary);
+  font-size     : 13px;
+  cursor        : pointer;
+  outline       : none;
+}
+
+.tfb-select:focus {
+  border-color : var(--color-accent);
+  box-shadow   : 0 0 0 3px var(--color-accent-ring);
+}
+
+.tfb-num {
+  width         : 54px;
+  height        : 30px;
+  text-align    : center;
+  border        : 1px solid var(--color-border-primary);
+  border-radius : 6px;
+  background    : var(--color-background-primary);
+  color         : var(--color-text-primary);
+  font-size     : 13px;
+  outline       : none;
+}
+
+.tfb-num:focus {
+  border-color : var(--color-accent);
+  box-shadow   : 0 0 0 2px var(--color-accent-ring);
+}
+
+.tfb-num::-webkit-inner-spin-button,
+.tfb-num::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tfb-num[type='number'] { -moz-appearance: textfield; }

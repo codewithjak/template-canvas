@@ -39,6 +39,7 @@ import TemplatesLibraryModal from './TemplatesLibraryModal';
 import RebuildWithAiModal  from './RebuildWithAiModal';
 import PropertiesPanel     from './PropertiesPanel';
 import TextFormatBar       from './TextFormatBar';
+import ElementFormatBar    from './ElementFormatBar';
 import CanvasStatusBar     from './CanvasStatusBar';
 import PageRulers from './PageRulers';
 import { BulkExportPanel } from './BulkExportPanel';
@@ -1132,6 +1133,11 @@ function TemplateCanvas() {
         {selectedElement &&
           (selectedElement.type === 'text' || selectedElement.type === 'paragraph') && (
             <TextFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
+          )}
+
+        {selectedElement &&
+          (selectedElement.type === 'image' || selectedElement.type === 'box' || selectedElement.type === 'line') && (
+            <ElementFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
           )}
 
         <PropertiesPanel

@@ -202,44 +202,6 @@ export default function UserMenu() {
           <button
             type="button"
             role="menuitem"
-            onClick={() => { setOpen(false); navigate('/settings') }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              borderBottom: '1px solid #eef1f6',
-              background: 'transparent',
-              color: '#334155',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              textAlign: 'left',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            API access
-          </button>
-          <button
-            type="button"
-            role="menuitem"
             onClick={handleSignOut}
             style={{
               display: 'flex',

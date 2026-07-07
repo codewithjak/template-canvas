@@ -16,12 +16,13 @@ import type {
   CanvasElement,
   UpdateElement,
 } from './properties/elementTypes';
+import { type LayoutTableElement, insertColumnAt } from '../../model/layoutTable';
 import './TextFormatBar.css';
 
-type SupportedElement = ImageElementType | BoxElementType | LineElementType;
+type SupportedElement = ImageElementType | BoxElementType | LineElementType | LayoutTableElement;
 
 /** The element types this bar knows how to render. */
-export const ELEMENT_BAR_TYPES = ['image', 'box', 'line'] as const;
+export const ELEMENT_BAR_TYPES = ['image', 'box', 'line', 'table'] as const;
 
 interface Props {
   element: SupportedElement;
@@ -41,6 +42,7 @@ export default function ElementFormatBar({ element, onUpdate }: Props) {
       {element.type === 'image' && renderImage(element, setStyle)}
       {element.type === 'box'   && renderBox(element, setStyle)}
       {element.type === 'line'  && renderLine(element, setStyle)}
+      {element.type === 'table' && renderTable(element, setStyle, onUpdate)}
     </div>
   );
 }
@@ -136,6 +138,26 @@ function renderLine(el: LineElementType, setStyle: SetStyle) {
           <option value="dotted">Dotted</option>
         </select>
       </div>
+    </>
+  );
+}
+
+function renderTable(el: LayoutTableElement, setStyle: SetStyle, onUpdate: UpdateElement) {
+  const showBorders = el.style.showBorders !== false;
+  return (
+    <>
+      <Stepper label="Border" value={el.style.borderWidth ?? 0} min={0} max={8} onChange={n => setStyle({ borderWidth: n })} />
+      <Swatch label="Color" value={el.style.borderColor ?? '#d1d5db'} onChange={v => setStyle({ borderColor: v })} />
+      <button
+        className={`tfb-textbtn ${showBorders ? 'tfb-textbtn--active' : ''}`}
+        onClick={() => setStyle({ showBorders: !showBorders })}
+        aria-pressed={showBorders}
+      >Borders</button>
+      <span className="tfb-divider" />
+      <button
+        className="tfb-textbtn"
+        onClick={() => onUpdate(el.id, insertColumnAt(el, el.columns.length) as Partial<CanvasElement>)}
+      >+ Column</button>
     </>
   );
 }

@@ -1136,7 +1136,8 @@ function TemplateCanvas() {
           )}
 
         {selectedElement &&
-          (selectedElement.type === 'image' || selectedElement.type === 'box' || selectedElement.type === 'line') && (
+          (selectedElement.type === 'image' || selectedElement.type === 'box' ||
+           selectedElement.type === 'line' || selectedElement.type === 'table') && (
             <ElementFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
           )}
 

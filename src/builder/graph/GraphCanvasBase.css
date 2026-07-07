@@ -249,6 +249,21 @@
 }
 .gcb-drift-pill.in-sync { border: 1px solid #86efac; color: #15803d; }
 .gcb-drift-pill.drifted { border: 1px solid #fdba74; color: #c2410c; }
+
+/* "Apply to fix" — reconcile action inside the drift panel. */
+.gcb-drift-fix {
+  margin: 8px;
+  padding: 7px 10px;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gcb-drift-fix:hover { background: #ffedd5; }
+.gcb-drift-fix:disabled { opacity: 0.6; cursor: default; }
 /* Neutral — the check could not run, so we make no health claim either way. */
 .gcb-drift-pill.unavailable { border: 1px solid #d1d5db; color: #6b7280; }
 

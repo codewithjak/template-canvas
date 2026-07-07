@@ -466,6 +466,12 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
                   </button>
                 ))}
               </div>
+              {/* Push reconciliation (doc §6): re-plan the design against live
+                  state; approving the plan re-applies it, bringing reality back to
+                  the declared state. Reuses the approve-and-apply path. */}
+              <button className="gcb-drift-fix" disabled={thinking} onClick={() => void planRun()}>
+                {thinking ? 'Planning…' : 'Apply to fix ▸ review'}
+              </button>
             </div>
           ) : (
             <button className="gcb-drift-pill drifted" onClick={() => setDriftPanelOpen(true)}>

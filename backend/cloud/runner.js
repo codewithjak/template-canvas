@@ -20,7 +20,7 @@ const https = require('https');
 const { assumeConnectRole } = require('./sts');
 const { signJsonPost } = require('./awsSigv4');
 const { presignUrl } = require('../storage/s3SigV4');
-const { parsePlanJson } = require('./planParser');
+const { parsePlanJson, parseDriftJson } = require('./planParser');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -153,7 +153,7 @@ function driftBuildspec() {
 
 async function runDrift(args) {
   const { body } = await runBuild({ ...args, buildspec: driftBuildspec() });
-  return parsePlanJson(body);
+  return parseDriftJson(body);
 }
 
 module.exports = {

@@ -11,6 +11,7 @@
 import type { Blueprint, GraphNode } from '../../../types/blueprint';
 import type { Diagnostic } from '../../spine/domainPack';
 import { awsCatalog } from './catalog';
+import { vpcIdOf } from './queries';
 
 type ById = Map<string, GraphNode>;
 
@@ -51,18 +52,6 @@ const D = (
 /** True when a security group is attached_to this node. */
 function hasSecurityGroup(bp: Blueprint, nodeId: string): boolean {
   return bp.edges.some((e) => e.type === 'attached_to' && e.to === nodeId);
-}
-
-/** Walk the parent chain to the enclosing VPC id (for same-VPC checks). */
-function vpcIdOf(byId: ById, node: GraphNode): string | undefined {
-  let cur: GraphNode | undefined = node;
-  const seen = new Set<string>();
-  while (cur && !seen.has(cur.id)) {
-    seen.add(cur.id);
-    if (cur.type === 'aws_vpc') return cur.id;
-    cur = cur.parent ? byId.get(cur.parent) : undefined;
-  }
-  return undefined;
 }
 
 // ── Rules ─────────────────────────────────────────────────────────────────────

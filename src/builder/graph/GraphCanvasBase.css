@@ -274,6 +274,14 @@
 /* A node that drifted from live state — orange, distinct from the red/amber lint
    states, green applied, blue selection, and violet container highlight. */
 .gcb-drifted { outline: 2px solid #f97316; border-radius: 4px; }
+/* A node whose resource was DELETED outside Mapdoc — greyed and dashed to read as
+   "missing", distinct from the solid-orange "changed" drift state (doc §5). */
+.gcb-deleted {
+  outline: 2px dashed #9ca3af;
+  border-radius: 4px;
+  opacity: 0.5;
+  filter: grayscale(1);
+}
 /* The node that contains the current selection. Violet, distinct from the blue
    selection color and from the red/amber/green diagnostic states. Box-shadow so
    it stacks with any outline. */

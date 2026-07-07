@@ -17,6 +17,7 @@
  */
 
 import type { Blueprint, GraphNode } from '../../../types/blueprint';
+import { vpcIdOf } from './queries';
 
 interface Ctx {
   bp: Blueprint;
@@ -53,18 +54,6 @@ function sgIdsAttachedTo(ctx: Ctx, nodeId: string): string[] {
     .map((e) => ctx.byId.get(e.from))
     .filter((n): n is GraphNode => !!n && n.type === 'aws_security_group')
     .map((n) => `aws_security_group.${tname(n.id)}.id`);
-}
-
-/** Walk the parent chain to the enclosing VPC id. */
-function vpcIdOf(ctx: Ctx, node: GraphNode): string | undefined {
-  let cur: GraphNode | undefined = node;
-  const seen = new Set<string>();
-  while (cur && !seen.has(cur.id)) {
-    seen.add(cur.id);
-    if (cur.type === 'aws_vpc') return cur.id;
-    cur = cur.parent ? ctx.byId.get(cur.parent) : undefined;
-  }
-  return undefined;
 }
 
 /** Subnet id refs that belong to a VPC (direct children). */
@@ -105,7 +94,7 @@ function emitSubnet(n: GraphNode, ctx: Ctx): string {
 
 function emitSecurityGroup(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
-  const vpc = refId(ctx, vpcIdOf(ctx, n));
+  const vpc = refId(ctx, vpcIdOf(ctx.byId, n));
   return resource('aws_security_group', tname(n.id), [
     `name = ${q(p.name)}`,
     ...(vpc ? [`vpc_id = ${vpc}`] : []),
@@ -139,7 +128,7 @@ function emitInstance(n: GraphNode, ctx: Ctx): string {
 function emitDb(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
   const tn = tname(n.id);
-  const vpcId = vpcIdOf(ctx, n);
+  const vpcId = vpcIdOf(ctx.byId, n);
   const subnetIds = vpcId ? subnetIdsInVpc(ctx, vpcId) : [];
   const sgs = sgIdsAttachedTo(ctx, n.id);
   const blocks: string[] = [];
@@ -225,7 +214,7 @@ function emitIamRole(n: GraphNode, ctx: Ctx): string {
 function emitLb(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
   const internal = p.scheme === 'internal';
-  const vpcId = vpcIdOf(ctx, n);
+  const vpcId = vpcIdOf(ctx.byId, n);
   // Internet-facing ALBs must sit in PUBLIC subnets (a private one has no IGW
   // route and the apply fails); internal ALBs sit in private subnets.
   const subnetIds = vpcId ? subnetIdsByAccess(ctx, vpcId, !internal) : [];
@@ -327,7 +316,7 @@ function emitCloudFront(n: GraphNode, ctx: Ctx): string {
 function emitEcs(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
   const tn = tname(n.id);
-  const vpcId = vpcIdOf(ctx, n);
+  const vpcId = vpcIdOf(ctx.byId, n);
   const subnetIds = vpcId ? subnetIdsInVpc(ctx, vpcId) : [];
   const sgs = sgIdsAttachedTo(ctx, n.id);
   const cluster = resource('aws_ecs_cluster', `${tn}_cluster`, [`name = ${q(String(p.name) + '-cluster')}`]);
@@ -642,7 +631,7 @@ function emitVpcNetworking(vpc: GraphNode, ctx: Ctx): string[] {
  */
 function emitLbCompletion(lb: GraphNode, ctx: Ctx): string[] {
   const ln = tname(lb.id);
-  const vpcId = vpcIdOf(ctx, lb);
+  const vpcId = vpcIdOf(ctx.byId, lb);
   if (!vpcId) return []; // an ALB must be in a VPC to get an SG / target group
   const label = String(lb.props.name || ln);
   const targetPort = Number(lb.props.targetPort) || 80;

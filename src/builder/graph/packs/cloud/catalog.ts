@@ -124,7 +124,7 @@ export const awsCatalog: NodeCatalog = [
       code: 'exports.handler = async (event) => ({\n  statusCode: 200,\n  headers: { "content-type": "application/json" },\n  body: JSON.stringify({ message: "hello from mapdoc" }),\n});',
     },
     [
-      txt('name', 'Name'), sel('runtime', 'Runtime', ['nodejs20.x', 'python3.12', 'go1.x', 'java21']),
+      txt('name', 'Name'), sel('runtime', 'Runtime', ['nodejs20.x', 'python3.12', 'provided.al2023', 'java21']),
       txt('handler', 'Handler'), num('memory', 'Memory (MB)'), num('timeout', 'Timeout (s)'),
       sel('method', 'HTTP method', ['GET', 'POST', 'PUT', 'DELETE', 'ANY']), txt('path', 'Route path'),
       code('code', 'Handler code'),

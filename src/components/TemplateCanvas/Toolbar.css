@@ -596,7 +596,7 @@
   text-align    : left;
   font-size     : 12.5px;
   font-weight   : 500;
-  line-height   : 1;
+  line-height   : 1.4;   /* room for descenders (g, y, p) so overflow:hidden doesn't clip them */
   white-space   : nowrap;
   overflow      : hidden;
   text-overflow : ellipsis;

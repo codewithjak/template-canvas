@@ -22,6 +22,7 @@ const express = require('express');
 
 const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const conns = require('../cloud/connections');
+const deps = require('../cloud/deployments');
 const runner = require('../cloud/runner');
 const history = require('../cloud/runHistory');
 
@@ -39,34 +40,43 @@ const cfgFor = (connection) => ({
 router.post('/v1/cloud/drift', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const { connectionId } = req.body || {};
-    if (!connectionId) throw httpError(400, 'connectionId is required.');
+    const { connectionId, deploymentId, templateId } = req.body || {};
+    if (!connectionId && !deploymentId) throw httpError(400, 'connectionId or deploymentId is required.');
 
-    const connection = await conns.getConnection(sb, teamId, connectionId);
+    // Resolve the target infra: an explicit deployment, or the (connection,
+    // template) identity (templateId omitted ⇒ the connection's default).
+    const deployment = deploymentId
+      ? await deps.getDeployment(sb, teamId, deploymentId)
+      : await deps.findByIdentity(sb, teamId, connectionId, templateId || null);
+    if (!deployment) throw httpError(404, 'Deployment not found — apply this infra first.');
+
+    const connection = await conns.getConnection(sb, teamId, deployment.connection_id);
     if (!connection) throw httpError(404, 'Connection not found.');
 
-    // A drift check needs a deployment: nothing applied ⇒ nothing to compare to.
-    const deployment = await history.latestApplied(sb, teamId, connectionId);
-    if (!deployment) throw httpError(409, 'No deployment for this connection yet — apply a plan first.');
+    // A drift check needs an applied deployment: nothing applied ⇒ nothing to compare to.
+    const applied = await history.latestAppliedForDeployment(sb, teamId, deployment.id);
+    if (!applied) throw httpError(409, 'No deployment for this infra yet — apply a plan first.');
 
     const cfg = cfgFor(connection);
+    const stateKey = deps.stateKeyFor(deployment);
     const canRunReal =
       connection.status === 'verified'
       && process.env.AWS_ACCESS_KEY_ID && cfg.stateBucket && cfg.runnerProject
-      && !deployment.simulated;
+      && !applied.simulated;
 
+    const base = { connectionId: connection.id, deploymentId: deployment.id };
     if (!canRunReal) {
       const row = await history.createRun(sb, teamId, {
-        connectionId, kind: 'drift', name: 'Drift check', status: 'planned', plan: IN_SYNC, simulated: true,
+        ...base, kind: 'drift', name: 'Drift check', status: 'planned', plan: IN_SYNC, simulated: true,
       });
-      return res.status(201).json({ runId: row.id, connectionId, status: 'planned', plan: IN_SYNC, simulated: true });
+      return res.status(201).json({ runId: row.id, ...base, status: 'planned', plan: IN_SYNC, simulated: true });
     }
 
     const row = await history.createRun(sb, teamId, {
-      connectionId, kind: 'drift', name: 'Drift check', status: 'running',
+      ...base, kind: 'drift', name: 'Drift check', status: 'running',
     });
-    res.status(202).json({ runId: row.id, connectionId, status: 'running' });
-    runDriftAsync(sb, teamId, row.id, connection, deployment.hcl, cfg);
+    res.status(202).json({ runId: row.id, ...base, status: 'running' });
+    runDriftAsync(sb, teamId, row.id, connection, applied.hcl, cfg, stateKey);
   } catch (err) {
     sendError(res, '[cloud/drift start]', err);
   }
@@ -75,11 +85,15 @@ router.post('/v1/cloud/drift', async (req, res) => {
 router.get('/v1/cloud/drift/:connectionId', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const r = await history.latestDrift(sb, teamId, req.params.connectionId);
-    if (!r) return res.json({ connectionId: req.params.connectionId, status: 'none' });
+    const { deploymentId } = req.query;
+    const r = deploymentId
+      ? await history.latestDriftForDeployment(sb, teamId, deploymentId)
+      : await history.latestDrift(sb, teamId, req.params.connectionId);
+    if (!r) return res.json({ connectionId: req.params.connectionId, deploymentId: deploymentId || null, status: 'none' });
     res.json({
       runId: r.id,
       connectionId: req.params.connectionId,
+      deploymentId: r.deployment_id || deploymentId || null,
       status: r.status,
       plan: r.plan,
       error: r.error,
@@ -91,9 +105,9 @@ router.get('/v1/cloud/drift/:connectionId', async (req, res) => {
   }
 });
 
-async function runDriftAsync(sb, teamId, id, connection, hcl, cfg) {
+async function runDriftAsync(sb, teamId, id, connection, hcl, cfg, stateKey) {
   try {
-    const plan = await runner.runDrift({ connection, hcl, ...cfg });
+    const plan = await runner.runDrift({ connection, hcl, ...cfg, stateKey });
     await history.updateRun(sb, teamId, id, { status: 'planned', plan });
   } catch (e) {
     await history.updateRun(sb, teamId, id, { status: 'error', error: e.message });

@@ -59,14 +59,22 @@ create table if not exists public.templates (
   created_by  uuid references public.profiles(id) on delete set null,
   updated_by  uuid references public.profiles(id) on delete set null,
   name        text not null default 'Untitled',
+  -- Which builder surface owns this design; how body_json is interpreted.
+  -- 'document' = doc/image editor (default), 'cloud' = cloud builder blueprint.
+  environment text not null default 'document',
   body_json   jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
 
+-- Idempotent add for databases created before `environment` existed.
+alter table public.templates add column if not exists environment text not null default 'document';
+
 create index if not exists idx_memberships_user on public.memberships(user_id);
 create index if not exists idx_memberships_team on public.memberships(team_id);
 create index if not exists idx_templates_team   on public.templates(team_id);
+-- Templates library is listed per surface, most-recently-updated first.
+create index if not exists idx_templates_team_env on public.templates(team_id, environment, updated_at desc);
 create index if not exists idx_invites_token    on public.invites(token);
 
 -- ---------- Helper: SECURITY DEFINER avoids RLS recursion -----------

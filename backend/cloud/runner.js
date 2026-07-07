@@ -90,7 +90,7 @@ function planBuildspec() {
  * Run a buildspec against the customer's account; return the uploaded result.
  * @returns {Promise<{ buildId: string, body: string }>}
  */
-async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject }) {
+async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject, stateKey }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({
     roleArn: connection.role_arn,
@@ -103,13 +103,17 @@ async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTab
   const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
   const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
 
+  // One state key per deployment (isolates many infras in one account). Falls
+  // back to the legacy per-connection key only when no deployment is supplied.
+  const tfStateKey = stateKey || `state/${connection.id}.tfstate`;
+
   const started = await codebuild('StartBuild', {
     projectName: runnerProject,
     buildspecOverride: spec,
     environmentVariablesOverride: [
       { name: 'TF_HCL_B64', value: Buffer.from(hcl).toString('base64'), type: 'PLAINTEXT' },
       { name: 'TF_STATE_BUCKET', value: stateBucket, type: 'PLAINTEXT' },
-      { name: 'TF_STATE_KEY', value: `state/${connection.id}.tfstate`, type: 'PLAINTEXT' },
+      { name: 'TF_STATE_KEY', value: tfStateKey, type: 'PLAINTEXT' },
       { name: 'TF_LOCK_TABLE', value: lockTable, type: 'PLAINTEXT' },
       { name: 'TF_RESULT_URL', value: putUrl, type: 'PLAINTEXT' },
     ],

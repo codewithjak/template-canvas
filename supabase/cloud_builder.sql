@@ -57,3 +57,65 @@ create index if not exists cloud_runs_conn_kind_idx on public.cloud_runs(team_id
 
 alter table public.cloud_runs enable row level security;
 -- Server-side only (service role), same as cloud_connections.
+
+-- Deployments: one live infrastructure instance = a template applied to a
+-- connection. This is the per-account registry that lets a single account hold
+-- MANY infras without them colliding (see CLOUD_BUILDER_DEPLOYMENTS_ARCHITECTURE.md).
+-- Each deployment owns one Terraform state key, so state stays isolated per infra.
+create table if not exists public.cloud_deployments (
+  id            uuid primary key default gen_random_uuid(),
+  team_id       uuid not null references public.teams(id) on delete cascade,
+  connection_id uuid not null references public.cloud_connections(id) on delete cascade,
+  template_id   uuid references public.templates(id) on delete set null,  -- null = legacy/default deployment
+  name          text not null default 'Untitled',
+  status        text not null default 'active',   -- active | destroyed
+  -- Optional pin to a specific S3 state key. Null => derive
+  -- state/{connection_id}/{deployment_id}.tfstate. Set for migrated legacy
+  -- deployments so their existing state/{connection_id}.tfstate is not orphaned.
+  state_key     text,
+  last_run_id   uuid references public.cloud_runs(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists cloud_deployments_conn_idx
+  on public.cloud_deployments(team_id, connection_id);
+-- One default (template-less) deployment per connection; and one per template.
+create unique index if not exists cloud_deployments_conn_default_idx
+  on public.cloud_deployments(connection_id) where template_id is null;
+create unique index if not exists cloud_deployments_conn_template_idx
+  on public.cloud_deployments(connection_id, template_id) where template_id is not null;
+
+alter table public.cloud_deployments enable row level security;
+-- Server-side only (service role), same as cloud_connections / cloud_runs.
+
+-- A run now belongs to a deployment (its state + drift are keyed by it).
+alter table public.cloud_runs add column if not exists deployment_id uuid
+  references public.cloud_deployments(id) on delete set null;
+create index if not exists cloud_runs_deploy_kind_idx
+  on public.cloud_runs(team_id, deployment_id, kind, created_at desc);
+
+-- Backfill: give every connection that already has runs a default deployment,
+-- pinned to its legacy state key so existing state is preserved, and attach its
+-- orphaned runs. Idempotent (the unique index makes re-inserts no-ops) and safe
+-- on an empty DB. Nothing loses its state.
+do $$
+declare c record;
+declare dep_id uuid;
+begin
+  for c in
+    select distinct connection_id, team_id from public.cloud_runs
+    where connection_id is not null and deployment_id is null
+  loop
+    insert into public.cloud_deployments (team_id, connection_id, template_id, name, state_key)
+    values (c.team_id, c.connection_id, null, 'Default', 'state/' || c.connection_id || '.tfstate')
+    on conflict (connection_id) where (template_id is null) do nothing;
+
+    select id into dep_id from public.cloud_deployments
+    where connection_id = c.connection_id and template_id is null;
+
+    update public.cloud_runs
+    set deployment_id = dep_id
+    where connection_id = c.connection_id and deployment_id is null;
+  end loop;
+end $$;

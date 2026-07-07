@@ -109,4 +109,30 @@ export const awsCatalog: NodeCatalog = [
   node('aws_iam_role', 'IAM Role', 'Security',
     { name: 'app-role', managedPolicyArn: '' },
     [txt('name', 'Name'), txt('managedPolicyArn', 'Managed policy ARN (optional)')]),
+
+  // ── Serverless compute ────────────────────────────────────────────────────
+  node('aws_lambda_function', 'Lambda Function', 'Compute',
+    { name: 'fn', runtime: 'nodejs20.x', handler: 'index.handler', memory: '128', timeout: '3' },
+    [txt('name', 'Name'), sel('runtime', 'Runtime', ['nodejs20.x', 'python3.12', 'go1.x', 'java21']), txt('handler', 'Handler'), num('memory', 'Memory (MB)'), num('timeout', 'Timeout (s)')],
+    { connections: [{ type: 'uses_role', to: ['aws_iam_role'], max: 1 }] }),
+
+  // ── Data ──────────────────────────────────────────────────────────────────
+  node('aws_dynamodb_table', 'DynamoDB Table', 'Database',
+    { name: 'table', hashKey: 'id', billingMode: 'PAY_PER_REQUEST' },
+    [txt('name', 'Name'), txt('hashKey', 'Partition key'), sel('billingMode', 'Billing mode', ['PAY_PER_REQUEST', 'PROVISIONED'])]),
+
+  // ── Observability ─────────────────────────────────────────────────────────
+  node('aws_cloudwatch_log_group', 'CloudWatch Log Group', 'Observability',
+    { name: '/aws/app', retentionDays: '14' },
+    [txt('name', 'Name'), num('retentionDays', 'Retention (days)')]),
+
+  // ── Messaging ─────────────────────────────────────────────────────────────
+  node('aws_sqs_queue', 'SQS Queue', 'Messaging',
+    { name: 'queue', fifo: 'false', visibilityTimeout: '30' },
+    [txt('name', 'Name'), sel('fifo', 'FIFO', ['false', 'true']), num('visibilityTimeout', 'Visibility timeout (s)')]),
+
+  node('aws_sns_topic', 'SNS Topic', 'Messaging',
+    { name: 'topic' },
+    [txt('name', 'Name')],
+    { connections: [{ type: 'publishes_to', to: ['aws_sqs_queue'] }] }),
 ];

@@ -173,15 +173,33 @@ function emitS3(n: GraphNode): string {
   ]);
 }
 
+/** Which AWS service principal a consumer of a role trusts. */
+const ROLE_PRINCIPAL: Record<string, string> = {
+  aws_instance: 'ec2.amazonaws.com',
+  aws_lambda_function: 'lambda.amazonaws.com',
+  aws_ecs_service: 'ecs-tasks.amazonaws.com',
+};
+
 function emitIamRole(n: GraphNode, ctx: Ctx): string {
   const tn = tname(n.id);
+  // Who uses this role (incoming uses_role edges) decides its trust policy: a
+  // Lambda's role must trust lambda.amazonaws.com, an EC2's ec2.amazonaws.com.
+  const consumers = ctx.bp.edges
+    .filter((e) => e.type === 'uses_role' && e.to === n.id)
+    .map((e) => ctx.byId.get(e.from))
+    .filter((c): c is GraphNode => !!c);
+  const services = [...new Set(consumers.map((c) => ROLE_PRINCIPAL[c.type]).filter(Boolean))];
+  if (!services.length) services.push('ec2.amazonaws.com'); // sensible default
+  const principal = services.length === 1
+    ? `Service = ${q(services[0])}`
+    : `Service = [${services.map(q).join(', ')}]`;
   const policy =
     'assume_role_policy = jsonencode({\n'
     + '    Version = "2012-10-17"\n'
     + '    Statement = [{\n'
     + '      Action    = "sts:AssumeRole"\n'
     + '      Effect    = "Allow"\n'
-    + '      Principal = { Service = "ec2.amazonaws.com" }\n'
+    + `      Principal = { ${principal} }\n`
     + '    }]\n'
     + '  })';
   const blocks = [resource('aws_iam_role', tn, [`name = ${q(n.props.name)}`, policy])];
@@ -193,10 +211,9 @@ function emitIamRole(n: GraphNode, ctx: Ctx): string {
       `policy_arn = ${q(n.props.managedPolicyArn)}`,
     ]));
   }
-  // An instance can only assume a role through an instance profile — synthesize
-  // one when any instance uses this role (referenced by emitInstance above).
-  const usedByInstance = ctx.bp.edges.some((e) => e.type === 'uses_role' && e.to === n.id);
-  if (usedByInstance) {
+  // Only an EC2 instance needs an instance profile to assume a role (Lambda/ECS
+  // reference the role ARN directly).
+  if (consumers.some((c) => c.type === 'aws_instance')) {
     blocks.push(resource('aws_iam_instance_profile', `${tn}_profile`, [
       `name = ${q(tn + '-profile')}`,
       `role = aws_iam_role.${tn}.name`,
@@ -322,6 +339,90 @@ function emitConnectRules(ctx: Ctx): string[] {
       'protocol                 = "tcp"',
       `security_group_id        = ${bSg}`,
       `source_security_group_id = ${aSg}`,
+    ]));
+  }
+  return out;
+}
+
+// ── Serverless / data / messaging / observability emitters ───────────────────
+function emitLambda(n: GraphNode, ctx: Ctx): string {
+  const p = n.props;
+  const role = roleUsedBy(ctx, n.id);
+  return resource('aws_lambda_function', tname(n.id), [
+    `function_name = ${q(p.name)}`,
+    `runtime       = ${q(p.runtime)}`,
+    `handler       = ${q(p.handler)}`,
+    `memory_size   = ${Number(p.memory) || 128}`,
+    `timeout       = ${Number(p.timeout) || 3}`,
+    '# filename: your deployment package (app scope — the user supplies it)',
+    'filename      = "REPLACE_WITH_PACKAGE.zip"',
+    role
+      ? `role          = aws_iam_role.${tname(role.id)}.arn`
+      : '# role: connect an IAM role (uses_role) — Lambda requires an execution role',
+  ]);
+}
+
+function emitDynamo(n: GraphNode): string {
+  const p = n.props;
+  const hashKey = String(p.hashKey || 'id');
+  return resource('aws_dynamodb_table', tname(n.id), [
+    `name         = ${q(p.name)}`,
+    `billing_mode = ${q(p.billingMode || 'PAY_PER_REQUEST')}`,
+    `hash_key     = ${q(hashKey)}`,
+    `attribute {\n    name = ${q(hashKey)}\n    type = "S"\n  }`,
+  ]);
+}
+
+function emitLogGroup(n: GraphNode): string {
+  return resource('aws_cloudwatch_log_group', tname(n.id), [
+    `name              = ${q(n.props.name)}`,
+    `retention_in_days = ${Number(n.props.retentionDays) || 14}`,
+  ]);
+}
+
+function emitSqs(n: GraphNode): string {
+  const p = n.props;
+  const fifo = p.fifo === 'true';
+  const name = fifo && !String(p.name).endsWith('.fifo') ? `${p.name}.fifo` : String(p.name);
+  return resource('aws_sqs_queue', tname(n.id), [
+    `name                       = ${q(name)}`,
+    ...(fifo ? ['fifo_queue                 = true'] : []),
+    `visibility_timeout_seconds = ${Number(p.visibilityTimeout) || 30}`,
+  ]);
+}
+
+function emitSns(n: GraphNode): string {
+  return resource('aws_sns_topic', tname(n.id), [`name = ${q(n.props.name)}`]);
+}
+
+/** "publishes_to" edges (SNS → SQS) → a subscription + a queue policy that lets
+ *  the topic deliver (SQS drops SNS messages without it — the coherence lesson). */
+function emitSnsSubscriptions(ctx: Ctx): string[] {
+  const out: string[] = [];
+  for (const e of ctx.bp.edges) {
+    if (e.type !== 'publishes_to') continue;
+    const topic = ctx.byId.get(e.from);
+    const queue = ctx.byId.get(e.to);
+    if (!topic || topic.type !== 'aws_sns_topic' || !queue || queue.type !== 'aws_sqs_queue') continue;
+    const tn = tname(topic.id);
+    const qn = tname(queue.id);
+    out.push(resource('aws_sns_topic_subscription', `${tn}_to_${qn}`, [
+      `topic_arn = aws_sns_topic.${tn}.arn`,
+      'protocol  = "sqs"',
+      `endpoint  = aws_sqs_queue.${qn}.arn`,
+    ]));
+    out.push(resource('aws_sqs_queue_policy', `${qn}_from_${tn}`, [
+      `queue_url = aws_sqs_queue.${qn}.id`,
+      'policy = jsonencode({\n'
+      + '    Version = "2012-10-17"\n'
+      + '    Statement = [{\n'
+      + '      Effect    = "Allow"\n'
+      + '      Principal = { Service = "sns.amazonaws.com" }\n'
+      + '      Action    = "sqs:SendMessage"\n'
+      + `      Resource  = aws_sqs_queue.${qn}.arn\n`
+      + `      Condition = { ArnEquals = { "aws:SourceArn" = aws_sns_topic.${tn}.arn } }\n`
+      + '    }]\n'
+      + '  })',
     ]));
   }
   return out;
@@ -487,6 +588,11 @@ const EMITTERS: Record<string, (n: GraphNode, ctx: Ctx) => string> = {
   aws_ecs_service: emitEcs,
   aws_s3_bucket: emitS3,
   aws_iam_role: emitIamRole,
+  aws_lambda_function: emitLambda,
+  aws_dynamodb_table: emitDynamo,
+  aws_cloudwatch_log_group: emitLogGroup,
+  aws_sqs_queue: emitSqs,
+  aws_sns_topic: emitSns,
 };
 
 export function compileToTerraform(bp: Blueprint): string {
@@ -504,6 +610,7 @@ export function compileToTerraform(bp: Blueprint): string {
     if (n.type === 'aws_lb') parts.push(...emitLbCompletion(n, ctx));
   }
   parts.push(...emitConnectRules(ctx));
+  parts.push(...emitSnsSubscriptions(ctx));
   if (bp.nodes.some((n) => n.type === 'aws_db_instance')) parts.push(DB_PASSWORD_VAR);
 
   return parts.join('\n\n') + '\n';

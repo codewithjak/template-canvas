@@ -17,7 +17,7 @@ export type CanvasMode = 'wire' | 'layout';
 export interface FieldDescriptor {
   key: string;
   label: string;
-  kind: 'text' | 'number' | 'select';
+  kind: 'text' | 'number' | 'select' | 'textarea';
   options?: string[]; // for kind: 'select'
 }
 

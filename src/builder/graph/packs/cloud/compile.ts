@@ -345,21 +345,117 @@ function emitConnectRules(ctx: Ctx): string[] {
 }
 
 // ── Serverless / data / messaging / observability emitters ───────────────────
+/** HCL-safe string literal for arbitrary code: escape Terraform's own template
+ *  markers so a handler containing `${...}` isn't interpolated by Terraform.
+ *  (Function replacements — a `'$${'` string arg would collapse to `${`.) */
+function hclCode(s: unknown): string {
+  return q(String(s).replace(/\$\{/g, () => '$${').replace(/%\{/g, () => '%%{'));
+}
+
 function emitLambda(n: GraphNode, ctx: Ctx): string {
   const p = n.props;
+  const tn = tname(n.id);
   const role = roleUsedBy(ctx, n.id);
-  return resource('aws_lambda_function', tname(n.id), [
-    `function_name = ${q(p.name)}`,
-    `runtime       = ${q(p.runtime)}`,
-    `handler       = ${q(p.handler)}`,
-    `memory_size   = ${Number(p.memory) || 128}`,
-    `timeout       = ${Number(p.timeout) || 3}`,
-    '# filename: your deployment package (app scope — the user supplies it)',
-    'filename      = "REPLACE_WITH_PACKAGE.zip"',
+  const runtime = String(p.runtime || 'nodejs20.x');
+  // Inline code only zips for interpreted runtimes; compiled ones need a package.
+  const ext = runtime.startsWith('python') ? '.py' : runtime.startsWith('nodejs') ? '.js' : null;
+  const srcFile = (String(p.handler || 'index.handler').split('.')[0] || 'index') + (ext || '');
+  const blocks: string[] = [];
+
+  let packageLines: string[];
+  if (ext && p.code) {
+    // The handler travels inline in the HCL and is zipped in-account by the
+    // archive provider — no separate upload channel needed.
+    blocks.push([
+      `data "archive_file" "${tn}_code" {`,
+      '  type        = "zip"',
+      `  output_path = ${q(tn + '.zip')}`,
+      '  source {',
+      `    content  = ${hclCode(p.code)}`,
+      `    filename = ${q(srcFile)}`,
+      '  }',
+      '}',
+    ].join('\n'));
+    packageLines = [
+      `filename         = data.archive_file.${tn}_code.output_path`,
+      `source_code_hash = data.archive_file.${tn}_code.output_base64sha256`,
+    ];
+  } else {
+    packageLines = [
+      '# filename: your deployment package (compiled runtime — supply a zip)',
+      'filename         = "REPLACE_WITH_PACKAGE.zip"',
+    ];
+  }
+
+  blocks.push(resource('aws_lambda_function', tn, [
+    `function_name    = ${q(p.name)}`,
+    `runtime          = ${q(runtime)}`,
+    `handler          = ${q(p.handler)}`,
+    `memory_size      = ${Number(p.memory) || 128}`,
+    `timeout          = ${Number(p.timeout) || 3}`,
+    ...packageLines,
     role
-      ? `role          = aws_iam_role.${tname(role.id)}.arn`
+      ? `role             = aws_iam_role.${tname(role.id)}.arn`
       : '# role: connect an IAM role (uses_role) — Lambda requires an execution role',
-  ]);
+  ]));
+  return blocks.join('\n\n');
+}
+
+/** API Gateway HTTP API + its auto-deploy $default stage. */
+function emitApiGateway(n: GraphNode): string {
+  const tn = tname(n.id);
+  return [
+    resource('aws_apigatewayv2_api', tn, [
+      `name          = ${q(n.props.name)}`,
+      'protocol_type = "HTTP"',
+    ]),
+    resource('aws_apigatewayv2_stage', `${tn}_default`, [
+      `api_id      = aws_apigatewayv2_api.${tn}.id`,
+      'name        = "$default"',
+      'auto_deploy = true',
+    ]),
+  ].join('\n\n');
+}
+
+/**
+ * "route" edges (API → Lambda) → the plumbing that makes a method+path invoke a
+ * function: a proxy integration, a route keyed by the Lambda's method+path, and
+ * the permission letting API Gateway invoke it. The route key comes from the
+ * target Lambda's own `method`/`path` fields.
+ */
+function emitApiRoutes(ctx: Ctx): string[] {
+  const out: string[] = [];
+  for (const e of ctx.bp.edges) {
+    if (e.type !== 'route') continue;
+    const api = ctx.byId.get(e.from);
+    const fn = ctx.byId.get(e.to);
+    if (!api || api.type !== 'aws_apigatewayv2_api' || !fn || fn.type !== 'aws_lambda_function') continue;
+    const an = tname(api.id);
+    const fnTn = tname(fn.id);
+    const pair = `${an}_${fnTn}`;
+    const method = String(fn.props.method || 'GET').toUpperCase();
+    const path = String(fn.props.path || '/');
+    out.push(resource('aws_apigatewayv2_integration', pair, [
+      `api_id                 = aws_apigatewayv2_api.${an}.id`,
+      'integration_type       = "AWS_PROXY"',
+      `integration_uri        = aws_lambda_function.${fnTn}.invoke_arn`,
+      'integration_method     = "POST"',
+      'payload_format_version = "2.0"',
+    ]));
+    out.push(resource('aws_apigatewayv2_route', pair, [
+      `api_id    = aws_apigatewayv2_api.${an}.id`,
+      `route_key = ${q(`${method} ${path}`)}`,
+      `target    = "integrations/\${aws_apigatewayv2_integration.${pair}.id}"`,
+    ]));
+    out.push(resource('aws_lambda_permission', `${pair}_perm`, [
+      `statement_id  = ${q('AllowInvoke-' + pair)}`,
+      'action        = "lambda:InvokeFunction"',
+      `function_name = aws_lambda_function.${fnTn}.function_name`,
+      'principal     = "apigateway.amazonaws.com"',
+      `source_arn    = "\${aws_apigatewayv2_api.${an}.execution_arn}/*/*"`,
+    ]));
+  }
+  return out;
 }
 
 function emitDynamo(n: GraphNode): string {
@@ -555,6 +651,8 @@ function emitLbCompletion(lb: GraphNode, ctx: Ctx): string[] {
 // ── Header / orchestration ───────────────────────────────────────────────────
 function header(bp: Blueprint): string {
   const region = bp.meta.region || 'us-east-1';
+  // The archive provider zips inline Lambda code (emitLambda).
+  const needsArchive = bp.nodes.some((n) => n.type === 'aws_lambda_function');
   return [
     `# Terraform for "${bp.meta.name}" — generated by the cloud pack compiler.`,
     '# Deterministic: the same blueprint always produces this exact file.',
@@ -565,6 +663,12 @@ function header(bp: Blueprint): string {
     '      source  = "hashicorp/aws"',
     '      version = "~> 5.0"',
     '    }',
+    ...(needsArchive ? [
+      '    archive = {',
+      '      source  = "hashicorp/archive"',
+      '      version = "~> 2.0"',
+      '    }',
+    ] : []),
     '  }',
     '}',
     '',
@@ -572,6 +676,18 @@ function header(bp: Blueprint): string {
     `  region = "${region}"`,
     '}',
   ].join('\n');
+}
+
+/** Expose the live endpoint URL of each API Gateway as a terraform output, so the
+ *  apply outcome (which captures `terraform output`) shows it on the canvas. */
+function emitOutputs(bp: Blueprint): string[] {
+  return bp.nodes
+    .filter((n) => n.type === 'aws_apigatewayv2_api')
+    .map((n) => [
+      `output "${tname(n.id)}_url" {`,
+      `  value = aws_apigatewayv2_api.${tname(n.id)}.api_endpoint`,
+      '}',
+    ].join('\n'));
 }
 
 const DB_PASSWORD_VAR =
@@ -589,6 +705,7 @@ const EMITTERS: Record<string, (n: GraphNode, ctx: Ctx) => string> = {
   aws_s3_bucket: emitS3,
   aws_iam_role: emitIamRole,
   aws_lambda_function: emitLambda,
+  aws_apigatewayv2_api: emitApiGateway,
   aws_dynamodb_table: emitDynamo,
   aws_cloudwatch_log_group: emitLogGroup,
   aws_sqs_queue: emitSqs,
@@ -611,7 +728,9 @@ export function compileToTerraform(bp: Blueprint): string {
   }
   parts.push(...emitConnectRules(ctx));
   parts.push(...emitSnsSubscriptions(ctx));
+  parts.push(...emitApiRoutes(ctx));
   if (bp.nodes.some((n) => n.type === 'aws_db_instance')) parts.push(DB_PASSWORD_VAR);
+  parts.push(...emitOutputs(bp));
 
   return parts.join('\n\n') + '\n';
 }

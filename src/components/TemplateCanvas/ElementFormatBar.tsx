@@ -1,51 +1,73 @@
 /**
  * ElementFormatBar.tsx
  *
- * A contextual top-centre bar for non-text elements — the same idea as
- * TextFormatBar, extended to images, boxes and lines. It surfaces the few
- * most-used quick controls per element type and writes through the same
- * update handler the Properties panel uses, only ever touching style fields
- * that already exist on the model. The full Properties panel remains the place
- * for the complete set of controls.
+ * The contextual top-centre bar for non-text elements. It carries the FULL set
+ * of controls for each element type (image, box, line, barcode, radio,
+ * checkbox, date) plus quick table controls, so the Properties panel is no
+ * longer needed for these — the panel is kept only for tables and charts.
+ *
+ * Everything writes through the same update handler the panel used and only
+ * touches fields that already exist on the model.
  */
 
+import type React from 'react';
 import type {
   ImageElementType,
   BoxElementType,
   LineElementType,
+  RadioElementType,
+  CheckboxElementType,
+  DateElementType,
+  BarcodeElementType,
   CanvasElement,
   UpdateElement,
 } from './properties/elementTypes';
 import { type LayoutTableElement, insertColumnAt } from '../../model/layoutTable';
+import { notify } from '../../notify';
 import './TextFormatBar.css';
 
-type SupportedElement = ImageElementType | BoxElementType | LineElementType | LayoutTableElement;
+type SupportedElement =
+  | ImageElementType
+  | BoxElementType
+  | LineElementType
+  | LayoutTableElement
+  | BarcodeElementType
+  | RadioElementType
+  | CheckboxElementType
+  | DateElementType;
 
-/** The element types this bar knows how to render. */
-export const ELEMENT_BAR_TYPES = ['image', 'box', 'line', 'table'] as const;
+/** Element types this bar fully owns (no Properties panel for these). */
+export const ELEMENT_BAR_TYPES = ['image', 'box', 'line', 'table', 'barcode', 'radio', 'checkbox', 'date'] as const;
 
 interface Props {
   element: SupportedElement;
   onUpdate: UpdateElement;
+  staticPlaceholders?: string[];
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
-type SetStyle = (patch: Record<string, unknown>) => void;
 
-export default function ElementFormatBar({ element, onUpdate }: Props) {
-  const setStyle: SetStyle = (patch) => {
-    onUpdate(element.id, { style: { ...element.style, ...patch } } as Partial<CanvasElement>);
-  };
+export default function ElementFormatBar({ element, onUpdate, staticPlaceholders = [] }: Props) {
+  const setStyle = (patch: Record<string, unknown>) =>
+    onUpdate(element.id, { style: { ...(element as { style?: object }).style, ...patch } } as Partial<CanvasElement>);
+  const update = (patch: Record<string, unknown>) =>
+    onUpdate(element.id, patch as Partial<CanvasElement>);
 
   return (
     <div className="tfb" role="toolbar" aria-label="Element formatting">
-      {element.type === 'image' && renderImage(element, setStyle)}
-      {element.type === 'box'   && renderBox(element, setStyle)}
-      {element.type === 'line'  && renderLine(element, setStyle)}
-      {element.type === 'table' && renderTable(element, setStyle, onUpdate)}
+      {element.type === 'image'    && renderImage(element, setStyle, update)}
+      {element.type === 'box'      && renderBox(element, setStyle)}
+      {element.type === 'line'     && renderLine(element, setStyle)}
+      {element.type === 'table'    && renderTable(element, setStyle, update)}
+      {element.type === 'barcode'  && renderBarcode(element, setStyle, update, staticPlaceholders)}
+      {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element, update)}
+      {element.type === 'date'     && renderDate(element, update)}
     </div>
   );
 }
+
+type SetStyle = (patch: Record<string, unknown>) => void;
+type Update = (patch: Record<string, unknown>) => void;
 
 /* ── Shared little controls ─────────────────────────────────── */
 
@@ -66,44 +88,76 @@ function Stepper({ label, value, min, max, onChange }:
     <div className="tfb-field">
       <span className="tfb-label">{label}</span>
       <div className="tfb-size">
-        <button className="tfb-step" onClick={() => onChange(clamp(value - 1, min, max))}
-          aria-label={`Decrease ${label}`}>−</button>
+        <button className="tfb-step" onClick={() => onChange(clamp(value - 1, min, max))} aria-label={`Decrease ${label}`}>−</button>
         <input className="tfb-size-input" type="number" min={min} max={max} value={value}
           onChange={e => onChange(clamp(Number(e.target.value) || min, min, max))} aria-label={label} />
-        <button className="tfb-step" onClick={() => onChange(clamp(value + 1, min, max))}
-          aria-label={`Increase ${label}`}>+</button>
+        <button className="tfb-step" onClick={() => onChange(clamp(value + 1, min, max))} aria-label={`Increase ${label}`}>+</button>
       </div>
+    </div>
+  );
+}
+
+function NumField({ label, value, min, max, step, onChange }:
+  { label: string; value: number; min: number; max: number; step?: number; onChange: (n: number) => void }) {
+  return (
+    <div className="tfb-field">
+      <span className="tfb-label">{label}</span>
+      <input className="tfb-num" type="number" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(clamp(Number(e.target.value) || min, min, max))} aria-label={label} />
     </div>
   );
 }
 
 function OpacityField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return <NumField label="Opacity" value={value} min={0} max={100} onChange={onChange} />;
+}
+
+function SelectField({ label, value, options, onChange }:
+  { label: string; value: string; options: [string, string][]; onChange: (v: string) => void }) {
   return (
     <div className="tfb-field">
-      <span className="tfb-label">Opacity</span>
-      <input className="tfb-num" type="number" min={0} max={100} value={value}
-        onChange={e => onChange(clamp(Number(e.target.value) || 0, 0, 100))} aria-label="Opacity percent" />
+      <span className="tfb-label">{label}</span>
+      <select className="tfb-select" value={value} onChange={e => onChange(e.target.value)} aria-label={label}>
+        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
     </div>
+  );
+}
+
+function ToggleBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button className={`tfb-textbtn ${active ? 'tfb-textbtn--active' : ''}`} onClick={onClick} aria-pressed={active}>
+      {label}
+    </button>
   );
 }
 
 /* ── Per-type layouts ───────────────────────────────────────── */
 
-function renderImage(el: ImageElementType, setStyle: SetStyle) {
+function renderImage(el: ImageElementType, setStyle: SetStyle, update: Update) {
+  const inputId = `tfb-img-${el.id}`;
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { notify.error('image.selectImageFile'); return; }
+    const reader = new FileReader();
+    reader.onload = ev => { const b64 = ev.target?.result as string; if (b64) update({ src: b64 }); };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
   return (
     <>
-      <div className="tfb-field">
-        <span className="tfb-label">Fit</span>
-        <select className="tfb-select" value={el.style.objectFit}
-          onChange={e => setStyle({ objectFit: e.target.value })} aria-label="Object fit">
-          <option value="contain">Contain</option>
-          <option value="cover">Cover</option>
-          <option value="fill">Fill</option>
-          <option value="none">None</option>
-          <option value="scale-down">Scale down</option>
-        </select>
-      </div>
+      <input className="tfb-input tfb-src" type="text" value={el.src}
+        onChange={e => update({ src: e.target.value })} placeholder="Image URL or {{field}}" aria-label="Image source" />
+      <input id={inputId} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFile} />
+      <button className="tfb-textbtn" onClick={() => document.getElementById(inputId)?.click()}>Upload</button>
       <span className="tfb-divider" />
+      <NumField label="W" value={el.style.width}  min={50} max={1000} onChange={n => setStyle({ width: n })} />
+      <NumField label="H" value={el.style.height} min={50} max={1000} onChange={n => setStyle({ height: n })} />
+      <span className="tfb-divider" />
+      <SelectField label="Fit" value={el.style.objectFit}
+        options={[['contain', 'Contain'], ['cover', 'Cover'], ['fill', 'Fill'], ['none', 'None'], ['scale-down', 'Scale down']]}
+        onChange={v => setStyle({ objectFit: v })} />
       <OpacityField value={el.style.opacity ?? 100} onChange={n => setStyle({ opacity: n })} />
     </>
   );
@@ -112,11 +166,16 @@ function renderImage(el: ImageElementType, setStyle: SetStyle) {
 function renderBox(el: BoxElementType, setStyle: SetStyle) {
   return (
     <>
+      <NumField label="W" value={el.style.width}  min={20} max={1000} onChange={n => setStyle({ width: n })} />
+      <NumField label="H" value={el.style.height} min={20} max={1000} onChange={n => setStyle({ height: n })} />
+      <span className="tfb-divider" />
       <Swatch label="Fill"   value={el.style.backgroundColor} onChange={v => setStyle({ backgroundColor: v })} />
       <Swatch label="Border" value={el.style.borderColor}     onChange={v => setStyle({ borderColor: v })} />
-      <span className="tfb-divider" />
-      <Stepper label="Width" value={el.style.borderWidth} min={0} max={20} onChange={n => setStyle({ borderWidth: n })} />
-      <span className="tfb-divider" />
+      <Stepper label="Thickness" value={el.style.borderWidth} min={0} max={20} onChange={n => setStyle({ borderWidth: n })} />
+      <SelectField label="Style" value={el.style.borderStyle}
+        options={[['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted'], ['double', 'Double']]}
+        onChange={v => setStyle({ borderStyle: v })} />
+      <NumField label="Radius" value={el.style.borderRadius ?? 0} min={0} max={50} onChange={n => setStyle({ borderRadius: n })} />
       <OpacityField value={el.style.opacity ?? 100} onChange={n => setStyle({ opacity: n })} />
     </>
   );
@@ -125,39 +184,104 @@ function renderBox(el: BoxElementType, setStyle: SetStyle) {
 function renderLine(el: LineElementType, setStyle: SetStyle) {
   return (
     <>
-      <Swatch label="Color" value={el.style.color} onChange={v => setStyle({ color: v })} />
-      <span className="tfb-divider" />
+      <SelectField label="Dir" value={el.style.direction}
+        options={[['horizontal', 'Horizontal'], ['vertical', 'Vertical']]}
+        onChange={v => setStyle({ direction: v })} />
+      <NumField label="Length" value={el.style.length} min={20} max={1000} onChange={n => setStyle({ length: n })} />
       <Stepper label="Thickness" value={el.style.thickness} min={1} max={20} onChange={n => setStyle({ thickness: n })} />
-      <span className="tfb-divider" />
-      <div className="tfb-field">
-        <span className="tfb-label">Style</span>
-        <select className="tfb-select" value={el.style.style}
-          onChange={e => setStyle({ style: e.target.value })} aria-label="Line style">
-          <option value="solid">Solid</option>
-          <option value="dashed">Dashed</option>
-          <option value="dotted">Dotted</option>
-        </select>
-      </div>
+      <Swatch label="Color" value={el.style.color} onChange={v => setStyle({ color: v })} />
+      <SelectField label="Style" value={el.style.style}
+        options={[['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']]}
+        onChange={v => setStyle({ style: v })} />
+      <OpacityField value={el.style.opacity ?? 100} onChange={n => setStyle({ opacity: n })} />
     </>
   );
 }
 
-function renderTable(el: LayoutTableElement, setStyle: SetStyle, onUpdate: UpdateElement) {
+function renderTable(el: LayoutTableElement, setStyle: SetStyle, update: Update) {
   const showBorders = el.style.showBorders !== false;
   return (
     <>
       <Stepper label="Border" value={el.style.borderWidth ?? 0} min={0} max={8} onChange={n => setStyle({ borderWidth: n })} />
       <Swatch label="Color" value={el.style.borderColor ?? '#d1d5db'} onChange={v => setStyle({ borderColor: v })} />
-      <button
-        className={`tfb-textbtn ${showBorders ? 'tfb-textbtn--active' : ''}`}
-        onClick={() => setStyle({ showBorders: !showBorders })}
-        aria-pressed={showBorders}
-      >Borders</button>
+      <ToggleBtn label="Borders" active={showBorders} onClick={() => setStyle({ showBorders: !showBorders })} />
       <span className="tfb-divider" />
-      <button
-        className="tfb-textbtn"
-        onClick={() => onUpdate(el.id, insertColumnAt(el, el.columns.length) as Partial<CanvasElement>)}
-      >+ Column</button>
+      <button className="tfb-textbtn" onClick={() => update(insertColumnAt(el, el.columns.length))}>+ Column</button>
+    </>
+  );
+}
+
+function renderBarcode(el: BarcodeElementType, setStyle: SetStyle, update: Update, placeholders: string[]) {
+  const match = el.content.match(/^\{\{(.+?)\}\}$/);
+  const currentField = match ? match[1].trim() : '__custom__';
+  const showCurrent = currentField !== '__custom__' && !placeholders.includes(currentField);
+  return (
+    <>
+      <div className="tfb-field">
+        <span className="tfb-label">Field</span>
+        <select className="tfb-select" value={currentField}
+          onChange={e => { const v = e.target.value; update({ content: v === '__custom__' ? '' : `{{${v}}}` }); }}
+          aria-label="Data field">
+          {placeholders.map(f => <option key={f} value={f}>{f}</option>)}
+          {showCurrent && <option value={currentField}>{currentField}</option>}
+          <option value="__custom__">Custom…</option>
+        </select>
+      </div>
+      {currentField === '__custom__' && (
+        <input className="tfb-input tfb-src" type="text" value={el.content}
+          onChange={e => update({ content: e.target.value })} placeholder="Barcode value" aria-label="Custom value" />
+      )}
+      <span className="tfb-divider" />
+      <SelectField label="Format" value={el.barcode.format}
+        options={[['code128', 'Code 128'], ['code39', 'Code 39'], ['qrcode', 'QR Code'], ['ean13', 'EAN-13'], ['upca', 'UPC-A'], ['itf14', 'ITF-14']]}
+        onChange={v => update({ barcode: { ...el.barcode, format: v } })} />
+      <ToggleBtn label="Show text" active={el.barcode.showText}
+        onClick={() => update({ barcode: { ...el.barcode, showText: !el.barcode.showText } })} />
+      <span className="tfb-divider" />
+      <NumField label="W" value={el.style.width}  min={20} max={1000} onChange={n => setStyle({ width: n })} />
+      <NumField label="H" value={el.style.height} min={20} max={1000} onChange={n => setStyle({ height: n })} />
+    </>
+  );
+}
+
+function renderRadioCheckbox(el: RadioElementType | CheckboxElementType, update: Update) {
+  return (
+    <>
+      <SelectField label="Orientation" value={el.orientation || 'vertical'}
+        options={[['vertical', 'Vertical'], ['horizontal', 'Horizontal']]}
+        onChange={v => update({ orientation: v })} />
+      <NumField label="Offset" value={el.position.relativeOffset ?? 8} min={0} max={50}
+        onChange={n => update({ position: { ...el.position, relativeOffset: n } })} />
+      {el.type === 'checkbox' && (
+        <NumField label="Count" value={el.count ?? 1} min={1} max={10} onChange={n => update({ count: n })} />
+      )}
+      {el.type === 'radio' && (
+        <NumField label="Options" value={el.options ?? 2} min={2} max={10} onChange={n => update({ options: n })} />
+      )}
+    </>
+  );
+}
+
+function renderDate(el: DateElementType, update: Update) {
+  const showTime = el.includeTime || false;
+  return (
+    <>
+      <ToggleBtn label="Include time" active={showTime} onClick={() => update({ includeTime: !showTime })} />
+      <div className="tfb-field">
+        <span className="tfb-label">Date</span>
+        <input className="tfb-input" type="date" value={el.value || ''}
+          onChange={e => update({ value: e.target.value })} aria-label="Date value" />
+      </div>
+      {showTime && (
+        <div className="tfb-field">
+          <span className="tfb-label">Time</span>
+          <input className="tfb-input" type="time" value={el.time || ''}
+            onChange={e => update({ time: e.target.value })} aria-label="Time value" />
+        </div>
+      )}
+      <SelectField label="Format" value={el.format || 'MM/DD/YYYY'}
+        options={[['MM/DD/YYYY', 'MM/DD/YYYY'], ['DD/MM/YYYY', 'DD/MM/YYYY'], ['YYYY-MM-DD', 'YYYY-MM-DD'], ['MMM DD, YYYY', 'MMM DD, YYYY'], ['DD Mon YYYY', 'DD Mon YYYY']]}
+        onChange={v => update({ format: v })} />
     </>
   );
 }

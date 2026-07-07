@@ -4,13 +4,15 @@
  * backend/cloud/driftWorker.js
  *
  * Phase 2 of drift detection (CLOUD_DRIFT_ARCHITECTURE.md §7): a durable,
- * continuous sweeper. On a timer it runs drift checks for verified connections
- * that have a real deployment, least-recently-checked first and capped at BATCH
- * real checks per sweep so no connection starves and cost stays bounded. It
- * stores each result in cloud_runs (kind='drift') and fires a
- * `cloud.drift.detected` webhook when NEW drift appears — a resource drifting
- * that was not drifting on the previous check (so a persistent, already-notified
- * drift does not re-alert every sweep).
+ * continuous sweeper. The unit of work is the DEPLOYMENT, not the connection: an
+ * account can hold many infras, each with its own state key, so the worker checks
+ * every active deployment across verified connections (least-recently-checked
+ * first, capped at BATCH real checks per sweep so no deployment starves and cost
+ * stays bounded). It runs each check against that deployment's OWN state key and
+ * applied config, stores the result in cloud_runs (kind='drift', stamped with
+ * deployment_id) and fires a `cloud.drift.detected` webhook when NEW drift appears
+ * — a resource drifting that was not drifting on the previous check (so a
+ * persistent, already-notified drift does not re-alert every sweep).
  *
  * Like the webhook retry worker it is idempotent, overlap-guarded, and carries
  * no in-memory schedule: every input (connections, deployments, prior drift)
@@ -24,6 +26,7 @@
 const { getAdmin } = require('../supabaseAdmin');
 const runner = require('./runner');
 const history = require('./runHistory');
+const deps = require('./deployments');
 const { dispatchWebhook } = require('../webhooks/dispatch');
 
 const INTERVAL_MS = parseInt(process.env.DRIFT_CHECK_INTERVAL_MS, 10) || 6 * 60 * 60 * 1000; // 6h
@@ -61,17 +64,39 @@ async function fetchVerifiedConnections(sb) {
 }
 
 /**
- * Order connections least-recently-drift-checked first (never-checked → first),
- * pairing each with its last drift check so the sweep doesn't re-query it. This
- * is what guarantees every verified connection eventually gets swept instead of
- * an arbitrary subset starving forever. Priority comes from the DB each sweep,
- * so it survives restarts. Returns `[{ connection, prev }]`.
+ * Every ACTIVE deployment across all verified connections, each paired with the
+ * connection that carries its credentials (role/region/outputs). The deployment
+ * is the unit of drift; the connection is just how we reach the account. Cheap
+ * indexed reads; the expensive CodeBuild work is capped separately. Never throws → [].
  */
-async function prioritizeByOldestCheck(sb, connections) {
+async function fetchActiveDeployments(sb) {
+  const connections = await fetchVerifiedConnections(sb);
+  const pairs = [];
+  for (const connection of connections) {
+    let list = [];
+    try {
+      list = await deps.listByConnection(sb, connection.team_id, connection.id);
+    } catch { list = []; }
+    for (const deployment of list) {
+      if (deployment.status === 'active') pairs.push({ connection, deployment });
+    }
+  }
+  return pairs;
+}
+
+/**
+ * Order deployments least-recently-drift-checked first (never-checked → first),
+ * pairing each with its last drift check so the sweep doesn't re-query it. This
+ * is what guarantees every active deployment eventually gets swept instead of an
+ * arbitrary subset starving forever. Priority comes from the DB each sweep, so it
+ * survives restarts. Returns `[{ connection, deployment, prev }]`.
+ */
+async function prioritizeByOldestCheck(sb, pairs) {
   const withPrev = await Promise.all(
-    connections.map(async (connection) => ({
+    pairs.map(async ({ connection, deployment }) => ({
       connection,
-      prev: await history.latestDrift(sb, connection.team_id, connection.id),
+      deployment,
+      prev: await history.latestDriftForDeployment(sb, connection.team_id, deployment.id),
     })),
   );
   const checkedAt = (p) => (p && p.created_at ? Date.parse(p.created_at) : 0); // never checked ⇒ 0 ⇒ first
@@ -79,24 +104,29 @@ async function prioritizeByOldestCheck(sb, connections) {
 }
 
 /**
- * Run a drift check for one connection, store it, and notify on new drift.
- * `prev` (the connection's last drift check) may be supplied by the caller to
+ * Run a drift check for one deployment, store it, and notify on new drift.
+ * `prev` (the deployment's last drift check) may be supplied by the caller to
  * avoid a duplicate lookup; when omitted it is fetched here so the function is
  * usable standalone.
- * @returns {Promise<boolean>} true if a check actually ran (had a real deployment).
+ * @returns {Promise<boolean>} true if a check actually ran (had a real, applied
+ *   deployment to compare against).
  */
-async function checkConnection(sb, connection, prev) {
+async function checkDeployment(sb, connection, deployment, prev) {
   const teamId = connection.team_id;
-  const deployment = await history.latestApplied(sb, teamId, connection.id);
-  if (!deployment || deployment.simulated) return false; // nothing real to compare against
+  const applied = await history.latestAppliedForDeployment(sb, teamId, deployment.id);
+  if (!applied || applied.simulated) return false; // nothing real to compare against
 
   const cfg = cfgFor(connection);
   if (!process.env.AWS_ACCESS_KEY_ID || !cfg.stateBucket || !cfg.runnerProject) return false;
 
-  if (prev === undefined) prev = await history.latestDrift(sb, teamId, connection.id);
-  const plan = await runner.runDrift({ connection, hcl: deployment.hcl, ...cfg });
+  if (prev === undefined) prev = await history.latestDriftForDeployment(sb, teamId, deployment.id);
+  // This deployment's OWN state key — not the connection's legacy key — so each
+  // infra in an account is checked against its own state.
+  const stateKey = deps.stateKeyFor(deployment);
+  const plan = await runner.runDrift({ connection, hcl: applied.hcl, ...cfg, stateKey });
   await history.createRun(sb, teamId, {
-    connectionId: connection.id, kind: 'drift', name: 'Drift check (scheduled)', status: 'planned', plan,
+    connectionId: connection.id, deploymentId: deployment.id, kind: 'drift',
+    name: 'Drift check (scheduled)', status: 'planned', plan,
   });
 
   // Notify only on newly-drifted resources (transition/expansion), not on drift
@@ -108,6 +138,7 @@ async function checkConnection(sb, connection, prev) {
       event: 'cloud.drift.detected',
       teamId,
       connectionId: connection.id,
+      deploymentId: deployment.id,
       provider: connection.provider,
       region: connection.region,
       count: plan.resources.length,
@@ -120,21 +151,21 @@ async function checkConnection(sb, connection, prev) {
 }
 
 /**
- * One sweep: check the least-recently-checked connections first, up to BATCH
- * *actual* checks (the real CodeBuild cost). Connections without a real
- * deployment return early and cheaply, so they don't consume the budget; the
- * rest rotate in on subsequent sweeps. Returns how many were checked.
+ * One sweep: check the least-recently-checked deployments first, up to BATCH
+ * *actual* checks (the real CodeBuild cost). Deployments without a real applied
+ * run return early and cheaply, so they don't consume the budget; the rest rotate
+ * in on subsequent sweeps. Returns how many were checked.
  */
 async function runDriftSweep(sb) {
-  const connections = await fetchVerifiedConnections(sb);
-  const prioritized = await prioritizeByOldestCheck(sb, connections);
+  const pairs = await fetchActiveDeployments(sb);
+  const prioritized = await prioritizeByOldestCheck(sb, pairs);
   let checked = 0;
-  for (const { connection, prev } of prioritized) {
+  for (const { connection, deployment, prev } of prioritized) {
     if (checked >= BATCH) break; // cap expensive checks per sweep, not cheap skips
     try {
-      if (await checkConnection(sb, connection, prev)) checked += 1;
+      if (await checkDeployment(sb, connection, deployment, prev)) checked += 1;
     } catch (err) {
-      console.warn(`[drift] check failed for connection ${connection.id}:`, err.message);
+      console.warn(`[drift] check failed for deployment ${deployment.id}:`, err.message);
     }
   }
   return checked;
@@ -168,4 +199,4 @@ function startDriftWorker(intervalMs = INTERVAL_MS) {
   return workerTimer;
 }
 
-module.exports = { startDriftWorker, runDriftSweep, checkConnection };
+module.exports = { startDriftWorker, runDriftSweep, checkDeployment };

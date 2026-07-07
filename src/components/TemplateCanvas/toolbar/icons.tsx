@@ -126,6 +126,37 @@ export const Icons = {
         stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
     </svg>
   ),
+  Structure: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <ellipse cx="8" cy="4" rx="5" ry="2" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" stroke="currentColor" strokeWidth="1.4"/>
+    </svg>
+  ),
+  Email: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="m2.5 4.5 5.5 4 5.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+    </svg>
+  ),
+  Bulk: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="2.5" y="4.5" width="7" height="9" rx="1" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="M6 4.5V3a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-1.5" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Undo: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M6 4 3 7l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M3 7h6.5a3.5 3.5 0 0 1 0 7H7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Redo: () => (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M10 4l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M13 7H6.5a3.5 3.5 0 0 0 0 7H9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
   Load: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M2 9v4a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>

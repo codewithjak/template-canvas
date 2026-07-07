@@ -33,6 +33,22 @@ export interface ToolbarProps {
   onSave         ?: () => void;
   onOpenTemplates?: () => void;
   onOpenProjects?: () => void;
+  onUndo         ?: () => void;
+  onRedo         ?: () => void;
+  canUndo        ?: boolean;
+  canRedo        ?: boolean;
+  // Data / batch controls — shown once a dataset is mapped onto the template.
+  dataMapped     ?: boolean;
+  isSingleMode   ?: boolean;
+  totalRows      ?: number;
+  previewRowIndex?: number;
+  isExporting    ?: boolean;
+  onPrevRow      ?: () => void;
+  onNextRow      ?: () => void;
+  onViewStructure?: () => void;
+  onSendEmail    ?: () => void;
+  onBulkExport   ?: () => void;
+  onClearData    ?: () => void;
   onLoad         ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRebuildWithAi?: () => void;
   onUpload       ?: () => void;
@@ -56,6 +72,9 @@ export default function Toolbar({
   onAddText, onAddTable, onAddImage, onAddBarcode, onAddChart, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
   onSave, onOpenTemplates, onOpenProjects, onLoad, onRebuildWithAi, onUpload, onExportPDF,
+  onUndo, onRedo, canUndo, canRedo,
+  dataMapped, isSingleMode, totalRows = 0, previewRowIndex = 0, isExporting,
+  onPrevRow, onNextRow, onViewStructure, onSendEmail, onBulkExport, onClearData,
   onToggleRulers, showRulers,
   hasElements,
   onPageSizeChange, currentPageSize,
@@ -120,6 +139,19 @@ export default function Toolbar({
       {/* ── Top-right bar: action buttons + export ── */}
       <div className="tb tb--export" role="toolbar" aria-label="Actions and export">
 
+        {/* Undo / redo */}
+        {(onUndo || onRedo) && (
+          <>
+            <div className="tb-group">
+              <IconBtn icon={<Icons.Undo />} label="Undo" shortcut="⌘Z"
+                onClick={onUndo} disabled={!canUndo} variant="action" />
+              <IconBtn icon={<Icons.Redo />} label="Redo" shortcut="⌘⇧Z"
+                onClick={onRedo} disabled={!canRedo} variant="action" />
+            </div>
+            <Divider />
+          </>
+        )}
+
         {/* Action buttons moved out of the rail (add page now lives in the status chip) */}
         <div className="tb-group">
           {onPageSizeChange && (
@@ -159,6 +191,34 @@ export default function Toolbar({
             <IconBtn icon={<Icons.Upload />} label="Upload data file" onClick={onUpload} variant="action" />
           )}
         </div>
+
+        {/* Data / batch controls — only once a dataset is mapped */}
+        {dataMapped && (
+          <>
+            <Divider />
+            <div className="tb-group">
+              {totalRows > 1 && !isSingleMode && (
+                <div className="preview-nav">
+                  <button type="button" className="preview-nav-btn"
+                    onClick={onPrevRow} disabled={previewRowIndex === 0}>‹</button>
+                  <span className="preview-nav-count">{previewRowIndex + 1} / {totalRows}</span>
+                  <button type="button" className="preview-nav-btn"
+                    onClick={onNextRow} disabled={previewRowIndex === totalRows - 1}>›</button>
+                </div>
+              )}
+              <IconBtn icon={<Icons.Structure />} label="View data structure"
+                onClick={onViewStructure} variant="action" />
+              <IconBtn icon={<Icons.Email />} label="Email export"
+                onClick={onSendEmail} disabled={isExporting || !hasElements} variant="action" />
+              {!isSingleMode && (
+                <IconBtn icon={<Icons.Bulk />} label="Bulk export — one per row"
+                  onClick={onBulkExport} disabled={isExporting} variant="action" />
+              )}
+              <IconBtn icon={<Icons.Delete />} label="Clear data"
+                onClick={onClearData} variant="danger" />
+            </div>
+          </>
+        )}
 
         {/* Export — single button with a format menu */}
         {onExportPDF && (

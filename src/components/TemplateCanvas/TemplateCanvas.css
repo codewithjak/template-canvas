@@ -6,7 +6,7 @@
   display         : flex;
   justify-content : center;
   align-items     : flex-start;
-  padding         : 72px 320px 48px 340px; /* top: clear toolbar height */
+  padding         : 70px 320px 48px 340px; /* top: sits just below the docked format bar (there's also a 52px header spacer above) */
   min-height      : 100vh;
   background-color: var(--color-canvas);
   box-sizing      : border-box;

@@ -49,6 +49,7 @@ router.post('/v1/cloud/drift', async (req, res) => {
       ? await deps.getDeployment(sb, teamId, deploymentId)
       : await deps.findByIdentity(sb, teamId, connectionId, templateId || null);
     if (!deployment) throw httpError(404, 'Deployment not found — apply this infra first.');
+    if (deployment.status === 'destroyed') throw httpError(409, 'Deployment was destroyed; nothing to check.');
 
     const connection = await conns.getConnection(sb, teamId, deployment.connection_id);
     if (!connection) throw httpError(404, 'Connection not found.');

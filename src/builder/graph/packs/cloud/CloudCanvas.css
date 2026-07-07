@@ -23,3 +23,53 @@
 .cb-sim { color: #6b7280; }
 .cb-link { margin-left: auto; color: #2563eb; text-decoration: none; }
 .cb-link:hover { text-decoration: underline; }
+
+/* Deployments registry — the live infras in the selected account. */
+.dep-panel {
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+  max-height: 30%;
+  overflow: auto;
+  font-size: 12px;
+}
+.dep-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  color: #6b7280;
+  font-weight: 600;
+  border-bottom: 1px solid #f3f4f6;
+}
+.dep-refresh { margin-left: auto; border: none; background: none; cursor: pointer; font-size: 13px; color: #6b7280; }
+.dep-empty { padding: 8px 12px; color: #9ca3af; }
+.dep-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #f9fafb;
+}
+.dep-row.destroyed { opacity: 0.55; }
+.dep-name { color: #111827; }
+.dep-name-input { padding: 2px 6px; border: 1px solid #d1d5db; border-radius: 5px; font-size: 12px; }
+.dep-status {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.dep-status.active { background: #dcfce7; color: #15803d; }
+.dep-status.destroyed { background: #f3f4f6; color: #6b7280; }
+.dep-actions { margin-left: auto; display: flex; gap: 6px; }
+.dep-actions button {
+  padding: 3px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  color: #374151;
+}
+.dep-actions button:disabled { opacity: 0.5; cursor: default; }
+.dep-actions .dep-danger { color: #b91c1c; border-color: #fca5a5; }

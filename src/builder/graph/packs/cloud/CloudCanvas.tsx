@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { GraphCanvasBase } from '../../GraphCanvasBase';
 import { ConnectionBar } from './ConnectionBar';
 import { TemplateBar } from './TemplateBar';
+import { DeploymentsPanel } from './DeploymentsPanel';
 import { cloudPack } from './index';
 import type { Blueprint } from '../../../types/blueprint';
 import {
@@ -74,6 +75,11 @@ export const CloudCanvas = () => {
         onRename={setTemplateName}
       />
       <ConnectionBar value={connectionId} onChange={setConnectionId} />
+      <DeploymentsPanel
+        connectionId={connectionId}
+        currentTemplateId={templateId}
+        onOpen={(id) => void selectTemplate(id)}
+      />
       <div className="cloud-canvas-body">
         <GraphCanvasBase
           key={loadKey}

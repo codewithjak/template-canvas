@@ -336,19 +336,6 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
     <div className="gcb-root" data-mode={pack.mode}>
       {/* PALETTE — derived from pack.catalog */}
       <aside className="gcb-palette">
-        {pack.suggest && (
-          <div className="gcb-describe">
-            <input
-              value={intent}
-              onChange={(e) => setIntent(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void describe(); }}
-              placeholder="Describe your app…"
-            />
-            <button disabled={thinking || !intent.trim()} onClick={() => void describe()}>
-              {thinking ? '…' : '✨'}
-            </button>
-          </div>
-        )}
         {pack.templates && pack.templates.length > 0 && (
           <select
             className="gcb-template-select"
@@ -400,6 +387,19 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
           <Background />
           <Controls />
         </ReactFlow>
+        {pack.suggest && (
+          <div className="gcb-describe">
+            <input
+              value={intent}
+              onChange={(e) => setIntent(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') void describe(); }}
+              placeholder="Describe your app…"
+            />
+            <button disabled={thinking || !intent.trim()} onClick={() => void describe()}>
+              {thinking ? '…' : '✨'}
+            </button>
+          </div>
+        )}
         {compiled !== null && (
           <div className="gcb-output">
             {!compiled.startsWith('# Cannot') && (

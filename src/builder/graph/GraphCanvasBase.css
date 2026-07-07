@@ -20,14 +20,29 @@
   overflow-y: auto;
   border-right: 1px solid #e5e7eb;
 }
-.gcb-describe { display: flex; gap: 6px; margin-bottom: 10px; }
+/* Floating AI prompt bar, docked bottom-center of the canvas. */
+.gcb-describe {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  width: min(560px, 82%);
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+}
 .gcb-describe input {
-  flex: 1 1 auto; min-width: 0; padding: 6px 8px;
-  border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px;
+  flex: 1 1 auto; min-width: 0; padding: 10px 12px;
+  border: 1px solid #d1d5db; border-radius: 9px; font-size: 14px;
 }
 .gcb-describe button {
-  flex: 0 0 auto; padding: 6px 9px; border: 1px solid #111827; border-radius: 6px;
-  background: #111827; color: #fff; cursor: pointer; font-size: 13px;
+  flex: 0 0 auto; padding: 10px 14px; border: 1px solid #111827; border-radius: 9px;
+  background: #111827; color: #fff; cursor: pointer; font-size: 15px;
 }
 .gcb-describe button:disabled { opacity: 0.5; cursor: default; }
 

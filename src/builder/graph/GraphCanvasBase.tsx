@@ -71,7 +71,6 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
 
   const [compiled, setCompiled] = useState<string | null>(null);
   const [run, setRun] = useState<RunHandle | null>(null);
-  const [intent, setIntent] = useState('');
   const [thinking, setThinking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [diagOpen, setDiagOpen] = useState(true);
@@ -284,17 +283,6 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
     setEdges(toRFEdges(bp));
   }
 
-  async function describe() {
-    if (!pack.suggest || !intent.trim()) return;
-    setThinking(true);
-    try {
-      const bp = await pack.suggest(intent.trim());
-      if (bp) loadBlueprint(bp);
-    } finally {
-      setThinking(false);
-    }
-  }
-
   // Enforce the source node's connection rules; tag the edge with its domain type.
   const onConnect = useCallback(
     (c: Connection) => {
@@ -403,19 +391,6 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
           <Background />
           <Controls />
         </ReactFlow>
-        {pack.suggest && (
-          <div className="gcb-describe">
-            <input
-              value={intent}
-              onChange={(e) => setIntent(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void describe(); }}
-              placeholder="Describe your app…"
-            />
-            <button disabled={thinking || !intent.trim()} onClick={() => void describe()}>
-              {thinking ? '…' : '✨'}
-            </button>
-          </div>
-        )}
         {compiled !== null && (
           <div className="gcb-output">
             {!compiled.startsWith('# Cannot') && (

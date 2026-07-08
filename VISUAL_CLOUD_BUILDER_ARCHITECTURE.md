@@ -221,17 +221,39 @@ export function compile(bp: Blueprint): string {
 Both read the **same graph**; neither can provision.
 
 - **Deterministic linter (R4):** pure rules — *public DB*, *SSH open to `0.0.0.0/0`*,
-  *instance with no SG*, *RDS `publicly_accessible = true` or in a public subnet*. Blocks
-  before any provider call.
+  *instance with no SG*, *RDS `publicly_accessible = true` or in a public subnet*, plus
+  serverless rules (*Lambda with no role*, *API with no routes*, *duplicate route key*).
+  Blocks before any provider call. **Built and in use.**
 - **LLM co-pilot (R7):** explains lint findings, **proposes graph edits**, repairs invalid
-  graphs. Output is always a *graph* the user reviews — never a command.
+  graphs. Output is always a *graph* the user reviews — never a command. **Not built** —
+  this is the intended future "advisor" (see status below).
 - **LLM architect (R8):** natural-language intent → starter blueprint by **selecting and
   adapting a vetted reference pattern** (recognition + adaptation, not free generation).
-  Reuses the existing intent→structure muscle (AI PDF→template, `IntentCapturePanel`).
 
-> Reliability principle: the architect **picks from a library of known-good blueprints**
-> ("realtime-voice-app", "static-site + API", "data-pipeline") and adapts them. Every result
-> is a reviewable, editable shape going through the same gated pipeline.
+### 6.1 Status of the LLM layer (2026-07)
+
+The reliability principle still holds — *LLM proposes, the deterministic engine disposes* —
+but the concrete surface has shifted, because deterministic tools now cover what the
+architect was for:
+
+**Removed from the canvas:** the "Describe your app" prompt (the R8 architect). It was a
+5-way pattern **classifier** presented as a generator, and its job — *intent → infra* —
+is now covered better by two deterministic paths:
+
+- **CLI repo agent** (`CLOUD_LOCAL_AGENT_ARCHITECTURE.md`): infers infra from the user's
+  **actual code**, reliably and lint-clean. This is the real "generate my infra" path.
+- **Template picker** ("Load a template…"): one-click **known-good starting blueprints**
+  from `patterns.ts` — the honest, no-LLM, no-repo browser start.
+
+**Currently on the canvas:** the deterministic linter, the template picker, and (from the
+CLI agent) generated blueprints that arrive as reviewable cloud templates.
+
+**Dormant but reusable** (kept in the repo, unwired — a one-line re-wire away):
+`packs/cloud/architect.ts` (select+adapt), `run/architectApi.ts` (client),
+`backend/routes/cloudArchitect.js` + `backend/cloud/llm/architect.js` (the LLM route), and
+`patterns.ts`'s `patternMeta()`. These are the plumbing for the **eventual advisor (R7)** —
+canvas-aware Q&A / "is this the right infra?" — which is the one LLM piece with no
+deterministic substitute. Generation via LLM is **deprioritized** now that the agent covers it.
 
 ---
 

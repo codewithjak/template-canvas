@@ -47,7 +47,7 @@ router.post('/v1/cloud/deploy', async (req, res) => {
     if (!deployment) throw httpError(404, 'Deployment not found.');
 
     const targets = deployTargets(await loadBlueprint(sb, teamId, deployment.template_id));
-    if (!targets) throw httpError(400, 'This deployment is not a container app (needs an ECR repo + ECS service).');
+    if (!targets) throw httpError(400, 'No deployable workload found (needs ECS, a Lambda, or S3 + CloudFront).');
 
     const connection = await conns.getConnection(sb, teamId, deployment.connection_id);
     const cfg = cfgFor(connection);
@@ -57,7 +57,7 @@ router.post('/v1/cloud/deploy', async (req, res) => {
     if (!canRunReal) {
       const row = await history.createRun(sb, teamId, {
         connectionId: connection ? connection.id : null, deploymentId, kind: 'deploy', name: 'Deploy',
-        status: 'applied', simulated: true, plan: { targets }, outputs: { image: `${targets.ecrRepo}:latest (simulated)` },
+        status: 'applied', simulated: true, plan: { targets }, outputs: { deployed: targets.kind, simulated: true },
       });
       return res.status(201).json({ deployRunId: row.id, targets, simulated: true, status: 'applied' });
     }
@@ -95,11 +95,11 @@ async function runDeployAsync(sb, teamId, run, connection, imageTag) {
   const cfg = cfgFor(connection);
   const plan = run.plan || {};
   try {
-    const { image } = await runDeploy({
+    const { result } = await runDeploy({
       connection, deployProject: cfg.deployProject, stateBucket: cfg.stateBucket,
       sourceUrl: plan.sourceGetUrl, targets: plan.targets, imageTag,
     });
-    await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: { image } });
+    await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: result });
   } catch (e) {
     await history.updateRun(sb, teamId, run.id, { status: 'error', error: e.message });
   }

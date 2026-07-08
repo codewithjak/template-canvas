@@ -83,7 +83,11 @@ async function deploy(apiBase, key, dir, deploymentId) {
   console.log('Building + deploying in your account (cloud runner)…');
   const run = await post(apiBase, `/v1/cloud/deploy/${p.deployRunId}/run`, key, {});
   if (run.status >= 300) { console.error(`\nRun failed (${run.status}): ${run.body}`); process.exit(1); }
-  console.log(`\nDeploy started (${p.deployRunId}). Building ${p.targets.ecrRepo} and rolling ${p.targets.ecsService}. Watch it in the builder.`);
+  const t = p.targets;
+  const what = t.kind === 'serverless' ? `updating Lambda ${t.lambdaFunction}`
+    : t.kind === 'static' ? `building + syncing to ${t.bucket}`
+      : `building ${t.ecrRepo} → rolling ${t.ecsService}`;
+  console.log(`\nDeploy started (${p.deployRunId}): ${what}. Watch it in the builder.`);
 }
 
 async function main() {

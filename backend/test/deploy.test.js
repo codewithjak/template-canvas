@@ -11,7 +11,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { deployBuildspec, deployTargets } = require('../cloud/deploy');
+const { deployBuildspec, lambdaBuildspec, staticBuildspec, deployKind, deployTargets } = require('../cloud/deploy');
 
 test('deployBuildspec does build → push → register → update, in order', () => {
   const spec = deployBuildspec();
@@ -29,26 +29,54 @@ test('deployBuildspec does build → push → register → update, in order', ()
   assert.ok(at('$TF_RESULT_URL') >= 0);
 });
 
-test('deployTargets derives ECR + ECS + container port from the blueprint', () => {
-  const bp = {
+test('deployKind classifies container / serverless / static / none', () => {
+  assert.strictEqual(deployKind({ nodes: [{ type: 'aws_ecr_repository' }, { type: 'aws_ecs_service' }] }), 'container');
+  assert.strictEqual(deployKind({ nodes: [{ type: 'aws_lambda_function' }] }), 'serverless');
+  assert.strictEqual(deployKind({ nodes: [{ type: 'aws_cloudfront_distribution' }, { type: 'aws_s3_bucket' }] }), 'static');
+  assert.strictEqual(deployKind({ nodes: [{ type: 'aws_vpc' }] }), null);
+});
+
+test('deployTargets: container derives ECR + ECS + port', () => {
+  const t = deployTargets({
     nodes: [
       { id: 'ecr', type: 'aws_ecr_repository', props: { name: 'shop' } },
       { id: 'app', type: 'aws_ecs_service', props: { name: 'web', cpu: '512', memory: '1024' } },
       { id: 'alb', type: 'aws_lb', props: { name: 'app-alb', targetPort: '8080' } },
     ],
     edges: [{ id: 'e', type: 'routes_to', from: 'alb', to: 'app' }],
-  };
-  const t = deployTargets(bp);
+  });
+  assert.strictEqual(t.kind, 'container');
   assert.strictEqual(t.ecrRepo, 'shop');
-  assert.strictEqual(t.ecsService, 'web');
   assert.strictEqual(t.ecsCluster, 'web-cluster');
-  assert.strictEqual(t.containerName, 'web');
   assert.strictEqual(t.containerPort, 8080);
 });
 
-test('deployTargets returns null when not a container app', () => {
-  assert.strictEqual(deployTargets({ nodes: [{ id: 'fn', type: 'aws_lambda_function', props: {} }], edges: [] }), null);
+test('deployTargets: serverless → the Lambda function', () => {
+  const t = deployTargets({ nodes: [{ id: 'fn', type: 'aws_lambda_function', props: { name: 'api' } }], edges: [] });
+  assert.deepStrictEqual(t, { kind: 'serverless', lambdaFunction: 'api' });
+});
+
+test('deployTargets: static → the S3 bucket', () => {
+  const t = deployTargets({
+    nodes: [{ id: 'b', type: 'aws_s3_bucket', props: { name: 'site-assets' } }, { id: 'cdn', type: 'aws_cloudfront_distribution', props: {} }],
+    edges: [],
+  });
+  assert.deepStrictEqual(t, { kind: 'static', bucket: 'site-assets' });
+});
+
+test('deployTargets returns null with no deployable workload', () => {
+  assert.strictEqual(deployTargets({ nodes: [{ type: 'aws_vpc', props: {} }], edges: [] }), null);
   assert.strictEqual(deployTargets({ nodes: [], edges: [] }), null);
+});
+
+test('lambdaBuildspec updates function code; staticBuildspec syncs + invalidates', () => {
+  const l = lambdaBuildspec();
+  assert.ok(l.includes('aws lambda update-function-code'));
+  assert.ok(l.includes('$TF_RESULT_URL'));
+  const s = staticBuildspec();
+  assert.ok(s.includes('npm run build'));
+  assert.ok(s.includes('aws s3 sync'));
+  assert.ok(s.includes('create-invalidation'));
 });
 
 test('deployTargets defaults container port to 80 without an ALB edge', () => {

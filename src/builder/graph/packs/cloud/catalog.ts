@@ -93,7 +93,17 @@ export const awsCatalog: NodeCatalog = [
   node('aws_ecs_service', 'ECS Service (Fargate)', 'Compute',
     { name: 'app', desiredCount: '2', cpu: '256', memory: '512' },
     [txt('name', 'Name'), num('desiredCount', 'Desired count'), sel('cpu', 'CPU', ['256', '512', '1024']), sel('memory', 'Memory (MB)', ['512', '1024', '2048'])],
-    { container: inside(['aws_subnet']), connections: [{ type: 'connects_to', to: ['aws_db_instance'] }] }),
+    {
+      container: inside(['aws_subnet']),
+      connections: [
+        { type: 'connects_to', to: ['aws_db_instance'] },
+        { type: 'uses_image', to: ['aws_ecr_repository'], max: 1 },
+      ],
+    }),
+
+  node('aws_ecr_repository', 'ECR Repository', 'Compute',
+    { name: 'app', mutability: 'MUTABLE', scanOnPush: 'true' },
+    [txt('name', 'Name'), sel('mutability', 'Tag mutability', ['MUTABLE', 'IMMUTABLE']), sel('scanOnPush', 'Scan on push', ['true', 'false'])]),
 
   // ── Database ────────────────────────────────────────────────────────────
   node('aws_db_instance', 'RDS Database', 'Database',

@@ -516,6 +516,15 @@ function emitLogGroup(n: GraphNode): string {
   ]);
 }
 
+function emitEcr(n: GraphNode): string {
+  const p = n.props;
+  return resource('aws_ecr_repository', tname(n.id), [
+    `name                 = ${q(p.name)}`,
+    `image_tag_mutability = ${q(p.mutability || 'MUTABLE')}`,
+    `image_scanning_configuration {\n    scan_on_push = ${p.scanOnPush === 'true'}\n  }`,
+  ]);
+}
+
 function emitSqs(n: GraphNode): string {
   const p = n.props;
   const fifo = p.fifo === 'true';
@@ -745,6 +754,7 @@ const EMITTERS: Record<string, (n: GraphNode, ctx: Ctx) => string> = {
   aws_s3_bucket: emitS3,
   aws_iam_role: emitIamRole,
   aws_lambda_function: emitLambda,
+  aws_ecr_repository: emitEcr,
   aws_apigatewayv2_api: emitApiGateway,
   aws_dynamodb_table: emitDynamo,
   aws_cloudwatch_log_group: emitLogGroup,

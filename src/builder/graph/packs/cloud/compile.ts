@@ -319,35 +319,79 @@ function emitEcs(n: GraphNode, ctx: Ctx): string {
   const vpcId = vpcIdOf(ctx.byId, n);
   const subnetIds = vpcId ? subnetIdsInVpc(ctx, vpcId) : [];
   const sgs = sgIdsAttachedTo(ctx, n.id);
+  const cpu = String(p.cpu || '256');
+  const memory = String(p.memory || '512');
   const cluster = resource('aws_ecs_cluster', `${tn}_cluster`, [`name = ${q(String(p.name) + '-cluster')}`]);
+
   // If an ALB routes to this service, register it in the ALB's target group.
   const lbEdge = ctx.bp.edges.find(
     (e) => e.type === 'routes_to' && e.to === n.id && ctx.byId.get(e.from)?.type === 'aws_lb',
   );
   const lbNode = lbEdge ? ctx.byId.get(lbEdge.from) : undefined;
+  const port = Number(lbNode && lbNode.props.targetPort) || 80;
   const lbBlock = lbNode ? [
     '  load_balancer {',
     `    target_group_arn = aws_lb_target_group.${tname(lbNode.id)}_tg.arn`,
     `    container_name   = ${q(p.name)}`,
-    `    container_port   = ${Number(lbNode.props.targetPort) || 80}`,
+    `    container_port   = ${port}`,
     '  }',
   ] : [];
+
+  // Task execution role: lets Fargate pull the image from ECR and write logs.
+  const execRole = resource('aws_iam_role', `${tn}_exec`, [
+    `name = ${q(tn + '-exec')}`,
+    'assume_role_policy = jsonencode({\n'
+    + '    Version = "2012-10-17"\n'
+    + '    Statement = [{\n'
+    + '      Action    = "sts:AssumeRole"\n'
+    + '      Effect    = "Allow"\n'
+    + '      Principal = { Service = "ecs-tasks.amazonaws.com" }\n'
+    + '    }]\n'
+    + '  })',
+  ]);
+  const execAttach = resource('aws_iam_role_policy_attachment', `${tn}_exec`, [
+    `role       = aws_iam_role.${tn}_exec.name`,
+    'policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"',
+  ]);
+
+  // Initial task definition with a placeholder image, so the service applies and
+  // comes up; real deploys register new revisions out-of-band (see ignore_changes).
+  const taskDef = resource('aws_ecs_task_definition', tn, [
+    `family                   = ${q(p.name)}`,
+    'requires_compatibilities = ["FARGATE"]',
+    'network_mode             = "awsvpc"',
+    `cpu                      = ${q(cpu)}`,
+    `memory                   = ${q(memory)}`,
+    `execution_role_arn       = aws_iam_role.${tn}_exec.arn`,
+    'container_definitions    = jsonencode([{\n'
+    + `    name         = ${q(p.name)}\n`
+    + '    image        = "public.ecr.aws/nginx/nginx:latest"\n'
+    + '    essential    = true\n'
+    + `    portMappings = [{ containerPort = ${port} }]\n`
+    + '  }])',
+  ]);
+
   const service = [
     `resource "aws_ecs_service" "${tn}" {`,
     `  name            = ${q(p.name)}`,
     `  cluster         = aws_ecs_cluster.${tn}_cluster.id`,
+    `  task_definition = aws_ecs_task_definition.${tn}.arn`,
     `  desired_count   = ${Number(p.desiredCount) || 1}`,
     '  launch_type     = "FARGATE"',
-    '  # task_definition is your container/app — out of infra scope (the user supplies it)',
-    '  task_definition = "REPLACE_WITH_TASK_DEFINITION_ARN"',
     ...lbBlock,
     '  network_configuration {',
-    `    subnets         = [${subnetIds.join(', ')}]`,
-    ...(sgs.length ? [`    security_groups = [${sgs.join(', ')}]`] : ['    # security_groups: attach one']),
+    `    subnets          = [${subnetIds.join(', ')}]`,
+    ...(sgs.length ? [`    security_groups  = [${sgs.join(', ')}]`] : ['    # security_groups: attach one']),
+    '    assign_public_ip = true',
+    '  }',
+    '  # Deploys register new task-def revisions out-of-band; don\'t treat that as drift.',
+    '  lifecycle {',
+    '    ignore_changes = [task_definition]',
     '  }',
     '}',
   ].join('\n');
-  return cluster + '\n\n' + service;
+
+  return [cluster, execRole, execAttach, taskDef, service].join('\n\n');
 }
 
 /** "connects_to" edges → aws_security_group_rule (ingress on the target's SG). */

@@ -565,6 +565,7 @@ app.use(require('./routes/cloudRun'));      // /v1/cloud/runs — terraform plan
 app.use(require('./routes/cloudDrift'));    // /v1/cloud/drift — drift detection (keeping the canvas in sync)
 app.use(require('./routes/cloudDeployments')); // /v1/cloud/deployments — deployment registry + lifecycle
 app.use(require('./routes/cloudAgent'));    // /v1/cloud/agent — local-agent repo → reviewable cloud template
+app.use(require('./routes/cloudDeploy'));   // /v1/cloud/deploy — container workload deploy (build → ECR → ECS)
 app.use(require('./routes/cloudArchitect')); // /v1/cloud/architect — LLM architect (P10)
 app.use(contactRouter);
 app.use(require('./admin'));   // [ADMIN PANEL] isolated feature — remove this line + backend/admin/ to disable

@@ -98,7 +98,6 @@ async function runDeployAsync(sb, teamId, run, connection, imageTag) {
     const { image } = await runDeploy({
       connection, deployProject: cfg.deployProject, stateBucket: cfg.stateBucket,
       sourceUrl: plan.sourceGetUrl, targets: plan.targets, imageTag,
-      execRoleArn: process.env.CLOUD_ECS_EXEC_ROLE_ARN,
     });
     await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: { image } });
   } catch (e) {

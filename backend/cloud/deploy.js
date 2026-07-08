@@ -16,8 +16,10 @@
  *    images, so a separate `deployProject` is needed.
  *  - the RunnerRole must allow ecr:* on the repo, ecs:RegisterTaskDefinition /
  *    UpdateService, and iam:PassRole on the task execution role.
- *  - the ECS service needs a task execution role (EXEC_ROLE_ARN) and terraform
- *    should `ignore_changes = [task_definition]` so deploys don't fight state.
+ *
+ * The ECS task execution role and `ignore_changes = [task_definition]` are now
+ * emitted by the compiler (emitEcs), so the deploy just copies the existing task
+ * definition and swaps the image — no execution-role ARN needs to be passed in.
  */
 
 const { assumeConnectRole } = require('./sts');
@@ -29,6 +31,9 @@ const credFields = (c) => ({ accessKeyId: c.accessKeyId, secretAccessKey: c.secr
 
 /** The build/push/deploy buildspec. Env-driven, so it's a pure, testable string. */
 function deployBuildspec() {
+  // Rolls a new image by copying the deployment's EXISTING task definition (which
+  // already carries the compiler-synthesized execution role + container config)
+  // and swapping only the image — so no execution-role ARN needs to be passed in.
   return [
     'version: 0.2',
     'phases:',
@@ -45,8 +50,9 @@ function deployBuildspec() {
     '  post_build:',
     '    commands:',
     '      - IMAGE=$REGISTRY/$ECR_REPO:$IMAGE_TAG',
-    '      - CONTAINERS="[{\\"name\\":\\"$CONTAINER_NAME\\",\\"image\\":\\"$IMAGE\\",\\"essential\\":true,\\"portMappings\\":[{\\"containerPort\\":$CONTAINER_PORT}]}]"',
-    '      - TASKDEF=$(aws ecs register-task-definition --family $ECS_SERVICE --requires-compatibilities FARGATE --network-mode awsvpc --cpu $ECS_CPU --memory $ECS_MEMORY --execution-role-arn $EXEC_ROLE_ARN --container-definitions "$CONTAINERS" --query taskDefinition.taskDefinitionArn --output text)',
+    '      - CUR=$(aws ecs describe-task-definition --task-definition $ECS_SERVICE --query taskDefinition)',
+    "      - NEW=$(echo \"$CUR\" | jq --arg IMG \"$IMAGE\" '.containerDefinitions[0].image=$IMG | {family,networkMode,requiresCompatibilities,cpu,memory,executionRoleArn,containerDefinitions}')",
+    '      - TASKDEF=$(aws ecs register-task-definition --cli-input-json "$NEW" --query taskDefinition.taskDefinitionArn --output text)',
     '      - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --task-definition $TASKDEF --force-new-deployment',
     '      - printf \'{"image":"%s"}\' "$IMAGE" > result.out',
     '      - curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"',
@@ -92,7 +98,7 @@ async function presignSourceUpload({ connection, bucket }) {
 }
 
 /** Build → push → update ECS, in the customer's account. @returns {{ image }} */
-async function runDeploy({ connection, deployProject, stateBucket, sourceUrl, targets, imageTag, execRoleArn }) {
+async function runDeploy({ connection, deployProject, stateBucket, sourceUrl, targets, imageTag }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region });
   const key = `deploy/${connection.id}-${Date.now()}.out`;
@@ -100,17 +106,14 @@ async function runDeploy({ connection, deployProject, stateBucket, sourceUrl, ta
   const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
   const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
 
+  // Container config + execution role live in the existing task definition the
+  // buildspec copies, so the runner only needs the repo/service coordinates.
   const environmentVariablesOverride = [
     { name: 'SOURCE_URL', value: sourceUrl, type: 'PLAINTEXT' },
     { name: 'ECR_REPO', value: targets.ecrRepo, type: 'PLAINTEXT' },
     { name: 'IMAGE_TAG', value: imageTag || 'latest', type: 'PLAINTEXT' },
     { name: 'ECS_CLUSTER', value: targets.ecsCluster, type: 'PLAINTEXT' },
     { name: 'ECS_SERVICE', value: targets.ecsService, type: 'PLAINTEXT' },
-    { name: 'CONTAINER_NAME', value: targets.containerName, type: 'PLAINTEXT' },
-    { name: 'CONTAINER_PORT', value: String(targets.containerPort), type: 'PLAINTEXT' },
-    { name: 'ECS_CPU', value: targets.cpu, type: 'PLAINTEXT' },
-    { name: 'ECS_MEMORY', value: targets.memory, type: 'PLAINTEXT' },
-    { name: 'EXEC_ROLE_ARN', value: execRoleArn || '', type: 'PLAINTEXT' },
     { name: 'TF_RESULT_URL', value: putUrl, type: 'PLAINTEXT' },
   ];
 

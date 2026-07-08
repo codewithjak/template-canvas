@@ -265,6 +265,23 @@
 .gcb-drift-pill.in-sync { border: 1px solid #86efac; color: #15803d; }
 .gcb-drift-pill.drifted { border: 1px solid #fdba74; color: #c2410c; }
 
+/* Deploy status pill — top-left, clear of the bottom drift/diagnostics pills. */
+.gcb-deploy-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.gcb-deploy-pill.done { border: 1px solid #86efac; color: #15803d; }
+.gcb-deploy-pill.running { border: 1px solid #93c5fd; color: #1d4ed8; }
+.gcb-deploy-pill.failed { border: 1px solid #fca5a5; color: #b91c1c; }
+
 /* "Apply to fix" — reconcile action inside the drift panel. */
 .gcb-drift-fix {
   margin: 8px;

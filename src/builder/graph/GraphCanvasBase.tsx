@@ -43,6 +43,7 @@ import { OutcomeOverlay } from '../run/OutcomeOverlay';
 import { startRun, type RunHandle } from '../run/runController';
 import { checkDrift } from '../run/driftController';
 import { getDrift } from '../run/driftApi';
+import { getDeployStatus } from '../run/deployApi';
 import { downloadTerraform } from '../run/exportTerraform';
 import { blueprintSignature, appliedNodeIds, tname } from '../run/outcome';
 import type { Plan } from '../run/planTypes';
@@ -84,6 +85,21 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
   // checked this session.
   const [drift, setDrift] = useState<{ plan: Plan; nodeIds: Set<string>; deletedNodeIds: Set<string>; unavailable?: boolean } | null>(null);
   const [driftPanelOpen, setDriftPanelOpen] = useState(true);
+  // Latest workload deploy status (Phase 4), shown as a pill next to drift.
+  const [deploy, setDeploy] = useState<{ status: string; result?: Record<string, unknown> | null } | null>(null);
+
+  // Surface the latest deploy status on load, alongside drift.
+  useEffect(() => {
+    if (!connectionId) return undefined;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getDeployStatus(connectionId, templateId);
+        if (!cancelled && r.status !== 'none') setDeploy({ status: r.status, result: r.result });
+      } catch { /* best-effort — deploy status never blocks the editor */ }
+    })();
+    return () => { cancelled = true; };
+  }, [connectionId, templateId]);
 
   // Phase 2: surface the continuous worker's latest stored drift on load, so a
   // scheduled finding shows on the canvas without an explicit check. Once per
@@ -437,6 +453,19 @@ export function GraphCanvasBase({ pack, initial, connectionId, templateId, onSav
         {diagnostics.length > 0 && !diagOpen && (
           <button className="gcb-diag-pill" onClick={() => setDiagOpen(true)}>
             ⚠ {diagnostics.length}
+          </button>
+        )}
+
+        {/* Deploy status — the latest workload deploy for this design. */}
+        {deploy && (
+          <button
+            className={`gcb-deploy-pill ${deploy.status === 'applied' ? 'done' : deploy.status === 'error' ? 'failed' : 'running'}`}
+            onClick={() => setDeploy(null)}
+            title={deploy.result ? JSON.stringify(deploy.result) : deploy.status}
+          >
+            {deploy.status === 'applied' ? '✓ Deployed'
+              : deploy.status === 'error' ? '✕ Deploy failed'
+                : '⟳ Deploying…'}
           </button>
         )}
 

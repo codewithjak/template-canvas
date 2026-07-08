@@ -65,8 +65,23 @@ async function analyze(apiBase, key, dir) {
   console.log('Open the builder, pick it from the Template bar, and review the proposed infra.');
 }
 
-async function deploy(apiBase, key, dir, deploymentId) {
-  if (!deploymentId) { console.error('Deploy needs --deployment <id> (from the deployments panel).'); process.exit(1); }
+/** Newest file mtime under a dir, skipping node_modules/.git (for --watch). */
+function newestMtime(dir) {
+  let newest = 0;
+  const walk = (d) => {
+    let entries = [];
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = path.join(d, e.name);
+      try { if (e.isDirectory()) walk(p); else newest = Math.max(newest, fs.statSync(p).mtimeMs); } catch { /* ignore */ }
+    }
+  };
+  walk(dir);
+  return newest;
+}
+
+async function deployOnce(apiBase, key, dir, deploymentId) {
   console.log('Packaging source…');
   const tarball = path.join(os.tmpdir(), `mapdoc-src-${Date.now()}.tar.gz`);
   execSync(`tar czf "${tarball}" --exclude=node_modules --exclude=.git -C "${dir}" .`);
@@ -90,20 +105,36 @@ async function deploy(apiBase, key, dir, deploymentId) {
   console.log(`\nDeploy started (${p.deployRunId}): ${what}. Watch it in the builder.`);
 }
 
+async function deploy(apiBase, key, dir, deploymentId, watch) {
+  if (!deploymentId) { console.error('Deploy needs --deployment <id> (from the deployments panel).'); process.exit(1); }
+  await deployOnce(apiBase, key, dir, deploymentId);
+  if (!watch) return;
+  console.log('\nWatching for changes (ctrl-C to stop)…');
+  let last = newestMtime(dir);
+  setInterval(async () => {
+    const m = newestMtime(dir);
+    if (m <= last) return;
+    last = m;
+    console.log('\nChange detected — redeploying…');
+    try { await deployOnce(apiBase, key, dir, deploymentId); } catch (e) { console.error(e.message); }
+  }, 2000);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   let apiBase = process.env.MAPDOC_API || 'http://localhost:8787';
   let deploymentId = null;
+  let watch = false;
   const positional = [];
   for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === '--api') { apiBase = args[i + 1]; i += 1; } else if (args[i] === '--deployment') { deploymentId = args[i + 1]; i += 1; } else positional.push(args[i]);
+    if (args[i] === '--api') { apiBase = args[i + 1]; i += 1; } else if (args[i] === '--deployment') { deploymentId = args[i + 1]; i += 1; } else if (args[i] === '--watch') { watch = true; } else positional.push(args[i]);
   }
   const cmd = positional[0] === 'deploy' ? 'deploy' : 'analyze';
   const dir = (cmd === 'deploy' ? positional[1] : positional[0]) || process.cwd();
   const key = process.env.MAPDOC_API_KEY;
   if (!key) { console.error('Set MAPDOC_API_KEY (your Mapdoc API key).'); process.exit(1); }
 
-  if (cmd === 'deploy') await deploy(apiBase, key, dir, deploymentId);
+  if (cmd === 'deploy') await deploy(apiBase, key, dir, deploymentId, watch);
   else await analyze(apiBase, key, dir);
 }
 

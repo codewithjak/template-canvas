@@ -10,6 +10,113 @@
 
 ---
 
+## 0. Build status — what's implemented vs proposed (read this first)
+
+This document describes the **target** architecture. A functional slice is built; the
+security/consent/agentic model around it is **not yet**. Do not read §3/§4/§5/§10 as
+current guarantees — they are the intended end state. This section is the source of truth
+for what exists today.
+
+### 0.1 Built (works today)
+
+The **functional deploy pipeline is complete end to end** — a repo can become a running
+app:
+
+- **`mapdoc` CLI `analyze`** — scans a repo, produces the app understanding, and creates
+  a reviewable cloud template on the canvas.
+- **`mapdoc` CLI `deploy`** — three modes (`source` / `image` / `push`), the
+  container/serverless/static deploy bridge, `--watch` continuous redeploy, and the
+  short-lived scoped-credential path for local image push.
+- **Deterministic repo scanning** (`backend/agent/repoScan.js`) and deterministic
+  blueprint inference (`backend/agent/inferBlueprint.js`).
+- Tarball secret-denylist + `.gitignore`/`.dockerignore` handling; source-download URL
+  never persisted; cloud changes only via the deterministic runner + human approval.
+
+### 0.2 Proposed (NOT built)
+
+Three layers, described in §3/§4/§5/§10, do not exist yet:
+
+| Area | Doc says | Reality today |
+|---|---|---|
+| **Auth** (§4) | OAuth device flow, `mapdoc login`, agent session | a long-lived, full-scope `tc_live` API key via `MAPDOC_API_KEY` (`X-API-Key`) |
+| **Agentic review** (§5, "Level 2") | the AI drives read commands over your repo (tool-use loop) | a fixed **deterministic** scan of manifests/config — no LLM, no tool loop |
+| **Consent/audit** (§3/§10) | per-command consent prompts, destructive deny-list, full audit log | none — the CLI runs a fixed, user-invoked set of operations |
+
+### 0.3 Why these three are not built (deliberate, and in this order)
+
+They form a **dependency stack**, and the functional pipeline was built on an MVP
+substitute sitting on top of it:
+
+1. **Agentic review (§5) is the ambition; deterministic scanning is the shipped
+   substitute.** The deterministic path (`repoScan` + `inferBlueprint`) is reliable,
+   testable, instant, and free, and it covers the common app shapes — so it proves
+   "repo → infra" *now*. The agentic loop (LLM tool-calling over the repo) is a much
+   larger build with real reliability, latency, and cost questions, and it is **not
+   required** to make a repo become a live app. So it was deferred, not skipped.
+2. **Consent / deny-list / audit (§3/§10) exists to guard the agentic loop — which
+   doesn't exist yet.** Today the CLI runs a fixed, known set of operations that *the
+   user* invoked (scan, tar, upload; or `docker`/`aws` in image mode). There are no
+   AI-chosen commands to consent to, deny, or log. Building this machinery now would be
+   guarding a threat that only appears once #1 lands.
+3. **Device flow / agent session (§4) is an auth upgrade, not a functional
+   dependency.** The API key already authenticates the CLI to the team, so the whole
+   pipeline works without it. Device flow gives short-lived, per-device tokens and links
+   the CLI to the browser session — a security/UX improvement, never on the critical
+   path to proving the loop.
+
+So the build order was: ship the functional pipeline (with API key + deterministic
+scan), defer the trust/agentic stack until the agentic mode is actually wanted.
+
+### 0.4 How the agent works TODAY (deterministic)
+
+```
+mapdoc analyze  →  repoScan.js reads package.json / requirements.txt / Dockerfile /
+                   env KEY names  →  a fixed app-understanding object  →
+                   inferBlueprint.js maps it to a lint-clean Blueprint (recipes) →
+                   saved as a cloud template  →  user reviews on the canvas
+```
+
+It is a **pure function of the files present**: same repo in, same infra out. No LLM
+call, no commands chosen at runtime, no exploration. Strength: deterministic, testable,
+cheap, always lint-clean. Limit: it only recognizes the shapes the recipes encode
+(container web / serverless / static + attached data services); anything unusual gets the
+nearest recipe, and it can't reason about the code's actual behavior.
+
+### 0.5 How it will work with AGENTIC mode (proposed)
+
+```
+mapdoc analyze  →  the AI runs a server-side tool-use loop; each step it REQUESTS a
+                   read command (ls / grep / read-file / npm ls) that the LOCAL agent
+                   executes only AFTER the user consents (deny-list blocks dangerous
+                   ones; every call is audited)  →  the AI builds a richer understanding
+                   from what it actually read  →  proposes/extends the Blueprint
+                   (still catalog-constrained + lint-validated)  →  user reviews
+```
+
+The AI becomes a **proposer that can look**, instead of a fixed scanner. It reasons about
+framework specifics, non-standard layouts, and edge cases the recipes miss, and can
+answer "why this infra?" The deterministic recipes remain the **reliable baseline/few-shot
+seed**; the agent handles the delta. The output is still a reviewed, lint-clean blueprint
+compiled deterministically to Terraform — *LLM proposes, the deterministic engine
+disposes* holds unchanged.
+
+### 0.6 What full implementation solves (why it's worth building)
+
+- **Coverage beyond the recipes.** Deterministic inference maps unusual apps to the
+  nearest known shape; the agent can model what the app actually needs.
+- **Explanation + advice.** "Why ECS not Lambda?", "you also need a queue here" — the
+  deterministic path can't reason; the agent can (this is the co-pilot/advisor value).
+- **Real security posture for an interactive agent.** Per-command consent + deny-list +
+  audit turn "an AI that can run commands on your machine" from a scary idea into a
+  safe, reviewable one — the prerequisite for trusting agentic mode at all.
+- **Proper auth.** Short-lived, per-device, revocable tokens + a CLI↔canvas session
+  replace a copy-pasted long-lived full-scope key — smaller blast radius, better UX.
+
+Until then, the shipped deterministic MVP delivers the core promise (repo → reviewable
+infra → deploy) without any of the agentic risk surface.
+
+---
+
 ## 1. Goal
 
 Close the loop a vibe coder actually cares about: **"I have a repo, make my app
@@ -46,14 +153,18 @@ the code locally).
 
 ## 3. Trust boundary (read this first)
 
+> **Note:** the boundaries below describe the target model. Per-command consent /
+> gating is **proposed, not built** (§0.2) — today the CLI runs a fixed, user-invoked
+> set of operations. The *upload* and *cloud-change* boundaries here ARE real today.
+
 This is a **local dev-machine** capability, not cloud access. The boundaries:
 
-- **The agent runs on the user's machine, outbound-only, consented.** It is the
-  coding-agent model (Claude Code / Cursor): local, user-started, permissioned. NOT
-  inbound SSH into their box (no open ports, no handing us credentials to their
-  machine).
-- **It touches only the local repo and build artifacts.** Read-scoped by default;
-  every command is shown and gated. **What leaves the machine differs by action
+- **The agent runs on the user's machine, outbound-only, user-started.** It is the
+  coding-agent model (Claude Code / Cursor): local, user-started. NOT inbound SSH into
+  their box (no open ports, no handing us credentials to their machine).
+- **It touches only the local repo and build artifacts.** *(Target: read-scoped by
+  default, every AI command shown and gated — proposed, §0.)* **What leaves the machine
+  differs by action
   (see §10.1):** *analyze* sends only key NAMES, never secret values; *deploy* in
   source-upload mode uploads your source (minus secrets and `.gitignore`/denylisted
   files) to YOUR OWN account for the build; *deploy* in image mode uploads nothing
@@ -74,6 +185,10 @@ source or secrets.
 
 ## 4. The local agent (`mapdoc` CLI)
 
+> **Status: partially built.** The CLI and its transport exist; the **auth model below
+> (device flow / `mapdoc login` / agent session) is PROPOSED** — today it's a long-lived
+> `tc_live` API key via `MAPDOC_API_KEY`. See §0.
+
 - **Transport:** outbound HTTPS/websocket to Mapdoc. No inbound listener.
 - **Auth:** OAuth device flow — `mapdoc login` links the CLI to the user's **Mapdoc
   account** (this is the "connect the Mapdoc user account" channel). The browser
@@ -92,6 +207,10 @@ source or secrets.
 ---
 
 ## 5. Level 2: agentic repo review
+
+> **Status: PROPOSED — not built.** Today `analyze` runs a **deterministic** scan
+> (`repoScan.js`), not an AI tool-use loop. This section is the intended upgrade; see
+> §0.4 (how it works now) and §0.5 (how agentic will work).
 
 The AI explores the codebase like a developer would, to build an **app understanding**:
 
@@ -209,11 +328,18 @@ the cloud is only ever touched by the runner and one scoped deploy credential.
 
 ## 10. Security posture (consolidated)
 
+**Real today:**
 - Local, outbound-only, user-started; no inbound SSH, no open ports.
-- Read-scoped by default; per-command consent; destructive deny-list; full audit log.
+- The CLI runs a **fixed, user-invoked** set of operations (scan, tar, upload; or
+  `docker`/`aws` in image mode) — no AI-chosen commands.
 - No raw cloud shell. Cloud changes = deterministic runner + human approval, OR (for a
   CLI "deploy from here") a short-lived credential scoped by an inline session policy to
   exactly one ECR repo push + one ECS service update.
+- Secrets excluded from uploads; source-download URL never persisted (§10.1).
+
+**Proposed (NOT built — needed once the agentic loop of §5 exists):** per-command consent
+prompts, a destructive-command deny-list, and a full audit log. These guard *AI-chosen*
+commands, of which there are none today (§0.2–0.3).
 - LLM proposes only; deterministic compiler + approval gate apply.
 
 ### 10.1 What leaves the machine, by action (be precise)
@@ -241,9 +367,10 @@ NOT for source-upload *deploy*. The honest, per-action statement:
 
 ## 11. Phasing
 
-**Phase 1 — repo → infra.** `mapdoc` CLI + device auth + agent session; Level 2 read-only
-repo review → app understanding → catalog-constrained blueprint on the canvas (review).
-No deploy yet. Proves "point at my repo, get reviewable infra."
+**Phase 1 — repo → infra.** `mapdoc` CLI → app understanding → catalog-constrained
+blueprint on the canvas (review). Proves "point at my repo, get reviewable infra."
+*Shipped as a **deterministic** scan with API-key auth (not the device-flow/agentic
+form above); those are follow-on upgrades — see §0.*
 
 **Phase 2 — deploy: containers.** `aws_ecr_repository` node; agent builds locally, scoped
 push to ECR, ECS task-definition update + roll. The first true "app → live" path.

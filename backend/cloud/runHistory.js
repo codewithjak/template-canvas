@@ -55,6 +55,21 @@ async function latestDriftForDeployment(sb, teamId, deploymentId) {
   return data;
 }
 
+/** The most recent workload deploy for a deployment (public projection). */
+async function latestDeployForDeployment(sb, teamId, deploymentId) {
+  const { data, error } = await sb
+    .from(TABLE)
+    .select(PUBLIC)
+    .eq('team_id', teamId)
+    .eq('deployment_id', deploymentId)
+    .eq('kind', 'deploy')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Connection-scoped variants — the last applied run / drift check across ALL of a
  * connection's deployments. Kept for the connection-addressed drift GET and the
@@ -126,5 +141,5 @@ async function listRuns(sb, teamId, limit = 20) {
 module.exports = {
   createRun, getRun, updateRun, listRuns,
   latestApplied, latestDrift,
-  latestAppliedForDeployment, latestDriftForDeployment,
+  latestAppliedForDeployment, latestDriftForDeployment, latestDeployForDeployment,
 };

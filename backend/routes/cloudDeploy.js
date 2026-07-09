@@ -73,6 +73,32 @@ router.post('/v1/cloud/deploy', async (req, res) => {
   }
 });
 
+// Latest deploy status for the (connection, template) deployment — for the canvas
+// pill, alongside drift. Resolves the deployment the same way the drift GET does.
+router.get('/v1/cloud/deploy/status/:connectionId', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireTeam(req);
+    const { connectionId } = req.params;
+    const { templateId } = req.query;
+    const deployment = await deps.findByIdentity(sb, teamId, connectionId, templateId || null);
+    if (!deployment) return res.json({ connectionId, status: 'none' });
+    const r = await history.latestDeployForDeployment(sb, teamId, deployment.id);
+    if (!r) return res.json({ connectionId, deploymentId: deployment.id, status: 'none' });
+    res.json({
+      deployRunId: r.id,
+      connectionId,
+      deploymentId: deployment.id,
+      status: r.status,
+      result: r.outputs || null,
+      error: r.error,
+      simulated: r.simulated,
+      deployedAt: r.created_at,
+    });
+  } catch (err) {
+    sendError(res, '[cloud/deploy status]', err);
+  }
+});
+
 router.post('/v1/cloud/deploy/:id/run', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);

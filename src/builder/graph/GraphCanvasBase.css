@@ -20,31 +20,6 @@
   overflow-y: auto;
   border-right: 1px solid #e5e7eb;
 }
-/* Floating AI prompt bar, docked bottom-center of the canvas. */
-.gcb-describe {
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 5;
-  display: flex;
-  gap: 8px;
-  width: min(560px, 82%);
-  padding: 10px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-}
-.gcb-describe input {
-  flex: 1 1 auto; min-width: 0; padding: 10px 12px;
-  border: 1px solid #d1d5db; border-radius: 9px; font-size: 14px;
-}
-.gcb-describe button {
-  flex: 0 0 auto; padding: 10px 14px; border: 1px solid #111827; border-radius: 9px;
-  background: #111827; color: #fff; cursor: pointer; font-size: 15px;
-}
-.gcb-describe button:disabled { opacity: 0.5; cursor: default; }
 
 .gcb-template-select {
   display: block;
@@ -264,6 +239,23 @@
 }
 .gcb-drift-pill.in-sync { border: 1px solid #86efac; color: #15803d; }
 .gcb-drift-pill.drifted { border: 1px solid #fdba74; color: #c2410c; }
+
+/* Deploy status pill — top-left, clear of the bottom drift/diagnostics pills. */
+.gcb-deploy-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+.gcb-deploy-pill.done { border: 1px solid #86efac; color: #15803d; }
+.gcb-deploy-pill.running { border: 1px solid #93c5fd; color: #1d4ed8; }
+.gcb-deploy-pill.failed { border: 1px solid #fca5a5; color: #b91c1c; }
 
 /* "Apply to fix" — reconcile action inside the drift panel. */
 .gcb-drift-fix {

@@ -12,7 +12,6 @@ import { awsCatalog } from './catalog';
 import { compileToTerraform } from './compile';
 import { lintCloud } from './lint';
 import { runCloud } from './run';
-import { suggestBlueprint } from './architect';
 import { templateList } from './patterns';
 
 export const cloudPack: DomainPack = {
@@ -22,7 +21,6 @@ export const cloudPack: DomainPack = {
   compile: compileToTerraform,
   lint: lintCloud,
   run: runCloud,
-  suggest: suggestBlueprint,
   templates: templateList(),
 };
 

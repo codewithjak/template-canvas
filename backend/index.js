@@ -584,4 +584,9 @@ startRetryWorker();
 // is configured (AWS creds + state bucket). See cloud/driftWorker.js.
 require('./cloud/driftWorker').startDriftWorker();
 
+// Run reconciler: drives any run the inline poll left non-terminal (server restart,
+// or a build slower than the 600s poll) to its true terminal state from CodeBuild's
+// real status. No-op unless the cloud runner is configured. See cloud/runReconciler.js.
+require('./cloud/runReconciler').startRunReconciler();
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -124,7 +124,12 @@ function tarSource(dir) {
   const excludes = [...SECRET_EXCLUDES, ...ignorePatterns(dir)]
     .map((e) => `--exclude='${e.replace(/'/g, "'\\''")}'`)
     .join(' ');
-  execSync(`tar czf "${tarball}" ${excludes} -C "${dir}" .`, { cwd: dir });
+  try {
+    execSync(`tar czf "${tarball}" ${excludes} -C "${dir}" .`, { cwd: dir });
+  } catch (e) {
+    fs.rmSync(tarball, { force: true }); // don't leave a partial archive on tar failure
+    throw e;
+  }
   return tarball;
 }
 
@@ -141,18 +146,20 @@ async function deploySource(apiBase, key, dir, deploymentId) {
 }
 
 async function deploySourceUpload(apiBase, key, deploymentId, tarball) {
+  // Throw (don't process.exit) so the caller's finally cleans up the tarball and
+  // --watch survives transient errors; main().catch prints + exits 1.
   const prep = await post(apiBase, '/v1/cloud/deploy', key, { deploymentId });
-  if (prep.status >= 300) { console.error(`\nPrepare failed (${prep.status}): ${prep.body}`); process.exit(1); }
+  if (prep.status >= 300) throw new Error(`Prepare failed (${prep.status}): ${prep.body}`);
   const p = JSON.parse(prep.body);
   if (p.simulated) { console.log(`\nDeploy simulated (no cloud configured). Target: ${JSON.stringify(p.targets)}.`); return; }
 
   console.log('Uploading source to your account…');
   const up = await putFile(p.uploadUrl, tarball);
-  if (up.status >= 300) { console.error(`\nUpload failed (${up.status})`); process.exit(1); }
+  if (up.status >= 300) throw new Error(`Upload failed (${up.status})`);
 
   console.log('Building + deploying in your account (cloud runner)…');
   const run = await post(apiBase, `/v1/cloud/deploy/${p.deployRunId}/run`, key, {});
-  if (run.status >= 300) { console.error(`\nRun failed (${run.status}): ${run.body}`); process.exit(1); }
+  if (run.status >= 300) throw new Error(`Run failed (${run.status}): ${run.body}`);
   const t = p.targets;
   const what = t.kind === 'serverless' ? `updating Lambda ${t.lambdaFunction}`
     : t.kind === 'static' ? `building + syncing to ${t.bucket}`
@@ -164,7 +171,7 @@ async function deploySourceUpload(apiBase, key, deploymentId, tarball) {
  *  `imageRef` set ⇒ push that existing image instead of building (BYO image). */
 async function deployImage(apiBase, key, dir, deploymentId, imageRef) {
   const cr = await post(apiBase, `/v1/cloud/deploy/${deploymentId}/credentials`, key, {});
-  if (cr.status >= 300) { console.error(`\nCould not get deploy credentials (${cr.status}): ${cr.body}`); process.exit(1); }
+  if (cr.status >= 300) throw new Error(`Could not get deploy credentials (${cr.status}): ${cr.body}`);
   const { credentials, registry, region, targets } = JSON.parse(cr.body);
   const tag = `${registry}/${targets.ecrRepo}:latest`;
   const env = {

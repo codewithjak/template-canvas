@@ -92,18 +92,24 @@ router.get('/v1/cloud/connections', async (req, res) => {
   }
 });
 
-// Save the stack outputs (Connect-Role ARN + optional state bucket/lock/runner).
+// Save the stack outputs (Connect-Role ARN + optional state bucket/lock/runner,
+// and the optional deploy role/project that enable CLI "deploy from here" — Path 1).
 router.patch('/v1/cloud/connections/:id', async (req, res) => {
   try {
     const { teamId, sb } = await requireTeam(req);
-    const { roleArn, stateBucket, lockTable, runnerProject } = req.body || {};
+    const { roleArn, stateBucket, lockTable, runnerProject, deployRoleArn, deployProject } = req.body || {};
     if (!roleArn || !ROLE_ARN_RE.test(roleArn)) {
       throw httpError(400, 'A valid IAM role ARN is required.');
+    }
+    if (deployRoleArn && !ROLE_ARN_RE.test(deployRoleArn)) {
+      throw httpError(400, 'deployRoleArn must be a valid IAM role ARN.');
     }
     const patch = { role_arn: roleArn, status: 'linked' };
     if (stateBucket) patch.state_bucket = stateBucket;
     if (lockTable) patch.lock_table = lockTable;
     if (runnerProject) patch.runner_project = runnerProject;
+    if (deployRoleArn) patch.deploy_role_arn = deployRoleArn;
+    if (deployProject) patch.deploy_project = deployProject;
 
     const conn = await conns.updateConnection(sb, teamId, req.params.id, patch);
     res.json({ connection: conn });

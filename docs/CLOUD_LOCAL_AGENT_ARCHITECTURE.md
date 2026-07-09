@@ -53,7 +53,12 @@ This is a **local dev-machine** capability, not cloud access. The boundaries:
   inbound SSH into their box (no open ports, no handing us credentials to their
   machine).
 - **It touches only the local repo and build artifacts.** Read-scoped by default;
-  every command is shown and gated; secrets (`.env`) are redacted, never exfiltrated.
+  every command is shown and gated. **What leaves the machine differs by action
+  (see §10.1):** *analyze* sends only key NAMES, never secret values; *deploy* in
+  source-upload mode uploads your source (minus secrets and `.gitignore`/denylisted
+  files) to YOUR OWN account for the build; *deploy* in image mode uploads nothing
+  but the built image. Credentials (`.env`, `.aws`, `.ssh`, `*.pem`) are always
+  excluded from any upload.
 - **It does NOT get raw shell in the cloud account.** All cloud *changes* still go
   through the deterministic runner + the near-powerless ConnectRole + human approval.
   The one cloud thing the agent does directly is push a build artifact with a
@@ -203,13 +208,32 @@ the cloud is only ever touched by the runner and one scoped deploy credential.
 ## 10. Security posture (consolidated)
 
 - Local, outbound-only, user-started; no inbound SSH, no open ports.
-- Read-scoped by default; per-command consent; destructive deny-list; secrets redacted;
-  full audit log of every tool call.
-- Source never leaves the machine; only the sanitized app understanding and
-  user-approved build artifacts do.
-- No raw cloud shell. Cloud changes = deterministic runner + human approval. Deploy uses
-  a short-lived credential scoped to exactly ECR-push + the target service update.
+- Read-scoped by default; per-command consent; destructive deny-list; full audit log.
+- No raw cloud shell. Cloud changes = deterministic runner + human approval, OR (for a
+  CLI "deploy from here") a short-lived credential scoped by an inline session policy to
+  exactly one ECR repo push + one ECS service update.
 - LLM proposes only; deterministic compiler + approval gate apply.
+
+### 10.1 What leaves the machine, by action (be precise)
+
+The earlier drafts overclaimed "source never leaves the machine" — true for *analyze*,
+NOT for source-upload *deploy*. The honest, per-action statement:
+
+| Action | What leaves the machine | Where it goes |
+|---|---|---|
+| **analyze** | the sanitized app understanding (key NAMES only, never values) | Mapdoc |
+| **deploy `--mode source`** | your **source** (minus secrets + `.gitignore`/denylist) | YOUR OWN account bucket (never Mapdoc) — the in-account runner builds it |
+| **deploy `--mode image`** | only the **built container image** | your ECR (source stays local) |
+| **deploy `--mode push`** | only an **existing image** you already built | your ECR (source stays local) |
+
+- **Nothing sensitive ever transits Mapdoc's servers.** Analyze sends a derived profile;
+  deploy source/images go straight to the user's own AWS account.
+- **The credential denylist is always applied** to the source tarball (`.env*`, `.aws`,
+  `.ssh`, `*.pem`, `*.key`, `*.tfstate`, `.npmrc`, …) plus the repo's `.gitignore`, so
+  secrets aren't shipped even in source-upload mode. Image modes avoid the question
+  entirely (source never leaves).
+- **Recommendation for secret-sensitive users:** use `--mode image` (or `--mode push`) —
+  source stays on the machine and only the built artifact reaches your registry.
 
 ---
 

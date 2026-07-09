@@ -13,6 +13,11 @@
  * credential), then triggers the run; the in-account runner builds the image,
  * pushes to the deployment's ECR repo, and rolls the ECS service. Real when a
  * verified connection + a Docker-capable deploy project exist; otherwise SIMULATED.
+ *
+ * Path 1 "deploy from here" (opt-in): the CLI builds/pushes the image itself with
+ * a SHORT-LIVED, tightly-SCOPED credential from
+ *   POST /v1/cloud/deploy/:id/credentials  → { credentials, registry, targets }
+ * (source never leaves the machine; only the built image reaches ECR).
  */
 
 const express = require('express');
@@ -21,7 +26,8 @@ const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const conns = require('../cloud/connections');
 const deps = require('../cloud/deployments');
 const history = require('../cloud/runHistory');
-const { deployTargets, presignSourceUpload, runDeploy } = require('../cloud/deploy');
+const { assumeScopedRole } = require('../cloud/sts');
+const { deployTargets, deploySessionPolicy, presignSourceUpload, runDeploy } = require('../cloud/deploy');
 
 const router = express.Router();
 
@@ -96,6 +102,52 @@ router.get('/v1/cloud/deploy/status/:connectionId', async (req, res) => {
     });
   } catch (err) {
     sendError(res, '[cloud/deploy status]', err);
+  }
+});
+
+// Path 1 "deploy from here": mint a short-lived, tightly-scoped credential for the
+// CLI to build the image locally and push it + roll the service itself. Source
+// never leaves the machine. Only for container deployments.
+router.post('/v1/cloud/deploy/:deploymentId/credentials', async (req, res) => {
+  try {
+    const { teamId, sb } = await requireTeam(req);
+    const deployment = await deps.getDeployment(sb, teamId, req.params.deploymentId);
+    if (!deployment) throw httpError(404, 'Deployment not found.');
+
+    const targets = deployTargets(await loadBlueprint(sb, teamId, deployment.template_id));
+    if (!targets || targets.kind !== 'container') throw httpError(400, 'Local image deploy is only for container apps (ECR + ECS).');
+
+    const connection = await conns.getConnection(sb, teamId, deployment.connection_id);
+    if (!connection || connection.status !== 'verified') throw httpError(409, 'A verified connection is required.');
+    const deployRoleArn = connection.deploy_role_arn || process.env.CLOUD_DEPLOY_ROLE_ARN;
+    if (!deployRoleArn) throw httpError(503, 'This connection has no deploy role configured.');
+
+    const region = connection.region;
+    // Resolve the account id (for the ARNs in the session policy), then re-assume
+    // the deploy role scoped down to exactly this repo + service.
+    const first = await assumeScopedRole({ roleArn: deployRoleArn, externalId: connection.external_id, region, durationSeconds: 900 });
+    const accountId = first.accountId;
+    const policy = deploySessionPolicy(targets, accountId, region);
+    const scoped = await assumeScopedRole({ roleArn: deployRoleArn, externalId: connection.external_id, region, policy, durationSeconds: 3600 });
+
+    await history.createRun(sb, teamId, {
+      connectionId: connection.id, deploymentId: deployment.id, kind: 'deploy', name: 'Deploy (from CLI)',
+      status: 'applying', plan: { targets, local: true },
+    });
+
+    res.json({
+      region,
+      registry: `${accountId}.dkr.ecr.${region}.amazonaws.com`,
+      targets,
+      credentials: {
+        accessKeyId: scoped.credentials.accessKeyId,
+        secretAccessKey: scoped.credentials.secretAccessKey,
+        sessionToken: scoped.credentials.sessionToken,
+        expiration: scoped.credentials.expiration,
+      },
+    });
+  } catch (err) {
+    sendError(res, '[cloud/deploy credentials]', err);
   }
 });
 

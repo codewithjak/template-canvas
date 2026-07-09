@@ -45,11 +45,8 @@ function xmlField(body, tag) {
   return m ? m[1] : null;
 }
 
-/**
- * Assume the customer's Connect role with the ExternalId.
- * @returns {Promise<{ accountId: string|null, assumedRoleArn: string, credentials: object }>}
- */
-async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) {
+/** Shared STS AssumeRole: sign a Query POST, parse the flat XML response. */
+async function assumeRole(params, region) {
   const creds = platformCreds();
   if (!creds.accessKeyId || !creds.secretAccessKey) {
     const e = new Error('Platform AWS credentials are not configured.');
@@ -58,21 +55,9 @@ async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) 
     throw e;
   }
 
-  const body = new URLSearchParams({
-    Action: 'AssumeRole',
-    Version: '2011-06-15',
-    RoleArn: roleArn,
-    RoleSessionName: 'mapdoc-connect-verify',
-    ExternalId: externalId,
-    DurationSeconds: '900',
-  }).toString();
-
+  const body = new URLSearchParams({ Action: 'AssumeRole', Version: '2011-06-15', ...params }).toString();
   const { url, headers } = signPost({
-    service: 'sts',
-    region,
-    contentType: 'application/x-www-form-urlencoded; charset=utf-8',
-    body,
-    creds,
+    service: 'sts', region, contentType: 'application/x-www-form-urlencoded; charset=utf-8', body, creds,
   });
 
   const res = await httpsPost(url, headers, body);
@@ -84,14 +69,33 @@ async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) 
   }
 
   const assumedRoleArn = xmlField(res.body, 'Arn') || ''; // arn:aws:sts::ACCOUNT:assumed-role/...
-  const accountId = assumedRoleArn.split(':')[4] || null;
-  const credentials = {
-    accessKeyId: xmlField(res.body, 'AccessKeyId'),
-    secretAccessKey: xmlField(res.body, 'SecretAccessKey'),
-    sessionToken: xmlField(res.body, 'SessionToken'),
-    expiration: xmlField(res.body, 'Expiration'),
+  return {
+    accountId: assumedRoleArn.split(':')[4] || null,
+    assumedRoleArn,
+    credentials: {
+      accessKeyId: xmlField(res.body, 'AccessKeyId'),
+      secretAccessKey: xmlField(res.body, 'SecretAccessKey'),
+      sessionToken: xmlField(res.body, 'SessionToken'),
+      expiration: xmlField(res.body, 'Expiration'),
+    },
   };
-  return { accountId, assumedRoleArn, credentials };
 }
 
-module.exports = { assumeConnectRole };
+/** Assume the customer's Connect role with the ExternalId (short-lived, read/launch). */
+async function assumeConnectRole({ roleArn, externalId, region = 'us-east-1' }) {
+  return assumeRole({ RoleArn: roleArn, RoleSessionName: 'mapdoc-connect-verify', ExternalId: externalId, DurationSeconds: '900' }, region);
+}
+
+/**
+ * Assume a role with an inline SESSION POLICY that narrows the returned credentials
+ * to exactly what a deploy needs (ECR push on one repo + ECS roll on one service).
+ * The role's own permissions are the ceiling; the session policy is the floor.
+ */
+async function assumeScopedRole({ roleArn, externalId, region = 'us-east-1', policy, durationSeconds = 3600, sessionName = 'mapdoc-deploy' }) {
+  const params = { RoleArn: roleArn, RoleSessionName: sessionName, DurationSeconds: String(durationSeconds) };
+  if (externalId) params.ExternalId = externalId;
+  if (policy) params.Policy = policy;
+  return assumeRole(params, region);
+}
+
+module.exports = { assumeConnectRole, assumeScopedRole };

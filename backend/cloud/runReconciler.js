@@ -41,14 +41,17 @@ const BATCH = parseInt(process.env.CLOUD_RECONCILE_BATCH, 10) || 25;
 const NON_TERMINAL = ['running', 'applying'];
 
 /** The connection fields needed to RESOLVE a build (assume + BatchGetBuilds + fetch
- *  the result object). Includes external_id, which the public projection omits. */
+ *  the result object). Includes external_id, which the public projection omits.
+ *  Throws on a query error (transient — let the sweep retry) so a DB blip is never
+ *  mistaken for a deleted connection; returns null only when the row is truly gone. */
 async function loadConnection(sb, connectionId) {
-  if (!connectionId) return null;
-  const { data } = await sb
+  if (!connectionId) return null; // FK `on delete set null` → the connection was removed
+  const { data, error } = await sb
     .from('cloud_connections')
     .select('id, region, role_arn, external_id, state_bucket')
     .eq('id', connectionId)
     .maybeSingle();
+  if (error) throw error;
   return data || null;
 }
 
@@ -96,8 +99,14 @@ function computeFinalize(run, body) {
  */
 async function resolveRun(sb, run) {
   const connection = await loadConnection(sb, run.connection_id);
-  const stateBucket = (connection && connection.state_bucket) || process.env.CLOUD_STATE_BUCKET;
-  if (!connection || !stateBucket) return false; // unresolvable now — leave for a later sweep
+  if (!connection) {
+    // Connection removed → this handle can NEVER resolve. Retire it, so an
+    // unresolvable oldest-row doesn't re-select every sweep and starve the batch
+    // (a partial down-payment on Phase 3 dead-run detection).
+    return terminate(sb, run, { status: 'error', error: 'Connection was removed; run can no longer be resolved (reconciled).' });
+  }
+  const stateBucket = connection.state_bucket || process.env.CLOUD_STATE_BUCKET;
+  if (!stateBucket) return false; // config missing (likely transient) — leave for a later sweep
 
   const r = await runner.resolveBuild({
     connection,
@@ -107,8 +116,8 @@ async function resolveRun(sb, run) {
     resultKey: run.result_key,
   });
   if (r.pending) return false;
-  if (r.missing) {
-    return terminate(sb, run, { status: 'error', error: 'Build finished without a result (reconciled).' });
+  if (r.failed) {
+    return terminate(sb, run, { status: 'error', error: `Build failed: ${r.reason} (reconciled).` });
   }
 
   const { patch, bumpDeployment } = computeFinalize(run, r.body);
@@ -141,7 +150,15 @@ async function resolveSweep(sb) {
   return resolved;
 }
 
-/** §7.2 — retire null-handle runs stuck past ORPHAN_TTL (create→persist crashes). */
+/**
+ * §7.2 — retire null-handle runs stuck past ORPHAN_TTL (crashes in the
+ * StartBuild → setBuildHandle window). Anchored on build_started_at (the build
+ * ATTEMPT time, stamped at the phase transition), NOT created_at: a deploy/apply row
+ * can be created long before its build attempt, and anchoring on created_at would
+ * orphan-error a build the instant it started. build_started_at is set for every run
+ * that entered the build phase, so a null value here means "never attempted a build"
+ * (e.g. a Path-1 CLI deploy Mapdoc doesn't run) — deliberately left alone.
+ */
 async function orphanSweep(sb) {
   const cutoff = new Date(Date.now() - ORPHAN_TTL_MS).toISOString();
   const { data: rows } = await sb
@@ -149,7 +166,8 @@ async function orphanSweep(sb) {
     .select('id, team_id, status')
     .in('status', NON_TERMINAL) // never 'staging'
     .is('build_id', null)
-    .lt('created_at', cutoff)
+    .not('build_started_at', 'is', null)
+    .lt('build_started_at', cutoff)
     .limit(BATCH);
   let retired = 0;
   for (const run of rows || []) {

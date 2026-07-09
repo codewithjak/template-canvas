@@ -59,8 +59,10 @@ alter table public.cloud_runs add column if not exists kind text not null defaul
 -- CodeBuild build id + where to query it + the S3 key of the uploaded result, so a
 -- run can be resolved from the build's REAL terminal state by the inline poll OR a
 -- restart-surviving sweep, instead of an in-memory timer. build_started_at is the
--- grace anchor (set at StartBuild, not row-create — deploy rows are created earlier,
--- at 'staging'). All nullable; only set for real (non-simulated) runs.
+-- grace anchor for BOTH sweeps — set at the build-phase transition (before
+-- StartBuild), so it is present even for a null-handle orphan and is never the row's
+-- older creation time (a deploy/apply row is created well before its build attempt).
+-- All nullable; only set for real (non-simulated) runs.
 alter table public.cloud_runs add column if not exists build_id         text;
 alter table public.cloud_runs add column if not exists build_region     text;
 alter table public.cloud_runs add column if not exists result_key       text;

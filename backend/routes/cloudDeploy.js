@@ -164,7 +164,11 @@ router.post('/v1/cloud/deploy/:id/run', async (req, res) => {
     const connection = await conns.getConnection(sb, teamId, r.connection_id);
     if (!connection) throw httpError(400, 'Connection missing.');
 
-    await history.updateRun(sb, teamId, r.id, { status: 'applying' });
+    // Stamp the build attempt at the transition (before StartBuild), NOT the row's
+    // older 'staging' creation time — otherwise a deploy staged long ago would be
+    // orphan-eligible the instant its build starts. This is the fix for the
+    // created_at-vs-build-start pitfall on the deploy path.
+    await history.updateRun(sb, teamId, r.id, { status: 'applying', build_started_at: new Date().toISOString() });
     res.status(202).json({ deployRunId: r.id, status: 'applying' });
     runDeployAsync(sb, teamId, r, connection, (req.body && req.body.imageTag) || 'latest');
   } catch (err) {

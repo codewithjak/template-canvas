@@ -16,7 +16,13 @@ const PUBLIC = 'id, kind, status, simulated, plan, outputs, error, name, connect
 async function createRun(sb, teamId, { connectionId = null, deploymentId = null, name = null, hcl = null, status = 'running', kind = 'plan', plan = null, simulated = false }) {
   const { data, error } = await sb
     .from(TABLE)
-    .insert({ team_id: teamId, connection_id: connectionId, deployment_id: deploymentId, name, hcl, status, kind, plan, simulated })
+    // A run created directly in a build state ('running' = plan/drift) has its build
+    // attempt begin now; stamp build_started_at so the reconciler anchors on the
+    // build attempt, not row creation (see setBuildHandle / CLOUD_RUN_RECONCILIATION §5).
+    .insert({
+      team_id: teamId, connection_id: connectionId, deployment_id: deploymentId, name, hcl, status, kind, plan, simulated,
+      build_started_at: status === 'running' ? new Date().toISOString() : null,
+    })
     .select(PUBLIC)
     .single();
   if (error) throw error;
@@ -131,16 +137,17 @@ async function updateRun(sb, teamId, id, patch) {
 
 /**
  * Persist the durable build handle on a run — the immediate next step after
- * StartBuild (CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md §6). build_started_at is set
- * HERE (build-start), not at row creation, so it is a valid grace anchor for every
- * run kind including deploy (whose row is created earlier, at 'staging').
+ * StartBuild (CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md §6). It does NOT set
+ * build_started_at: that is stamped at the build-phase TRANSITION (createRun for
+ * plan/drift; the applying update for apply/deploy), so it is present even when a
+ * crash lands in the StartBuild → setBuildHandle window — which is exactly the
+ * null-handle orphan the reconciler must still be able to age out correctly.
  */
 async function setBuildHandle(sb, teamId, id, { buildId, region, resultKey }) {
   return updateRun(sb, teamId, id, {
     build_id: buildId,
     build_region: region,
     result_key: resultKey,
-    build_started_at: new Date().toISOString(),
   });
 }
 

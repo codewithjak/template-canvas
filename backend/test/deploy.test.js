@@ -56,12 +56,18 @@ test('deployTargets: serverless → the Lambda function', () => {
   assert.deepStrictEqual(t, { kind: 'serverless', lambdaFunction: 'api' });
 });
 
-test('deployTargets: static → the S3 bucket', () => {
+test('deployTargets: static → the S3 bucket (+ pinned outputDir when present)', () => {
   const t = deployTargets({
     nodes: [{ id: 'b', type: 'aws_s3_bucket', props: { name: 'site-assets' } }, { id: 'cdn', type: 'aws_cloudfront_distribution', props: {} }],
     edges: [],
   });
-  assert.deepStrictEqual(t, { kind: 'static', bucket: 'site-assets' });
+  assert.deepStrictEqual(t, { kind: 'static', bucket: 'site-assets', outputDir: undefined });
+
+  const pinned = deployTargets({
+    nodes: [{ id: 'b', type: 'aws_s3_bucket', props: { name: 'site-assets', outputDir: 'dist' } }, { id: 'cdn', type: 'aws_cloudfront_distribution', props: {} }],
+    edges: [],
+  });
+  assert.strictEqual(pinned.outputDir, 'dist');
 });
 
 test('deployTargets returns null with no deployable workload', () => {
@@ -94,6 +100,19 @@ test('lambdaBuildspec updates function code; staticBuildspec syncs + invalidates
   assert.ok(s.includes('npm run build'));
   assert.ok(s.includes('aws s3 sync'));
   assert.ok(s.includes('create-invalidation'));
+});
+
+test('staticBuildspec is fail-safe: no `|| true`, no `public`, never syncs "."', () => {
+  const s = staticBuildspec();
+  // A failed build must abort — the build line must not swallow failure with `|| true`.
+  // (The tolerant `|| true` on CloudFront invalidation is intentional and fine.)
+  assert.ok(!/npm run build[^\n]*\|\| true/.test(s), 'build failure must not be swallowed');
+  // `public` is a source dir, not build output — must not be a sync candidate.
+  assert.ok(!/ls -d[^\n]*public/.test(s), '`public` must not be an output candidate');
+  // Must refuse rather than sync the source dir with --delete.
+  assert.ok(s.includes('Refusing to sync source') && s.includes('exit 1'), 'must fail instead of syncing "."');
+  // Honors the pinned BUILD_OUTPUT when provided.
+  assert.ok(s.includes('$BUILD_OUTPUT'));
 });
 
 test('deployTargets defaults container port to 80 without an ALB edge', () => {

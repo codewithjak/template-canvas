@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [master, UAT]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      # Fail if the generated connect stack.yaml drifted from its source of truth
+      # (bootstrapTemplate.js) — i.e. someone hand-edited stack.yaml or changed the
+      # JS without running `npm run gen:connect-stack`.
+      - name: connect-stack in sync
+        run: npm run check:connect-stack
+
+      - name: lint
+        run: npm run lint
+
+      - name: backend tests
+        run: node --test backend/test/

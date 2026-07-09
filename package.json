@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "gen:connect-stack": "node infra/connect-account/generate.cjs"
+    "gen:connect-stack": "node infra/connect-account/generate.cjs",
+    "check:connect-stack": "node infra/connect-account/generate.cjs --check"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

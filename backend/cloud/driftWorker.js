@@ -123,7 +123,12 @@ async function checkDeployment(sb, connection, deployment, prev) {
   // This deployment's OWN state key — not the connection's legacy key — so each
   // infra in an account is checked against its own state.
   const stateKey = deps.stateKeyFor(deployment);
-  const plan = await runner.runDrift({ connection, hcl: applied.hcl, ...cfg, stateKey });
+  const r = await runner.runDrift({ connection, hcl: applied.hcl, ...cfg, stateKey });
+  // The scheduled sweep records the row only on completion; if the refresh-only build
+  // outlived the inline poll, skip this cycle — the next sweep re-checks (drift is
+  // read-only, so an abandoned build is harmless and self-terminates).
+  if (r.pending) return false;
+  const plan = r.plan;
   await history.createRun(sb, teamId, {
     connectionId: connection.id, deploymentId: deployment.id, kind: 'drift',
     name: 'Drift check (scheduled)', status: 'planned', plan,

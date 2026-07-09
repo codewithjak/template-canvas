@@ -119,8 +119,10 @@ router.post('/v1/cloud/runs/:id/apply', async (req, res) => {
 
 async function runPlanAsync(sb, teamId, id, connection, hcl, cfg, stateKey) {
   try {
-    const plan = await runner.runPlan({ connection, hcl, ...cfg, stateKey });
-    await history.updateRun(sb, teamId, id, { status: 'planned', plan });
+    const onStarted = (h) => history.setBuildHandle(sb, teamId, id, h);
+    const r = await runner.runPlan({ connection, hcl, ...cfg, stateKey, onStarted });
+    if (r.pending) return; // build outlived the inline poll; the reconciler resolves it
+    await history.updateRun(sb, teamId, id, { status: 'planned', plan: r.plan });
   } catch (e) {
     await history.updateRun(sb, teamId, id, { status: 'error', error: e.message });
   }
@@ -131,8 +133,10 @@ async function runApplyAsync(sb, teamId, run, connection, cfg) {
     // Apply into the run's deployment state key (isolates this infra's state).
     const deployment = run.deployment_id ? await deps.getDeployment(sb, teamId, run.deployment_id) : null;
     const stateKey = deployment ? deps.stateKeyFor(deployment) : undefined;
-    const { outputs } = await runApply({ connection, hcl: run.hcl, ...cfg, stateKey });
-    await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs });
+    const onStarted = (h) => history.setBuildHandle(sb, teamId, run.id, h);
+    const r = await runApply({ connection, hcl: run.hcl, ...cfg, stateKey, onStarted });
+    if (r.pending) return; // outlived the inline poll; the reconciler resolves it
+    await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: r.outputs });
     if (deployment) await deps.updateDeployment(sb, teamId, deployment.id, { last_run_id: run.id });
   } catch (e) {
     await history.updateRun(sb, teamId, run.id, { status: 'error', error: e.message });

@@ -176,10 +176,12 @@ async function runDeployAsync(sb, teamId, run, connection, imageTag) {
   const cfg = cfgFor(connection);
   const plan = run.plan || {};
   try {
-    const { result } = await runDeploy({
+    const onStarted = (h) => history.setBuildHandle(sb, teamId, run.id, h);
+    const { result, pending } = await runDeploy({
       connection, deployProject: cfg.deployProject, stateBucket: cfg.stateBucket,
-      sourceKey: plan.sourceKey, targets: plan.targets, imageTag,
+      sourceKey: plan.sourceKey, targets: plan.targets, imageTag, onStarted,
     });
+    if (pending) return; // outlived the inline poll; the reconciler resolves it
     await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: result });
   } catch (e) {
     await history.updateRun(sb, teamId, run.id, { status: 'error', error: e.message });

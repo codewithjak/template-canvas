@@ -22,7 +22,7 @@ function destroyBuildspec() {
 
 /** @returns {Promise<{ destroyed: true }>} */
 async function runDestroy({ connection, hcl, stateBucket, lockTable, runnerProject, stateKey }) {
-  await runBuild({
+  const { pending } = await runBuild({
     connection,
     hcl,
     buildspec: destroyBuildspec(),
@@ -31,6 +31,10 @@ async function runDestroy({ connection, hcl, stateBucket, lockTable, runnerProje
     runnerProject,
     stateKey,
   });
+  // Destroy is a lifecycle op, not a reconciled run — it must confirm completion or
+  // fail. If the build outlived the inline poll, surface that rather than reporting a
+  // teardown that hasn't finished.
+  if (pending) throw new Error('Destroy did not complete within the wait window; check the build and retry.');
   return { destroyed: true };
 }
 

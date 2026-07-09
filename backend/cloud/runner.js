@@ -86,22 +86,27 @@ function planBuildspec() {
   ]);
 }
 
-/**
- * Run a buildspec against the customer's account; return the uploaded result.
- * @returns {Promise<{ buildId: string, body: string }>}
- */
-async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject, stateKey }) {
-  const region = connection.region;
-  const { credentials } = await assumeConnectRole({
-    roleArn: connection.role_arn,
-    externalId: connection.external_id,
-    region,
-  });
+// Inline poll window: 120 × 5s = 600s. A build slower than this is left
+// non-terminal for the reconciler sweep (never falsely marked error).
+const POLL_INTERVAL_MS = 5000;
+const POLL_MAX = 120;
 
-  const key = `results/${connection.id}-${Date.now()}.out`;
+/** A CodeBuild build is terminal once it reports any status other than IN_PROGRESS. */
+function isTerminal(status) {
+  return Boolean(status) && status !== 'IN_PROGRESS';
+}
+
+/**
+ * Start a build and return its durable handle — NO polling. The caller persists
+ * the handle (immediately, per CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md §6) so the
+ * run is recoverable even if this process dies before the build finishes.
+ * @returns {Promise<{ buildId: string, region: string, resultKey: string }>}
+ */
+async function startBuild({ credentials, connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject, stateKey }) {
+  const region = connection.region;
+  const resultKey = `results/${connection.id}-${Date.now()}.out`;
   const host = `${stateBucket}.s3.${region}.amazonaws.com`;
-  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
-  const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
+  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key: resultKey, ...credFields(credentials), expiresIn: 3600 });
 
   // One state key per deployment (isolates many infras in one account). Falls
   // back to the legacy per-connection key only when no deployment is supplied.
@@ -121,22 +126,71 @@ async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTab
 
   const buildId = started.build && started.build.id;
   if (!buildId) throw new Error('CodeBuild did not return a build id.');
+  return { buildId, region, resultKey };
+}
 
-  for (let i = 0; i < 120; i += 1) {
-    await sleep(5000);
-    const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, credentials, region);
-    const b = (got.builds && got.builds[0]) || {};
-    if (b.buildStatus && b.buildStatus !== 'IN_PROGRESS') break;
-  }
+/**
+ * Resolve a build from its durable handle: ask CodeBuild its status and, once
+ * terminal, fetch the result the buildspec uploaded. DB-free — the caller (inline
+ * poll or the Phase 2 sweep) decides what to persist. Idempotent and safe to call
+ * repeatedly.
+ *   { pending: true }                still IN_PROGRESS — resolve again later
+ *   { buildStatus, body }            terminal + result fetched
+ *   { buildStatus, missing: true }   terminal but no result uploaded (real failure)
+ *
+ * `credentials` is optional: the inline poll passes its assume (900s covers the 600s
+ * window); the sweep omits it and we assume fresh, so resolution isn't bound by the
+ * original run's credential lifetime (why the sweep can finish a build the poll left).
+ */
+async function resolveBuild({ connection, stateBucket, buildId, region, resultKey, credentials }) {
+  const creds = credentials
+    || (await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region })).credentials;
+  const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, creds, region);
+  const b = (got.builds && got.builds[0]) || {};
+  if (!isTerminal(b.buildStatus)) return { pending: true };
 
+  const host = `${stateBucket}.s3.${region}.amazonaws.com`;
+  const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key: resultKey, ...credFields(creds), expiresIn: 900 });
   const res = await httpsRequest('GET', getUrl, {}, null);
-  if (res.status !== 200) throw new Error('Result not available (build may have failed).');
-  return { buildId, body: res.body };
+  // Terminal but no result object = the build broke before uploading — a real error,
+  // distinct from "still running" (which returns pending above, never an error).
+  if (res.status !== 200) return { buildStatus: b.buildStatus, missing: true };
+  return { buildStatus: b.buildStatus, body: res.body };
+}
+
+/**
+ * Run a buildspec against the customer's account. Assumes the Connect role once,
+ * starts the build, hands the durable handle to `onStarted` (which persists it),
+ * then inline-polls to completion.
+ *   { buildId, body }       resolved within the inline window
+ *   { buildId, pending }    still running at the window's end — NOT an error; the run
+ *                           stays non-terminal for the reconciler sweep to finish.
+ */
+async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject, stateKey, onStarted }) {
+  const region = connection.region;
+  const { credentials } = await assumeConnectRole({
+    roleArn: connection.role_arn,
+    externalId: connection.external_id,
+    region,
+  });
+
+  const handle = await startBuild({ credentials, connection, hcl, buildspec: spec, stateBucket, lockTable, runnerProject, stateKey });
+  if (onStarted) await onStarted(handle);
+
+  for (let i = 0; i < POLL_MAX; i += 1) {
+    await sleep(POLL_INTERVAL_MS);
+    const r = await resolveBuild({ connection, stateBucket, ...handle, credentials });
+    if (r.pending) continue;
+    if (r.missing) throw new Error('Result not available (build may have failed).');
+    return { buildId: handle.buildId, body: r.body };
+  }
+  return { buildId: handle.buildId, pending: true };
 }
 
 async function runPlan(args) {
-  const { body } = await runBuild({ ...args, buildspec: planBuildspec() });
-  return parsePlanJson(body);
+  const { body, pending } = await runBuild({ ...args, buildspec: planBuildspec() });
+  if (pending) return { pending: true };
+  return { plan: parsePlanJson(body) };
 }
 
 /**
@@ -152,10 +206,12 @@ function driftBuildspec() {
 }
 
 async function runDrift(args) {
-  const { body } = await runBuild({ ...args, buildspec: driftBuildspec() });
-  return parseDriftJson(body);
+  const { body, pending } = await runBuild({ ...args, buildspec: driftBuildspec() });
+  if (pending) return { pending: true };
+  return { plan: parseDriftJson(body) };
 }
 
 module.exports = {
-  runBuild, runPlan, runDrift, codebuild, httpsRequest, buildspec, planBuildspec, driftBuildspec,
+  runBuild, startBuild, resolveBuild, isTerminal, runPlan, runDrift,
+  codebuild, httpsRequest, buildspec, planBuildspec, driftBuildspec,
 };

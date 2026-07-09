@@ -55,6 +55,22 @@ create table if not exists public.cloud_runs (
 -- Idempotent add for databases created before `kind` existed.
 alter table public.cloud_runs add column if not exists kind text not null default 'plan';
 
+-- Durable run handle (CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md Phase 1): the
+-- CodeBuild build id + where to query it + the S3 key of the uploaded result, so a
+-- run can be resolved from the build's REAL terminal state by the inline poll OR a
+-- restart-surviving sweep, instead of an in-memory timer. build_started_at is the
+-- grace anchor (set at StartBuild, not row-create — deploy rows are created earlier,
+-- at 'staging'). All nullable; only set for real (non-simulated) runs.
+alter table public.cloud_runs add column if not exists build_id         text;
+alter table public.cloud_runs add column if not exists build_region     text;
+alter table public.cloud_runs add column if not exists result_key       text;
+alter table public.cloud_runs add column if not exists build_started_at timestamptz;
+
+-- The Phase 2 reconciler sweeps non-terminal runs by build-start time.
+create index if not exists cloud_runs_reconcile_idx
+  on public.cloud_runs(status, build_started_at)
+  where status in ('running', 'applying', 'staging');
+
 create index if not exists cloud_runs_team_idx on public.cloud_runs(team_id, created_at desc);
 -- Fast lookup of the latest drift check per connection.
 create index if not exists cloud_runs_conn_kind_idx on public.cloud_runs(team_id, connection_id, kind, created_at desc);

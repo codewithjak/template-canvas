@@ -9,7 +9,9 @@
 
 const TABLE = 'cloud_runs';
 // hcl is intentionally excluded from the public projection (large; server-only).
-const PUBLIC = 'id, kind, status, simulated, plan, outputs, error, name, connection_id, deployment_id, created_at';
+// The build_* handle is included so the reconciler (and getRun) can resolve a run
+// from its CodeBuild build — see CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md.
+const PUBLIC = 'id, kind, status, simulated, plan, outputs, error, name, connection_id, deployment_id, build_id, build_region, result_key, build_started_at, created_at';
 
 async function createRun(sb, teamId, { connectionId = null, deploymentId = null, name = null, hcl = null, status = 'running', kind = 'plan', plan = null, simulated = false }) {
   const { data, error } = await sb
@@ -127,6 +129,21 @@ async function updateRun(sb, teamId, id, patch) {
   return data;
 }
 
+/**
+ * Persist the durable build handle on a run — the immediate next step after
+ * StartBuild (CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md §6). build_started_at is set
+ * HERE (build-start), not at row creation, so it is a valid grace anchor for every
+ * run kind including deploy (whose row is created earlier, at 'staging').
+ */
+async function setBuildHandle(sb, teamId, id, { buildId, region, resultKey }) {
+  return updateRun(sb, teamId, id, {
+    build_id: buildId,
+    build_region: region,
+    result_key: resultKey,
+    build_started_at: new Date().toISOString(),
+  });
+}
+
 async function listRuns(sb, teamId, limit = 20) {
   const { data, error } = await sb
     .from(TABLE)
@@ -139,7 +156,7 @@ async function listRuns(sb, teamId, limit = 20) {
 }
 
 module.exports = {
-  createRun, getRun, updateRun, listRuns,
+  createRun, getRun, updateRun, setBuildHandle, listRuns,
   latestApplied, latestDrift,
   latestAppliedForDeployment, latestDriftForDeployment, latestDeployForDeployment,
 };

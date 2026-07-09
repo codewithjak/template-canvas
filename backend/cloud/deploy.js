@@ -196,18 +196,21 @@ function deploySessionPolicy(targets, accountId, region) {
   });
 }
 
-/** Presign a one-shot PUT URL the CLI uploads the source tarball to (no creds held). */
+/**
+ * Presign a one-shot PUT URL the CLI uploads the source tarball to (no creds held).
+ * Returns the S3 KEY (safe to persist — it's opaque, not a capability) plus a
+ * short-lived PUT URL for the caller. The download URL is NOT returned or stored;
+ * it is minted fresh at build time from the key (see runDeploy), so a leaked DB row
+ * never yields a source-download capability.
+ */
 async function presignSourceUpload({ connection, bucket }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region });
   const key = `source/${connection.id}-${Date.now()}.tar.gz`;
   const host = `${bucket}.s3.${region}.amazonaws.com`;
-  const common = { host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 };
-  return {
-    key,
-    putUrl: presignUrl({ method: 'PUT', ...common }),
-    getUrl: presignUrl({ method: 'GET', ...common }),
-  };
+  // Assumed-role creds live ~900s, so a presign can't outlive that anyway.
+  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 900 });
+  return { key, putUrl };
 }
 
 /**
@@ -215,13 +218,18 @@ async function presignSourceUpload({ connection, bucket }) {
  * Lambda code update, or static sync + invalidation depending on the target kind.
  * @returns {{ buildId, result }} the parsed result the buildspec uploaded.
  */
-async function runDeploy({ connection, deployProject, stateBucket, sourceUrl, targets, imageTag }) {
+async function runDeploy({ connection, deployProject, stateBucket, sourceKey, targets, imageTag }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region });
-  const key = `deploy/${connection.id}-${Date.now()}.out`;
+  const outKey = `deploy/${connection.id}-${Date.now()}.out`;
   const host = `${stateBucket}.s3.${region}.amazonaws.com`;
-  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
-  const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key, ...credFields(credentials), expiresIn: 3600 });
+  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key: outKey, ...credFields(credentials), expiresIn: 900 });
+  const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key: outKey, ...credFields(credentials), expiresIn: 900 });
+  // Source download URL minted HERE (short-lived, never persisted) from the stored
+  // key — the build consumes it immediately, so a DB row only holds the opaque key.
+  const sourceUrl = sourceKey
+    ? presignUrl({ method: 'GET', host, region, service: 's3', key: sourceKey, ...credFields(credentials), expiresIn: 900 })
+    : undefined;
 
   const { spec, env } = specAndEnv(targets, sourceUrl, putUrl, imageTag);
 

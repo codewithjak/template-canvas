@@ -22,6 +22,7 @@ export default function ConnectAccount() {
   const [stateBucket, setStateBucket] = useState('');
   const [lockTable, setLockTable] = useState('');
   const [runnerProject, setRunnerProject] = useState('');
+  const [deployRoleArn, setDeployRoleArn] = useState('');
   const [region, setRegion] = useState('us-east-1');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,7 +41,7 @@ export default function ConnectAccount() {
   async function begin() {
     await run(async () => {
       const { connection, bootstrap } = await api.beginConnection(region);
-      setBootstrap(bootstrap); setActiveId(connection.id); setRoleArn('');
+      setBootstrap(bootstrap); setActiveId(connection.id); setRoleArn(''); setDeployRoleArn('');
     });
   }
 
@@ -116,6 +117,7 @@ export default function ConnectAccount() {
             <input className="cna-input" placeholder="StateBucket" value={stateBucket} onChange={(e) => setStateBucket(e.target.value)} />
             <input className="cna-input" placeholder="LockTable" value={lockTable} onChange={(e) => setLockTable(e.target.value)} />
             <input className="cna-input" placeholder="RunnerProject" value={runnerProject} onChange={(e) => setRunnerProject(e.target.value)} />
+            <input className="cna-input" placeholder="DeployRoleArn  (optional — enables CLI deploy-from-here)" value={deployRoleArn} onChange={(e) => setDeployRoleArn(e.target.value)} />
             <button
               className="cna-btn"
               disabled={busy || !activeId || !roleArn.trim()}
@@ -124,6 +126,7 @@ export default function ConnectAccount() {
                 stateBucket: stateBucket.trim() || undefined,
                 lockTable: lockTable.trim() || undefined,
                 runnerProject: runnerProject.trim() || undefined,
+                deployRoleArn: deployRoleArn.trim() || undefined,
               }))}
             >
               Save

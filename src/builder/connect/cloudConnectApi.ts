@@ -23,6 +23,8 @@ export interface ConnectionDetails {
   stateBucket?: string;
   lockTable?: string;
   runnerProject?: string;
+  deployRoleArn?: string; // optional — enables CLI "deploy from here" (Path 1)
+  deployProject?: string;
 }
 
 export interface Bootstrap {

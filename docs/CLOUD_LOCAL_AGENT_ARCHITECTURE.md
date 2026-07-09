@@ -149,7 +149,9 @@ legitimate (explicit consent, on the user's own machine, for their own account).
   to ECR, and rolls ECS. Nothing cloud-facing runs on the local machine, no credential
   is minted, source never transits Mapdoc. Needs no local Docker. Slower (cold build,
   build minutes), but it "just works" and keeps the CLI credential-free. **This is the
-  default.**
+  default.** *Only the opaque S3 key is persisted (in `cloud_runs`); the source
+  **download** URL is never stored — it is minted fresh, short-lived, at build time, so a
+  leaked DB row can't fetch the tarball.*
 - **Path 1 — deploy from here (opt-in, fast).** The CLI builds the image locally (the
   user's Docker + source), then pushes to ECR + rolls ECS using a **short-lived
   credential Mapdoc mints on demand, scoped to exactly this repo + service**, expiring

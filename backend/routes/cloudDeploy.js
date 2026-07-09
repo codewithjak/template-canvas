@@ -68,10 +68,13 @@ router.post('/v1/cloud/deploy', async (req, res) => {
       return res.status(201).json({ deployRunId: row.id, targets, simulated: true, status: 'applied' });
     }
 
-    const { putUrl, getUrl } = await presignSourceUpload({ connection, bucket: cfg.stateBucket });
+    // Persist only the opaque S3 key, never a presigned download URL — the source
+    // GET is minted fresh at build time (runDeploy), so a leaked cloud_runs row can't
+    // be used to fetch the source tarball.
+    const { putUrl, key } = await presignSourceUpload({ connection, bucket: cfg.stateBucket });
     const row = await history.createRun(sb, teamId, {
       connectionId: connection.id, deploymentId, kind: 'deploy', name: 'Deploy', status: 'staging',
-      plan: { targets, sourceGetUrl: getUrl },
+      plan: { targets, sourceKey: key },
     });
     res.status(201).json({ deployRunId: row.id, uploadUrl: putUrl, targets });
   } catch (err) {
@@ -175,7 +178,7 @@ async function runDeployAsync(sb, teamId, run, connection, imageTag) {
   try {
     const { result } = await runDeploy({
       connection, deployProject: cfg.deployProject, stateBucket: cfg.stateBucket,
-      sourceUrl: plan.sourceGetUrl, targets: plan.targets, imageTag,
+      sourceKey: plan.sourceKey, targets: plan.targets, imageTag,
     });
     await history.updateRun(sb, teamId, run.id, { status: 'applied', outputs: result });
   } catch (e) {

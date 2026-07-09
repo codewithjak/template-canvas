@@ -158,6 +158,44 @@ function deployTargets(blueprint) {
   return { kind, bucket: String(bucket.props.name || 'site') };
 }
 
+/**
+ * Least-privilege session policy for a CLI "deploy from here" (Path 1). Narrows
+ * the assumed credentials to exactly: ECR auth + push to the ONE repo, and ECS
+ * register-task-def + update the ONE service (+ the passrole/describe those need).
+ * The role's own permissions remain the ceiling; this is the floor.
+ */
+function deploySessionPolicy(targets, accountId, region) {
+  const repoArn = `arn:aws:ecr:${region}:${accountId}:repository/${targets.ecrRepo}`;
+  const svcArn = `arn:aws:ecs:${region}:${accountId}:service/${targets.ecsCluster}/${targets.ecsService}`;
+  const taskDefArn = `arn:aws:ecs:${region}:${accountId}:task-definition/${targets.ecsService}:*`;
+  return JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      { Sid: 'EcrAuth', Effect: 'Allow', Action: 'ecr:GetAuthorizationToken', Resource: '*' },
+      {
+        Sid: 'EcrPush',
+        Effect: 'Allow',
+        Action: [
+          'ecr:BatchCheckLayerAvailability', 'ecr:InitiateLayerUpload', 'ecr:UploadLayerPart',
+          'ecr:CompleteLayerUpload', 'ecr:PutImage', 'ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer',
+        ],
+        Resource: repoArn,
+      },
+      { Sid: 'EcsRegister', Effect: 'Allow', Action: 'ecs:RegisterTaskDefinition', Resource: '*' },
+      { Sid: 'EcsDescribe', Effect: 'Allow', Action: ['ecs:DescribeTaskDefinition', 'ecs:DescribeServices'], Resource: '*' },
+      { Sid: 'EcsUpdate', Effect: 'Allow', Action: 'ecs:UpdateService', Resource: svcArn },
+      {
+        Sid: 'PassTaskRoles',
+        Effect: 'Allow',
+        Action: 'iam:PassRole',
+        Resource: `arn:aws:iam::${accountId}:role/*`,
+        Condition: { StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' } },
+      },
+      { Sid: 'TaskDefScope', Effect: 'Allow', Action: 'ecs:DeregisterTaskDefinition', Resource: taskDefArn },
+    ],
+  });
+}
+
 /** Presign a one-shot PUT URL the CLI uploads the source tarball to (no creds held). */
 async function presignSourceUpload({ connection, bucket }) {
   const region = connection.region;
@@ -206,4 +244,7 @@ async function runDeploy({ connection, deployProject, stateBucket, sourceUrl, ta
   return { buildId, result };
 }
 
-module.exports = { deployKind, deployBuildspec, lambdaBuildspec, staticBuildspec, deployTargets, presignSourceUpload, runDeploy };
+module.exports = {
+  deployKind, deployBuildspec, lambdaBuildspec, staticBuildspec, deployTargets,
+  deploySessionPolicy, presignSourceUpload, runDeploy,
+};

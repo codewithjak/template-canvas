@@ -18,6 +18,8 @@ create table if not exists public.cloud_connections (
   state_bucket   text,
   lock_table     text,
   runner_project text,
+  deploy_project text,  -- Docker-capable build project (workload deploy, Path 2)
+  deploy_role_arn text, -- role for CLI "deploy from here" scoped credentials (Path 1)
   created_at  timestamptz not null default now()
 );
 
@@ -28,6 +30,8 @@ create index if not exists cloud_connections_team_idx
 alter table public.cloud_connections add column if not exists state_bucket   text;
 alter table public.cloud_connections add column if not exists lock_table     text;
 alter table public.cloud_connections add column if not exists runner_project text;
+alter table public.cloud_connections add column if not exists deploy_project text;
+alter table public.cloud_connections add column if not exists deploy_role_arn text;
 
 alter table public.cloud_connections enable row level security;
 -- No client policies: only the backend (service role) reads/writes these rows.

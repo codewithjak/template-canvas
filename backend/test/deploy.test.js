@@ -11,7 +11,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { deployBuildspec, lambdaBuildspec, staticBuildspec, deployKind, deployTargets } = require('../cloud/deploy');
+const { deployBuildspec, lambdaBuildspec, staticBuildspec, deployKind, deployTargets, deploySessionPolicy } = require('../cloud/deploy');
 
 test('deployBuildspec does build → push → register → update, in order', () => {
   const spec = deployBuildspec();
@@ -67,6 +67,23 @@ test('deployTargets: static → the S3 bucket', () => {
 test('deployTargets returns null with no deployable workload', () => {
   assert.strictEqual(deployTargets({ nodes: [{ type: 'aws_vpc', props: {} }], edges: [] }), null);
   assert.strictEqual(deployTargets({ nodes: [], edges: [] }), null);
+});
+
+test('deploySessionPolicy scopes ECR push to the one repo and ECS update to the one service', () => {
+  const targets = { kind: 'container', ecrRepo: 'shop', ecsService: 'web', ecsCluster: 'web-cluster' };
+  const policy = JSON.parse(deploySessionPolicy(targets, '123456789012', 'us-east-1'));
+  const byId = Object.fromEntries(policy.Statement.map((s) => [s.Sid, s]));
+
+  // ECR push is pinned to the one repository ARN.
+  assert.strictEqual(byId.EcrPush.Resource, 'arn:aws:ecr:us-east-1:123456789012:repository/shop');
+  assert.ok(byId.EcrPush.Action.includes('ecr:PutImage'));
+  // ECS update is pinned to the one service ARN.
+  assert.strictEqual(byId.EcsUpdate.Resource, 'arn:aws:ecs:us-east-1:123456789012:service/web-cluster/web');
+  assert.strictEqual(byId.EcsUpdate.Action, 'ecs:UpdateService');
+  // PassRole is constrained to ECS tasks only.
+  assert.strictEqual(byId.PassTaskRoles.Condition.StringEquals['iam:PassedToService'], 'ecs-tasks.amazonaws.com');
+  // No wildcard "*" push/update resources leaked in.
+  assert.ok(!policy.Statement.some((s) => s.Sid === 'EcrPush' && s.Resource === '*'));
 });
 
 test('lambdaBuildspec updates function code; staticBuildspec syncs + invalidates', () => {

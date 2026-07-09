@@ -17,8 +17,23 @@ const express = require('express');
 
 const { httpError, sendError, requireTeam } = require('../lib/apiAuth');
 const { inferBlueprint } = require('../agent/inferBlueprint');
+const { deployKind } = require('../cloud/deploy');
 
 const router = express.Router();
+
+/** Upfront guidance about the proposed infra (so surprises don't appear at deploy). */
+function blueprintHints(app, blueprint) {
+  const hints = [];
+  // A container topology deploys via `docker build`, which needs a Dockerfile the
+  // repo doesn't have — tell the user now, before they apply infra.
+  if (deployKind(blueprint) === 'container' && !app.containerized) {
+    hints.push(
+      'This is a container app but no Dockerfile was detected. To deploy it, add a '
+      + 'Dockerfile, or push a pre-built image: mapdoc deploy --mode push --image <ref>.',
+    );
+  }
+  return hints;
+}
 
 router.post('/v1/cloud/agent/analyze', async (req, res) => {
   try {
@@ -35,7 +50,7 @@ router.post('/v1/cloud/agent/analyze', async (req, res) => {
       .single();
     if (error) throw error;
 
-    res.status(201).json({ templateId: data.id, name, blueprint });
+    res.status(201).json({ templateId: data.id, name, blueprint, hints: blueprintHints(app, blueprint) });
   } catch (err) {
     sendError(res, '[cloud/agent analyze]', err);
   }

@@ -1,16 +1,16 @@
+# GENERATED FILE — do not edit by hand.
+# Source of truth: backend/cloud/bootstrapTemplate.js
+# Regenerate:      node infra/connect-account/generate.cjs  (npm run gen:connect-stack)
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  Mapdoc Visual Cloud Builder — connect this AWS account (P5). Creates a
-  cross-account Connect role (assumable ONLY by Mapdoc, and ONLY with your
-  ExternalId), an in-account Runner role + CodeBuild project that runs Terraform,
-  and a durable Terraform state backend (S3 + DynamoDB). Mapdoc never receives
-  your access keys — it briefly assumes the Connect role to launch the runner.
-
+Description: >-
+  Mapdoc Visual Cloud Builder — connect this AWS account. Creates a cross-account Connect role (assumable only by Mapdoc
+  with your ExternalId), an in-account Runner role + CodeBuild project that runs Terraform, and a durable Terraform
+  state backend (S3 + DynamoDB). Mapdoc never receives your keys.
 Parameters:
   PlatformAccountId:
     Type: String
     Description: Mapdoc's AWS account id (shown on the Connect screen).
-    AllowedPattern: '^[0-9]{12}$'
+    AllowedPattern: ^[0-9]{12}$
   ExternalId:
     Type: String
     Description: One-time ExternalId shown on the Connect screen.
@@ -19,58 +19,58 @@ Parameters:
   RunnerPolicyArn:
     Type: String
     Default: arn:aws:iam::aws:policy/PowerUserAccess
-    Description: >
-      Permissions the Terraform runner gets in THIS account. Default is
-      PowerUserAccess (broad-but-bounded; excludes IAM/root). Tighten as needed.
-
+    Description: Permissions the Terraform runner gets in THIS account (default PowerUserAccess; excludes IAM/root).
 Resources:
   StateBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
-          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-      VersioningConfiguration: { Status: Enabled }
-      # Expire the ephemeral prefixes (uploaded source + result blobs) after a day.
-      # Versioning is on for state/, so NONCURRENT versions must also expire (a plain
-      # delete only writes a marker). state/ is deliberately NOT covered, so Terraform
-      # state and its version history are retained. Keep in sync with
-      # backend/cloud/bootstrapTemplate.js.
+      VersioningConfiguration:
+        Status: Enabled
       LifecycleConfiguration:
         Rules:
           - Id: expire-source
             Status: Enabled
             Prefix: source/
             ExpirationInDays: 1
-            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
-            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
           - Id: expire-deploy
             Status: Enabled
             Prefix: deploy/
             ExpirationInDays: 1
-            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
-            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
           - Id: expire-results
             Status: Enabled
             Prefix: results/
             ExpirationInDays: 1
-            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
-            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
-
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
   LockTable:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - { AttributeName: LockID, AttributeType: S }
+        - AttributeName: LockID
+          AttributeType: S
       KeySchema:
-        - { AttributeName: LockID, KeyType: HASH }
-
+        - AttributeName: LockID
+          KeyType: HASH
   RunnerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -78,30 +78,46 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: { Service: codebuild.amazonaws.com }
+            Principal:
+              Service: codebuild.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - !Ref RunnerPolicyArn
+        - Ref: RunnerPolicyArn
       Policies:
         - PolicyName: terraform-state
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: [s3:GetObject, s3:PutObject, s3:ListBucket]
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
                 Resource:
-                  - !GetAtt StateBucket.Arn
-                  - !Sub '${StateBucket.Arn}/*'
+                  - Fn::GetAtt:
+                      - StateBucket
+                      - Arn
+                  - Fn::Sub: ${StateBucket.Arn}/*
               - Effect: Allow
-                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:DeleteItem]
-                Resource: !GetAtt LockTable.Arn
-
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:DeleteItem
+                Resource:
+                  Fn::GetAtt:
+                    - LockTable
+                    - Arn
   RunnerProject:
     Type: AWS::CodeBuild::Project
     Properties:
-      Name: !Sub 'mapdoc-runner-${AWS::StackName}'
-      ServiceRole: !GetAtt RunnerRole.Arn
-      Artifacts: { Type: NO_ARTIFACTS }
+      Name:
+        Fn::Sub: mapdoc-runner-${AWS::StackName}
+      ServiceRole:
+        Fn::GetAtt:
+          - RunnerRole
+          - Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -115,7 +131,6 @@ Resources:
               commands:
                 - echo "Buildspec is supplied at StartBuild time by Mapdoc (plan/apply)."
       TimeoutInMinutes: 30
-
   ConnectRole:
     Type: AWS::IAM::Role
     Properties:
@@ -123,34 +138,48 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: { AWS: !Sub 'arn:aws:iam::${PlatformAccountId}:root' }
+            Principal:
+              AWS:
+                Fn::Sub: arn:aws:iam::${PlatformAccountId}:root
             Action: sts:AssumeRole
             Condition:
-              StringEquals: { 'sts:ExternalId': !Ref ExternalId }
+              StringEquals:
+                sts:ExternalId:
+                  Ref: ExternalId
       Policies:
         - PolicyName: launch-runner
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: [codebuild:StartBuild, codebuild:BatchGetBuilds, codebuild:StopBuild]
-                Resource: !GetAtt RunnerProject.Arn
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StopBuild
+                Resource:
+                  Fn::GetAtt:
+                    - RunnerProject
+                    - Arn
               - Effect: Allow
                 Action: iam:PassRole
-                Resource: !GetAtt RunnerRole.Arn
-              - Effect: Allow
-                Action: [s3:GetObject, s3:ListBucket]
                 Resource:
-                  - !GetAtt StateBucket.Arn
-                  - !Sub '${StateBucket.Arn}/*'
+                  Fn::GetAtt:
+                    - RunnerRole
+                    - Arn
               - Effect: Allow
-                Action: [logs:GetLogEvents, logs:FilterLogEvents]
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - Fn::GetAtt:
+                      - StateBucket
+                      - Arn
+                  - Fn::Sub: ${StateBucket.Arn}/*
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
                 Resource: '*'
-
-  # Assumed by the platform to mint SHORT-LIVED, session-scoped credentials for a
-  # CLI "deploy from here" (build image locally → push to ECR → roll ECS). This
-  # role is the CEILING; each handed-out credential is narrowed by an inline
-  # session policy to exactly one repo + one service (see backend/cloud/deploy.js).
   DeployRole:
     Type: AWS::IAM::Role
     Properties:
@@ -158,10 +187,14 @@ Resources:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
-            Principal: { AWS: !Sub 'arn:aws:iam::${PlatformAccountId}:root' }
+            Principal:
+              AWS:
+                Fn::Sub: arn:aws:iam::${PlatformAccountId}:root
             Action: sts:AssumeRole
             Condition:
-              StringEquals: { 'sts:ExternalId': !Ref ExternalId }
+              StringEquals:
+                sts:ExternalId:
+                  Ref: ExternalId
       Policies:
         - PolicyName: deploy-ecr-ecs
           PolicyDocument:
@@ -179,7 +212,8 @@ Resources:
                   - ecr:PutImage
                   - ecr:BatchGetImage
                   - ecr:GetDownloadUrlForLayer
-                Resource: !Sub 'arn:aws:ecr:*:${AWS::AccountId}:repository/*'
+                Resource:
+                  Fn::Sub: arn:aws:ecr:*:${AWS::AccountId}:repository/*
               - Effect: Allow
                 Action:
                   - ecs:RegisterTaskDefinition
@@ -190,20 +224,30 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action: iam:PassRole
-                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/*'
+                Resource:
+                  Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/*
                 Condition:
-                  StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' }
-
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
 Outputs:
   ConnectRoleArn:
     Description: Paste this back into Mapdoc to finish connecting.
-    Value: !GetAtt ConnectRole.Arn
+    Value:
+      Fn::GetAtt:
+        - ConnectRole
+        - Arn
   DeployRoleArn:
     Description: Optional — enables CLI "deploy from here" (local image build + scoped push).
-    Value: !GetAtt DeployRole.Arn
+    Value:
+      Fn::GetAtt:
+        - DeployRole
+        - Arn
   StateBucket:
-    Value: !Ref StateBucket
+    Value:
+      Ref: StateBucket
   LockTable:
-    Value: !Ref LockTable
+    Value:
+      Ref: LockTable
   RunnerProject:
-    Value: !Ref RunnerProject
+    Value:
+      Ref: RunnerProject

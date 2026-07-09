@@ -149,10 +149,61 @@ module.exports = {
         }],
       },
     },
+
+    // Assumed by the platform to mint SHORT-LIVED, session-scoped credentials for a
+    // CLI "deploy from here" (build image locally → push to ECR → roll ECS). This role
+    // is the CEILING; each handed-out credential is narrowed by an inline session policy
+    // to exactly one repo + one service (see backend/cloud/deploy.js).
+    DeployRole: {
+      Type: 'AWS::IAM::Role',
+      Properties: {
+        AssumeRolePolicyDocument: {
+          Version: '2012-10-17',
+          Statement: [{
+            Effect: 'Allow',
+            Principal: { AWS: { 'Fn::Sub': 'arn:aws:iam::${PlatformAccountId}:root' } },
+            Action: 'sts:AssumeRole',
+            Condition: { StringEquals: { 'sts:ExternalId': { Ref: 'ExternalId' } } },
+          }],
+        },
+        Policies: [{
+          PolicyName: 'deploy-ecr-ecs',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              { Effect: 'Allow', Action: 'ecr:GetAuthorizationToken', Resource: '*' },
+              {
+                Effect: 'Allow',
+                Action: [
+                  'ecr:BatchCheckLayerAvailability', 'ecr:InitiateLayerUpload', 'ecr:UploadLayerPart',
+                  'ecr:CompleteLayerUpload', 'ecr:PutImage', 'ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer',
+                ],
+                Resource: { 'Fn::Sub': 'arn:aws:ecr:*:${AWS::AccountId}:repository/*' },
+              },
+              {
+                Effect: 'Allow',
+                Action: [
+                  'ecs:RegisterTaskDefinition', 'ecs:DeregisterTaskDefinition',
+                  'ecs:DescribeTaskDefinition', 'ecs:DescribeServices', 'ecs:UpdateService',
+                ],
+                Resource: '*',
+              },
+              {
+                Effect: 'Allow',
+                Action: 'iam:PassRole',
+                Resource: { 'Fn::Sub': 'arn:aws:iam::${AWS::AccountId}:role/*' },
+                Condition: { StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' } },
+              },
+            ],
+          },
+        }],
+      },
+    },
   },
 
   Outputs: {
     ConnectRoleArn: { Description: 'Paste this back into Mapdoc to finish connecting.', Value: { 'Fn::GetAtt': ['ConnectRole', 'Arn'] } },
+    DeployRoleArn: { Description: 'Optional — enables CLI "deploy from here" (local image build + scoped push).', Value: { 'Fn::GetAtt': ['DeployRole', 'Arn'] } },
     StateBucket: { Value: { Ref: 'StateBucket' } },
     LockTable: { Value: { Ref: 'LockTable' } },
     RunnerProject: { Value: { Ref: 'RunnerProject' } },

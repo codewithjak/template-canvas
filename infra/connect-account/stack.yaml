@@ -36,6 +36,31 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
       VersioningConfiguration: { Status: Enabled }
+      # Expire the ephemeral prefixes (uploaded source + result blobs) after a day.
+      # Versioning is on for state/, so NONCURRENT versions must also expire (a plain
+      # delete only writes a marker). state/ is deliberately NOT covered, so Terraform
+      # state and its version history are retained. Keep in sync with
+      # backend/cloud/bootstrapTemplate.js.
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-source
+            Status: Enabled
+            Prefix: source/
+            ExpirationInDays: 1
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+          - Id: expire-deploy
+            Status: Enabled
+            Prefix: deploy/
+            ExpirationInDays: 1
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+          - Id: expire-results
+            Status: Enabled
+            Prefix: results/
+            ExpirationInDays: 1
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
 
   LockTable:
     Type: AWS::DynamoDB::Table

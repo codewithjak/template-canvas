@@ -45,6 +45,20 @@ module.exports = {
           BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true,
         },
         VersioningConfiguration: { Status: 'Enabled' },
+        // Expire the ephemeral prefixes (uploaded source + result blobs) after a day.
+        // Versioning is on for state/, so we must also expire NONCURRENT versions —
+        // a plain delete only writes a marker and leaves the bytes behind. state/ is
+        // deliberately NOT covered so Terraform state + its history are retained.
+        LifecycleConfiguration: {
+          Rules: ['source/', 'deploy/', 'results/'].map((p) => ({
+            Id: `expire-${p.replace('/', '')}`,
+            Status: 'Enabled',
+            Prefix: p,
+            ExpirationInDays: 1,
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 },
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 },
+          })),
+        },
       },
     },
 

@@ -262,7 +262,7 @@ async function runDeploy({ connection, deployProject, stateBucket, sourceKey, ta
   for (let i = 0; i < 120; i += 1) {
     await sleep(5000);
     const r = await resolveBuild({ connection, stateBucket, ...handle, credentials });
-    if (r.pending) continue;
+    if (r.pending || r.gone) continue; // gone in-window is transient; reconciler ages it out
     if (r.failed) throw new Error(`Deploy failed: ${r.reason}`);
     let result = {};
     try { result = JSON.parse(r.body); } catch { /* build may have produced no result */ }

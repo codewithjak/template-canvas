@@ -138,6 +138,8 @@ async function startBuild({ credentials, connection, hcl, buildspec: spec, state
  *   { pending: true }          still IN_PROGRESS — resolve again later
  *   { ok: true, body }         SUCCEEDED — result fetched, ready to interpret
  *   { failed: true, reason }   any other terminal status, OR SUCCEEDED with no result
+ *   { gone: true }             CodeBuild no longer knows this build id (expired/deleted)
+ *                              — the caller ages it out (Phase 3 dead-run detection §10.7)
  *
  * buildStatus is AUTHORITATIVE (doc §4): only a SUCCEEDED build yields a result to
  * parse. The buildspecs now exit with terraform's code, so a plan/apply error is a
@@ -151,7 +153,14 @@ async function resolveBuild({ connection, stateBucket, buildId, region, resultKe
   const creds = credentials
     || (await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region })).credentials;
   const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, creds, region);
-  const b = (got.builds && got.builds[0]) || {};
+  const b = got.builds && got.builds[0];
+  if (!b) {
+    // No build object for this id. If CodeBuild explicitly reports it not-found, the
+    // record is gone/expired (Phase 3 dead-run detection §10.7) — a terminal fact the
+    // caller ages out; otherwise treat it as a transient blip and poll again.
+    const gone = Array.isArray(got.buildsNotFound) && got.buildsNotFound.includes(buildId);
+    return gone ? { gone: true } : { pending: true };
+  }
   const status = b.buildStatus;
   if (!isTerminal(status)) return { pending: true };
   if (status !== 'SUCCEEDED') return { failed: true, reason: `build ${status}` };
@@ -187,7 +196,9 @@ async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTab
   for (let i = 0; i < POLL_MAX; i += 1) {
     await sleep(POLL_INTERVAL_MS);
     const r = await resolveBuild({ connection, stateBucket, ...handle, credentials });
-    if (r.pending) continue;
+    // `gone` in-window is a transient not-found (the build was just started); keep
+    // polling. If it persists, the loop ends `pending` and the reconciler ages it out.
+    if (r.pending || r.gone) continue;
     if (r.failed) throw new Error(r.reason);
     return { buildId: handle.buildId, body: r.body };
   }

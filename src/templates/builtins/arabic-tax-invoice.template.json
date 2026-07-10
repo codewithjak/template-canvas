@@ -1,0 +1,148 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-arabic-tax-invoice",
+    "name": "فاتورة ضريبية — Arabic Tax Invoice",
+    "createdAt": "2026-07-10T00:00:00.000Z",
+    "updatedAt": "2026-07-10T00:00:00.000Z",
+    "executionMode": "single",
+    "direction": "rtl",
+    "lang": "ar"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "فاتورة ضريبية",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "elements": [
+        { "id": "title", "type": "text", "content": "فاتورة ضريبية",
+          "position": { "x": 414, "y": 56 },
+          "style": { "fontSize": 44, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 340, "textAlign": "right", "direction": "rtl" } },
+        { "id": "title-rule", "type": "line", "position": { "x": 414, "y": 122 },
+          "style": { "length": 340, "thickness": 2, "direction": "horizontal", "color": "#0f172a", "style": "solid" } },
+
+        { "id": "seller-name", "type": "text", "content": "{{seller_name}}",
+          "position": { "x": 40, "y": 56 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "left" } },
+        { "id": "seller-tag", "type": "text", "content": "{{seller_tagline}}",
+          "position": { "x": 40, "y": 80 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "left" } },
+        { "id": "seller-rule", "type": "line", "position": { "x": 40, "y": 102 },
+          "style": { "length": 280, "thickness": 1, "direction": "horizontal", "color": "#0f172a", "style": "solid" } },
+        { "id": "seller-email", "type": "text", "content": "{{seller_email}}",
+          "position": { "x": 40, "y": 112 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "seller-phone", "type": "text", "content": "{{seller_phone}}",
+          "position": { "x": 40, "y": 128 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#475569", "fontFamily": "Arial, sans-serif", "width": 300, "textAlign": "left" } },
+        { "id": "seller-addr", "type": "text", "content": "{{seller_address}}",
+          "position": { "x": 40, "y": 144 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#475569", "fontFamily": "'Noto Naskh Arabic', serif", "width": 320, "textAlign": "left" } },
+        { "id": "seller-vat", "type": "text", "content": "الرقم الضريبي: {{seller_vat}}",
+          "position": { "x": 40, "y": 160 },
+          "style": { "fontSize": 10, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 320, "textAlign": "left" } },
+
+        { "id": "billto-h", "type": "text", "content": "فاتورة إلى:",
+          "position": { "x": 454, "y": 220 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "right" } },
+        { "id": "billto-name", "type": "text", "content": "اسم العميل: {{customer_name}}",
+          "position": { "x": 394, "y": 246 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+        { "id": "billto-addr", "type": "text", "content": "العنوان: {{customer_address}}",
+          "position": { "x": 394, "y": 268 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+        { "id": "billto-vat", "type": "text", "content": "الرقم الضريبي: {{customer_vat}}",
+          "position": { "x": 394, "y": 290 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+
+        { "id": "inv-no", "type": "text", "content": "رقم الفاتورة: {{invoice_no}}",
+          "position": { "x": 454, "y": 330 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "right" } },
+        { "id": "inv-date", "type": "text", "content": "تاريخ الإصدار: {{invoice_date}}",
+          "position": { "x": 454, "y": 356 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "right" } },
+
+        { "id": "items", "type": "table", "schemaVersion": 2,
+          "position": { "x": 40, "y": 410 },
+          "columns": [
+            { "id": "c-desc",   "width": 330, "alignment": "right" },
+            { "id": "c-price",  "width": 128, "alignment": "center" },
+            { "id": "c-qty",    "width": 128, "alignment": "center" },
+            { "id": "c-amount", "width": 128, "alignment": "center" }
+          ],
+          "binding": { "enabled": true, "collectionKey": "items", "itemAlias": "item" },
+          "headerRow": { "id": "hr", "cells": [
+            { "id": "h-desc",   "content": { "type": "text", "value": "الوصف" } },
+            { "id": "h-price",  "content": { "type": "text", "value": "سعر الوحدة" } },
+            { "id": "h-qty",    "content": { "type": "text", "value": "الكمية" } },
+            { "id": "h-amount", "content": { "type": "text", "value": "الإجمالي" } }
+          ] },
+          "rows": [
+            { "id": "r1", "cells": [
+              { "id": "r1-desc",   "content": { "type": "text", "value": "{{description}}" } },
+              { "id": "r1-price",  "content": { "type": "text", "value": "{{unit_price}}" } },
+              { "id": "r1-qty",    "content": { "type": "text", "value": "{{qty}}" } },
+              { "id": "r1-amount", "content": { "type": "text", "value": "{{amount}}" } }
+            ] }
+          ],
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif",
+            "borderColor": "#0f172a", "borderWidth": 1, "showBorders": true, "direction": "rtl",
+            "headerBg": "#0f172a", "headerColor": "#ffffff" } },
+
+        { "id": "tot-sub", "type": "text", "content": "المجموع الفرعي:  {{subtotal}} ر.س",
+          "position": { "x": 40, "y": 640 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 288, "textAlign": "right" } },
+        { "id": "tot-vat", "type": "text", "content": "ضريبة القيمة المضافة (15٪):  {{vat_amount}} ر.س",
+          "position": { "x": 40, "y": 666 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 288, "textAlign": "right" } },
+        { "id": "tot-rule", "type": "line", "position": { "x": 40, "y": 692 },
+          "style": { "length": 288, "thickness": 1, "direction": "horizontal", "color": "#0f172a", "style": "solid" } },
+        { "id": "tot-total", "type": "text", "content": "الإجمالي المستحق:  {{total}} ر.س",
+          "position": { "x": 40, "y": 702 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 288, "textAlign": "right" } },
+
+        { "id": "pay-h", "type": "text", "content": "معلومات الدفع",
+          "position": { "x": 454, "y": 800 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "right" } },
+        { "id": "pay-due", "type": "text", "content": "تاريخ الاستحقاق: {{due_date}}",
+          "position": { "x": 394, "y": 826 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+        { "id": "pay-bank", "type": "text", "content": "البنك: {{bank_name}}",
+          "position": { "x": 394, "y": 848 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+        { "id": "pay-iban", "type": "text", "content": "رقم الآيبان: {{iban}}",
+          "position": { "x": 394, "y": 870 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "textAlign": "right" } },
+
+        { "id": "qr", "type": "barcode", "content": "{{zatca_qr}}",
+          "position": { "x": 40, "y": 790 },
+          "style": { "width": 140, "height": 140 },
+          "barcode": { "format": "qrcode", "showText": false } },
+        { "id": "qr-caption", "type": "text", "content": "رمز الاستجابة السريعة — هيئة الزكاة والضريبة والجمارك",
+          "position": { "x": 20, "y": 936 },
+          "style": { "fontSize": 8, "fontWeight": "normal", "color": "#64748b", "fontFamily": "'Noto Naskh Arabic', serif", "width": 200, "textAlign": "center" } },
+
+        { "id": "foot-rule-a", "type": "line", "position": { "x": 40, "y": 1000 },
+          "style": { "length": 714, "thickness": 1, "direction": "horizontal", "color": "#0f172a", "style": "solid" } },
+        { "id": "foot-note", "type": "text", "content": "لأي استفسار حول هذه الفاتورة، يرجى التواصل معنا عبر {{seller_email}}",
+          "position": { "x": 40, "y": 1012 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#475569", "fontFamily": "'Noto Naskh Arabic', serif", "width": 714, "textAlign": "center" } },
+        { "id": "foot-rule-b", "type": "line", "position": { "x": 40, "y": 1038 },
+          "style": { "length": 714, "thickness": 1, "direction": "horizontal", "color": "#0f172a", "style": "solid" } }
+      ]
+    }
+  ]
+}

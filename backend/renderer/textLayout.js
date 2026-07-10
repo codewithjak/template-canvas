@@ -181,6 +181,17 @@ function allWinAnsi(text) {
 /** Scripts whose runs fontkit lays out right-to-left. */
 const FONTKIT_RTL_SCRIPTS = new Set(['arabic', 'hebrew']);
 
+/**
+ * UAX#9 rule L4: characters with the Bidi_Mirrored property use their
+ * mirrored form when they resolve to an RTL (odd) embedding level —
+ * otherwise "(شهري)" exports with visually swapped parentheses.
+ * The subset that appears in documents; extend as needed.
+ */
+const BIDI_MIRROR = {
+  '(': ')', ')': '(', '[': ']', ']': '[', '{': '}', '}': '{',
+  '<': '>', '>': '<', '«': '»', '»': '«', '‹': '›', '›': '‹',
+};
+
 /** True iff any codepoint is in an RTL script block (engages bidi layout). */
 function hasRtl(text) {
   for (const ch of String(text ?? '')) {
@@ -241,6 +252,11 @@ function visualSegments(text) {
   for (const [start, end] of bidi.getReorderSegments(s, embedding)) {
     let a = unitToSlot[start], b = unitToSlot[end];
     while (a < b) { const t = slots[a]; slots[a] = slots[b]; slots[b] = t; a++; b--; }
+  }
+
+  // L4 mirroring: swap paired brackets that resolved to an RTL level.
+  for (const slot of slots) {
+    if (slot.level % 2 === 1 && BIDI_MIRROR[slot.unit]) slot.unit = BIDI_MIRROR[slot.unit];
   }
 
   // Group consecutive slots into visual runs by (odd level?, script bucket).

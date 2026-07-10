@@ -78,6 +78,12 @@ import postexMerchantInvoiceDoc from './builtins/postex-merchant-invoice.templat
 import postexMerchantInvoiceData from './builtins/postex-merchant-invoice.data.json'
 import postexPodDoc from './builtins/postex-pod.template.json'
 import postexPodData from './builtins/postex-pod.data.json'
+import arabicTaxInvoiceDoc from './builtins/arabic-tax-invoice.template.json'
+import arabicTaxInvoiceData from './builtins/arabic-tax-invoice.data.json'
+import zatcaReceiptDoc from './builtins/zatca-simplified-receipt.template.json'
+import zatcaReceiptData from './builtins/zatca-simplified-receipt.data.json'
+import arabicAnnualReportDoc from './builtins/arabic-annual-report.template.json'
+import arabicAnnualReportData from './builtins/arabic-annual-report.data.json'
 
 export type BuiltinCategory =
   | 'Courier & Last-Mile'
@@ -88,6 +94,7 @@ export type BuiltinCategory =
   | 'Manufacturing'
   | 'Events & Hospitality'
   | 'Real Estate'
+  | 'Arabic (RTL)'
 
 export interface BuiltinTemplate {
   /** Stable id — used as React key and for "currently open" comparisons. */
@@ -389,6 +396,34 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: eventQuotationDoc as unknown as TemplateDocument,
     data: eventQuotationData as unknown as CanonicalDocument,
+  },
+  // ── Arabic / RTL (Saudi market) ──
+  {
+    id: 'builtin-arabic-tax-invoice',
+    name: 'فاتورة ضريبية — Arabic Tax Invoice',
+    description: 'RTL tax invoice with mirrored line-item table, 15% VAT totals and a ZATCA phase-1 QR code.',
+    category: 'Arabic (RTL)',
+    sizeLabel: 'A4',
+    doc: arabicTaxInvoiceDoc as unknown as TemplateDocument,
+    data: arabicTaxInvoiceData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-zatca-simplified-receipt',
+    name: 'فاتورة ضريبية مبسطة — ZATCA Receipt',
+    description: '80mm point-of-sale simplified tax invoice with the mandatory TLV QR code.',
+    category: 'Arabic (RTL)',
+    sizeLabel: '80mm',
+    doc: zatcaReceiptDoc as unknown as TemplateDocument,
+    data: zatcaReceiptData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-arabic-annual-report',
+    name: 'التقرير السنوي — Arabic Annual Report',
+    description: 'RTL report cover with side panel, data-bound quarterly chart and KPI summary.',
+    category: 'Arabic (RTL)',
+    sizeLabel: 'A4',
+    doc: arabicAnnualReportDoc as unknown as TemplateDocument,
+    data: arabicAnnualReportData as unknown as CanonicalDocument,
   },
   // ── Real Estate ──
   {

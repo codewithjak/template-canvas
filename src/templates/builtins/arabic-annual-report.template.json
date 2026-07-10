@@ -1,0 +1,106 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-arabic-annual-report",
+    "name": "التقرير السنوي — Arabic Annual Report",
+    "createdAt": "2026-07-10T00:00:00.000Z",
+    "updatedAt": "2026-07-10T00:00:00.000Z",
+    "executionMode": "single",
+    "direction": "rtl",
+    "lang": "ar"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "التقرير السنوي",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "elements": [
+        { "id": "panel", "type": "box", "position": { "x": 0, "y": 0 },
+          "style": { "width": 250, "height": 1123, "borderWidth": 0, "borderColor": "#7c3aed", "borderStyle": "solid", "backgroundColor": "#7c3aed" } },
+        { "id": "hero", "type": "box", "position": { "x": 250, "y": 0 },
+          "style": { "width": 544, "height": 430, "borderWidth": 0, "borderColor": "#2e1065", "borderStyle": "solid", "backgroundColor": "#2e1065" } },
+        { "id": "band", "type": "box", "position": { "x": 250, "y": 430 },
+          "style": { "width": 544, "height": 92, "borderWidth": 0, "borderColor": "#a78bfa", "borderStyle": "solid", "backgroundColor": "#a78bfa" } },
+
+        { "id": "company", "type": "text", "content": "{{company_name}}",
+          "position": { "x": 20, "y": 64 },
+          "style": { "fontSize": 18, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "center" } },
+        { "id": "company-sub", "type": "text", "content": "{{company_tagline}}",
+          "position": { "x": 20, "y": 94 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#ede9fe", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "center" } },
+
+        { "id": "title", "type": "text", "content": "التقرير",
+          "position": { "x": 314, "y": 130 },
+          "style": { "fontSize": 58, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 440, "textAlign": "right" } },
+        { "id": "title-2", "type": "text", "content": "السنوي",
+          "position": { "x": 314, "y": 216 },
+          "style": { "fontSize": 58, "fontWeight": "bold", "color": "#c4b5fd", "fontFamily": "'Noto Naskh Arabic', serif", "width": 440, "textAlign": "right" } },
+        { "id": "summary", "type": "paragraph", "content": "{{summary}}",
+          "position": { "x": 394, "y": 322 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#ede9fe", "fontFamily": "'Noto Naskh Arabic', serif", "width": 360, "lineHeight": 20, "direction": "rtl" } },
+
+        { "id": "year", "type": "text", "content": "{{year}}",
+          "position": { "x": 554, "y": 448 },
+          "style": { "fontSize": 40, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "Arial, sans-serif", "width": 200, "textAlign": "right" } },
+        { "id": "band-note", "type": "text", "content": "أداء النمو والتحول الرقمي",
+          "position": { "x": 290, "y": 462 },
+          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#2e1065", "fontFamily": "'Noto Naskh Arabic', serif", "width": 240, "textAlign": "left" } },
+
+        { "id": "chart-h", "type": "text", "content": "الإيرادات الفصلية (مليون ر.س)",
+          "position": { "x": 300, "y": 556 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#2e1065", "fontFamily": "'Noto Naskh Arabic', serif", "width": 454, "textAlign": "right" } },
+        { "id": "chart", "type": "chart",
+          "position": { "x": 300, "y": 588 },
+          "style": { "width": 454, "height": 240 },
+          "chart": {
+            "kind": "bar",
+            "data": [
+              { "label": "الربع ١", "value": 32 },
+              { "label": "الربع ٢", "value": 41 },
+              { "label": "الربع ٣", "value": 38 },
+              { "label": "الربع ٤", "value": 52 }
+            ],
+            "palette": ["#7c3aed", "#a78bfa", "#7c3aed", "#2e1065"],
+            "showValues": true,
+            "binding": { "enabled": true, "collectionKey": "quarters", "labelField": "quarter", "valueField": "revenue" }
+          } },
+
+        { "id": "kpi-1", "type": "text", "content": "نمو الإيرادات السنوي:  {{kpi_growth}}",
+          "position": { "x": 300, "y": 868 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 454, "textAlign": "right" } },
+        { "id": "kpi-2", "type": "text", "content": "عدد العملاء النشطين:  {{kpi_customers}}",
+          "position": { "x": 300, "y": 896 },
+          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 454, "textAlign": "right" } },
+        { "id": "kpi-3", "type": "text", "content": "نسبة رضا العملاء:  {{kpi_satisfaction}}",
+          "position": { "x": 300, "y": 924 },
+          "style": { "fontSize": 13, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 454, "textAlign": "right" } },
+
+        { "id": "prep-h", "type": "text", "content": "إعداد:",
+          "position": { "x": 20, "y": 960 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "right" } },
+        { "id": "prep-name", "type": "text", "content": "{{prepared_by}}",
+          "position": { "x": 20, "y": 982 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#ede9fe", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "right" } },
+        { "id": "period-h", "type": "text", "content": "فترة التقرير:",
+          "position": { "x": 20, "y": 1014 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "right" } },
+        { "id": "period-val", "type": "text", "content": "{{period}}",
+          "position": { "x": 20, "y": 1036 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#ede9fe", "fontFamily": "'Noto Naskh Arabic', serif", "width": 210, "textAlign": "right" } }
+      ]
+    }
+  ]
+}

@@ -109,7 +109,9 @@ router.post('/v1/cloud/runs/:id/apply', async (req, res) => {
     const connection = await conns.getConnection(sb, teamId, r.connection_id);
     if (!connection) throw httpError(400, 'Connection missing.');
 
-    await history.updateRun(sb, teamId, r.id, { status: 'applying' });
+    // Stamp the build attempt at the transition (before StartBuild), so the
+    // reconciler anchors on build-start, not the row's older plan-creation time.
+    await history.updateRun(sb, teamId, r.id, { status: 'applying', build_started_at: new Date().toISOString() });
     res.status(202).json({ runId: r.id, status: 'applying' });
     runApplyAsync(sb, teamId, r, connection, cfgFor(connection));
   } catch (err) {

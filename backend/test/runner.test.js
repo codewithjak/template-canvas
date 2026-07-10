@@ -37,3 +37,14 @@ test('runner exposes the start/resolve split (both actors call resolveBuild)', (
 test('runHistory persists the durable build handle + projects it', () => {
   assert.strictEqual(typeof history.setBuildHandle, 'function');
 });
+
+test('plan/drift buildspecs make a terraform error a FAILED build (no `|| true`)', () => {
+  for (const spec of [runner.planBuildspec(), runner.driftBuildspec()]) {
+    assert.ok(!spec.includes('|| true'), 'a terraform error must not be swallowed');
+    assert.ok(spec.includes('ec=$?') && spec.includes('exit $ec'), 'build must exit with terraform\'s code');
+    assert.ok(spec.includes('--upload-file result.out'), 'the result is still uploaded before failing');
+    // Ordering: capture the code, upload, THEN fail — so the result is available.
+    assert.ok(spec.indexOf('ec=$?') < spec.indexOf('curl'), 'capture exit before upload');
+    assert.ok(spec.indexOf('curl') < spec.indexOf('exit $ec'), 'upload before exit');
+  }
+});

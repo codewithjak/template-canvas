@@ -81,8 +81,10 @@ function buildspec(commands) {
 
 function planBuildspec() {
   return buildspec([
-    '      - terraform plan -input=false -no-color -json > result.out || true',
-    '      - curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"',
+    // Upload the result either way, then FAIL the build if terraform failed (exit
+    // $ec) — so buildStatus is authoritative: a plan error is a FAILED build, not a
+    // SUCCEEDED build with a masked empty diff. (Replaces the old `|| true`.)
+    '      - terraform plan -input=false -no-color -json > result.out; ec=$?; curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"; exit $ec',
   ]);
 }
 
@@ -131,12 +133,15 @@ async function startBuild({ credentials, connection, hcl, buildspec: spec, state
 
 /**
  * Resolve a build from its durable handle: ask CodeBuild its status and, once
- * terminal, fetch the result the buildspec uploaded. DB-free — the caller (inline
- * poll or the Phase 2 sweep) decides what to persist. Idempotent and safe to call
- * repeatedly.
- *   { pending: true }                still IN_PROGRESS — resolve again later
- *   { buildStatus, body }            terminal + result fetched
- *   { buildStatus, missing: true }   terminal but no result uploaded (real failure)
+ * terminal, decide by buildStatus. DB-free — the caller (inline poll or the Phase 2
+ * sweep) decides what to persist. Idempotent and safe to call repeatedly.
+ *   { pending: true }          still IN_PROGRESS — resolve again later
+ *   { ok: true, body }         SUCCEEDED — result fetched, ready to interpret
+ *   { failed: true, reason }   any other terminal status, OR SUCCEEDED with no result
+ *
+ * buildStatus is AUTHORITATIVE (doc §4): only a SUCCEEDED build yields a result to
+ * parse. The buildspecs now exit with terraform's code, so a plan/apply error is a
+ * FAILED build here — never a SUCCEEDED build with a masked empty diff.
  *
  * `credentials` is optional: the inline poll passes its assume (900s covers the 600s
  * window); the sweep omits it and we assume fresh, so resolution isn't bound by the
@@ -147,15 +152,17 @@ async function resolveBuild({ connection, stateBucket, buildId, region, resultKe
     || (await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region })).credentials;
   const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, creds, region);
   const b = (got.builds && got.builds[0]) || {};
-  if (!isTerminal(b.buildStatus)) return { pending: true };
+  const status = b.buildStatus;
+  if (!isTerminal(status)) return { pending: true };
+  if (status !== 'SUCCEEDED') return { failed: true, reason: `build ${status}` };
 
   const host = `${stateBucket}.s3.${region}.amazonaws.com`;
   const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key: resultKey, ...credFields(creds), expiresIn: 900 });
   const res = await httpsRequest('GET', getUrl, {}, null);
-  // Terminal but no result object = the build broke before uploading — a real error,
-  // distinct from "still running" (which returns pending above, never an error).
-  if (res.status !== 200) return { buildStatus: b.buildStatus, missing: true };
-  return { buildStatus: b.buildStatus, body: res.body };
+  // SUCCEEDED but no result object = the build finished without uploading — a real
+  // failure, distinct from "still running" (pending above, never an error).
+  if (res.status !== 200) return { failed: true, reason: 'build succeeded but uploaded no result' };
+  return { ok: true, body: res.body };
 }
 
 /**
@@ -181,7 +188,7 @@ async function runBuild({ connection, hcl, buildspec: spec, stateBucket, lockTab
     await sleep(POLL_INTERVAL_MS);
     const r = await resolveBuild({ connection, stateBucket, ...handle, credentials });
     if (r.pending) continue;
-    if (r.missing) throw new Error('Result not available (build may have failed).');
+    if (r.failed) throw new Error(r.reason);
     return { buildId: handle.buildId, body: r.body };
   }
   return { buildId: handle.buildId, pending: true };
@@ -200,8 +207,9 @@ async function runPlan(args) {
  */
 function driftBuildspec() {
   return buildspec([
-    '      - terraform plan -input=false -refresh-only -no-color -json > result.out || true',
-    '      - curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"',
+    // Same exit-code discipline as planBuildspec: a failed refresh-only check is a
+    // FAILED build (→ error), not a masked "in sync".
+    '      - terraform plan -input=false -refresh-only -no-color -json > result.out; ec=$?; curl -sS -X PUT --upload-file result.out "$TF_RESULT_URL"; exit $ec',
   ]);
 }
 

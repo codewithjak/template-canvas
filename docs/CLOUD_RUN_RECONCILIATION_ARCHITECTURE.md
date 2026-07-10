@@ -97,6 +97,14 @@ already-terminal row):
 Terminal state now comes from CodeBuild's actual status via the persisted handle —
 never from "the in-process timer gave up."
 
+> **buildStatus must be authoritative for this model to hold.** The plan/drift
+> buildspecs previously ended with `> result.out || true`, which swallowed a terraform
+> error into a **SUCCEEDED** build carrying an empty diff — so `resolve` would mark it
+> `planned`/"in sync", masking the failure. The buildspecs now capture terraform's exit
+> code, upload the result, then `exit $ec`, so a plan/apply/refresh error is a **FAILED**
+> build → `error`. `resolveBuild` only fetches+interprets a result on `SUCCEEDED`; every
+> other terminal status (and SUCCEEDED-with-no-result) is a failure.
+
 **Why no locking is needed (single instance).** The handle sweep only touches a row once
 it has been non-terminal for longer than `GRACE` **measured from `build_started_at`** (the
 moment the inline poll began), and `GRACE > the inline-poll window (600s)`. So by the time
@@ -121,14 +129,22 @@ alter table public.cloud_runs add column if not exists build_started_at timestam
 
 - `result_key` lets `resolve` fetch the uploaded result **without** re-deriving it —
   the runner already computes this key; today it is thrown away.
-- **`build_started_at` is set when the handle is persisted (at `StartBuild`), NOT at row
-  creation.** It is the grace anchor for the handle sweep (§7.1). We do *not* reuse
-  `created_at`, because `created_at` ≠ build-start for the **deploy** kind:
-  `POST /v1/cloud/deploy` creates the row at `status:'staging'` and the build only fires
-  later when the user calls `/run` (user-paced — possibly many minutes). Measuring GRACE
-  from `created_at` would let the handle sweep become eligible the instant a deploy's build
-  starts, while the fresh inline poll is still running — breaking the no-locking invariant
-  of §4. `build_started_at` makes "grace anchor ≈ build-start" true for **all four kinds**.
+- **`build_started_at` is stamped at the build-phase TRANSITION — the moment the row
+  enters `running` (plan/drift, at `createRun`) or `applying` (apply/deploy, at the
+  status update), just BEFORE `StartBuild`.** It is the grace anchor for **both** sweeps.
+  Two reasons it is the transition and not `created_at`:
+    - `created_at` ≠ build-start for **apply and deploy**: an apply reuses the plan row
+      (created much earlier) and a deploy row is created at `staging` before the user
+      calls `/run`. Anchoring GRACE on `created_at` would make a run orphan/sweep-eligible
+      the instant its build actually started — breaking §4's no-locking invariant and,
+      for the orphan sweep (§7.2), falsely erroring a live in-flight build.
+    - It is the transition and not `StartBuild` (setBuildHandle) so it is **present even
+      for a null-handle orphan** — a crash in the `StartBuild → setBuildHandle` window
+      leaves `build_id` null but `build_started_at` set, which is exactly what lets the
+      orphan sweep age it out correctly (§7.2). The transition → `StartBuild` gap is
+      sub-second, so `build_started_at ≈ build-start` holds for all four kinds.
+  A null `build_started_at` on a non-terminal row therefore means "never entered the
+  build phase" (e.g. a Path-1 CLI deploy Mapdoc doesn't run) — left untouched by both sweeps.
 
 No new table — this is the same "runs are the durable ledger" principle as the drift
 and deployment work.
@@ -201,9 +217,18 @@ restart" actually true, not over-claimed):
 orphanSweep(sb):
   rows = cloud_runs where status in ('running','applying')   -- NOT 'staging' (see below)
          and build_id is null
-         and created_at < now() - ORPHAN_TTL     (ORPHAN_TTL >> GRACE: e.g. > build TimeoutInMinutes)
+         and build_started_at is not null                 -- entered the build phase
+         and build_started_at < now() - ORPHAN_TTL     (ORPHAN_TTL >> GRACE: e.g. > build TimeoutInMinutes)
   for each row: mark terminal 'error' ("run never recorded a build handle; abandoned")
 ```
+
+Anchored on `build_started_at` (the build-ATTEMPT time, §5), **not** `created_at`: a
+deploy/apply row can be created long before its build attempt, so `created_at` would make
+it orphan-eligible the instant its real build started — false-erroring an in-flight build
+(the exact `created_at`-vs-build-start pitfall §5 exists to avoid). `build_started_at` is
+present even for the null-handle orphan because it is stamped at the transition, before
+`StartBuild`. A null `build_started_at` (a run that never entered the build phase — e.g. a
+Path-1 CLI deploy) is deliberately left alone.
 
 - **`staging` is deliberately excluded — this is a correctness requirement, not an
   optimization.** A deploy row is created at `status:'staging'` with `build_id` null and
@@ -307,7 +332,10 @@ next to the drift worker.*
 **Phase 3 — hardening (optional).**
 6. Cross-instance claim (`FOR UPDATE SKIP LOCKED`) if/when multi-instance.
 7. Dead-run detection: a run whose CodeBuild build is gone/expired → terminal `error`
-   with a clear reason, so nothing sweeps forever.
+   with a clear reason, so nothing sweeps forever. *(Partial down-payment already in
+   `resolveRun`: a handle-bearing run whose connection was deleted can never resolve, so
+   it is retired to `error` rather than re-selected every sweep — which would let an
+   unresolvable oldest-row starve the batch.)*
 
 ---
 

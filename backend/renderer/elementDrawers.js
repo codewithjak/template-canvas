@@ -18,6 +18,7 @@
 
 const { rgb }          = require('pdf-lib');
 const { parseColor, wrapText, measureTextHeight } = require('./coordinateUtils');
+const { safeWidth, drawTextSafe } = require('./textLayout');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -434,11 +435,13 @@ function drawChart(page, fonts, el, x, yTop, wPt, hPt) {
   const padBot   = 14;
   const padSide  = 6;
 
-  // Title
+  // Title — chart text bypasses the resolver's WinAnsi sanitizer, so it must
+  // measure and draw through the crash-proof helpers (a raw CJK/Arabic title
+  // used to abort the whole export — MULTILINGUAL_EXPORT_ARCHITECTURE.md F4).
   if (chart.title && fontB) {
     const size = 9;
-    const tw   = fontB.widthOfTextAtSize(String(chart.title), size);
-    page.drawText(String(chart.title), {
+    const tw   = safeWidth(fontB, String(chart.title), size);
+    drawTextSafe(page, String(chart.title), {
       x: x + Math.max(0, (wPt - tw) / 2), y: yTop - size - 3, size, font: fontB, color: rgb(0.12, 0.16, 0.22),
     });
   }
@@ -488,12 +491,12 @@ function drawChart(page, fonts, el, x, yTop, wPt, hPt) {
     if (chart.showValues && font)
       pts.forEach((p, i) => {
         const t = String(data[i].value), sz = 6.5;
-        page.drawText(t, { x: p.x - font.widthOfTextAtSize(t, sz) / 2, y: p.y + 3, size: sz, font, color: ink });
+        drawTextSafe(page, t, { x: p.x - safeWidth(font, t, sz) / 2, y: p.y + 3, size: sz, font, color: ink });
       });
     if (font)
       data.forEach((d, i) => {
         const lbl = String(d.label).slice(0, 8), sz = 6.5;
-        page.drawText(lbl, { x: plotLeft + step * i - font.widthOfTextAtSize(lbl, sz) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
+        drawTextSafe(page, lbl, { x: plotLeft + step * i - safeWidth(font, lbl, sz) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
       });
     return hPt;
   }
@@ -507,11 +510,11 @@ function drawChart(page, fonts, el, x, yTop, wPt, hPt) {
     page.drawRectangle({ x: bx, y: plotBottom, width: bw, height: Math.max(0, bh), color: colAt(i) });
     if (chart.showValues && font) {
       const t = String(d.value), sz = 6.5;
-      page.drawText(t, { x: bx + (bw - font.widthOfTextAtSize(t, sz)) / 2, y: plotBottom + bh + 2, size: sz, font, color: ink });
+      drawTextSafe(page, t, { x: bx + (bw - safeWidth(font, t, sz)) / 2, y: plotBottom + bh + 2, size: sz, font, color: ink });
     }
     if (font) {
       const lbl = String(d.label).slice(0, 8), sz = 6.5;
-      page.drawText(lbl, { x: bx + (bw - font.widthOfTextAtSize(lbl, sz)) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
+      drawTextSafe(page, lbl, { x: bx + (bw - safeWidth(font, lbl, sz)) / 2, y: plotBottom - 9, size: sz, font, color: rgb(0.39, 0.45, 0.55) });
     }
   });
   return hPt;

@@ -29,6 +29,8 @@ const https = require('https');
 const http  = require('http');
 
 const { replacePlaceholders, resolveCellValue, resolve } = require('../utils/resolver');
+const { createFontContext } = require('./fontLoader');
+const { safeWidth, drawTextSafe } = require('./textLayout');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -118,11 +120,11 @@ function getPage(pdfDoc, pages, idx, effPdfW = PDF_W, effPdfH = PDF_H) {
 // Fonts
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Font setup lives in fontLoader.js (createFontContext) so there is a single
+// font path — previously this file embedded Helvetica/HelveticaBold directly
+// and fontLoader.js was never used (MULTILINGUAL_EXPORT_ARCHITECTURE.md, F1).
 async function embedFonts(pdfDoc) {
-  return {
-    normal: await pdfDoc.embedFont(StandardFonts.Helvetica),
-    bold:   await pdfDoc.embedFont(StandardFonts.HelveticaBold),
-  };
+  return createFontContext(pdfDoc);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -136,8 +138,8 @@ function wrapText(text, font, fsPt, maxWPt) {
     let chunk = '';
     for (const ch of word) {
       const test = chunk + ch;
-      let w = 0;
-      try { w = font.widthOfTextAtSize(test, fsPt); } catch (e) { /* null font during dry-run */ }
+      // safeWidth returns 0 for the null font passed during dry-run measurement
+      const w = safeWidth(font, test, fsPt);
       if (w > maxWPt && chunk) { lines.push(chunk); chunk = ch; }
       else chunk = test;
     }
@@ -149,16 +151,14 @@ function wrapText(text, font, fsPt, maxWPt) {
     const words = para.split(' ');
     let line = '';
     for (const w of words) {
-      let wordW = 0;
-      try { wordW = font.widthOfTextAtSize(w, fsPt); } catch (e) {}
+      const wordW = safeWidth(font, w, fsPt);
       if (wordW > maxWPt) {
         if (line) { lines.push(line); line = ''; }
         breakWord(w);
         continue;
       }
       const test = line ? `${line} ${w}` : w;
-      let testW = 0;
-      try { testW = font.widthOfTextAtSize(test, fsPt); } catch (e) {}
+      const testW = safeWidth(font, test, fsPt);
       if (testW > maxWPt && line) { lines.push(line); line = w; }
       else line = test;
     }
@@ -179,25 +179,25 @@ function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align 
     
     let drawX = x;
     if (align === 'center') {
-      const lineWidth = font.widthOfTextAtSize(line, fsPt);
+      const lineWidth = safeWidth(font, line, fsPt);
       drawX = x + (maxWPt - lineWidth) / 2;
     } else if (align === 'right') {
-      const lineWidth = font.widthOfTextAtSize(line, fsPt);
+      const lineWidth = safeWidth(font, line, fsPt);
       drawX = x + maxWPt - lineWidth;
     }
-    
-    try {
-      const drawOptions = {
-        x: drawX,
-        y: y - fsPt * 0.8,
-        size: fsPt,
-        font,
-        color,
-        opacity,
-      };
-      if (rotate) drawOptions.rotate = degrees(rotate);
-      page.drawText(line, drawOptions);
-    } catch (e) {}
+
+    const drawOptions = {
+      x: drawX,
+      y: y - fsPt * 0.8,
+      size: fsPt,
+      font,
+      color,
+      opacity,
+    };
+    if (rotate) drawOptions.rotate = degrees(rotate);
+    // drawTextSafe replaces the old silent `catch {}`: unencodable chars are
+    // drawn as visible "?" instead of the whole line vanishing.
+    drawTextSafe(page, line, drawOptions);
     y -= lh;
   }
 }

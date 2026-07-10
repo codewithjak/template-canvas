@@ -1,0 +1,5 @@
+{
+  "comment": "sha256 of the Latin fixture PDFs rendered with a frozen clock (multilingual-baseline.test.js). These lock the Latin export output byte-for-byte: any diff is a regression against MULTILINGUAL_EXPORT_ARCHITECTURE.md §4. Regenerate ONLY for an intentional, reviewed output change (run the test with UPDATE_GOLDEN=1).",
+  "latin-text": "541aff62487cc86c1d24ececb86fdde81c7ce59049ecb3c73e0f95d81a5a87bd",
+  "latin-table-chart": "7f570c21be39f18756635143fd77d28990f645540b8423470f192336563464fe"
+}

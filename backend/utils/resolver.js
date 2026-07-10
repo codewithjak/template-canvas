@@ -46,7 +46,16 @@
 //   2. Known symbol      → friendly ASCII look-alike (≤ → "<=", → → "->", ⁹ → "^9").
 //   3. Otherwise         → NFKD-decompose, drop combining marks, keep what's safe
 //                          (handles accented/compat forms); unrenderable glyphs
-//                          (CJK, emoji, Greek…) degrade to "" rather than crash.
+//                          (CJK, emoji, Greek…) degrade to a visible "?" per
+//                          character rather than crash.
+//
+// Step 3 used to degrade to "" — the character was silently DELETED, so
+// Arabic/CJK documents exported blank with no error and no trace of the lost
+// content (MULTILINGUAL_EXPORT_ARCHITECTURE.md, failure mode F0). A visible
+// "?" tells the user exactly where content was lost instead of hiding it.
+// Real tofu (▯) is itself not WinAnsi-encodable, hence "?". Phase 1 makes
+// this sanitizer font-aware (task 1.7) so embedded Unicode fonts receive the
+// original characters and the fallback stops firing for supported scripts.
 
 // cp1252's 0x80–0x9F band. The rest of WinAnsi is 0x20–0x7E and 0xA0–0xFF.
 const CP1252_HIGH = new Set([
@@ -95,9 +104,13 @@ function toWinAnsiSafe(input) {
     if (isWinAnsi(ch.codePointAt(0))) { out += ch; continue; }
     if (SYMBOL_MAP[ch] !== undefined) { out += SYMBOL_MAP[ch]; continue; }
     const decomposed = ch.normalize('NFKD').replace(/[̀-ͯ]/g, '');
+    let kept = '';
     for (const d of decomposed) {
-      if (isWinAnsi(d.codePointAt(0))) out += d;
+      if (isWinAnsi(d.codePointAt(0))) kept += d;
     }
+    // Nothing survived decomposition (CJK, Arabic, emoji…): substitute a
+    // visible "?" instead of deleting the character outright.
+    out += kept || '?';
   }
   return out;
 }

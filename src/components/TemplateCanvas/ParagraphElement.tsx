@@ -12,6 +12,7 @@ interface ParagraphElementProps {
     color: string;
     fontFamily: string;
     lineHeight?: number;
+    direction?: 'ltr' | 'rtl' | 'auto';
   };
   onUpdate: (id: string, content: string) => void;
   isSelected?: boolean;
@@ -115,6 +116,7 @@ function ParagraphElement({ id, content, position, style, onUpdate, isSelected, 
         if (node) (elementRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
       }}
       className={`canvas-text-element ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`}
+      dir={style.direction ?? 'auto'}
       style={{
         position: 'absolute',
         left: `${position.x}px`,

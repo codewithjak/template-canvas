@@ -62,6 +62,26 @@ function LayoutTableTypography({ element, onUpdate, activeRC, activeCell }: Prop
         <p className="property-hint">These values apply only to the selected cell (overrides table defaults).</p>
       )}
 
+      {/* Direction is table-level only: 'rtl' mirrors the column order. */}
+      {!activeCell && (
+        <div className="property-group">
+          <label className="property-label">Direction</label>
+          <select
+            value={element.style.direction ?? 'ltr'}
+            onChange={(e) =>
+              onUpdate(element.id, {
+                style: { ...element.style, direction: e.target.value as 'ltr' | 'rtl' },
+              } as Partial<CanvasElement>)
+            }
+            className="property-select"
+            title="Right to left mirrors the column order"
+          >
+            <option value="ltr">Left to right</option>
+            <option value="rtl">Right to left (mirrored columns)</option>
+          </select>
+        </div>
+      )}
+
       <div className="property-group">
         <label className="property-label">Font Size</label>
         <input

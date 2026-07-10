@@ -15,6 +15,7 @@ interface TextElementProps {
     opacity?: number;
     rotation?: number;
     textAlign?: 'left' | 'center' | 'right';
+    direction?: 'ltr' | 'rtl' | 'auto';
   };
   onUpdate: (id: string, content: string) => void;
   isSelected?: boolean;
@@ -164,6 +165,7 @@ function TextElement({ id, content, position, style, onUpdate, isSelected, onSel
         }
       }}
       className={`canvas-text-element ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`}
+      dir={style.direction ?? 'auto'}
       style={{
         position: 'absolute',
         left: `${position.x}px`,

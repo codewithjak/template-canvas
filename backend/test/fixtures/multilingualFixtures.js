@@ -112,4 +112,22 @@ function cjkArabicParams() {
   };
 }
 
-module.exports = { latinTextParams, latinTableChartParams, cjkArabicParams };
+/**
+ * Phase 3 fixture — direction intent.
+ *  - one Arabic text element with NO explicit textAlign: 'auto' direction
+ *    must right-align it by default.
+ *  - one RTL table (style.direction: 'rtl') with Latin cell text so the
+ *    mirrored draw order is assertable from the content stream.
+ */
+function rtlLayoutParams() {
+  return {
+    ir: emptyIr(),
+    templateElements: [
+      text('ar-auto', 'مرحبا', 40, 60),                       // auto → right-aligned
+      { ...tableV2('rtltbl', ['Item', 'Qty', 'Total'], [['Widget', '1', '10.00']], 40, 160),
+        style: { fontSize: 11, borderColor: '#214883', borderWidth: 1, direction: 'rtl' } },
+    ],
+  };
+}
+
+module.exports = { latinTextParams, latinTableChartParams, cjkArabicParams, rtlLayoutParams };

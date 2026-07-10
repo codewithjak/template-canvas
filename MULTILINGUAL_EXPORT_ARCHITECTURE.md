@@ -27,7 +27,7 @@ doc when a phase completes — rule j)*
 |---|---|---|---|---|
 | 0 | Foundations (fontkit, fonts dir, font routing fix, guards) | **DONE** (2026-07-10) | TC-0178 | All 7 tasks; 127/127 backend tests pass; Latin output verified byte-identical vs pre-change frozen-clock baseline; CJK/Arabic now export with visible `?` (were blank/500) |
 | 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | **DONE** (2026-07-10) | TC-0178 | All tasks incl. 1.7; 130/130 tests; Latin byte-identical; CJK+Arabic render real subset-embedded glyphs (CJK/Arabic fixture PDF = 73 KB, well under the 1 MB cap); PNG path verified visually. **Bonus finding:** pdf-lib encodes embedded fonts through fontkit's shaping engine, so Arabic contextual joining already works — Phase 2 shrinks to bidi reordering (mixed-direction runs, Arabic-Indic digit order, RTL wrap order) |
-| 2 | Arabic shaping + bidi (Arabic actually correct) | NOT STARTED | | |
+| 2 | Arabic shaping + bidi (Arabic actually correct) | **DONE** (2026-07-10) | TC-0180 | Engine = bidi-js run reordering only (spike: fontkit already shapes + reverses RTL runs; no reshaper added). `visualSegments` in textLayout.js; Arabic-Indic digit order fixed; mixed AR/EN/digit lines match browser bidi; 131/131 tests; Latin byte-identical; verified visually via rasterized PNG |
 | 3 | RTL layout intent (direction/lang in model + renderer) | NOT STARTED | | |
 | 4 | Editor & UX polish (font picker, CSV encoding) | NOT STARTED | | |
 
@@ -274,17 +274,40 @@ Goal: Arabic/Persian/Urdu/Hebrew render with correct joining and direction.
 Recommendation: **A** for Arabic-first launch, with the shaper isolated behind
 `shapeRun()` so B can replace it later without touching renderers.
 
+**Spike verdict (2026-07-10, `_spike/bidi/`):** fontkit (which pdf-lib uses
+to encode embedded fonts) already performs contextual joining
+(`.init/.medi/.fina` glyph forms verified) AND reverses RTL runs to visual
+order internally. Its one defect: it blindly reverses a whole run, including
+digit sequences (`١٢٣` lays out as `٣٢١`). bidi-js correctly assigns such
+sequences a higher embedding level. **Engine choice: no reshaper at all** —
+bidi-js splits each line into level runs and orders them visually; fontkit
+keeps intra-run shaping/reversal. Tasks below are amended to this reality
+(original 2.2 `shapeRun` would be dead code — not built, rule i).
+
 | # | Task | Where | Definition |
 |---|---|---|---|
-| 2.1 | Spike (throwaway, in `_spike/`): shape one Arabic sentence via option A and via B, compare output PDFs at 300 DPI | `_spike/` | decision artifact, then update this doc with the verdict |
-| 2.2 | `shapeRun(run: { text, script }): { text } ` — applies reshaper for Arabic-family scripts, identity otherwise | `textLayout.js` | the swappable seam |
-| 2.3 | `reorderBidi(runs, baseDirection): runs` — visual reorder via `bidi-js` | `textLayout.js` | pure function |
-| 2.4 | `layoutLine(text, opts): Array<{ text, font, xOffset }>` — full pipeline: segment → shape → reorder → per-run font + measured offsets; both renderers draw from its output | `textLayout.js` | single entry point, replaces ad-hoc draw loops |
-| 2.5 | RTL-aware wrapping: wrap on the logical string, lay out each wrapped line visually | `textLayout.js` | wrapping stays correct for mixed-direction lines |
-| 2.6 | Golden tests: Arabic fixture asserts joined forms + RTL order in extracted text; Latin snapshots still unchanged | `backend/test/` | |
+| 2.1 | Spike: fontkit RTL behavior + bidi-js evaluation | `_spike/bidi/` | **DONE** — verdict above |
+| 2.2 | `visualSegments(text): Array<{ text, script }>` — bidi-js embedding levels → level runs → visual order (L2 via reorder segments); odd-level (RTL) runs handed to fontkit in logical order (it shapes+reverses), even-level runs in RTL scripts (Arabic-Indic digits) pre-reversed to compensate fontkit's blind flip | `textLayout.js` | the engine seam: swapping to HarfBuzz later replaces this function's internals |
+| 2.3 | Base direction per line: `'auto'` = first strong directional char (bidi-js P2/P3 default) | `textLayout.js` | matches the planned `direction: 'auto'` model semantics |
+| 2.4 | `drawMixed` draws `visualSegments` order when the line contains any RTL char; otherwise the existing logical-order path runs unchanged (Latin byte-identity) | `textLayout.js` | widths are order-independent, so `mixedWidth` stays as is |
+| 2.5 | RTL-aware wrapping: wrap on the logical string (existing `wrapText`), each wrapped line laid out visually at draw time | already holds once 2.4 lands | line *content* correct; direction-aware alignment defaults are Phase 3 scope |
+| 2.6 | Golden tests: digit-order unit tests on `visualSegments`; Arabic fixture export + rasterization; Latin snapshots still byte-identical | `backend/test/` | |
 
 *Phase 2 acceptance:* an Arabic invoice (Arabic labels, Latin digits, mixed
 lines) exports correctly in PDF and PNG; this is the ZATCA-unblocking milestone.
+
+*Phase 2 result (2026-07-10):* accepted. `visualSegments()` (textLayout.js)
+computes UAX#9 embedding levels per line via bidi-js, applies L2 reordering,
+and hands each run to pdf-lib in the form fontkit needs: RTL runs in logical
+order (fontkit shapes and reverses), even-level runs in RTL script blocks
+(Arabic-Indic digits) pre-reversed to compensate fontkit's blind flip.
+`drawMixed` engages this only when a line contains RTL characters — LTR
+lines keep the Phase 1 path, Latin lines the Phase 0 path (byte-identical,
+golden-tested). Verified: digits render ١٢٣٤ (previously ٤٣٢١), paragraph
+lines read from the right with embedded Latin tokens placed per UAX#9,
+CJK output unchanged. New dependency: `bidi-js` (~10 KB, zero deps).
+Known limits (unchanged scope): direction-aware alignment/table order is
+Phase 3; Indic/Thai shaping still requires the HarfBuzz upgrade path.
 
 ### Phase 3 — RTL layout intent (medium)
 

@@ -22,6 +22,10 @@
 'use strict';
 
 const { toWinAnsiSafe, isWinAnsi } = require('../utils/resolver');
+const bidiFactory = require('bidi-js');
+
+// bidi-js is stateless after construction; one instance serves all renders.
+const bidi = bidiFactory();
 
 /**
  * The visible stand-in for a character the current font cannot encode.
@@ -157,6 +161,95 @@ function allWinAnsi(text) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Bidi line layout  (Phase 2, tasks 2.2/2.3 — see the doc's spike verdict)
+//
+// Division of labor:
+//   bidi-js  — decides the VISUAL ORDER OF RUNS on a line (UAX#9 levels +
+//              L2 reordering), which is exactly what fontkit does not do.
+//   fontkit  — inside pdf-lib's embedded-font encoder: contextual joining
+//              and intra-run RTL reversal. It receives each RTL run in
+//              LOGICAL order (joining needs logical neighbors) and emits
+//              visually-ordered glyphs itself.
+//
+// fontkit's one defect: it blindly reverses any run whose script block is
+// RTL — including pure Arabic-Indic digit runs, which bidi classifies as
+// LTR (even level). Those runs are pre-reversed here so fontkit's flip
+// restores the correct visual order. Width is order-independent, so
+// measurement is unaffected.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Scripts whose runs fontkit lays out right-to-left. */
+const FONTKIT_RTL_SCRIPTS = new Set(['arabic', 'hebrew']);
+
+/** True iff any codepoint is in an RTL script block (engages bidi layout). */
+function hasRtl(text) {
+  for (const ch of String(text ?? '')) {
+    if (FONTKIT_RTL_SCRIPTS.has(detectScript(ch.codePointAt(0)))) return true;
+  }
+  return false;
+}
+
+/**
+ * Split one LINE into segments in VISUAL (left-to-right draw) order.
+ * Each segment's `text` is exactly the string to hand to pdf-lib for its
+ * font (see the hand-off rules in the header comment).
+ *
+ * Base direction is derived from the first strong directional character
+ * (UAX#9 P2/P3 — bidi-js's default), i.e. the `direction: 'auto'` semantics
+ * planned for the template model in Phase 3.
+ *
+ * @param {string} text  one line, logical order (no newlines)
+ * @returns {Array<{ text: string, script: string }>}
+ */
+function visualSegments(text) {
+  const s = String(text ?? '');
+  const embedding = bidi.getEmbeddingLevels(s);
+
+  // L2 reordering: bidi-js hands back the exact ranges to reverse (inclusive,
+  // in UTF-16 code units), highest level first. Slots are built per CODE
+  // POINT — reversing whole codepoints can never split a surrogate pair —
+  // with a unit-index → slot-index map to translate the ranges.
+  const slots = [];
+  const unitToSlot = new Array(s.length);
+  for (let unit = 0; unit < s.length; ) {
+    const cp = s.codePointAt(unit);
+    const len = cp > 0xFFFF ? 2 : 1;
+    for (let k = 0; k < len; k++) unitToSlot[unit + k] = slots.length;
+    slots.push({ unit: s.slice(unit, unit + len), level: embedding.levels[unit] });
+    unit += len;
+  }
+  for (const [start, end] of bidi.getReorderSegments(s, embedding)) {
+    let a = unitToSlot[start], b = unitToSlot[end];
+    while (a < b) { const t = slots[a]; slots[a] = slots[b]; slots[b] = t; a++; b--; }
+  }
+
+  // Group consecutive slots into visual runs by (odd level?, script bucket).
+  const segments = [];
+  for (const slot of slots) {
+    const cp  = slot.unit.codePointAt(0);
+    const rtl = slot.level % 2 === 1;
+    const script = detectScript(cp);
+    const last = segments[segments.length - 1];
+    if (last && last.rtl === rtl && last.script === script) last.units.push(slot.unit);
+    else segments.push({ rtl, script, units: [slot.unit] });
+  }
+
+  return segments.map(seg => {
+    let t = seg.units.join('');
+    if (seg.rtl) {
+      // Odd-level run: slots are in visual order; restore LOGICAL order for
+      // fontkit, which shapes on logical neighbors and re-reverses itself.
+      t = [...t].reverse().join('');
+    } else if (FONTKIT_RTL_SCRIPTS.has(seg.script)) {
+      // Even-level (LTR) run in an RTL script block — Arabic-Indic digits.
+      // fontkit will blindly flip it; pre-reverse so the net order is right.
+      t = [...t].reverse().join('');
+    }
+    return { text: t, script: seg.script };
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Mixed-run measurement & drawing  (Phase 1, task 1.5)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -226,8 +319,11 @@ function drawMixed(page, fontCtx, bold, fallbackFont, text, options) {
     drawTextSafe(page, line, { ...options, font: fallbackFont });
     return;
   }
+  // Lines containing RTL text are laid out in visual run order (Phase 2);
+  // pure-LTR mixed lines keep the logical order, which is already visual.
+  const runs = hasRtl(s) ? visualSegments(s) : segmentRuns(s);
   let x = options.x;
-  for (const run of segmentRuns(s)) {
+  for (const run of runs) {
     const r = resolveRun(run, fontCtx, fallbackFont, bold);
     if (r.text) drawTextSafe(page, r.text, { ...options, x, font: r.font });
     x += safeWidth(r.font, r.text, options.size);
@@ -237,4 +333,5 @@ function drawMixed(page, fontCtx, bold, fallbackFont, text, options) {
 module.exports = {
   safeWidth, drawTextSafe, encodableOrFallback, FALLBACK_CHAR,
   detectScript, segmentRuns, allWinAnsi, mixedWidth, drawMixed,
+  hasRtl, visualSegments,
 };

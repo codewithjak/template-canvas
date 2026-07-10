@@ -27,3 +27,6 @@ claude.md
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code personal settings (not committed)
+.claude/settings.local.json

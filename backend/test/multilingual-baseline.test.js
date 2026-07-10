@@ -131,6 +131,36 @@ test('replacePlaceholders returns original Unicode (sanitization is per-emitter 
   assert.strictEqual(replacePlaceholders('你好 {{name}}', { name: 'مرحبا' }), '你好 مرحبا');
 });
 
+// ── 5. Phase 2: bidi — visual run order with fontkit-compensating hand-off ──
+
+test('visualSegments orders RTL lines visually and keeps digit sequences readable', () => {
+  const { visualSegments, hasRtl } = require('../renderer/textLayout');
+
+  // RTL line with Arabic-Indic digits: visual (left→right) order is
+  // [digits] [colon] [word], digits pre-flipped so fontkit's blind reversal
+  // nets out to the correct ١٢٣٤.
+  assert.deepStrictEqual(visualSegments('المجموع: ١٢٣٤'), [
+    { text: '٤٣٢١', script: 'arabic' },   // pre-flipped; fontkit re-reverses
+    { text: ': ',   script: 'winansi' },
+    { text: 'المجموع', script: 'arabic' }, // logical order; fontkit shapes+reverses
+  ]);
+
+  // LTR base with an embedded Arabic phrase: matches UAX#9 (what the editor
+  // DOM shows): the number attaches to the Arabic phrase RTL-style.
+  assert.deepStrictEqual(
+    visualSegments('Order رقم 42').map(s => s.text),
+    ['Order 42', ' ', 'رقم']
+  );
+
+  // Pure LTR line: single winansi segment, untouched.
+  assert.deepStrictEqual(visualSegments('Invoice #10023'), [
+    { text: 'Invoice #10023', script: 'winansi' },
+  ]);
+
+  assert.strictEqual(hasRtl('Invoice €99'), false);
+  assert.strictEqual(hasRtl('فاتورة'), true);
+});
+
 test('segmentRuns: pure-WinAnsi text is exactly one winansi run; mixed text splits per script', () => {
   const { segmentRuns, detectScript } = require('../renderer/textLayout');
   assert.deepStrictEqual(segmentRuns('Invoice #1 — €99'), [{ text: 'Invoice #1 — €99', script: 'winansi' }]);

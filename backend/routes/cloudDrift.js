@@ -118,8 +118,10 @@ router.get('/v1/cloud/drift/:connectionId', async (req, res) => {
 
 async function runDriftAsync(sb, teamId, id, connection, hcl, cfg, stateKey) {
   try {
-    const plan = await runner.runDrift({ connection, hcl, ...cfg, stateKey });
-    await history.updateRun(sb, teamId, id, { status: 'planned', plan });
+    const onStarted = (h) => history.setBuildHandle(sb, teamId, id, h);
+    const r = await runner.runDrift({ connection, hcl, ...cfg, stateKey, onStarted });
+    if (r.pending) return; // outlived the inline poll; the reconciler resolves it
+    await history.updateRun(sb, teamId, id, { status: 'planned', plan: r.plan });
   } catch (e) {
     await history.updateRun(sb, teamId, id, { status: 'error', error: e.message });
   }

@@ -24,7 +24,7 @@
 
 const { assumeConnectRole } = require('./sts');
 const { presignUrl } = require('../storage/s3SigV4');
-const { codebuild, httpsRequest } = require('./runner');
+const { codebuild, resolveBuild } = require('./runner');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const credFields = (c) => ({ accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey, sessionToken: c.sessionToken });
@@ -231,15 +231,18 @@ async function presignSourceUpload({ connection, bucket }) {
 /**
  * Deploy the staged source in the customer's account: container image roll,
  * Lambda code update, or static sync + invalidation depending on the target kind.
- * @returns {{ buildId, result }} the parsed result the buildspec uploaded.
+ * Same durable-handle + honest-poll shape as the terraform runner
+ * (CLOUD_RUN_RECONCILIATION_ARCHITECTURE.md): persist the handle via `onStarted`
+ * right after StartBuild, then inline-poll via the shared `resolveBuild`.
+ * @returns {{ buildId, result } | { buildId, pending: true }} — `pending` when the
+ * build outlived the inline poll (the run stays non-terminal for the reconciler).
  */
-async function runDeploy({ connection, deployProject, stateBucket, sourceKey, targets, imageTag }) {
+async function runDeploy({ connection, deployProject, stateBucket, sourceKey, targets, imageTag, onStarted }) {
   const region = connection.region;
   const { credentials } = await assumeConnectRole({ roleArn: connection.role_arn, externalId: connection.external_id, region });
-  const outKey = `deploy/${connection.id}-${Date.now()}.out`;
+  const resultKey = `deploy/${connection.id}-${Date.now()}.out`;
   const host = `${stateBucket}.s3.${region}.amazonaws.com`;
-  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key: outKey, ...credFields(credentials), expiresIn: 900 });
-  const getUrl = presignUrl({ method: 'GET', host, region, service: 's3', key: outKey, ...credFields(credentials), expiresIn: 900 });
+  const putUrl = presignUrl({ method: 'PUT', host, region, service: 's3', key: resultKey, ...credFields(credentials), expiresIn: 900 });
   // Source download URL minted HERE (short-lived, never persisted) from the stored
   // key — the build consumes it immediately, so a DB row only holds the opaque key.
   const sourceUrl = sourceKey
@@ -253,18 +256,19 @@ async function runDeploy({ connection, deployProject, stateBucket, sourceKey, ta
   }, credentials, region);
   const buildId = started.build && started.build.id;
   if (!buildId) throw new Error('CodeBuild did not return a build id.');
+  const handle = { buildId, region, resultKey };
+  if (onStarted) await onStarted(handle);
 
   for (let i = 0; i < 120; i += 1) {
     await sleep(5000);
-    const got = await codebuild('BatchGetBuilds', { ids: [buildId] }, credentials, region);
-    const b = (got.builds && got.builds[0]) || {};
-    if (b.buildStatus && b.buildStatus !== 'IN_PROGRESS') break;
+    const r = await resolveBuild({ connection, stateBucket, ...handle, credentials });
+    if (r.pending) continue;
+    if (r.missing) throw new Error('Deploy result not available (build may have failed).');
+    let result = {};
+    try { result = JSON.parse(r.body); } catch { /* build may have produced no result */ }
+    return { buildId, result };
   }
-  const res = await httpsRequest('GET', getUrl, {}, null);
-  if (res.status !== 200) throw new Error('Deploy result not available (build may have failed).');
-  let result = {};
-  try { result = JSON.parse(res.body); } catch { /* build may have produced no result */ }
-  return { buildId, result };
+  return { buildId, pending: true };
 }
 
 module.exports = {

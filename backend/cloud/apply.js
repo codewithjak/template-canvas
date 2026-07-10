@@ -21,10 +21,12 @@ function applyBuildspec() {
 }
 
 /**
- * @returns {Promise<{ outputs: object }>}  terraform outputs (endpoints, ARNs…)
+ * @returns {Promise<{ outputs: object } | { pending: true }>}  terraform outputs
+ * (endpoints, ARNs…), or `pending` when the apply outlived the inline poll — the run
+ * stays non-terminal for the reconciler, never falsely errored.
  */
-async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject, stateKey }) {
-  const { body } = await runBuild({
+async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject, stateKey, onStarted }) {
+  const { body, pending } = await runBuild({
     connection,
     hcl,
     buildspec: applyBuildspec(),
@@ -32,7 +34,9 @@ async function runApply({ connection, hcl, stateBucket, lockTable, runnerProject
     lockTable,
     runnerProject,
     stateKey,
+    onStarted,
   });
+  if (pending) return { pending: true };
   let outputs = {};
   try { outputs = JSON.parse(body); } catch { /* output may be empty on no-op */ }
   return { outputs };

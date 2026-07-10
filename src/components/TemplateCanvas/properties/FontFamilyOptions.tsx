@@ -30,14 +30,62 @@ const FONT_FAMILIES: { value: string; label: string }[] = [
   { value: "'Lucida Sans Unicode', sans-serif", label: 'Lucida Sans Unicode' },
 ];
 
+/**
+ * The families that are bundled in the export engine (backend/fonts/, see
+ * MULTILINGUAL_EXPORT_ARCHITECTURE.md). Non-Latin text always exports with
+ * these regardless of the picked family — offering them in the picker makes
+ * the preview match the export for RTL/CJK content.
+ */
+export const INTERNATIONAL_FONT_FAMILIES: { value: string; label: string }[] = [
+  { value: "'Noto Sans', sans-serif", label: 'Noto Sans' },
+  { value: "'Noto Naskh Arabic', serif", label: 'Noto Naskh Arabic' },
+  { value: "'Noto Sans Hebrew', sans-serif", label: 'Noto Sans Hebrew' },
+  { value: "'Noto Sans SC', 'Noto Sans CJK SC', sans-serif", label: 'Noto Sans CJK (Chinese/Japanese/Korean)' },
+];
+
+/**
+ * Suggest the bundled family matching the content's script, or null when the
+ * content has no RTL/CJK text or the current family already matches.
+ * Ranges mirror the backend's detectScript (renderer/textLayout.js).
+ */
+export function suggestFontFamilyFor(
+  content: string,
+  currentFamily: string,
+): { value: string; label: string } | null {
+  const pick = (label: string) =>
+    INTERNATIONAL_FONT_FAMILIES.find((f) => f.label.startsWith(label)) ?? null;
+
+  const suggestion = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/.test(content)
+    ? pick('Noto Naskh Arabic')
+    : /[֐-׿]/.test(content)
+    ? pick('Noto Sans Hebrew')
+    : /[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]/.test(content)
+    ? pick('Noto Sans CJK')
+    : null;
+
+  if (!suggestion) return null;
+  const primary = suggestion.value.split(',')[0].replace(/'/g, '').trim().toLowerCase();
+  if ((currentFamily || '').toLowerCase().includes(primary)) return null;
+  return suggestion;
+}
+
 function FontFamilyOptions() {
   return (
     <>
-      {FONT_FAMILIES.map((font) => (
-        <option key={font.value} value={font.value}>
-          {font.label}
-        </option>
-      ))}
+      <optgroup label="Standard">
+        {FONT_FAMILIES.map((font) => (
+          <option key={font.value} value={font.value}>
+            {font.label}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="International (used at export)">
+        {INTERNATIONAL_FONT_FAMILIES.map((font) => (
+          <option key={font.value} value={font.value}>
+            {font.label}
+          </option>
+        ))}
+      </optgroup>
     </>
   );
 }

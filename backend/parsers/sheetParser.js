@@ -50,7 +50,73 @@
  */
 
 const XLSX = require('xlsx');
+const { isUtf8 } = require('buffer');
 const { createIR, validateIR } = require('../types/canonicalDocument');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CSV encoding detection  (multilingual export Phase 4, task 4.1)
+//
+// A CSV saved as Windows-1256 (Arabic), GBK (Chinese), etc. used to mojibake
+// because the buffer was handed to XLSX.read as-is. Guardrails:
+//   - UTF-8 (the default and the overwhelmingly common case) is NEVER
+//     touched: a valid-UTF-8 buffer takes the exact pre-existing path.
+//   - Transcoding happens only on a HIGH-CONFIDENCE detection of a legacy
+//     encoding; anything ambiguous also takes the pre-existing path.
+//   - Excel files are untouched (they carry their own encoding internally).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * chardet confidence (0..100) required before we trust a legacy encoding.
+ * Realistic legacy files score 90+ (windows-1256 Arabic ≈ 91, GBK ≈ 97);
+ * tiny/ambiguous samples score ≤ ~35 and fall back to the old path.
+ */
+const ENCODING_MIN_CONFIDENCE = 60;
+
+/**
+ * Decode a CSV buffer to a string, or return null to keep the pre-existing
+ * buffer path (low-confidence detection or any failure).
+ *
+ * Discovered while testing this task: XLSX.read(type:'buffer') decodes a
+ * BOM-less CSV as cp1252, so even plain UTF-8 CSVs mojibaked for non-ASCII
+ * text. Valid UTF-8 is therefore decoded explicitly here too — for pure
+ * ASCII this is byte-for-byte identical to the old path, and for non-ASCII
+ * it only fixes text that was previously garbled.
+ *
+ * @param {Buffer} buffer
+ * @returns {{ text: string, encoding: string, transcoded: boolean } | null}
+ */
+function decodeCsv(buffer) {
+  // UTF-16 BOMs: unambiguous, decode directly.
+  if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
+    return { text: buffer.slice(2).toString('utf16le'), encoding: 'utf-16le', transcoded: true };
+  }
+  if (buffer.length >= 2 && buffer[0] === 0xFE && buffer[1] === 0xFF) {
+    return { text: Buffer.from(buffer.slice(2)).swap16().toString('utf16le'), encoding: 'utf-16be', transcoded: true };
+  }
+  // Valid UTF-8 (including pure ASCII and the UTF-8 BOM): the expected
+  // encoding — decode it, no warning.
+  if (isUtf8(buffer)) {
+    const text = buffer.toString('utf8');
+    return { text: text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text, encoding: 'utf-8', transcoded: false };
+  }
+
+  try {
+    const chardet = require('chardet');
+    const iconv   = require('iconv-lite');
+    const matches = chardet.analyse(buffer);
+    const best    = matches && matches[0];
+    if (!best || best.confidence < ENCODING_MIN_CONFIDENCE) return null;
+    if (!iconv.encodingExists(best.name)) return null;
+    return { text: iconv.decode(buffer, best.name), encoding: best.name, transcoded: true };
+  } catch {
+    return null;   // detection is best-effort; the old path is the fallback
+  }
+}
+
+/** True iff the upload is a CSV by filename (Excel handles its own encoding). */
+function isCsvFileName(fileName) {
+  return /\.csv$/i.test(String(fileName || ''));
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -314,7 +380,14 @@ function processSheet(rows, sheetName, ir, warnings) {
 function parseSheet(buffer, options = {}) {
   const warnings = [];
 
-  const workbook = XLSX.read(buffer, { type: 'buffer', raw: false, cellDates: true });
+  // CSVs are decoded to a string first (see decodeCsv) — UTF-8 explicitly,
+  // legacy encodings via detection; Excel takes the pre-existing path.
+  const decoded = isCsvFileName(options.fileName) ? decodeCsv(buffer) : null;
+  if (decoded && decoded.transcoded) warnings.push(`CSV decoded from ${decoded.encoding} (auto-detected).`);
+
+  const workbook = decoded
+    ? XLSX.read(decoded.text, { type: 'string', raw: false, cellDates: true })
+    : XLSX.read(buffer, { type: 'buffer', raw: false, cellDates: true });
 
   if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
     throw new Error('No sheets found in file.');

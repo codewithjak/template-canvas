@@ -6,7 +6,7 @@
  * controls (width, opacity, rotation, and alignment) that paragraphs don't.
  */
 
-import FontFamilyOptions from './FontFamilyOptions';
+import FontFamilyOptions, { suggestFontFamilyFor } from './FontFamilyOptions';
 import type { ParagraphElementType, TextElementType, UpdateElement } from './elementTypes';
 
 interface Props {
@@ -58,6 +58,22 @@ function TypographyProperties({ element, onUpdate }: Props) {
         >
           <FontFamilyOptions />
         </select>
+        {(() => {
+          // RTL/CJK content exports with the bundled Noto fonts; suggest the
+          // matching family so the preview shows what the export will use.
+          const suggestion = suggestFontFamilyFor(element.content ?? '', element.style.fontFamily);
+          return suggestion ? (
+            <button
+              type="button"
+              className="property-hint property-hint--action"
+              style={{ cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'left', textDecoration: 'underline' }}
+              onClick={() => setStyle({ fontFamily: suggestion.value })}
+              title="This text exports with this font — apply it in the editor too"
+            >
+              Use {suggestion.label} (matches export)
+            </button>
+          ) : null;
+        })()}
       </div>
 
       <div className="property-group">

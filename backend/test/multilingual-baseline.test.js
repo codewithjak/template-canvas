@@ -161,6 +161,39 @@ test('visualSegments orders RTL lines visually and keeps digit sequences readabl
   assert.strictEqual(hasRtl('فاتورة'), true);
 });
 
+// ── 7. Phase 4: CSV encoding detection ───────────────────────────────────────
+
+test('legacy-encoded CSVs are transcoded; UTF-8 CSVs are untouched', () => {
+  const iconv = require('iconv-lite');
+  const { parseSheet } = require('../parsers/sheetParser');
+  const firstCollection = (ir) => ir.collections[Object.keys(ir.collections)[0]];
+
+  // Realistic size: statistical detection needs more than a couple of lines
+  // (a 3-line sample scores ~10 and correctly falls back to the old path).
+  const arWords = ['مرحبا بالعالم', 'فاتورة ضريبية', 'شركة الاختبار للتجارة'];
+  const arRows  = Array.from({ length: 40 }, (_, i) => `${arWords[i % 3]},${i},${arWords[(i + 1) % 3]}`);
+  const arCsv   = `name,qty,desc\n${arRows.join('\n')}\n`;
+
+  // Windows-1256 (Arabic ANSI) — the classic mojibake case.
+  const ir1256 = parseSheet(iconv.encode(arCsv, 'windows-1256'), { fileName: 'orders.csv' });
+  assert.strictEqual(firstCollection(ir1256).rows[0].name, 'مرحبا بالعالم', 'windows-1256 transcoded');
+  assert.ok(ir1256.source.warnings.some((w) => w.includes('auto-detected')), 'transcode is surfaced as a warning');
+
+  // GBK (Chinese ANSI).
+  const gbCsv = `name,qty,desc\n${Array.from({ length: 30 }, () => '高质量测试零件,7,产品描述文字').join('\n')}\n`;
+  const irGbk = parseSheet(iconv.encode(gbCsv, 'gbk'), { fileName: 'parts.csv' });
+  assert.strictEqual(firstCollection(irGbk).rows[0].name, '高质量测试零件', 'GBK transcoded');
+
+  // Valid UTF-8 stays on the pre-existing path — no warning, correct values.
+  const irUtf8 = parseSheet(Buffer.from(arCsv, 'utf8'), { fileName: 'orders.csv' });
+  assert.strictEqual(firstCollection(irUtf8).rows[0].name, 'مرحبا بالعالم', 'UTF-8 reads as before');
+  assert.ok(!(irUtf8.source.warnings || []).some((w) => w.includes('auto-detected')), 'UTF-8 is never transcoded');
+
+  // Tiny ambiguous non-UTF-8 CSVs fall back to the old path (low confidence).
+  const irTiny = parseSheet(iconv.encode('name,qty,desc\nمرحبا,3,x\n', 'windows-1256'), { fileName: 't.csv' });
+  assert.ok(irTiny, 'low-confidence sample still parses via the old path');
+});
+
 // ── 6. Phase 3: direction intent — RTL defaults and mirrored tables ─────────
 
 test('baseDirection: first strong character decides; neutrals are skipped', () => {

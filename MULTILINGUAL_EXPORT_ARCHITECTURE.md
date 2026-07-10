@@ -29,7 +29,7 @@ doc when a phase completes — rule j)*
 | 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | **DONE** (2026-07-10) | TC-0178 | All tasks incl. 1.7; 130/130 tests; Latin byte-identical; CJK+Arabic render real subset-embedded glyphs (CJK/Arabic fixture PDF = 73 KB, well under the 1 MB cap); PNG path verified visually. **Bonus finding:** pdf-lib encodes embedded fonts through fontkit's shaping engine, so Arabic contextual joining already works — Phase 2 shrinks to bidi reordering (mixed-direction runs, Arabic-Indic digit order, RTL wrap order) |
 | 2 | Arabic shaping + bidi (Arabic actually correct) | **DONE** (2026-07-10) | TC-0180 | Engine = bidi-js run reordering only (spike: fontkit already shapes + reverses RTL runs; no reshaper added). `visualSegments` in textLayout.js; Arabic-Indic digit order fixed; mixed AR/EN/digit lines match browser bidi; 131/131 tests; Latin byte-identical; verified visually via rasterized PNG |
 | 3 | RTL layout intent (direction/lang in model + renderer) | **DONE** (2026-07-10) | TC-0181 | `direction`/`lang` on TemplateMeta; `style.direction` on text/paragraph ('ltr'/'rtl'/'auto') and tables ('ltr'/'rtl'); renderer flips default alignment for RTL (auto = first strong char of resolved content), mirrors RTL table columns, flips RTL list markers; editor Direction selects + `dir` attribute preview parity; 133/133 tests, `tsc -b` clean, Latin byte-identical |
-| 4 | Editor & UX polish (font picker, CSV encoding) | NOT STARTED | | |
+| 4 | Editor & UX polish (font picker, CSV encoding) | **DONE** (2026-07-10) | TC-0182 | CSV: chardet+iconv-lite, CSV-only, high-confidence gate; **found + fixed: BOM-less UTF-8 CSVs also mojibaked** (xlsx defaults to cp1252). Picker: International optgroup (bundled Noto families) + one-click RTL/CJK suggestion. 134/134 tests, tsc clean, Latin goldens unchanged. **ALL PHASES COMPLETE** |
 
 ---
 
@@ -56,7 +56,7 @@ perfect, so the export gap is invisible until the user downloads.
 |---|---|---|
 | Excel `.xlsx` | ✅ | UTF-8 internally; values pass through clean |
 | API / JSON | ✅ | JSON is UTF-8 by definition |
-| Raw CSV | ⚠️ | `sheetParser.js:317` reads the buffer via `XLSX.read` with **no encoding detection**. A CSV saved as Windows-1256 (Arabic) or GBK (Chinese) mojibakes |
+| Raw CSV | ⚠️ | `sheetParser.js` read the buffer via `XLSX.read` with **no encoding detection**. A CSV saved as Windows-1256 (Arabic) or GBK (Chinese) mojibaked. **Worse than first recorded (found in Phase 4): BOM-less UTF-8 CSVs mojibaked too** — xlsx decodes buffers as cp1252, so only pure-ASCII CSVs were actually safe. Fixed by task 4.1 |
 
 ### Stage 3 — Export: the blocker (all failure modes, with line refs)
 
@@ -346,6 +346,25 @@ and font auto-suggestion.
 |---|---|---|---|
 | 4.1 | CSV encoding hardening: detect/transcode non-UTF-8 CSV (`chardet` + `iconv-lite`) in the CSV branch only; **default stays UTF-8, transcode only on high-confidence detection**, never downgrade a valid UTF-8 read | `backend/parsers/sheetParser.js:317` area | fixes the Stage 2 gap |
 | 4.2 | `FontFamilyOptions.tsx`: add language-appropriate families mapped to the embedded backend fonts; auto-suggest when RTL/CJK text detected | editor properties | UI only |
+
+*Phase 4 result (2026-07-10):* accepted.
+- **4.1** `decodeCsv()` in `sheetParser.js`: UTF-16 BOMs decoded directly;
+  valid UTF-8 decoded explicitly (no warning); legacy encodings transcoded
+  only when chardet confidence ≥ 60 (realistic windows-1256/GBK files score
+  90+; tiny/ambiguous samples fall back to the exact old path), surfaced as
+  an `ir.source.warnings` entry. Applies to `.csv` uploads only; Excel is
+  untouched. **Discovery:** the old path decoded BOM-less CSV buffers as
+  cp1252, so plain UTF-8 CSVs with non-ASCII text were ALSO garbled — §1's
+  Stage 2 table was wrong; only pure-ASCII CSVs were safe. Explicit UTF-8
+  decoding fixes that class too (pure-ASCII output is identical).
+- **4.2** Font picker gains an "International (used at export)" optgroup
+  (Noto Sans, Noto Naskh Arabic, Noto Sans Hebrew, Noto Sans CJK SC) and
+  `suggestFontFamilyFor()` shows a one-click "Use … (matches export)" action
+  under Font Family when the element's content is RTL/CJK and the family
+  doesn't match. Preview-side only by design: non-Latin runs already export
+  with these fonts regardless of family, and Latin-run family fidelity
+  (Times/Courier → real fonts) remains the known F1 limitation, explicitly
+  out of this feature's scope since Phase 0.
 
 ---
 

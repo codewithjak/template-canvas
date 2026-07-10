@@ -330,12 +330,18 @@ next to the drift worker.*
    updates when the sweep finishes it).
 
 **Phase 3 — hardening (optional).**
-6. Cross-instance claim (`FOR UPDATE SKIP LOCKED`) if/when multi-instance.
+6. Cross-instance claim (`FOR UPDATE SKIP LOCKED`) if/when multi-instance. ⏸ *Deferred by
+   design — the reconciler is single-instance like the drift/webhook workers (§9); the
+   status-guarded `terminate` is safe on one instance, so the DB-side claim only becomes
+   necessary when two sweeps can run at once. Not built until multi-instance is real.*
 7. Dead-run detection: a run whose CodeBuild build is gone/expired → terminal `error`
-   with a clear reason, so nothing sweeps forever. *(Partial down-payment already in
-   `resolveRun`: a handle-bearing run whose connection was deleted can never resolve, so
-   it is retired to `error` rather than re-selected every sweep — which would let an
-   unresolvable oldest-row starve the batch.)*
+   with a clear reason, so nothing sweeps forever. ✅ *Implemented: `resolveBuild` returns
+   `{ gone: true }` when CodeBuild no longer knows the build id (`buildsNotFound`); the
+   inline poll treats an in-window `gone` as transient (keeps polling), and the reconciler
+   retires a `gone` handle to `error` only once past `DEAD_TTL` (`isPastDeadTtl`, anchored
+   on `build_started_at`, `> the 30m build timeout`), so an eventual-consistency blip never
+   kills a live run. The earlier down-payment stays: a handle-bearing run whose connection
+   was deleted is retired in `resolveRun` rather than re-selected forever.*
 
 ---
 

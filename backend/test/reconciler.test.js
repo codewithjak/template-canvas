@@ -13,7 +13,9 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 
-const { computeFinalize } = require('../cloud/runReconciler');
+const { computeFinalize, isPastDeadTtl } = require('../cloud/runReconciler');
+
+const DAY = 24 * 60 * 60 * 1000;
 
 test('running + plan → planned (parsed plan)', () => {
   const { patch } = computeFinalize({ kind: 'plan', status: 'running' }, '');
@@ -51,4 +53,20 @@ test('malformed apply output does not throw → empty outputs', () => {
   const { patch } = computeFinalize({ kind: 'plan', status: 'applying' }, 'not json');
   assert.strictEqual(patch.status, 'applied');
   assert.deepStrictEqual(patch.outputs, {});
+});
+
+// Phase 3 (§10.7) dead-run detection: a gone build is only retired once provably dead.
+test('isPastDeadTtl: a build older than the dead TTL is dead', () => {
+  const run = { build_started_at: new Date(Date.now() - DAY).toISOString() };
+  assert.strictEqual(isPastDeadTtl(run), true);
+});
+
+test('isPastDeadTtl: a build that just started is NOT dead (transient not-found)', () => {
+  const run = { build_started_at: new Date().toISOString() };
+  assert.strictEqual(isPastDeadTtl(run), false);
+});
+
+test('isPastDeadTtl: a null/absent build_started_at is never declared dead', () => {
+  assert.strictEqual(isPastDeadTtl({ build_started_at: null }), false);
+  assert.strictEqual(isPastDeadTtl({}), false);
 });

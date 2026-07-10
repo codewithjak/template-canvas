@@ -12,6 +12,9 @@
  * Two facets, because a stuck run may or may not carry a build handle (§7):
  *   resolveSweep — runs WITH a build_id, non-terminal past GRACE: ask CodeBuild and
  *                  finish them (the inline poll gave up, or the server restarted).
+ *                  Includes Phase 3 dead-run detection (§10.7): a build CodeBuild no
+ *                  longer knows about is retired to 'error' once past DEAD_TTL, so a
+ *                  handle whose build expired/was deleted can't re-select forever.
  *   orphanSweep  — runs with NO build_id, stuck past ORPHAN_TTL: a crash landed in
  *                  the create→persist window (§6). Retire to 'error'. NEVER touches
  *                  'staging' — that is a deploy legitimately waiting for the user to
@@ -33,6 +36,11 @@ const GRACE_MS = parseInt(process.env.CLOUD_RECONCILE_GRACE_MS, 10) || 2 * INLIN
 // > the CodeBuild project TimeoutInMinutes (30), so a build that really launched has
 // finished by now — a still-null handle means the crash beat handle-persistence.
 const ORPHAN_TTL_MS = parseInt(process.env.CLOUD_ORPHAN_TTL_MS, 10) || 45 * 60 * 1000; // 45m
+// Dead-run detection (§10.7): a build CodeBuild no longer knows about is only declared
+// dead once it is old enough that any real build has provably finished (> the project
+// TimeoutInMinutes of 30). Until then a not-found is treated as transient (poll again),
+// so an eventual-consistency blip never kills a live run.
+const DEAD_TTL_MS = parseInt(process.env.CLOUD_DEAD_TTL_MS, 10) || 45 * 60 * 1000; // 45m
 const INTERVAL_MS = parseInt(process.env.CLOUD_RECONCILE_INTERVAL_MS, 10) || 60 * 1000; // 1m
 const BATCH = parseInt(process.env.CLOUD_RECONCILE_BATCH, 10) || 25;
 
@@ -70,6 +78,17 @@ async function terminate(sb, run, patch) {
     .select('id')
     .maybeSingle();
   return Boolean(data);
+}
+
+/**
+ * Pure: is a run old enough that a build CodeBuild can't find is provably dead (not
+ * just eventually-consistent)? Anchored on build_started_at (the build ATTEMPT time),
+ * which is set for every run that reached the build phase. A null anchor ⇒ never
+ * declare dead (leave it to the null-handle orphan sweep).
+ */
+function isPastDeadTtl(run, now = Date.now()) {
+  const startedAt = run.build_started_at ? Date.parse(run.build_started_at) : NaN;
+  return Number.isFinite(startedAt) && now - startedAt > DEAD_TTL_MS;
 }
 
 /**
@@ -115,6 +134,15 @@ async function resolveRun(sb, run) {
     region: run.build_region || connection.region,
     resultKey: run.result_key,
   });
+  if (r.gone) {
+    // CodeBuild no longer knows this build id. Past DEAD_TTL any real build has long
+    // finished, so a still-missing record will never resolve → retire it (§10.7),
+    // instead of re-selecting it every sweep forever. Younger than that, treat as a
+    // transient not-found and leave it for a later sweep.
+    return isPastDeadTtl(run)
+      ? terminate(sb, run, { status: 'error', error: 'CodeBuild build no longer exists (expired or deleted); run abandoned (reconciled).' })
+      : false;
+  }
   if (r.pending) return false;
   if (r.failed) {
     return terminate(sb, run, { status: 'error', error: `Build failed: ${r.reason} (reconciled).` });
@@ -133,7 +161,7 @@ async function resolveSweep(sb) {
   const cutoff = new Date(Date.now() - GRACE_MS).toISOString();
   const { data: rows } = await sb
     .from('cloud_runs')
-    .select('id, team_id, kind, status, connection_id, deployment_id, build_id, build_region, result_key')
+    .select('id, team_id, kind, status, connection_id, deployment_id, build_id, build_region, result_key, build_started_at')
     .in('status', NON_TERMINAL)
     .not('build_id', 'is', null)
     .lt('build_started_at', cutoff)
@@ -215,5 +243,5 @@ function startRunReconciler(intervalMs = INTERVAL_MS) {
 }
 
 module.exports = {
-  startRunReconciler, runReconcileSweep, resolveSweep, orphanSweep, resolveRun, computeFinalize,
+  startRunReconciler, runReconcileSweep, resolveSweep, orphanSweep, resolveRun, computeFinalize, isPastDeadTtl,
 };

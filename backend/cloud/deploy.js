@@ -83,8 +83,15 @@ function staticBuildspec() {
     '  build:',
     '    commands:',
     '      - curl -sS "$SOURCE_URL" -o src.tar.gz && mkdir -p src && tar xzf src.tar.gz -C src',
-    '      - cd src && (test -f package.json && npm ci && npm run build || true)',
-    '      - OUT=$(ls -d dist build out public 2>/dev/null | head -1); OUT=${OUT:-.}',
+    '      - cd src',
+    // No `|| true`: a failed build MUST abort, or we would sync a stale/empty dir.
+    '      - if [ -f package.json ]; then npm ci && npm run build; fi',
+    // Prefer the pinned output dir (BUILD_OUTPUT); else detect among real build dirs
+    // (NOT `public` — that is a source dir). Never fall back to "." + --delete, which
+    // would upload source and wipe the bucket; refuse and fail instead.
+    '      - OUT="$BUILD_OUTPUT"',
+    '      - if [ -z "$OUT" ] || [ ! -d "$OUT" ]; then OUT=$(ls -d dist build out 2>/dev/null | head -1); fi',
+    '      - if [ -z "$OUT" ] || [ ! -d "$OUT" ]; then echo "No build output dir found (BUILD_OUTPUT/dist/build/out). Refusing to sync source with --delete."; exit 1; fi',
     '      - aws s3 sync "$OUT" "s3://$BUCKET" --delete',
     '      - cd ..',
     "      - DIST=$(aws cloudfront list-distributions --query \"DistributionList.Items[?contains(to_string(Origins), '$BUCKET')].Id | [0]\" --output text)",
@@ -104,7 +111,9 @@ function specAndEnv(targets, sourceUrl, resultUrl, imageTag) {
     return { spec: lambdaBuildspec(), env: [...base, { name: 'LAMBDA_FN', value: targets.lambdaFunction, type: 'PLAINTEXT' }] };
   }
   if (targets.kind === 'static') {
-    return { spec: staticBuildspec(), env: [...base, { name: 'BUCKET', value: targets.bucket, type: 'PLAINTEXT' }] };
+    const env = [...base, { name: 'BUCKET', value: targets.bucket, type: 'PLAINTEXT' }];
+    if (targets.outputDir) env.push({ name: 'BUILD_OUTPUT', value: targets.outputDir, type: 'PLAINTEXT' });
+    return { spec: staticBuildspec(), env };
   }
   return {
     spec: deployBuildspec(),
@@ -155,7 +164,13 @@ function deployTargets(blueprint) {
     return { kind, lambdaFunction: String(fn.props.name || 'fn') };
   }
   const bucket = nodes.find((n) => n.type === 'aws_s3_bucket');
-  return { kind, bucket: String(bucket.props.name || 'site') };
+  return {
+    kind,
+    bucket: String(bucket.props.name || 'site'),
+    // Optional pinned build-output dir (set by inferBlueprint); the buildspec falls
+    // back to safe detection when absent.
+    outputDir: bucket.props.outputDir ? String(bucket.props.outputDir) : undefined,
+  };
 }
 
 /**

@@ -48,6 +48,14 @@ test('detects a static React frontend', () => {
   assert.strictEqual(a.framework, 'react');
   assert.strictEqual(a.isStatic, true);
   assert.strictEqual(a.containerized, false);
+  assert.strictEqual(a.outputDir, 'dist'); // vite → dist (pinned for the static deploy)
+});
+
+test('outputDir is pinned from the bundler (vite/react-scripts/next)', () => {
+  const mk = (deps) => scanRepo(repo({ 'package.json': JSON.stringify({ name: 'x', dependencies: deps }) })).outputDir;
+  assert.strictEqual(mk({ 'react-scripts': '^5' }), 'build');
+  assert.strictEqual(mk({ next: '^14' }), 'out');
+  assert.strictEqual(mk({ express: '^4' }), undefined); // unknown → let the deploy detect safely
 });
 
 test('detects a Python app + services from deps', () => {

@@ -70,10 +70,13 @@ function buildServerless(nodes, edges, wantsDynamo) {
   if (wantsDynamo) nodes.push({ id: 'table', type: 'aws_dynamodb_table', props: { name: 'items', hashKey: 'id', billingMode: 'PAY_PER_REQUEST' } });
 }
 
-/** Static site: S3 + CloudFront. */
-function buildStatic(nodes, edges) {
+/** Static site: S3 + CloudFront. Pins the build-output dir when known (from the
+ *  bundler) so the deploy syncs the right folder instead of guessing. */
+function buildStatic(nodes, edges, app) {
+  const siteProps = { name: 'site-assets', acl: 'private' };
+  if (app.outputDir) siteProps.outputDir = app.outputDir;
   nodes.push(
-    { id: 'site', type: 'aws_s3_bucket', props: { name: 'site-assets', acl: 'private' } },
+    { id: 'site', type: 'aws_s3_bucket', props: siteProps },
     { id: 'cdn', type: 'aws_cloudfront_distribution', props: { comment: 'site cdn' } },
   );
   edges.push({ id: 'e-cdn-site', from: 'cdn', to: 'site', type: 'origin' });
@@ -95,7 +98,7 @@ function inferBlueprint(app) {
   const staticSite = app.isStatic && !container;
 
   if (staticSite) {
-    buildStatic(nodes, edges);
+    buildStatic(nodes, edges, app);
   } else if (container) {
     buildContainerWeb(nodes, edges, { engine, wantsDb });
   } else {

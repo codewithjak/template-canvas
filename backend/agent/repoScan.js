@@ -114,7 +114,14 @@ function scanRepo(dir) {
   // Static frontend: a React/Vite build with no server framework or DB.
   const isStatic = framework === 'react' && !services.includes('postgres') && !services.includes('mysql');
 
-  return { name, runtime, framework, containerized, ports, buildCommand, startCommand, services, isStatic };
+  // Build output dir, pinned from the bundler so the static deploy doesn't have to
+  // guess (undefined ⇒ the deploy detects it safely among dist/build/out).
+  const outputDir = deps.has('vite') ? 'dist'
+    : deps.has('react-scripts') ? 'build'
+      : deps.has('next') ? 'out'
+        : undefined;
+
+  return { name, runtime, framework, containerized, ports, buildCommand, startCommand, services, isStatic, outputDir };
 }
 
 module.exports = { scanRepo, detectServices, detectFramework };

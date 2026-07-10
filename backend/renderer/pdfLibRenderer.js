@@ -30,7 +30,7 @@ const http  = require('http');
 
 const { replacePlaceholders, resolveCellValue, resolve } = require('../utils/resolver');
 const { createFontContext } = require('./fontLoader');
-const { safeWidth, drawTextSafe } = require('./textLayout');
+const { safeWidth, mixedWidth, drawMixed } = require('./textLayout');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -131,15 +131,22 @@ async function embedFonts(pdfDoc) {
 // Text wrapping & drawing
 // ─────────────────────────────────────────────────────────────────────────────
 
-function wrapText(text, font, fsPt, maxWPt) {
+/**
+ * @param {(t: string) => number} [widthFn]  width of a string at fsPt on the
+ *   font(s) that will draw it. Defaults to the single-font safeWidth — the
+ *   pre-Phase-1 behavior. Mixed-script callers pass a per-run measurer so
+ *   wrapping is computed on the same fonts that draw (doc §5 caveat 3).
+ */
+function wrapText(text, font, fsPt, maxWPt, widthFn) {
   const lines = [];
+  // safeWidth returns 0 for the null font passed during dry-run measurement
+  const width = widthFn || ((t) => safeWidth(font, t, fsPt));
 
   function breakWord(word) {
     let chunk = '';
     for (const ch of word) {
       const test = chunk + ch;
-      // safeWidth returns 0 for the null font passed during dry-run measurement
-      const w = safeWidth(font, test, fsPt);
+      const w = width(test);
       if (w > maxWPt && chunk) { lines.push(chunk); chunk = ch; }
       else chunk = test;
     }
@@ -151,14 +158,14 @@ function wrapText(text, font, fsPt, maxWPt) {
     const words = para.split(' ');
     let line = '';
     for (const w of words) {
-      const wordW = safeWidth(font, w, fsPt);
+      const wordW = width(w);
       if (wordW > maxWPt) {
         if (line) { lines.push(line); line = ''; }
         breakWord(w);
         continue;
       }
       const test = line ? `${line} ${w}` : w;
-      const testW = safeWidth(font, test, fsPt);
+      const testW = width(test);
       if (testW > maxWPt && line) { lines.push(line); line = w; }
       else line = test;
     }
@@ -167,37 +174,43 @@ function wrapText(text, font, fsPt, maxWPt) {
   return lines.length ? lines : [''];
 }
 
+/**
+ * options.fontCtx — the font context from createFontContext(); when present,
+ * mixed-script text measures and draws per script run on the embedded fonts
+ * (options.bold selects the run weight). Pure-WinAnsi text takes the exact
+ * single-font path either way, so existing Latin output is unchanged.
+ */
 function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align = 'left', options = {}) {
-  const lh    = lhPt || fsPt * 1.3;
-  const lines = wrapText(text, font, fsPt, maxWPt);
-  let   y     = topY;
+  const lh      = lhPt || fsPt * 1.3;
+  const fontCtx = options.fontCtx || null;
+  const bold    = !!options.bold;
+  const width   = (t) => mixedWidth(fontCtx, bold, font, t, fsPt);
+  const lines   = wrapText(text, font, fsPt, maxWPt, width);
+  let   y       = topY;
   const opacity = normalizeOpacity(options.opacity);
   const rotate  = Number(options.rotate || 0);
-  
+
   for (const line of lines) {
     if (!line && lines.length > 1) { y -= lh; continue; }
-    
+
     let drawX = x;
     if (align === 'center') {
-      const lineWidth = safeWidth(font, line, fsPt);
-      drawX = x + (maxWPt - lineWidth) / 2;
+      drawX = x + (maxWPt - width(line)) / 2;
     } else if (align === 'right') {
-      const lineWidth = safeWidth(font, line, fsPt);
-      drawX = x + maxWPt - lineWidth;
+      drawX = x + maxWPt - width(line);
     }
 
     const drawOptions = {
       x: drawX,
       y: y - fsPt * 0.8,
       size: fsPt,
-      font,
       color,
       opacity,
     };
     if (rotate) drawOptions.rotate = degrees(rotate);
-    // drawTextSafe replaces the old silent `catch {}`: unencodable chars are
-    // drawn as visible "?" instead of the whole line vanishing.
-    drawTextSafe(page, line, drawOptions);
+    // drawMixed replaces the old silent `catch {}`: script runs draw on their
+    // embedded fonts, anything else degrades to a visible "?" — never blank.
+    drawMixed(page, fontCtx, bold, font, line, drawOptions);
     y -= lh;
   }
 }
@@ -206,10 +219,10 @@ function drawTextAt(page, text, font, fsPt, x, topY, maxWPt, color, lhPt, align 
 // Cell measurement & drawing
 // ─────────────────────────────────────────────────────────────────────────────
 
-function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt) {
+function measureCellHeight(text, font, fsPt, maxWPt, lhPt, padPt, widthFn) {
   if (!text) return fsPt * 1.3 + padPt * 2;
   const lh    = lhPt || fsPt * 1.3;
-  const lines = wrapText(text, font, fsPt, maxWPt);
+  const lines = wrapText(text, font, fsPt, maxWPt, widthFn);
   return lines.length * lh + padPt * 2;
 }
 
@@ -234,7 +247,9 @@ function measureRowHeight(cells, columns, ts, fonts, isHeader, totalWpx, dim) {
     const lhPt   = fsPt * 1.2;
     const padPt  = padPx * SCALE;
 
-    const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt);
+    // Measure on the same fonts that will draw (mixed-script cells wrap per run)
+    const widthFn = (t) => mixedWidth(fonts, bold, font, t, fsPt);
+    const cellHPt = measureCellHeight(cell.content?.value || '', font, fsPt, maxWPt, lhPt, padPt, widthFn);
     const cellHPx = cellHPt / SCALE;
     if (cellHPx > maxH) maxH = cellHPx;
   }
@@ -280,7 +295,8 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
     const padPt   = 3 * SCALE;
     const textWPt = cWpt - padPt * 2;
     drawTextAt(page, cell.content?.value || '', font, fsPt,
-      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2, align);
+      cxPt + padPt, rowTopYpdf - padPt, textWPt, tColor, fsPt * 1.2, align,
+      { fontCtx: fonts, bold });
 
     curXpx += colWpx;
   }
@@ -622,7 +638,8 @@ function measureElementBlock(el, fonts, dim) {
       const font   = bold ? fonts.bold : fonts.normal;
       const maxWpx = s.width || (CANVAS_W - (el.position?.x || 0));
       const lhPx   = s.lineHeight || (s.fontSize || 12) * 1.3;
-      const lines  = wrapText(text, font, fsPt, maxWpx * SCALE);
+      const widthFn = (t) => mixedWidth(fonts, bold, font, t, fsPt);
+      const lines  = wrapText(text, font, fsPt, maxWpx * SCALE, widthFn);
       return { height: lines.length * lhPx, lineHeight: lhPx };
     }
     case 'image':
@@ -765,7 +782,7 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
         toColor(s.color || '#000000'),
         lhPt,
         s.textAlign || 'left',
-        { opacity: s.opacity, rotate: s.rotation }
+        { opacity: s.opacity, rotate: s.rotation, fontCtx: fonts, bold }
       );
       break;
     }
@@ -808,7 +825,8 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
           ? (el.type === 'radio' ? '(*)' : '[x]')
           : (el.type === 'radio' ? '( )' : '[ ]');
         drawTextAt(page, `${mark} ${item.label}`, fonts.normal, fsPt,
-          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4);
+          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4, 'left',
+          { fontCtx: fonts, bold: false });
         cy -= fsPt * 1.4;
       }
       break;
@@ -1060,6 +1078,12 @@ async function generatePdfBuffer({
   // ── 4. Create PDF and embed fonts ─────────────────────────────────────────
   const pdfDoc = await PDFDocument.create();
   const fonts  = await embedFonts(pdfDoc);
+  // Pre-embed (subset) the Unicode fonts for every script that appears in the
+  // resolved document, so the synchronous measure/draw passes can look fonts
+  // up per run. Serializing the resolved elements covers all text: content,
+  // table cells, chart titles and bound series, zone elements. A document
+  // with no non-WinAnsi text embeds nothing here.
+  await fonts.ensureScriptsFor(JSON.stringify(resolved));
   const pages  = [];
   getPage(pdfDoc, pages, 0, effPdfW, effPdfH);
 

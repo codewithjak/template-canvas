@@ -26,7 +26,7 @@ doc when a phase completes — rule j)*
 | Phase | Name | Status | Branch | Notes |
 |---|---|---|---|---|
 | 0 | Foundations (fontkit, fonts dir, font routing fix, guards) | **DONE** (2026-07-10) | TC-0178 | All 7 tasks; 127/127 backend tests pass; Latin output verified byte-identical vs pre-change frozen-clock baseline; CJK/Arabic now export with visible `?` (were blank/500) |
-| 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | NOT STARTED | | |
+| 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | **DONE** (2026-07-10) | TC-0178 | All tasks incl. 1.7; 130/130 tests; Latin byte-identical; CJK+Arabic render real subset-embedded glyphs (CJK/Arabic fixture PDF = 73 KB, well under the 1 MB cap); PNG path verified visually. **Bonus finding:** pdf-lib encodes embedded fonts through fontkit's shaping engine, so Arabic contextual joining already works — Phase 2 shrinks to bidi reordering (mixed-direction runs, Arabic-Indic digit order, RTL wrap order) |
 | 2 | Arabic shaping + bidi (Arabic actually correct) | NOT STARTED | | |
 | 3 | RTL layout intent (direction/lang in model + renderer) | NOT STARTED | | |
 | 4 | Editor & UX polish (font picker, CSV encoding) | NOT STARTED | | |
@@ -190,10 +190,9 @@ codepoint outside Latin-1**, i.e. only text that is broken today.
 | Script | Bundled font (`backend/fonts/`) | Notes |
 |---|---|---|
 | Arabic / Persian / Urdu | Noto Naskh Arabic (+ Bold) | **priority (Saudi GTM)** |
-| Cyrillic / Greek / extended Latin | Noto Sans (+ Bold/Italic) | small |
+| Cyrillic / Greek / extended Latin | Noto Sans (+ Bold) | small; italic deferred — the PDF renderer has no italic path today |
 | Hebrew | Noto Sans Hebrew | small |
-| Chinese Simplified / Traditional | Noto Sans SC / TC | always subset |
-| Japanese / Korean | Noto Sans JP / KR | always subset |
+| CJK (Chinese / Japanese / Korean) | Noto Sans CJK SC (single OTF) | always subset. **Phase 1 bundles only the SC variant (~16 MB)**: it contains Han, kana, and hangul glyphs, so all CJK text renders. TC/JP/KR variants differ only in regional glyph *preferences* (~65 MB for all four) and are deferred until a customer needs them |
 
 All Noto, SIL OFL licensed; a `backend/fonts/LICENSES.md` records this.
 Fonts embed **subsetted** (only used glyphs) once per `PDFDocument`, loaded
@@ -233,7 +232,7 @@ are unshaped/LTR (explicitly not done until Phase 2).
 
 | # | Task | Where | Definition |
 |---|---|---|---|
-| 1.1 | Add fonts to `backend/fonts/` + `LICENSES.md` (Noto set from §2) | new dir | assets only |
+| 1.1 | Add fonts to `backend/fonts/` + `LICENSES.md` (Noto set from §2 — SC-only CJK, see note there) | new dir | assets only |
 | 1.2 | `detectScript(text): 'latin' \| 'arabic' \| 'hebrew' \| 'cjk' \| 'cyrillic-greek' \| 'other'` — pure function over Unicode ranges | `textLayout.js` | small, table-driven |
 | 1.3 | `FontRegistry`: extend `createFontContext` with `getForRun(script, { bold, italic })` — Latin-1 → StandardFonts exactly as today; other scripts → lazy `fs.readFile` + `embedFont(bytes, { subset: true })`, cached per document | `fontLoader.js` | one map, one cache, no classes beyond what exists |
 | 1.4 | `segmentRuns(text): Array<{ text, script }>` — split mixed-script strings so each run gets its own font (Arabic + Latin + digits in one element is the common case) | `textLayout.js` | pure function |
@@ -243,6 +242,22 @@ are unshaped/LTR (explicitly not done until Phase 2).
 
 *Phase 1 acceptance:* Chinese invoice template exports readable PDF and PNG;
 Latin snapshots unchanged; PDF size for a subsetted CJK doc stays under ~1 MB.
+
+*Phase 1 result (2026-07-10):* accepted. Verified by golden tests + visual
+rasterization: CJK text/tables/charts render real glyphs; a pure-Latin
+document embeds nothing; the CJK/Arabic fixture PDF is 73 KB. Two findings
+recorded for Phase 2:
+1. **Arabic joining already works.** pdf-lib's custom-font embedder encodes
+   text through fontkit's OpenType shaping engine, so Naskh contextual forms
+   (and within-run RTL) come out correct without our own shaper. What is
+   still wrong: **bidi across runs** — mixed Arabic/Latin/digit lines and
+   Arabic-Indic digit sequences render in logical (not visual) order, and
+   RTL paragraph wrap order is unverified. Phase 2's engine spike (task 2.1)
+   should therefore evaluate `bidi-js` reordering alone before adding any
+   reshaper — option A may reduce to just bidi.
+2. Filenames now carry raw Unicode (zip entries are UTF-8); the pre-existing
+   `sanitizeFileName` strips filesystem-illegal chars. ZPL sanitizes at its
+   own resolve layer (not Unicode-capable).
 
 ### Phase 2 — Arabic shaping + bidi: Arabic works (large, the architectural call)
 

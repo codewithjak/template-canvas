@@ -35,11 +35,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 //
 // pdf-lib's StandardFonts encode text with WinAnsi (Windows-1252). Any character
-// outside that set makes font.widthOfTextAtSize() / drawText() throw, which
-// aborts the ENTIRE export (e.g. "WinAnsi cannot encode '⁹' (0x2079)"). Because
-// the same call runs during layout measurement, the fix must happen where the
-// final strings are produced — here, the single chokepoint every resolved string
-// passes through — so both the measure and draw passes only ever see safe text.
+// outside that set makes font.widthOfTextAtSize() / drawText() throw.
+//
+// HISTORY: this used to run unconditionally inside replacePlaceholders /
+// resolveCellValue, so every resolved string was force-fitted to WinAnsi
+// before the renderer saw it — which made embedded Unicode fonts unreachable.
+// Since multilingual Phase 1 (task 1.7), resolution returns the ORIGINAL
+// string and each emitter applies encoding at its own layer:
+//   - PDF: renderer/textLayout.js sanitizes only the runs that draw on
+//     StandardFonts; script runs draw raw on embedded Noto fonts.
+//   - ZPL: renderer/zplRenderer.js sanitizes everything (ZPL output here is
+//     not Unicode-capable).
+//   - Download filenames (index.js / lib/bulkJobs.js): intentionally NOT
+//     WinAnsi-sanitized — lib/fileNames.js sanitizeFileName() already strips
+//     filesystem-illegal chars (including '?'), and zip entries are UTF-8, so
+//     Unicode template names survive as real filenames.
 //
 // Strategy per character:
 //   1. WinAnsi-encodable → keep as-is (the overwhelmingly common case).
@@ -87,9 +97,11 @@ const SYMBOL_MAP = {
 /**
  * Make a string safe for pdf-lib's WinAnsi-encoded standard fonts.
  * @param {string} input
+ * @param {string} [fallback='?']  what an unmappable char becomes; pass ''
+ *   to drop such chars entirely (e.g. filenames, where '?' is illegal)
  * @returns {string}
  */
-function toWinAnsiSafe(input) {
+function toWinAnsiSafe(input, fallback = '?') {
   if (typeof input !== 'string' || input === '') return input;
 
   // Fast path: nothing to do for pure-WinAnsi strings (the common case).
@@ -108,9 +120,9 @@ function toWinAnsiSafe(input) {
     for (const d of decomposed) {
       if (isWinAnsi(d.codePointAt(0))) kept += d;
     }
-    // Nothing survived decomposition (CJK, Arabic, emoji…): substitute a
-    // visible "?" instead of deleting the character outright.
-    out += kept || '?';
+    // Nothing survived decomposition (CJK, Arabic, emoji…): substitute the
+    // fallback (default: a visible "?") instead of deleting the character.
+    out += kept || fallback;
   }
   return out;
 }
@@ -160,15 +172,16 @@ function resolve(obj, path) {
  * @returns {string}
  */
 function replacePlaceholders(text, data, fieldMapping = {}) {
-  if (typeof text !== 'string') return toWinAnsiSafe(String(text ?? ''));
+  if (typeof text !== 'string') return String(text ?? '');
 
-  const out = text.replace(/\{\{([^}]+)\}\}/g, (_, raw) => {
+  // Returns the ORIGINAL Unicode — encoding is each emitter's concern
+  // (see the WinAnsi sanitizer note above; multilingual Phase 1, task 1.7).
+  return text.replace(/\{\{([^}]+)\}\}/g, (_, raw) => {
     const key       = raw.trim();
     const mappedKey = fieldMapping[key] || key;
     const value     = resolve(data, mappedKey);
     return value != null ? String(value) : '';
   });
-  return toWinAnsiSafe(out);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -192,12 +205,12 @@ function resolveCellValue(cell, row, colMap = {}) {
   if (cell.binding?.path) {
     const mappedKey = colMap[cell.binding.path] || cell.binding.path;
     const v = resolve(row, mappedKey);
-    if (v != null) return toWinAnsiSafe(String(v));
-    return toWinAnsiSafe(cell.binding.fallback != null ? String(cell.binding.fallback) : '');
+    if (v != null) return String(v);
+    return cell.binding.fallback != null ? String(cell.binding.fallback) : '';
   }
 
   // Placeholder-based binding (legacy / template-author shorthand)
   return replacePlaceholders(cell.content?.value ?? '', row, colMap);
 }
 
-module.exports = { resolve, replacePlaceholders, resolveCellValue, toWinAnsiSafe };
+module.exports = { resolve, replacePlaceholders, resolveCellValue, toWinAnsiSafe, isWinAnsi };

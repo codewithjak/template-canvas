@@ -23,6 +23,25 @@
 
 const { StandardFonts } = require('pdf-lib');
 const fontkit = require('@pdf-lib/fontkit');
+const fs = require('fs');
+const path = require('path');
+const { detectScript } = require('./textLayout');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Script → bundled font files (backend/fonts/, see LICENSES.md there).
+// Scripts without an entry ('winansi', 'other') stay on StandardFonts.
+// Hebrew and CJK reuse their regular weight for bold (no bold file bundled).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const FONT_DIR = path.join(__dirname, '..', 'fonts');
+
+const SCRIPT_FONT_FILES = {
+  'latin-ext':      { normal: 'NotoSans-Regular.ttf',        bold: 'NotoSans-Bold.ttf' },
+  'cyrillic-greek': { normal: 'NotoSans-Regular.ttf',        bold: 'NotoSans-Bold.ttf' },
+  'hebrew':         { normal: 'NotoSansHebrew-Regular.ttf',  bold: 'NotoSansHebrew-Regular.ttf' },
+  'arabic':         { normal: 'NotoNaskhArabic-Regular.ttf', bold: 'NotoNaskhArabic-Bold.ttf' },
+  'cjk':            { normal: 'NotoSansCJKsc-Regular.otf',   bold: 'NotoSansCJKsc-Regular.otf' },
+};
 
 // Maps canvas fontFamily strings → pdf-lib StandardFonts keys
 const FONT_MAP = {
@@ -118,19 +137,64 @@ function isLatin1(text) {
 /**
  * createFontContext — the renderer's font setup.
  *
- * Registers fontkit (required for embedding custom TTF/OTF; a no-op for
- * StandardFonts) and returns the { normal, bold } pair the render pipeline
- * threads through measurement and drawing. Phase 0 embeds exactly what the
- * renderer's old local embedFonts() did, so output bytes are unchanged.
+ * Registers fontkit and returns the font context the render pipeline threads
+ * through measurement and drawing:
+ *
+ *   normal, bold           — the StandardFonts pair (Helvetica family), same
+ *                            as always: pure-WinAnsi documents never touch
+ *                            anything else and stay byte-identical.
+ *   ensureScriptsFor(text) — async pre-embed pass. Detects which scripts
+ *                            appear in `text` and subset-embeds the matching
+ *                            bundled fonts ONCE per document. A document with
+ *                            no non-WinAnsi text embeds nothing.
+ *   forRun(script, bold)   — sync lookup used during measure/draw (both are
+ *                            synchronous code paths, hence the pre-embed
+ *                            pass). Returns null for scripts that have no
+ *                            bundled font or were not pre-embedded, and the
+ *                            caller degrades exactly as in Phase 0.
  *
  * @param {import('pdf-lib').PDFDocument} pdfDoc
- * @returns {Promise<{ normal: import('pdf-lib').PDFFont, bold: import('pdf-lib').PDFFont }>}
+ * @returns {Promise<{
+ *   normal: import('pdf-lib').PDFFont,
+ *   bold: import('pdf-lib').PDFFont,
+ *   ensureScriptsFor: (text: string) => Promise<void>,
+ *   forRun: (script: string, bold: boolean) => import('pdf-lib').PDFFont | null,
+ * }>}
  */
 async function createFontContext(pdfDoc) {
   pdfDoc.registerFontkit(fontkit);
+
+  const embeddedByFile = new Map();   // font filename → PDFFont
+
+  async function embedFile(fileName) {
+    if (embeddedByFile.has(fileName)) return;
+    const bytes = await fs.promises.readFile(path.join(FONT_DIR, fileName));
+    // subset: true — only glyphs actually used end up in the PDF, which is
+    // what keeps a CJK document from carrying the full 16 MB font.
+    embeddedByFile.set(fileName, await pdfDoc.embedFont(bytes, { subset: true }));
+  }
+
   return {
     normal: await pdfDoc.embedFont(StandardFonts.Helvetica),
     bold:   await pdfDoc.embedFont(StandardFonts.HelveticaBold),
+
+    async ensureScriptsFor(text) {
+      const scripts = new Set();
+      for (const ch of String(text ?? '')) {
+        const s = detectScript(ch.codePointAt(0));
+        if (SCRIPT_FONT_FILES[s]) scripts.add(s);
+      }
+      for (const s of scripts) {
+        await embedFile(SCRIPT_FONT_FILES[s].normal);
+        await embedFile(SCRIPT_FONT_FILES[s].bold);
+      }
+    },
+
+    forRun(script, bold = false) {
+      const files = SCRIPT_FONT_FILES[script];
+      if (!files) return null;
+      return embeddedByFile.get(bold ? files.bold : files.normal) || null;
+    },
   };
 }
 

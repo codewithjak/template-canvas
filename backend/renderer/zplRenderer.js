@@ -15,7 +15,7 @@
 
 'use strict';
 
-const { replacePlaceholders, resolveCellValue } = require('../utils/resolver');
+const { replacePlaceholders, resolveCellValue, toWinAnsiSafe } = require('../utils/resolver');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -38,16 +38,19 @@ function px2dot(px, dpi) {
 // Element resolvers (same as pdfLibRenderer — resolve placeholders)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ZPL output here is not Unicode-capable (no ^CI28/UTF-8 handling), so this
+// emitter sanitizes at resolve time — replacePlaceholders itself returns raw
+// Unicode since multilingual Phase 1 (resolver.js, task 1.7).
 function resolveStatic(el, irFields, fm) {
   const e = JSON.parse(JSON.stringify(el));
   if (e.type === 'text' || e.type === 'paragraph')
-    e.content = replacePlaceholders(e.content || '', irFields, fm);
+    e.content = toWinAnsiSafe(replacePlaceholders(e.content || '', irFields, fm));
   if (e.type === 'image')
-    e.src     = replacePlaceholders(e.src     || '', irFields, fm);
+    e.src     = replacePlaceholders(e.src || '', irFields, fm);   // URL/data URI, not printed text
   if (e.type === 'date')
-    e.value   = replacePlaceholders(e.value   || '', irFields, fm);
+    e.value   = toWinAnsiSafe(replacePlaceholders(e.value || '', irFields, fm));
   if (e.type === 'barcode')
-    e.content = replacePlaceholders(e.content || '', irFields, fm);
+    e.content = toWinAnsiSafe(replacePlaceholders(e.content || '', irFields, fm));
   return e;
 }
 
@@ -57,7 +60,7 @@ function resolveTableEl(tableEl, collRows, irFields, fm, colMap) {
     el.headerRow.cells = el.headerRow.cells.map(cell =>
       cell.mergedInto ? cell : {
         ...cell,
-        content: { type: 'text', value: replacePlaceholders(cell.content?.value ?? '', irFields, fm) },
+        content: { type: 'text', value: toWinAnsiSafe(replacePlaceholders(cell.content?.value ?? '', irFields, fm)) },
         binding: undefined,
       }
     );
@@ -71,7 +74,7 @@ function resolveTableEl(tableEl, collRows, irFields, fm, colMap) {
         cell.mergedInto ? cell : {
           ...cell,
           id:      `${cell.id}__r${ri}t${ti}`,
-          content: { type: 'text', value: resolveCellValue(cell, row, colMap) },
+          content: { type: 'text', value: toWinAnsiSafe(resolveCellValue(cell, row, colMap)) },
           binding: undefined,
         }
       ),

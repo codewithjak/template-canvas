@@ -85,16 +85,24 @@ test('Latin fixtures render byte-identical to the golden hashes', async () => {
 
 // ── 2. Non-Latin exports succeed, visibly degraded ───────────────────────────
 
-test('CJK/Arabic fixture exports without throwing (charts included)', async () => {
+test('CJK/Arabic fixture exports real glyphs on embedded subset fonts (Phase 1)', async () => {
   const buf = await generatePdfBuffer(fixtures.cjkArabicParams());
   assert.ok(buf.length > 500, 'produced a non-trivial PDF');
 
   const content = inflatedStreams(buf);
-  // Text is emitted as hex strings; 0x3F = '?'. The CJK-only center element
-  // ('居中文本测试', 6 chars) must appear as 6 substituted chars, not vanish.
-  assert.ok(content.includes('<3F3F3F3F3F3F>'), 'unsupported chars drawn as visible "?" placeholders');
-  // Latin digits inside mixed-script text survive: '10023' from the first element.
+  // Phase 1: CJK and Arabic draw on subset-embedded Noto fonts instead of
+  // degrading to '?'. The CJK-only center element used to appear as
+  // '<3F3F3F3F3F3F>' (six '?'); it must not any more.
+  assert.match(content, /\/BaseFont \/NotoSansCJKsc-Regular-/, 'CJK subset font embedded');
+  assert.match(content, /\/BaseFont \/NotoNaskhArabic-Regular-/, 'Arabic subset font embedded');
+  assert.ok(!content.includes('<3F3F3F3F3F3F>'), 'CJK text no longer degrades to "?" placeholders');
+  // Latin digits inside mixed-script text still draw on Helvetica: '10023'.
   assert.ok(content.includes('3130303233'), 'Latin digits in mixed-script text are preserved');
+});
+
+test('a pure-Latin document embeds no Unicode fonts (lazy embedding)', async () => {
+  const buf = await generatePdfBuffer(fixtures.latinTextParams());
+  assert.ok(!inflatedStreams(buf).includes('Noto'), 'no Noto font embedded for WinAnsi-only content');
 });
 
 test('CJK/Arabic fixture rasterizes through the PNG image path', async () => {
@@ -113,4 +121,25 @@ test('toWinAnsiSafe substitutes "?" instead of deleting, and keeps WinAnsi/symbo
   assert.strictEqual(toWinAnsiSafe('Café €99 — ñ'), 'Café €99 — ñ', 'WinAnsi text passes through untouched');
   assert.strictEqual(toWinAnsiSafe('a ≤ b → c⁹'), 'a <= b -> c^9', 'symbol map still transliterates');
   assert.strictEqual(toWinAnsiSafe('Ω'), '?', 'decomposition that yields nothing degrades to "?", not ""');
+  assert.strictEqual(toWinAnsiSafe('報告書', ''), '', 'explicit "" fallback drops unmappable chars');
+});
+
+// ── 4. Phase 1: resolution is raw; script segmentation routes fonts ─────────
+
+test('replacePlaceholders returns original Unicode (sanitization is per-emitter now)', () => {
+  const { replacePlaceholders } = require('../utils/resolver');
+  assert.strictEqual(replacePlaceholders('你好 {{name}}', { name: 'مرحبا' }), '你好 مرحبا');
+});
+
+test('segmentRuns: pure-WinAnsi text is exactly one winansi run; mixed text splits per script', () => {
+  const { segmentRuns, detectScript } = require('../renderer/textLayout');
+  assert.deepStrictEqual(segmentRuns('Invoice #1 — €99'), [{ text: 'Invoice #1 — €99', script: 'winansi' }]);
+  assert.deepStrictEqual(
+    segmentRuns('Order رقم 42').map(r => r.script),
+    ['winansi', 'arabic', 'winansi']
+  );
+  assert.strictEqual(detectScript('好'.codePointAt(0)), 'cjk');
+  assert.strictEqual(detectScript('ג'.codePointAt(0)), 'hebrew');
+  assert.strictEqual(detectScript('Д'.codePointAt(0)), 'cyrillic-greek');
+  assert.strictEqual(detectScript('≋'.codePointAt(0)), 'other');
 });

@@ -69,7 +69,8 @@ async function analyze(apiBase, key, dir) {
   if (res.status >= 300) { console.error(`\nFailed (${res.status}): ${res.body}`); process.exit(1); }
   const out = JSON.parse(res.body);
   console.log(`\nCreated cloud template "${out.name}" (${out.templateId}).`);
-  console.log('Open the builder, pick it from the Template bar, and review the proposed infra.');
+  for (const h of out.hints || []) console.log(`\n⚠ ${h}`);
+  console.log('\nOpen the builder, pick it from the Template bar, and review the proposed infra.');
 }
 
 /** Newest file mtime under a dir, skipping node_modules/.git (for --watch). */
@@ -133,25 +134,36 @@ function tarSource(dir) {
   return tarball;
 }
 
+const hasDockerfile = (dir) => fs.existsSync(path.join(dir, 'Dockerfile'));
+
+// A container build (cloud runner OR local docker build) needs a Dockerfile. Fail
+// fast with a clear next step instead of a cryptic `docker build` error later.
+const NO_DOCKERFILE_MSG =
+  'No Dockerfile found for this container app.\n'
+  + 'Add a Dockerfile, or deploy a pre-built image with: mapdoc deploy --mode push --image <ref>';
+
 /** Path 2 (default): upload source; the in-account runner builds + deploys it. */
 async function deploySource(apiBase, key, dir, deploymentId) {
   console.log('Packaging source (secrets + ignored files excluded)…');
   const tarball = tarSource(dir);
   try {
-    await deploySourceUpload(apiBase, key, deploymentId, tarball);
+    await deploySourceUpload(apiBase, key, dir, deploymentId, tarball);
   } finally {
     // Never leave source sitting in /tmp (matters especially under --watch).
     fs.rmSync(tarball, { force: true });
   }
 }
 
-async function deploySourceUpload(apiBase, key, deploymentId, tarball) {
+async function deploySourceUpload(apiBase, key, dir, deploymentId, tarball) {
   // Throw (don't process.exit) so the caller's finally cleans up the tarball and
   // --watch survives transient errors; main().catch prints + exits 1.
   const prep = await post(apiBase, '/v1/cloud/deploy', key, { deploymentId });
   if (prep.status >= 300) throw new Error(`Prepare failed (${prep.status}): ${prep.body}`);
   const p = JSON.parse(prep.body);
   if (p.simulated) { console.log(`\nDeploy simulated (no cloud configured). Target: ${JSON.stringify(p.targets)}.`); return; }
+
+  // Only container deploys build an image; serverless/static source deploys don't.
+  if (p.targets.kind === 'container' && !hasDockerfile(dir)) throw new Error(NO_DOCKERFILE_MSG);
 
   console.log('Uploading source to your account…');
   const up = await putFile(p.uploadUrl, tarball);
@@ -170,6 +182,8 @@ async function deploySourceUpload(apiBase, key, deploymentId, tarball) {
 /** Path 1: build/push the image locally with a short-lived scoped credential.
  *  `imageRef` set ⇒ push that existing image instead of building (BYO image). */
 async function deployImage(apiBase, key, dir, deploymentId, imageRef) {
+  // Building locally needs a Dockerfile; pushing a pre-built image does not.
+  if (!imageRef && !hasDockerfile(dir)) throw new Error(NO_DOCKERFILE_MSG);
   const cr = await post(apiBase, `/v1/cloud/deploy/${deploymentId}/credentials`, key, {});
   if (cr.status >= 300) throw new Error(`Could not get deploy credentials (${cr.status}): ${cr.body}`);
   const { credentials, registry, region, targets } = JSON.parse(cr.body);

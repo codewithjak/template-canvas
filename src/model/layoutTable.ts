@@ -82,6 +82,8 @@ export interface LayoutTableElement {
     borderColor?: string;
     borderWidth?: number;
     showBorders?: boolean;
+    /** 'rtl' mirrors the column order (export + preview). Absent = 'ltr'. */
+    direction?: 'ltr' | 'rtl';
   };
 }
 

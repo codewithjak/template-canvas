@@ -161,6 +161,37 @@ test('visualSegments orders RTL lines visually and keeps digit sequences readabl
   assert.strictEqual(hasRtl('فاتورة'), true);
 });
 
+// ── 6. Phase 3: direction intent — RTL defaults and mirrored tables ─────────
+
+test('baseDirection: first strong character decides; neutrals are skipped', () => {
+  const { baseDirection } = require('../renderer/textLayout');
+  assert.strictEqual(baseDirection('مرحبا'), 'rtl');
+  assert.strictEqual(baseDirection('123 مرحبا'), 'rtl', 'leading digits are neutral');
+  assert.strictEqual(baseDirection('Hello مرحبا'), 'ltr');
+  assert.strictEqual(baseDirection('12345'), 'ltr', 'no strong char → ltr');
+  assert.strictEqual(baseDirection(''), 'ltr');
+});
+
+test('auto direction right-aligns Arabic text; rtl table mirrors column order', async () => {
+  const buf = await generatePdfBuffer(fixtures.rtlLayoutParams());
+  const content = inflatedStreams(buf);
+
+  // The Arabic element sits at x=40px (≈29.99pt) with width 300px (≈224.9pt)
+  // and no explicit textAlign. Right-aligned means its text matrix x is well
+  // to the right of the element's left edge.
+  const tm = content.match(/\/NotoNaskhArabic[^\n]*Tf\n[^\n]*\n1 0 0 1 ([\d.]+) /);
+  assert.ok(tm, 'Arabic run drawn with the Naskh font');
+  assert.ok(Number(tm[1]) > 30 + 50, `auto-direction Arabic is right-aligned (Tm x = ${tm[1]})`);
+
+  // RTL table: the LAST logical column ('Total') must be drawn before the
+  // FIRST one ('Item') — hex-encoded Helvetica text in stream order.
+  const hex = (t) => [...t].map((c) => c.charCodeAt(0).toString(16).padStart(2, '0')).join('').toUpperCase();
+  const iTotal = content.indexOf(hex('Total'));
+  const iItem  = content.indexOf(hex('Item'));
+  assert.ok(iTotal !== -1 && iItem !== -1, 'both header cells drawn');
+  assert.ok(iTotal < iItem, 'rtl table draws mirrored column order');
+});
+
 test('segmentRuns: pure-WinAnsi text is exactly one winansi run; mixed text splits per script', () => {
   const { segmentRuns, detectScript } = require('../renderer/textLayout');
   assert.deepStrictEqual(segmentRuns('Invoice #1 — €99'), [{ text: 'Invoice #1 — €99', script: 'winansi' }]);

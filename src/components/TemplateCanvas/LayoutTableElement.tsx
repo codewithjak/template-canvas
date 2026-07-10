@@ -249,6 +249,7 @@ function LayoutTableElement({
       />
       <table
         className={`layout-table ${tableStyle.showBorders === false ? 'borderless' : ''}`}
+        dir={tableStyle.direction === 'rtl' ? 'rtl' : undefined}
         style={{
           fontSize: tableStyle.fontSize,
           fontWeight: tableStyle.fontWeight,

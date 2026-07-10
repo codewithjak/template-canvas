@@ -190,6 +190,26 @@ function hasRtl(text) {
 }
 
 /**
+ * Base direction of a string from its first strong directional character
+ * (UAX#9 P2/P3, the `direction: 'auto'` semantics of the template model).
+ * Neutrals (digits, punctuation, whitespace) are skipped; no strong
+ * character at all → 'ltr' (today's behavior).
+ *
+ * @param {string} text
+ * @returns {'ltr' | 'rtl'}
+ */
+function baseDirection(text) {
+  for (const ch of String(text ?? '')) {
+    const script = detectScript(ch.codePointAt(0));
+    if (FONTKIT_RTL_SCRIPTS.has(script)) return 'rtl';
+    // Strong LTR: any letter — ASCII/Latin-1 letters or a non-RTL script bucket.
+    if (script !== 'winansi' && script !== 'other') return 'ltr';
+    if (/\p{L}/u.test(ch)) return 'ltr';
+  }
+  return 'ltr';
+}
+
+/**
  * Split one LINE into segments in VISUAL (left-to-right draw) order.
  * Each segment's `text` is exactly the string to hand to pdf-lib for its
  * font (see the hand-off rules in the header comment).
@@ -333,5 +353,5 @@ function drawMixed(page, fontCtx, bold, fallbackFont, text, options) {
 module.exports = {
   safeWidth, drawTextSafe, encodableOrFallback, FALLBACK_CHAR,
   detectScript, segmentRuns, allWinAnsi, mixedWidth, drawMixed,
-  hasRtl, visualSegments,
+  hasRtl, visualSegments, baseDirection,
 };

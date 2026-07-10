@@ -64,6 +64,16 @@ export function defaultPageSize(): PageSizeConfig {
 
 // ── Element types ─────────────────────────────────────────────────────────────
 
+/**
+ * Text direction (multilingual export Phase 3).
+ *  - 'auto' (and unset): derived from the first strong directional character
+ *    of the RESOLVED content at export time — Arabic data flips automatically.
+ *  - 'ltr' / 'rtl': explicit override.
+ * Affects the default text alignment (rtl → right) — an explicit `textAlign`
+ * always wins.
+ */
+export type TextDirection = 'ltr' | 'rtl' | 'auto';
+
 export interface TextElementType {
   id: string; type: 'text'; content: string; role?: 'watermark';
   position: { x: number; y: number };
@@ -76,6 +86,7 @@ export interface TextElementType {
     opacity?: number;
     rotation?: number;
     textAlign?: 'left' | 'center' | 'right';
+    direction?: TextDirection;
   };
   // Page number config — only applies to text elements inside footer zone
   pageNumber?: {
@@ -107,7 +118,7 @@ export interface BoxElementType {
 export interface ParagraphElementType {
   id: string; type: 'paragraph'; content: string;
   position: { x: number; y: number };
-  style: { fontSize: number; fontWeight: string; color: string; fontFamily: string; lineHeight?: number };
+  style: { fontSize: number; fontWeight: string; color: string; fontFamily: string; lineHeight?: number; direction?: TextDirection };
 }
 
 export interface RadioElementType {
@@ -296,6 +307,14 @@ export interface TemplateMeta {
    *   'relational' — driver collection + linked children
    */
   executionMode?: 'single' | 'per-row' | 'relational';
+  /**
+   * Template-wide text direction default and content language (BCP 47, e.g.
+   * 'ar', 'zh-CN'). Optional; absent means 'auto' / unspecified, which keeps
+   * existing templates rendering identically. Element-level style.direction
+   * overrides the template default.
+   */
+  direction?: TextDirection;
+  lang?: string;
 }
 
 export interface TemplateDocument {

@@ -28,7 +28,7 @@ doc when a phase completes — rule j)*
 | 0 | Foundations (fontkit, fonts dir, font routing fix, guards) | **DONE** (2026-07-10) | TC-0178 | All 7 tasks; 127/127 backend tests pass; Latin output verified byte-identical vs pre-change frozen-clock baseline; CJK/Arabic now export with visible `?` (were blank/500) |
 | 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | **DONE** (2026-07-10) | TC-0178 | All tasks incl. 1.7; 130/130 tests; Latin byte-identical; CJK+Arabic render real subset-embedded glyphs (CJK/Arabic fixture PDF = 73 KB, well under the 1 MB cap); PNG path verified visually. **Bonus finding:** pdf-lib encodes embedded fonts through fontkit's shaping engine, so Arabic contextual joining already works — Phase 2 shrinks to bidi reordering (mixed-direction runs, Arabic-Indic digit order, RTL wrap order) |
 | 2 | Arabic shaping + bidi (Arabic actually correct) | **DONE** (2026-07-10) | TC-0180 | Engine = bidi-js run reordering only (spike: fontkit already shapes + reverses RTL runs; no reshaper added). `visualSegments` in textLayout.js; Arabic-Indic digit order fixed; mixed AR/EN/digit lines match browser bidi; 131/131 tests; Latin byte-identical; verified visually via rasterized PNG |
-| 3 | RTL layout intent (direction/lang in model + renderer) | NOT STARTED | | |
+| 3 | RTL layout intent (direction/lang in model + renderer) | **DONE** (2026-07-10) | TC-0181 | `direction`/`lang` on TemplateMeta; `style.direction` on text/paragraph ('ltr'/'rtl'/'auto') and tables ('ltr'/'rtl'); renderer flips default alignment for RTL (auto = first strong char of resolved content), mirrors RTL table columns, flips RTL list markers; editor Direction selects + `dir` attribute preview parity; 133/133 tests, `tsc -b` clean, Latin byte-identical |
 | 4 | Editor & UX polish (font picker, CSV encoding) | NOT STARTED | | |
 
 ---
@@ -319,6 +319,26 @@ text) flips correctly.
 | 3.1 | Add `direction?: 'ltr' \| 'rtl' \| 'auto'` and `lang?: string` to `TemplateMeta` and text-bearing element styles; defaults preserve old behavior (`'auto'` derives from first strong-directional char) — no migration needed | `src/types/canvas.ts` | additive, optional fields only |
 | 3.2 | Honor direction in the renderer: alignment defaults, table column order, list markers flip for RTL | both renderers | export parity with what the DOM preview already does |
 | 3.3 | Direction toggle in the editor properties panel | `PropertiesPanel.tsx` area | small UI |
+
+*Phase 3 result (2026-07-10):* accepted. Model: `TextDirection` type in
+`canvas.ts`; `TemplateMeta.direction/lang` (template default, editor-side);
+`style.direction` on text/paragraph (`'auto'` default) and layout tables
+(`'ltr' | 'rtl'`), mirrored in `properties/elementTypes.ts`. Renderer:
+`baseDirection()` (textLayout.js, first-strong-char scan) +
+`effectiveDirection()` (pdfLibRenderer.js) drive the default `textAlign`
+(explicit always wins) — because 'auto' inspects the RESOLVED content,
+Arabic data flips automatically with no template change; `drawTableRow`
+mirrors cells+columns together for `style.direction: 'rtl'` (pairing, hence
+widths and merges, preserved) with a right default cell alignment;
+radio/checkbox markers flip to the right of RTL labels. Editor: Direction
+selects in TypographyProperties (text/paragraph: Auto/LTR/RTL) and
+LayoutTableTypography (table-level, no cell selected); preview parity via
+`dir` attributes on text/paragraph (`'auto'` default — CSS `start` alignment
+matches the export default) and `<table dir="rtl">` (native column
+mirroring). Verified: 133/133 backend tests, `tsc -b` clean, Latin output
+byte-identical, RTL fixture checked visually (right-aligned auto Arabic,
+mirrored table). Not done here (Phase 4 scope): template-level direction UI
+and font auto-suggestion.
 
 ### Phase 4 — Editor & data polish (small)
 

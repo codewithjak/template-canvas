@@ -70,6 +70,20 @@ function TypographyProperties({ element, onUpdate }: Props) {
         />
       </div>
 
+      <div className="property-group">
+        <label className="property-label">Direction</label>
+        <select
+          value={element.style.direction ?? 'auto'}
+          onChange={(e) => setStyle({ direction: e.target.value as 'ltr' | 'rtl' | 'auto' })}
+          className="property-select"
+          title="Auto follows the text's first strong character (Arabic data flips automatically)"
+        >
+          <option value="auto">Auto (from content)</option>
+          <option value="ltr">Left to right</option>
+          <option value="rtl">Right to left</option>
+        </select>
+      </div>
+
       {element.type === 'text' && (
         <>
           <div className="property-grid-two">

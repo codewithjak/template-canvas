@@ -29,6 +29,7 @@ export interface TextElementType {
     opacity?: number;
     rotation?: number;
     textAlign?: 'left' | 'center' | 'right';
+    direction?: 'ltr' | 'rtl' | 'auto';
   };
   // Set when this text element shows the page number (footer zone only).
   pageNumber?: PageNumberConfig;
@@ -89,6 +90,7 @@ export interface ParagraphElementType {
     color: string;
     fontFamily: string;
     lineHeight?: number;
+    direction?: 'ltr' | 'rtl' | 'auto';
   };
 }
 

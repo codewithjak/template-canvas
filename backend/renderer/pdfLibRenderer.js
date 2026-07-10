@@ -30,7 +30,22 @@ const http  = require('http');
 
 const { replacePlaceholders, resolveCellValue, resolve } = require('../utils/resolver');
 const { createFontContext } = require('./fontLoader');
-const { safeWidth, mixedWidth, drawMixed } = require('./textLayout');
+const { safeWidth, mixedWidth, drawMixed, baseDirection } = require('./textLayout');
+
+/**
+ * Effective text direction of an element (multilingual Phase 3):
+ * explicit style.direction wins; 'auto'/unset derives from the RESOLVED
+ * content's first strong character, so Arabic data flips automatically.
+ *
+ * @param {{ direction?: string } | undefined} style
+ * @param {string} text  resolved content
+ * @returns {'ltr' | 'rtl'}
+ */
+function effectiveDirection(style, text) {
+  const d = style && style.direction;
+  if (d === 'ltr' || d === 'rtl') return d;
+  return baseDirection(text);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
@@ -267,12 +282,19 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
   const borderW    = Math.max(0.5, (ts.borderWidth || 1) * SCALE);
   const totalWpx   = columns.reduce((s, c) => s + (c.width || 0), 0) || CANVAS_W;
 
-  let curXpx = tableXpx;
-  for (let ci = 0; ci < cells.length; ci++) {
-    const cell = cells[ci];
-    if (cell.mergedInto) { curXpx += columns[ci]?.width || 0; continue; }
+  // RTL table (style.direction): mirror the column order, exactly like the
+  // editor preview's <table dir="rtl">. Cells and columns are reversed
+  // TOGETHER so the cell↔column pairing (widths, merges) is preserved.
+  const rtl      = ts.direction === 'rtl';
+  const cellList = rtl ? [...cells].reverse()   : cells;
+  const colList  = rtl ? [...columns].reverse() : columns;
 
-    const colWpx = columns[ci]?.width || (totalWpx / cells.length);
+  let curXpx = tableXpx;
+  for (let ci = 0; ci < cellList.length; ci++) {
+    const cell = cellList[ci];
+    if (cell.mergedInto) { curXpx += colList[ci]?.width || 0; continue; }
+
+    const colWpx = colList[ci]?.width || (totalWpx / cellList.length);
     const cxPt   = curXpx * SCALE;
     const cWpt   = colWpx * SCALE;
     const cs2    = cell.style || {};
@@ -281,7 +303,7 @@ function drawTableRow(page, cells, columns, tableXpx, rowTopYpdf, rowHpx, ts, fo
     const font   = bold ? fonts.bold : fonts.normal;
     const tColor = isHeader ? headerText : toColor(cs2.color || ts.color || '#000000');
     const bgCol  = isHeader ? headerBg  : (cs2.backgroundColor ? toColor(cs2.backgroundColor) : null);
-    const align  = cs2.textAlign || columns[ci]?.alignment || 'left';
+    const align  = cs2.textAlign || colList[ci]?.alignment || (rtl ? 'right' : 'left');
 
     if (bgCol)
       page.drawRectangle({ x: cxPt, y: rowBotYpdf, width: cWpt, height: rowHpt, color: bgCol });
@@ -771,6 +793,9 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
       const font = bold ? fonts.bold : fonts.normal;
       const maxW = (s.width || (CANVAS_W - (el.position?.x || 0))) * SCALE;
       const lhPt = s.lineHeight ? s.lineHeight * SCALE : fsPt * 1.3;
+      // Default alignment follows the element's direction (RTL text
+      // right-aligns, like the dir-aware editor preview); explicit wins.
+      const defaultAlign = effectiveDirection(s, text) === 'rtl' ? 'right' : 'left';
       drawTextAt(
         page,
         text,
@@ -781,7 +806,7 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
         maxW,
         toColor(s.color || '#000000'),
         lhPt,
-        s.textAlign || 'left',
+        s.textAlign || defaultAlign,
         { opacity: s.opacity, rotate: s.rotation, fontCtx: fonts, bold }
       );
       break;
@@ -824,8 +849,11 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
         const mark = item.checked
           ? (el.type === 'radio' ? '(*)' : '[x]')
           : (el.type === 'radio' ? '( )' : '[ ]');
-        drawTextAt(page, `${mark} ${item.label}`, fonts.normal, fsPt,
-          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4, 'left',
+        // RTL labels put the marker on the right, mirroring the LTR layout.
+        const rtlItem = baseDirection(item.label) === 'rtl';
+        const line    = rtlItem ? `${item.label} ${mark}` : `${mark} ${item.label}`;
+        drawTextAt(page, line, fonts.normal, fsPt,
+          xPt, cy, 200 * SCALE, toColor('#000000'), fsPt * 1.4, rtlItem ? 'right' : 'left',
           { fontCtx: fonts, bold: false });
         cy -= fsPt * 1.4;
       }

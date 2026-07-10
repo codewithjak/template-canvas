@@ -1,11 +1,14 @@
 /**
  * fontLoader.js
  *
- * Loads and caches fonts for pdf-lib.
+ * Loads and caches fonts for pdf-lib. This is the renderer's single font
+ * path: pdfLibRenderer obtains its fonts via createFontContext() below
+ * (MULTILINGUAL_EXPORT_ARCHITECTURE.md, Phase 0 task 0.2).
  *
- * pdf-lib requires fonts to be embedded as ArrayBuffer/Uint8Array.
- * We use the standard PDF built-in fonts (Helvetica family) as fallback,
- * and support custom TTF/OTF fonts placed in backend/fonts/.
+ * Phase 0: the context carries exactly the fonts the renderer embedded
+ * before (Helvetica + HelveticaBold), so PDF output is byte-identical.
+ * fontkit is registered on the document so Phase 1 can subset-embed Unicode
+ * fonts from backend/fonts/ without touching the renderer again.
  *
  * Font name mapping mirrors what the canvas uses:
  *   'Arial, sans-serif'       → Helvetica  (built-in, no embed needed)
@@ -19,6 +22,7 @@
  */
 
 const { StandardFonts } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
 
 // Maps canvas fontFamily strings → pdf-lib StandardFonts keys
 const FONT_MAP = {
@@ -91,4 +95,43 @@ class FontCache {
   }
 }
 
-module.exports = { FontCache, resolveStandardFont };
+/**
+ * True iff every codepoint is ≤ 0xFF (ISO Latin-1).
+ *
+ * This is the routing predicate for Phase 1: Latin-1 runs stay on
+ * StandardFonts (byte-identical output), anything else routes to an embedded
+ * Unicode font. Note WinAnsi (CP1252) additionally encodes a few codepoints
+ * above 0xFF (€ ™ smart quotes — see resolver.js isWinAnsi); Phase 1 must
+ * keep those on StandardFonts too, so the run router will use the stricter
+ * WinAnsi predicate, not this one alone.
+ *
+ * @param {string} text
+ * @returns {boolean}
+ */
+function isLatin1(text) {
+  for (const ch of String(text ?? '')) {
+    if (ch.codePointAt(0) > 0xFF) return false;
+  }
+  return true;
+}
+
+/**
+ * createFontContext — the renderer's font setup.
+ *
+ * Registers fontkit (required for embedding custom TTF/OTF; a no-op for
+ * StandardFonts) and returns the { normal, bold } pair the render pipeline
+ * threads through measurement and drawing. Phase 0 embeds exactly what the
+ * renderer's old local embedFonts() did, so output bytes are unchanged.
+ *
+ * @param {import('pdf-lib').PDFDocument} pdfDoc
+ * @returns {Promise<{ normal: import('pdf-lib').PDFFont, bold: import('pdf-lib').PDFFont }>}
+ */
+async function createFontContext(pdfDoc) {
+  pdfDoc.registerFontkit(fontkit);
+  return {
+    normal: await pdfDoc.embedFont(StandardFonts.Helvetica),
+    bold:   await pdfDoc.embedFont(StandardFonts.HelveticaBold),
+  };
+}
+
+module.exports = { FontCache, resolveStandardFont, createFontContext, isLatin1 };

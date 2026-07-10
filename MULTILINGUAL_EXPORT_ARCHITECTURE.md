@@ -1,271 +1,377 @@
-# Multilingual Export Architecture & Roadmap
+# Multilingual Export — Implementation Architecture
 
-Support for building templates and rendering exports in **non‑Latin and
-right‑to‑left languages** — Spanish, Arabic, Chinese, and the scripts that
-follow the same rules (Persian, Urdu, Hebrew, Hindi, Japanese, Korean, …).
+Support for exporting templates in non-Latin and right-to-left languages:
+Arabic first (Saudi/GCC market entry), then CJK and the rest of Unicode.
+The editor and data layer are already multilingual; the export engine is not.
 
-> **TL;DR** — The editor and the data layer are already multilingual. The
-> **export engine is not.** pdf-lib with the 3 built‑in PDF fonts only encodes
-> Latin‑1, so Spanish exports fine, but Chinese/Arabic text is **silently
-> dropped** from the PDF (and can hard‑fail in table/chart paths). Fixing it is
-> a font‑embedding problem first, then a text‑shaping/bidi problem.
+> **TL;DR** — pdf-lib with the built-in PDF fonts only encodes Latin-1
+> (WinAnsi). Chinese/Arabic text is silently dropped from the PDF, and in
+> several code paths (center/right alignment, charts) it hard-fails the whole
+> export. Fixing it is a font-embedding problem first (Phase 1), then a
+> text-shaping/bidi problem for Arabic (Phase 2), then RTL layout intent
+> (Phase 3). Every phase is additive: documents that export correctly today
+> are byte-for-byte unchanged.
+
+**Business driver:** Saudi GTM. ZATCA e-invoicing requires Arabic on tax
+invoices; until Phase 2 lands, Mapdoc cannot produce compliant Saudi tax
+invoices. Arabic is therefore the priority script, ahead of CJK.
 
 ---
 
-## 1. Current State — what works and what doesn't
+## 0. Phase Status Tracker
 
-The pipeline has three stages. They behave very differently for non‑Latin text.
+*(update this table when a phase completes — rule f; check work against this
+doc when a phase completes — rule j)*
+
+| Phase | Name | Status | Branch | Notes |
+|---|---|---|---|---|
+| 0 | Foundations (fontkit, fonts dir, font routing fix, guards) | **DONE** (2026-07-10) | TC-0178 | All 7 tasks; 127/127 backend tests pass; Latin output verified byte-identical vs pre-change frozen-clock baseline; CJK/Arabic now export with visible `?` (were blank/500) |
+| 1 | Embedded Unicode fonts (glyphs for Arabic/CJK/Cyrillic/…) | NOT STARTED | | |
+| 2 | Arabic shaping + bidi (Arabic actually correct) | NOT STARTED | | |
+| 3 | RTL layout intent (direction/lang in model + renderer) | NOT STARTED | | |
+| 4 | Editor & UX polish (font picker, CSV encoding) | NOT STARTED | | |
+
+---
+
+## 1. Current Code Behavior (verified against source, 2026-07-10)
+
+The pipeline has three stages. They behave very differently for non-Latin text.
 
 ```
    ┌──────────────┐      ┌──────────────┐      ┌──────────────────────────┐
-   │  1. EDITOR   │      │ 2. DATA IN   │      │ 3. EXPORT (PDF / PNG)     │
-   │  (browser)   │ ───▶ │ CSV/XLSX/API │ ───▶ │ backend pdf-lib renderer  │
+   │  1. EDITOR   │      │ 2. DATA IN   │      │ 3. EXPORT (PDF/PNG/JPEG) │
+   │  (browser)   │ ───▶ │ CSV/XLSX/API │ ───▶ │ backend pdf-lib renderer │
    └──────────────┘      └──────────────┘      └──────────────────────────┘
         ✅ ALL                ✅ MOSTLY              ❌ LATIN-1 ONLY
-   Unicode + shaping     UTF-8 strings in IR    Helvetica/Times/Courier
-   + RTL via the DOM                            (WinAnsi encoding)
 ```
 
-### Stage 1 — Editor (browser) ✅ works for every language
-Text elements render as normal HTML/DOM (`src/components/TemplateCanvas/
-TextElement.tsx`, `ParagraphElement.tsx`, table cells). The browser supplies
-the fonts, contextual shaping, and bidi reordering for free. Arabic shows
-joined glyphs and runs right‑to‑left **on screen**. This is the trap: the
-preview looks perfect, so the export gap is invisible until you download.
+### Stage 1 — Editor (browser): works for every language
+Text elements render as normal HTML/DOM (`TextElement.tsx`,
+`ParagraphElement.tsx`, table cells). The browser supplies fonts, contextual
+shaping, and bidi reordering for free. **This is the trap:** the preview looks
+perfect, so the export gap is invisible until the user downloads.
 
-### Stage 2 — Data import ✅ mostly works
-| Source | Status | Notes |
+### Stage 2 — Data import: mostly works
+| Source | Status | Evidence |
 |---|---|---|
-| Excel `.xlsx` (`xlsx` lib) | ✅ | Internally UTF‑8; Arabic/Chinese/Spanish values pass through clean |
-| API / JSON | ✅ | JSON is UTF‑8 by definition |
-| Raw CSV | ⚠️ | **No encoding detection.** A CSV saved as Windows‑1256 (Arabic) or GBK (Chinese) instead of UTF‑8 will mojibake |
+| Excel `.xlsx` | ✅ | UTF-8 internally; values pass through clean |
+| API / JSON | ✅ | JSON is UTF-8 by definition |
+| Raw CSV | ⚠️ | `sheetParser.js:317` reads the buffer via `XLSX.read` with **no encoding detection**. A CSV saved as Windows-1256 (Arabic) or GBK (Chinese) mojibakes |
 
-Values flow as JS strings through the `CanonicalDocument` IR. The data layer is
-**not** the bottleneck.
+### Stage 3 — Export: the blocker (all failure modes, with line refs)
 
-### Stage 3 — Export ❌ the blocker
-The backend renderer (`backend/renderer/`) uses **pdf-lib** with only the three
-built‑in PDF font families, resolved in `fontLoader.js`:
+> **Correction (2026-07-10, verified by live probes before Phase 0):** an
+> earlier revision of this doc claimed center/right-aligned non-Latin text
+> hard-fails the export (old "F3"). That is wrong: a WinAnsi sanitizer in the
+> resolver (**F0**, below) strips non-Latin characters from all text/table
+> content *before* the renderer sees it, so text elements never crash — they
+> silently lose their content. Only the chart path, which bypasses the
+> resolver, hard-fails. Probes: a center-aligned CJK text element exports
+> "successfully" (blank); a CJK chart title throws
+> `WinAnsi cannot encode "季"`.
 
-```
-Helvetica  ·  Times Roman  ·  Courier   →  all WinAnsi (Latin-1) encoded
-```
+**F0. The resolver deletes non-WinAnsi characters — the real "silent blank".**
+`backend/utils/resolver.js:83-103 toWinAnsiSafe()` is a chokepoint that every
+resolved string passes through (`replacePlaceholders`, `resolveCellValue`):
+WinAnsi chars pass, a small symbol map transliterates (≤ → `<=`), everything
+else is NFKD-decomposed and any remaining unmappable char **degrades to `""`
+— deleted**. Text, paragraph, date, barcode content, and all table cells are
+sanitized here, which is why Arabic/CJK exports come out blank rather than
+erroring. This was a deliberate crash-guard (its header comment says so);
+Phase 0 keeps it but makes the degradation visible, and Phase 1 must make it
+font-aware (see task 1.7) or embedded fonts will never receive the original
+Unicode.
 
-There is no `@pdf-lib/fontkit`, no embedded TTF/OTF, and no `backend/fonts/`
-directory. Consequences by language:
+**F1. The renderer ignores `fontLoader.js` entirely.**
+`backend/renderer/fontLoader.js` exports `FontCache` / `resolveStandardFont`
+(mapping Arial/Times/Courier), but **nothing imports it**. The real path is
+`pdfLibRenderer.js:121-126 embedFonts()`, which embeds exactly two fonts:
+`StandardFonts.Helvetica` and `StandardFonts.HelveticaBold`. Consequences:
+- Template `fontFamily` (Times, Courier) is silently ignored in every export.
+- Italic is never rendered in the PDF path.
+- `fontLoader.js` is dead code. Per rule g we **fix it and wire it in**
+  (it becomes the font registry); we do not add another layer beside it.
 
-| Language | Export result | Root cause |
-|---|---|---|
-| **Spanish** | ✅ Works | `á é í ñ ¿ ¡` are inside Latin‑1, so the standard fonts encode them |
-| **Chinese (CJK)** | ❌ Text vanishes | Glyphs absent from standard fonts. In the main path (`drawTextAt`) `page.drawText` throws *"WinAnsi cannot encode"* and is swallowed by a `catch {}`, so the run is **silently dropped → blank**. Table/chart drawers in `elementDrawers.js` lack that guard and can hard‑fail the export |
-| **Arabic / RTL** | ❌ Vanishes — and would be wrong even if present | Same encode failure; **plus** pdf-lib has no text‑layout engine, so even with an Arabic font embedded it draws glyphs *isolated* (no contextual joining) and *left‑to‑right* (no RTL/bidi reordering) |
+**F2. Renderer-level silent drop (secondary net, mostly dead).**
+`pdfLibRenderer.js:189-200 drawTextAt()` wraps `page.drawText` in
+`try { … } catch (e) {}`, and the alignment width measurements at `:182,185`
+sit **outside** that guard. Because F0 pre-sanitizes all resolved text, these
+paths normally never see unencodable chars; the only live consumer of the
+catch is unsanitized template-authored strings (e.g. checkbox `el.labels` at
+`:810`), which are silently dropped. The unguarded width calls remain a
+latent crash if any new unsanitized string reaches them — they get hardened
+anyway (cheap, and Phase 1 will route real Unicode through here).
 
-PNG/JPEG export rasterizes this same vector PDF (`imageRenderer.js` →
-`generatePdfBuffer`), so it inherits the identical limitation.
+**F4. Charts bypass the sanitizer and are unguarded — the real hard 500.**
+Chart text never passes through `toWinAnsiSafe`: static `chart.title` /
+`chart.data` labels/values are drawn raw (`elementDrawers.js:440-443` title,
+`:491-514` value/axis labels), and collection-bound series are built with
+plain `String(resolve(...))` in `resolveChartEl`
+(`pdfLibRenderer.js:349-364`). Raw `widthOfTextAtSize` + `page.drawText`
+with no try/catch: a single CJK/Arabic chart title or bound label
+**hard-fails the entire export**. Verified live.
 
-### Two distinct problems, do not conflate them
-1. **Glyph availability** — the font has no glyph for the codepoint. Affects
-   CJK, Arabic, and any non‑Latin‑1 char. Fixed by **embedding Unicode fonts**.
-2. **Text layout (shaping + bidi)** — turning a Unicode string into correctly
-   positioned glyphs: Arabic letter joining, RTL/bidi ordering, Indic
-   reordering. pdf-lib does **none** of this. CJK and Spanish don't need it;
-   Arabic/Persian/Urdu/Hebrew/Hindi do.
+**F5. Wrapping measures unencodable text as width 0 (latent).**
+`pdfLibRenderer.js:132-168 wrapText()` catches measurement errors and leaves
+`w = 0`. Latent for the same reason as F2 (F0 sanitizes first), but it means
+any future unsanitized text wraps wrong. Fixed by `safeWidth`.
 
-This split is why the roadmap is phased: **(1) is a self‑contained win that
-unlocks CJK + full‑Unicode Latin; (2) is a larger architectural decision.**
+**F6. `elementDrawers.js` text/table drawers are dead code.**
+Only `drawBarcode` and `drawChart` are ever imported
+(`pdfLibRenderer.js:720,727`); the module's `drawText`, `drawTable`,
+`drawBox`, `drawLine`, `drawImage` exports (and `coordinateUtils.wrapText`
+consumers) belong to a previous renderer generation, like the dead
+`FontCache`. Phase 0 does **not** invest in routing dead functions; only the
+live chart path is hardened. (Removing the dead exports is out of scope —
+Safety Rule: no deletions without explicit confirmation.)
+
+**Even with fonts embedded, Arabic would still be wrong.** pdf-lib has no
+text-layout engine: it draws glyphs isolated (no contextual joining) and
+left-to-right (no bidi). This is why fonts (Phase 1) and shaping (Phase 2)
+are separate problems and separate phases.
+
+**Downstream emitters:**
+- PNG/JPEG (`imageRenderer.js`) rasterizes the vector PDF from
+  `generatePdfBuffer`, so every fix here benefits images automatically.
+- ZPL (`zplRenderer.js`) is a separate emitter with printer-resident fonts.
+  Arabic/CJK on ZPL is **out of scope** for this feature (see §8).
+
+### Language outcome matrix (today, verified by probes)
+
+| Language | Text / paragraph / table (any alignment) | In a chart | Root cause |
+|---|---|---|---|
+| English/Spanish (WinAnsi incl. € ñ á) | ✅ | ✅ | inside WinAnsi |
+| Chinese/Japanese/Korean | chars **deleted** → blank (F0) | **500 error** (F4) | no glyphs |
+| Arabic/Hebrew/Persian | chars **deleted** → blank (F0) | **500 error** (F4) | no glyphs + no shaping/bidi |
+| Cyrillic/Greek/Hindi | chars **deleted** → blank (F0) | **500 error** (F4) | no glyphs (Hindi also needs shaping) |
+| ≤ ≥ → ⁹ etc. | transliterated (`<=`, `->`, `^9`) | **500 error** (F4) | resolver symbol map; charts bypass it |
 
 ---
 
 ## 2. Target Architecture
 
 ```
-                         ┌───────────────────────────────────────────┐
-   resolved text run ──▶ │  textLayout(text, lang/dir)               │   NEW
-                         │   1. detect script / direction            │
-                         │   2. bidi reorder (bidi-js)               │
-                         │   3. shape (Arabic reshaper / HarfBuzz)   │
-                         └───────────────────────┬───────────────────┘
-                                                 ▼
-                         ┌───────────────────────────────────────────┐
-   FontCache (rewritten) │  pick font by script → subset-embed via    │
-   backend/fonts/*.ttf   │  @pdf-lib/fontkit → measure → drawText     │
-                         └───────────────────────────────────────────┘
+                        ┌─────────────────────────────────────────────┐
+  resolved text run ──▶ │  textLayout(text, opts)          NEW module │
+                        │   1. segment into script runs               │
+                        │   2. (Phase 2) bidi reorder + Arabic shape  │
+                        │   3. pick font per run via FontRegistry     │
+                        │   4. measure on the SAME font that draws    │
+                        └──────────────────────┬──────────────────────┘
+                                               ▼
+                        ┌─────────────────────────────────────────────┐
+  FontRegistry          │  fontLoader.js (FIXED and finally wired in) │
+  backend/fonts/*.ttf   │  Latin-1 → StandardFonts (unchanged today)  │
+                        │  other scripts → subset-embed via fontkit   │
+                        └─────────────────────────────────────────────┘
 ```
 
-### Font registry (extends `fontLoader.js` — does **not** replace StandardFonts)
-> **Guardrail:** the existing Latin path is untouched. The StandardFonts
-> (Helvetica/Times/Courier) remain the default and keep rendering existing
-> English/Spanish documents **byte‑for‑byte identical to today**. A text run is
-> routed to an embedded Unicode font **only when it contains a character outside
-> Latin‑1** (i.e. only the runs that fail today). See §6.
+### Design principles (SOLID, applied without over-engineering)
 
-A script‑aware registry maps each *non‑Latin‑1* text run to a real Unicode font,
-embedded **subsetted** (only used glyphs) so CJK files stay small:
+- **Single responsibility:** `fontLoader.js` owns font selection/embedding.
+  `textLayout.js` owns segmentation/shaping/measurement. Renderers own
+  geometry only.
+- **Open/closed:** the shaper inside `textLayout.js` is one function behind a
+  stable signature, so swapping the Arabic reshaper for HarfBuzz later
+  (Phase 2 option B) changes one module, not the renderers.
+- **Dependency direction:** `pdfLibRenderer.js` and `elementDrawers.js` both
+  depend on `textLayout.js`; `textLayout.js` depends on `fontLoader.js`;
+  nothing depends back. No new abstraction layers beyond these two modules.
+- **Fix, don't layer (rule g):** `embedFonts()` in `pdfLibRenderer.js` and the
+  dead `FontCache` are the buggy existing code. They get fixed and unified,
+  not bypassed with a parallel path.
 
-| Script | Bundled font (suggested) | Approx. subset cost |
+### Font registry (fixes and extends `fontLoader.js`)
+
+**Guardrail:** Latin-1 text keeps using StandardFonts with identical metrics.
+A run is routed to an embedded Unicode font **only when it contains a
+codepoint outside Latin-1**, i.e. only text that is broken today.
+
+| Script | Bundled font (`backend/fonts/`) | Notes |
 |---|---|---|
-| Latin / Spanish / Cyrillic / Greek | Noto Sans (+ Bold/Italic) | small |
-| Arabic / Persian / Urdu | Noto Naskh Arabic | small–medium |
+| Arabic / Persian / Urdu | Noto Naskh Arabic (+ Bold) | **priority (Saudi GTM)** |
+| Cyrillic / Greek / extended Latin | Noto Sans (+ Bold/Italic) | small |
 | Hebrew | Noto Sans Hebrew | small |
-| Chinese (Simplified) | Noto Sans SC | medium (subset!) |
-| Chinese (Traditional) | Noto Sans TC | medium |
-| Japanese / Korean | Noto Sans JP / KR | medium |
+| Chinese Simplified / Traditional | Noto Sans SC / TC | always subset |
+| Japanese / Korean | Noto Sans JP / KR | always subset |
 
-Fonts live in `backend/fonts/` and are embedded once per `PDFDocument` via
-`@pdf-lib/fontkit`, keeping the existing `FontCache` shape (`cache.get(family,
-bold)`). The cache gains a `(script, weight, style)` key **alongside** the
-current StandardFonts entries — embedded fonts are loaded lazily, so a document
-with no non‑Latin‑1 text never embeds anything and pays zero extra cost.
-
-### Direction / language as first‑class template data
-A `direction` (`'ltr' | 'rtl' | 'auto'`) and optional `lang` field at the
-template and/or element level so alignment, text anchoring, table column order,
-and list bullets flip correctly for RTL. `'auto'` derives direction from the
-first strong‑directional character of the resolved text.
+All Noto, SIL OFL licensed; a `backend/fonts/LICENSES.md` records this.
+Fonts embed **subsetted** (only used glyphs) once per `PDFDocument`, loaded
+lazily: a document with no non-Latin-1 text embeds nothing and pays zero cost.
 
 ---
 
-## 3. Roadmap (phased)
+## 3. Phases
 
-### Phase 0 — Foundations (small)
-- Add `@pdf-lib/fontkit` dependency; `registerFontkit(pdfDoc)` in
-  `generatePdfBuffer`.
-- Create `backend/fonts/` with an initial Latin Unicode font (Noto Sans) +
-  bold/italic; add a `LICENSES` note (Noto = SIL OFL).
-- **CSV encoding hardening** (Stage 2 gap): detect/transcode non‑UTF‑8 CSV in
-  `backend/parsers/sheetParser.js` (e.g. `chardet` + `iconv-lite`). **Default to
-  UTF‑8 and only transcode on high‑confidence detection** — never downgrade a
-  valid UTF‑8 read, so existing imports are unaffected.
-- *Outcome:* infra in place; full‑Unicode Latin (accents, Cyrillic, Greek)
-  exports correctly. **No change to existing exports** — StandardFonts still
-  default.
+Every task below is a small, self-explanatory function or a bounded edit.
+Nothing outside this document gets implemented (rule h).
 
-### Phase 1 — Embedded fonts → **Chinese works** (medium)
-- Extend `fontLoader.js` with a script‑aware `FontRegistry` **layered on top of**
-  the existing StandardFonts map: detect each text run's script; **Latin‑1 runs
-  keep using StandardFonts exactly as today**, non‑Latin‑1 runs select the
-  matching embedded font, subset‑embed via fontkit, cache per document.
-- Add Noto Sans SC/TC/JP/KR to `backend/fonts/`.
-- Swap the silent `catch {}` in `drawTextAt` for a **tofu/▯ fallback** (degrade
-  visibly, never crash) and harden the table/chart drawers in
-  `elementDrawers.js` the same way. Behavior only ever improves on the current
-  silent drop — it must not turn a previously‑working export into a throw.
-- *Outcome:* **CJK, Cyrillic, Greek, Hebrew (glyphs only) export.** Arabic
-  glyphs now appear but are still unshaped/LTR — explicitly *not done yet*.
-  Existing Latin/Spanish exports are **unchanged** (same font, same metrics).
+### Phase 0 — Foundations and bug fixes (small)
 
-### Phase 2 — Shaping + bidi → **Arabic works** (large; architectural call)
-Insert a `textLayout()` step before measurement/draw. **Two viable engines:**
+Goal: the renderer stops lying (no silent drops, no 500s) and font handling
+goes through one honest path. **No new languages work yet**; behavior only
+becomes visible and safe.
+
+| # | Task | Where | Definition |
+|---|---|---|---|
+| 0.1 | Add `@pdf-lib/fontkit` dep; call `pdfDoc.registerFontkit(fontkit)` inside font setup | `backend/package.json`, `fontLoader.js` | one-line registration, no behavior change |
+| 0.2 | Fix `fontLoader.js` so the renderer actually uses it: `createFontContext(pdfDoc)` in `fontLoader.js` owns font setup and returns the same `{ normal, bold }` shape as before (Helvetica pair) so output is byte-identical; the renderer's `embedFonts` became a one-line delegate to it (call sites unchanged) | `fontLoader.js`, `pdfLibRenderer.js` | kills the dead code by making it the real path (rule g) |
+| 0.3 | `isLatin1(text: string): boolean` — pure helper, true iff every codepoint ≤ 0xFF | `fontLoader.js` | the routing predicate for everything later |
+| 0.4 | `safeWidth(font, text, size): number` — returns `widthOfTextAtSize`, or `0` for a null font (preserves the dry-run contract), or on encode failure the width of the `?`-substituted string that `drawTextSafe` will actually draw (so wrapping/alignment match the drawn output) — never throws | new `backend/renderer/textLayout.js` | fixes F5 and the latent width crashes |
+| 0.5 | Route the **live** paths through `safeWidth`/`drawTextSafe`: `pdfLibRenderer.js` `wrapText`/`drawTextAt` (132-203) and the chart text in `elementDrawers.js` (title 440-443, labels 491-514). Dead `elementDrawers.drawText`/`drawTable` are left untouched (F6) | both renderers | fixes F4: charts stop 500ing |
+| 0.6 | Make the silent deletion visible, at its source: `toWinAnsiSafe` step 3 (`resolver.js:97-101`) substitutes `?` for each unmappable char instead of `''` (fixes F0 per rule g — the buggy behavior is fixed in place, not layered over). WinAnsi fast path, symbol map, and accent decomposition are untouched, so Latin output is byte-identical. `drawTextSafe(page, text, opts)` in `textLayout.js` is the last-resort net for unsanitized strings: on encode failure it probes per-char and redraws with `?` substituted, never throws. *(Note: real tofu ▯ U+25AF is itself not WinAnsi-encodable, so Phase 0's visible fallback is `?`; Phase 1's embedded fonts can render actual glyphs.)* | `resolver.js`, `textLayout.js` | fixes F0/F2: degrade visibly, never crash, never blank |
+| 0.7 | Golden snapshot baseline: a `node --test` test that renders Latin fixtures and asserts normalized-byte stability, plus CJK/Arabic fixtures asserting export **succeeds** (`?` fallback allowed, no 500) for text, charts, and the PNG image path | `backend/test/multilingual-baseline.test.js` + `backend/test/fixtures/multilingualFixtures.js` | CI tripwire for every later phase; also fix `package.json` `"test"` to `node --test test/` since it is currently a stub |
+
+*Phase 0 acceptance:* all existing tests pass; Latin exports byte-identical
+(verified against a pre-change baseline); CJK/Arabic exports return a PDF
+with visible `?` placeholders instead of blank text, and charts no longer 500.
+
+### Phase 1 — Embedded Unicode fonts: glyphs appear (medium)
+
+Goal: CJK, Cyrillic, Greek, Hebrew export correctly. Arabic glyphs appear but
+are unshaped/LTR (explicitly not done until Phase 2).
+
+| # | Task | Where | Definition |
+|---|---|---|---|
+| 1.1 | Add fonts to `backend/fonts/` + `LICENSES.md` (Noto set from §2) | new dir | assets only |
+| 1.2 | `detectScript(text): 'latin' \| 'arabic' \| 'hebrew' \| 'cjk' \| 'cyrillic-greek' \| 'other'` — pure function over Unicode ranges | `textLayout.js` | small, table-driven |
+| 1.3 | `FontRegistry`: extend `createFontContext` with `getForRun(script, { bold, italic })` — Latin-1 → StandardFonts exactly as today; other scripts → lazy `fs.readFile` + `embedFont(bytes, { subset: true })`, cached per document | `fontLoader.js` | one map, one cache, no classes beyond what exists |
+| 1.4 | `segmentRuns(text): Array<{ text, script }>` — split mixed-script strings so each run gets its own font (Arabic + Latin + digits in one element is the common case) | `textLayout.js` | pure function |
+| 1.5 | Wire per-run font selection into both draw paths; measurement uses the same font object that draws (never measure with one font and draw with another, or wrapping drifts) | both renderers | fixes wrapping/height for non-Latin |
+| 1.6 | Extend golden tests: CJK fixture now asserts real glyphs (text extraction contains the input), Latin fixtures still byte-identical | `backend/test/` | |
+| 1.7 | **Make sanitization font-aware** (discovered in Phase 0): `toWinAnsiSafe` currently runs at *resolve* time (`replacePlaceholders`/`resolveCellValue`), which deletes/substitutes Unicode before the renderer can route it to an embedded font. Move the sanitize step to *layout* time and apply it only to runs that will draw with StandardFonts; embedded-font runs receive the original string. Without this task, Phase 1 fonts are unreachable for all text/table content | `utils/resolver.js`, `textLayout.js` | the resolver keeps exporting `toWinAnsiSafe`; it just stops being called unconditionally |
+
+*Phase 1 acceptance:* Chinese invoice template exports readable PDF and PNG;
+Latin snapshots unchanged; PDF size for a subsetted CJK doc stays under ~1 MB.
+
+### Phase 2 — Arabic shaping + bidi: Arabic works (large, the architectural call)
+
+Goal: Arabic/Persian/Urdu/Hebrew render with correct joining and direction.
+
+**Engine decision (make the spike before committing):**
 
 | Option | How | Pros | Cons |
 |---|---|---|---|
-| **A. JS shaping** | `bidi-js` (reorder) + an Arabic reshaper, feed shaped glyphs to pdf-lib | stays in current pdf-lib renderer; no new runtime | reshapers cover Arabic/Hebrew well, weak for Indic; manual per‑script work |
-| **B. HarfBuzz** | `harfbuzzjs` (WASM) for real shaping; pdf-lib draws positioned glyphs | correct for *all* complex scripts | heavier integration; glyph‑level drawing rework |
-| **C. HTML→PDF** | Render via headless Chromium (Puppeteer/Playwright) | browser already shapes everything perfectly (matches editor 1:1) | new heavy runtime, replaces the renderer, big perf/infra change |
+| **A. JS shaping (recommended)** | `bidi-js` for reordering + an Arabic reshaper; feed shaped codepoints to pdf-lib | stays in current renderer, no new runtime | weak for Indic; per-script work |
+| B. HarfBuzz WASM | `harfbuzzjs` shapes; draw positioned glyphs | correct for all complex scripts | glyph-level drawing rework |
+| C. HTML→PDF (Chromium) | headless browser renders | matches editor 1:1 | replaces the whole renderer; heavy infra |
 
-Recommendation: **A** for an Arabic‑first launch (covers Arabic/Persian/Urdu/
-Hebrew, the highest‑demand RTL set) with the layer designed so the shaper is
-swappable for **B (HarfBuzz)** when Indic/SE‑Asian scripts are needed. Keep
-**C** on the table only if export must become pixel‑identical to the editor.
+Recommendation: **A** for Arabic-first launch, with the shaper isolated behind
+`shapeRun()` so B can replace it later without touching renderers.
+
+| # | Task | Where | Definition |
+|---|---|---|---|
+| 2.1 | Spike (throwaway, in `_spike/`): shape one Arabic sentence via option A and via B, compare output PDFs at 300 DPI | `_spike/` | decision artifact, then update this doc with the verdict |
+| 2.2 | `shapeRun(run: { text, script }): { text } ` — applies reshaper for Arabic-family scripts, identity otherwise | `textLayout.js` | the swappable seam |
+| 2.3 | `reorderBidi(runs, baseDirection): runs` — visual reorder via `bidi-js` | `textLayout.js` | pure function |
+| 2.4 | `layoutLine(text, opts): Array<{ text, font, xOffset }>` — full pipeline: segment → shape → reorder → per-run font + measured offsets; both renderers draw from its output | `textLayout.js` | single entry point, replaces ad-hoc draw loops |
+| 2.5 | RTL-aware wrapping: wrap on the logical string, lay out each wrapped line visually | `textLayout.js` | wrapping stays correct for mixed-direction lines |
+| 2.6 | Golden tests: Arabic fixture asserts joined forms + RTL order in extracted text; Latin snapshots still unchanged | `backend/test/` | |
+
+*Phase 2 acceptance:* an Arabic invoice (Arabic labels, Latin digits, mixed
+lines) exports correctly in PDF and PNG; this is the ZATCA-unblocking milestone.
 
 ### Phase 3 — RTL layout intent (medium)
-- Add `direction`/`lang` to the template + element model
-  (`src/types/canvas.ts`) and surface a direction toggle in the editor.
-- Honor direction in the renderer: alignment defaults, table column order, list
-  markers, and text anchoring flip for RTL.
-- Editor preview already does this via the DOM; goal is **export parity**.
 
-### Phase 4 — Editor & UX polish (small)
-- `src/components/TemplateCanvas/properties/FontFamilyOptions.tsx` is Latin‑only
-  today — add language‑appropriate families mapped to the embedded backend
-  fonts, and auto‑suggest a font when RTL/CJK text is detected.
-- Wire into the shared **i18n layer** (see §5) so font/direction defaults track
-  the chosen template locale.
+Goal: direction is first-class in the template model, and layout (not just
+text) flips correctly.
+
+| # | Task | Where | Definition |
+|---|---|---|---|
+| 3.1 | Add `direction?: 'ltr' \| 'rtl' \| 'auto'` and `lang?: string` to `TemplateMeta` and text-bearing element styles; defaults preserve old behavior (`'auto'` derives from first strong-directional char) — no migration needed | `src/types/canvas.ts` | additive, optional fields only |
+| 3.2 | Honor direction in the renderer: alignment defaults, table column order, list markers flip for RTL | both renderers | export parity with what the DOM preview already does |
+| 3.3 | Direction toggle in the editor properties panel | `PropertiesPanel.tsx` area | small UI |
+
+### Phase 4 — Editor & data polish (small)
+
+| # | Task | Where | Definition |
+|---|---|---|---|
+| 4.1 | CSV encoding hardening: detect/transcode non-UTF-8 CSV (`chardet` + `iconv-lite`) in the CSV branch only; **default stays UTF-8, transcode only on high-confidence detection**, never downgrade a valid UTF-8 read | `backend/parsers/sheetParser.js:317` area | fixes the Stage 2 gap |
+| 4.2 | `FontFamilyOptions.tsx`: add language-appropriate families mapped to the embedded backend fonts; auto-suggest when RTL/CJK text detected | editor properties | UI only |
 
 ---
 
-## 4. File-Level Change Map
+## 4. Backward Compatibility — the central guardrail
+
+**Nothing in this roadmap may change how today's Latin-1 documents export.**
+
+- Latin-1 runs stay on StandardFonts: same font object, same glyph widths,
+  same wrapping, byte-for-byte identical output. The new path is reachable
+  only by text that fails today.
+- Lazy embedding: documents without non-Latin-1 text embed nothing.
+- Fallbacks only ever improve behavior: silent-blank becomes tofu, 500
+  becomes a rendered page. A previously-working export must never start
+  throwing.
+- New model fields (`direction`, `lang`) are optional with old-behavior
+  defaults; existing saved templates load and render identically.
+- Golden snapshot tests (task 0.7) run in every phase; any Latin diff is a
+  regression, full stop.
+
+---
+
+## 5. Future Caveats (rule b)
+
+1. **PDF size:** never embed full CJK fonts; always `subset: true`. A full
+   Noto Sans SC is ~10 MB; subsets are tens of KB.
+2. **Mixed-script runs** are the norm in the target market (Arabic labels +
+   Latin SKUs + digits). Everything is per-run, never per-element.
+3. **Measurement drift:** widths must be measured on the shaped text with the
+   same font that draws it. This is the invariant `layoutLine` exists to hold.
+4. **ZPL is out of scope** (§8). Arabic on label printers needs `^A@` font
+   downloads or bitmap rendering; if Saudi label demand materializes, that is
+   its own architecture doc.
+5. **Indic/Thai/Khmer need real shaping** (option B). Option A ships Arabic
+   without blocking that upgrade, but do not claim Hindi support after
+   Phase 2; glyphs will appear (Phase 1) but reordering will be wrong.
+6. **pdf-to-img rasterization** (PNG/JPEG) inherits everything for free, but
+   verify Phase 1/2 fixtures through the image path too; pdfjs uses its own
+   font stack for rasterizing embedded fonts.
+7. **Bulk memory:** embedded fonts add per-document cost in bulk export
+   (fresh `PDFDocument` per row). Subsetting keeps this small, but the 300-DPI
+   bulk image path on Lightsail should be re-checked after Phase 1.
+8. **`backend/package.json` "test" script is a stub** (`exit 1`) even though
+   `backend/test/` has a real `node --test` suite. Task 0.7 fixes this so the
+   workflow rule "run tests after changes" actually works.
+
+---
+
+## 6. File-Level Change Map
 
 | Area | File | Change |
 |---|---|---|
-| Fonts | `backend/renderer/fontLoader.js` | **Extend** (not replace) StandardFonts map with a script‑aware `FontRegistry` + fontkit subset‑embedding; Latin‑1 runs stay on StandardFonts |
-| Fonts | `backend/fonts/` *(new)* | Bundled Noto fonts + license note |
-| Render | `backend/renderer/pdfLibRenderer.js` | `registerFontkit`; insert `textLayout()`; swap silent text‑drop `catch {}` for tofu fallback |
-| Render | `backend/renderer/elementDrawers.js` | Guard table/chart `drawText`/`widthOfTextAtSize` against missing glyphs |
-| Layout | `backend/renderer/textLayout.js` *(new)* | script detect → bidi → shape |
-| Data | `backend/parsers/sheetParser.js` | CSV encoding detection/transcode |
-| Model | `src/types/canvas.ts` | `direction` / `lang` on template + element |
-| Editor | `.../properties/FontFamilyOptions.tsx` | Multilingual font families + RTL/CJK auto‑suggest |
-| Deps | `backend/package.json` | `@pdf-lib/fontkit`, `bidi-js`, reshaper/`harfbuzzjs`, `chardet`, `iconv-lite` |
+| Fonts | `backend/renderer/fontLoader.js` | **Fix + wire in** (currently dead): `createFontContext`, `isLatin1`, script-keyed lazy subset embedding |
+| Fonts | `backend/fonts/` *(new)* | Noto fonts + `LICENSES.md` |
+| Layout | `backend/renderer/textLayout.js` *(new)* | `safeWidth`, `drawTextSafe`, `detectScript`, `segmentRuns`, `shapeRun`, `reorderBidi`, `layoutLine` |
+| Render | `backend/renderer/pdfLibRenderer.js` | `embedFonts` → `createFontContext`; `wrapText`/`drawTextAt` route through textLayout; guards fixed at 132-203 |
+| Render | `backend/renderer/elementDrawers.js` | chart text (440-443, 491-514) routes through textLayout; dead `drawText`/`drawTable` untouched |
+| Resolver | `backend/utils/resolver.js` | P0: `toWinAnsiSafe` degrades to `?` not `''`; P1 (task 1.7): sanitize moves to layout time, font-aware |
+| Data | `backend/parsers/sheetParser.js` | CSV encoding detection (Phase 4 only) |
+| Model | `src/types/canvas.ts` | optional `direction`/`lang` (Phase 3 only) |
+| Editor | `properties/FontFamilyOptions.tsx`, `PropertiesPanel.tsx` | Phase 3/4 UI |
+| Tests | `backend/test/multilingual-baseline.test.js` *(new)* | golden snapshots + failure-mode fixtures; fix `"test"` script |
+| Deps | `backend/package.json` | `@pdf-lib/fontkit` (P0); reshaper + `bidi-js` (P2); `chardet` + `iconv-lite` (P4) |
 
 ---
 
-## 5. Relationship to the i18n / notifications work
+## 7. Test Plan
 
-This roadmap and the **customized-alert / notifications module** share the same
-foundation: a translation layer (`t(key, vars)`, locale catalogs, `setLocale`).
-- *That module* uses i18n for **UI chrome** (toasts, dialogs, buttons).
-- *This roadmap* uses it for **document content** (font/direction defaults per
-  locale, language‑aware editor affordances).
-
-Build the i18n layer once; both consume it. The notifications module is the
-natural first consumer because it is self‑contained and low‑risk.
-
----
-
-## 6. Backward Compatibility — the central guardrail
-
-**Nothing in this roadmap may change how today's English/Spanish documents
-export.** The whole design is *additive and opt‑in*; the existing Latin path is
-the default and stays exactly as it is.
-
-- **Latin‑1 stays on StandardFonts.** A text run is re‑routed to an embedded
-  Unicode font **only when it contains a codepoint outside Latin‑1** — i.e. only
-  the runs that are broken today. Pure English/Spanish runs never touch the new
-  code, so their font, glyph widths, wrapping, and layout are **byte‑for‑byte
-  unchanged**. (This is what avoids the metrics/reflow regression that a global
-  font swap would cause.)
-- **Lazy embedding = zero cost when unused.** A document with no non‑Latin‑1
-  text embeds no fonts and adds no bytes or render time.
-- **Fallback only ever improves behavior.** The silent `catch {}` becomes a
-  visible tofu/▯ glyph. It must never convert a previously‑rendering export into
-  a throw — degrade, don't crash.
-- **CSV stays UTF‑8 by default.** Encoding detection only transcodes on high
-  confidence; a valid UTF‑8 read is never downgraded.
-- **Feature‑flagged rollout + golden snapshots.** Gate the path behind a flag,
-  and snapshot‑test a corpus of existing templates before/after each phase so any
-  unintended reflow is caught in CI, not in production.
-- **New model fields default to the old behavior.** `direction` defaults to
-  `'ltr'`/`'auto'` and `lang` is optional, so existing saved templates load and
-  render identically without migration.
-
-> Net: the new path is reachable **only** by text that currently fails. If a
-> document exports correctly today, every phase below leaves it untouched.
+- Runner: `node --test test/` (existing suite style, hermetic, no network).
+- Golden Latin corpus (3 templates) asserted byte-identical every phase.
+- Failure-mode fixtures: left/center/right CJK text, CJK chart title, Arabic
+  paragraph, mixed Arabic+Latin+digits line; each asserts the phase-correct
+  outcome (P0: no 500 + tofu; P1: real glyphs; P2: joined + RTL).
+- Image path: one fixture rendered via `rasterizePdfBuffer` per phase.
+- Existing e2e tests (`v1-generate.e2e.test.js`, bulk) must stay green.
 
 ---
 
-## 7. Risks & Notes
-- **File size:** never embed full CJK fonts — always subset, or PDFs balloon to
-  multi‑MB. fontkit subsetting handles this.
-- **Mixed‑script runs:** a single text element can contain Arabic + Latin +
-  digits. `textLayout()` must segment by script and pick a font per run, not per
-  element.
-- **Measurement consistency:** wrap/center/right alignment use
-  `widthOfTextAtSize`; widths must be measured on the **shaped** glyphs of the
-  **same font that draws them**, not the raw string or a different font, or
-  wrapping drifts. (This is also why Latin‑1 must keep measuring on StandardFonts
-  — see §6.)
-- **Image export is free‑riding:** since PNG/JPEG rasterize the PDF, every phase
-  benefits images automatically — no separate work.
-- **Licensing:** Noto fonts are SIL OFL (redistribution OK); record it.
+## 8. Out of Scope (rule h)
 
----
-
-## 8. Suggested sequencing
-1. **Phase 0 + 1** — biggest ratio of value to effort: unlocks Chinese + full
-   Unicode Latin and fixes the silent‑drop bug. Self‑contained, low risk.
-2. **i18n layer + notifications module** — in parallel; independent of the
-   renderer.
-3. **Phase 2 (Arabic shaping)** — the real architectural decision; do the
-   engine spike (Option A vs B) before committing.
-4. **Phase 3 + 4** — RTL layout intent and editor polish once shaping lands.
+- ZPL Arabic/CJK (separate emitter, separate doc if needed).
+- UI chrome translation / i18n layer (separate module; this doc covers
+  document content only).
+- Full Indic/SE-Asian shaping (arrives only if/when the shaper is swapped to
+  HarfBuzz; not promised by Phase 2).
+- Editor font uploads by users (only bundled Noto fonts are in scope).
+- ZATCA e-invoice XML/QR compliance logic (Mapdoc renders documents; tax
+  compliance fields are template content, not engine features).

@@ -309,6 +309,18 @@ CJK output unchanged. New dependency: `bidi-js` (~10 KB, zero deps).
 Known limits (unchanged scope): direction-aware alignment/table order is
 Phase 3; Indic/Thai shaping still requires the HarfBuzz upgrade path.
 
+*Phase 2 addendum (2026-07-10, found during the Arabic-template E2E):* UAX#9
+rule **L4 bracket mirroring** added to `visualSegments` — paired brackets at
+an odd embedding level swap to their mirrored form, so `(شهري)` no longer
+exports with visually reversed parentheses. Golden-tested.
+
+*End-to-end validation (2026-07-10):* three Arabic builtin templates
+(`src/templates/builtins/`: `arabic-tax-invoice`, `zatca-simplified-receipt`
+with a ZATCA phase-1 TLV QR, `arabic-annual-report` with a data-bound Arabic
+chart) render through the full pipeline and are guarded by
+`backend/test/arabic-templates.e2e.test.js` (Naskh embedded, no `?`
+degradation, QR image drawn, PNG rasterization).
+
 ### Phase 3 — RTL layout intent (medium)
 
 Goal: direction is first-class in the template model, and layout (not just

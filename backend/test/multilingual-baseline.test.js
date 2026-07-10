@@ -159,6 +159,15 @@ test('visualSegments orders RTL lines visually and keeps digit sequences readabl
 
   assert.strictEqual(hasRtl('Invoice €99'), false);
   assert.strictEqual(hasRtl('فاتورة'), true);
+
+  // UAX#9 L4: brackets at an RTL embedding level use their mirrored form,
+  // so the drawn (left-to-right) sequence opens with '(' and closes with ')'
+  // around the Arabic — never the swapped ")شهري(".
+  assert.deepStrictEqual(visualSegments('(شهري)'), [
+    { text: '(',    script: 'winansi' },
+    { text: 'شهري', script: 'arabic' },
+    { text: ')',    script: 'winansi' },
+  ]);
 });
 
 // ── 7. Phase 4: CSV encoding detection ───────────────────────────────────────

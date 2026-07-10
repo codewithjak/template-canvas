@@ -1,0 +1,26 @@
+{
+  "fields": {
+    "store_name": "مقهى النخيل",
+    "vat_number": "311111111100003",
+    "cr_number": "1010456789",
+    "branch": "فرع العليا",
+    "receipt_no": "R-000381",
+    "datetime": "2026-07-10 18:45",
+    "subtotal": "50.00",
+    "vat_amount": "7.50",
+    "total": "57.50",
+    "payment_method": "مدى — Mada",
+    "zatca_qr": "ARXZhdmC2YfZiSDYp9mE2YbYrtmK2YQCDzMxMTExMTExMTEwMDAwMwMUMjAyNi0wNy0xMFQxODo0NTowMFoEBTU3LjUwBQQ3LjUw"
+  },
+  "collections": {
+    "items": {
+      "columns": ["item", "qty", "line_total"],
+      "rows": [
+        { "item": "قهوة عربية", "qty": "2", "line_total": "18.00" },
+        { "item": "لاتيه بالفانيليا", "qty": "1", "line_total": "16.00" },
+        { "item": "كرواسون بالجبن", "qty": "2", "line_total": "16.00" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "zatca-receipt-sample", "sheets": [], "warnings": [] }
+}

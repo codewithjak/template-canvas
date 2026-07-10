@@ -1,0 +1,25 @@
+{
+  "fields": {
+    "company_name": "شركة الاختبار للتجارة",
+    "company_tagline": "شركة أعمال سعودية",
+    "summary": "شكّل عام 2026 محطة محورية في مسيرتنا نحو النمو المستدام والتحول الرقمي، حيث حققنا نمواً قياسياً في الإيرادات وتوسعاً في قاعدة عملائنا داخل المملكة.",
+    "year": "2026",
+    "kpi_growth": "+38٪",
+    "kpi_customers": "1,240 عميلاً",
+    "kpi_satisfaction": "94٪",
+    "prepared_by": "كرينة فيلانويفا",
+    "period": "31 يناير 2026"
+  },
+  "collections": {
+    "quarters": {
+      "columns": ["quarter", "revenue"],
+      "rows": [
+        { "quarter": "الربع ١", "revenue": "32" },
+        { "quarter": "الربع ٢", "revenue": "41" },
+        { "quarter": "الربع ٣", "revenue": "38" },
+        { "quarter": "الربع ٤", "revenue": "52" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "arabic-annual-report-sample", "sheets": [], "warnings": [] }
+}

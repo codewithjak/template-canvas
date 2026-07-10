@@ -1,0 +1,34 @@
+{
+  "fields": {
+    "seller_name": "شركة الاختبار للتجارة",
+    "seller_tagline": "حلول برمجية وخدمات رقمية",
+    "seller_email": "hello@test-trading.sa",
+    "seller_phone": "+966 11 234 5678",
+    "seller_address": "طريق الملك فهد، الرياض 12212، المملكة العربية السعودية",
+    "seller_vat": "310122393500003",
+    "customer_name": "مؤسسة النخبة للمقاولات",
+    "customer_address": "شارع التحلية، جدة 23423",
+    "customer_vat": "300987654300003",
+    "invoice_no": "INV-2026-0047",
+    "invoice_date": "10 يوليو 2026",
+    "due_date": "9 أغسطس 2026",
+    "bank_name": "البنك الأهلي السعودي",
+    "iban": "SA44 2000 0001 2345 6789 1234",
+    "subtotal": "1,250.00",
+    "vat_amount": "187.50",
+    "total": "1,437.50",
+    "zatca_qr": "ASjYtNix2YPYqSDYp9mE2KfYrtiq2KjYp9ixINmE2YTYqtis2KfYsdipAg8zMTAxMjIzOTM1MDAwMDMDFDIwMjYtMDctMTBUMTQ6MzA6MDBaBAcxNDM3LjUwBQYxODcuNTA="
+  },
+  "collections": {
+    "items": {
+      "columns": ["description", "unit_price", "qty", "amount"],
+      "rows": [
+        { "description": "تطوير موقع إلكتروني متجاوب", "unit_price": "500.00", "qty": "1", "amount": "500.00" },
+        { "description": "تصميم الهوية البصرية والشعار", "unit_price": "350.00", "qty": "1", "amount": "350.00" },
+        { "description": "اشتراك الاستضافة السحابية (شهري)", "unit_price": "75.00", "qty": "4", "amount": "300.00" },
+        { "description": "دعم فني — Support (ساعة)", "unit_price": "50.00", "qty": "2", "amount": "100.00" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "arabic-tax-invoice-sample", "sheets": [], "warnings": [] }
+}

@@ -281,7 +281,10 @@ orphanSweep(sb):
 
 ## 10. Phasing
 
-**Phase 1 — durable handle + honest inline poll (fixes B, enables A).**
+**Phase 1 — durable handle + honest inline poll (fixes B, enables A).** ✅ *Implemented:
+`supabase/cloud_builder.sql` (handle columns + reconcile index), `runHistory.setBuildHandle`,
+the `startBuild`/`resolveBuild` split in `cloud/runner.js`, honest poll across
+plan/apply/drift/deploy, and the sensitive-output filter (`cloud/apply.js`).*
 1. Schema: `build_id`, `build_region`, `result_key`, `build_started_at` on `cloud_runs`;
    `runHistory` reads/writes them.
 2. Split `runBuild`/`runDeploy` into `startBuild` + `resolveBuild`; **persist the handle
@@ -291,7 +294,10 @@ orphanSweep(sb):
    instead of throwing `error`. **No route behavior change on the happy path.**
    *Update this doc per rule (f) when Phase 1 lands.*
 
-**Phase 2 — the reconciler sweep (fixes A fully, both facets).**
+**Phase 2 — the reconciler sweep (fixes A fully, both facets).** ✅ *Implemented:
+`cloud/runReconciler.js` (`resolveSweep` §7.1 + `orphanSweep` §7.2, idempotent
+status-guarded `terminate`, kind/phase-aware `computeFinalize`), wired in `index.js`
+next to the drift worker.*
 4. `backend/cloud/runReconciler.js`: `resolveSweep` (§7.1, handle) **and** `orphanSweep`
    (§7.2, null-handle backstop) + `startRunReconciler` (mirrors `driftWorker`), wired in
    `index.js`.

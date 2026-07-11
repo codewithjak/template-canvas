@@ -314,6 +314,27 @@ rule **L4 bracket mirroring** added to `visualSegments` — paired brackets at
 an odd embedding level swap to their mirrored form, so `(شهري)` no longer
 exports with visually reversed parentheses. Golden-tested.
 
+*Phase 1/2 addendum (2026-07-11, user-reported "small brackets"):* neutral
+characters (parens, digits, punctuation, Latin tokens) inside Arabic lines
+drew on Helvetica — visibly smaller/raised next to Naskh. Three-part fix:
+1. **`inheritNeutralScripts()`** (textLayout.js): a winansi run whose nearest
+   non-winansi neighbor is an RTL-script run inherits that script's font,
+   gated on `fontCoversText()` (real glyph coverage via the embedded
+   fontkit handle) — matching how browsers/the editor preview assign fonts.
+   Applied identically in `mixedWidth` and `drawMixed` via `lineRuns()`.
+2. **Naskh swapped to the Google-Fonts build** (backend/fonts/, see
+   LICENSES.md): the notofonts per-script build has NO ASCII glyphs at all,
+   so inheritance had nothing to inherit. The GF build bundles harmonized
+   Basic Latin.
+3. **fontkit adapter** (fontLoader.js): pdf-lib's bundled @pdf-lib/fontkit
+   (2018 fork) silently corrupts newer font builds — GF static instances and
+   Amiri both embedded with empty Arabic outlines (confirmed with BOTH
+   pdfjs and poppler, so not a rasterizer quirk). The renderer now registers
+   modern fontkit 2.x through a small adapter that restores the
+   `subset.encodeStream()` API pdf-lib expects. All previously working fonts
+   re-verified through the golden suite.
+Latin output stays byte-identical (StandardFonts don't touch fontkit).
+
 *End-to-end validation (2026-07-10):* three Arabic builtin templates
 (`src/templates/builtins/`: `arabic-tax-invoice`, `zatca-simplified-receipt`
 with a ZATCA phase-1 TLV QR, `arabic-annual-report` with a data-bound Arabic

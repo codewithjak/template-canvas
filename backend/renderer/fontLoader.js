@@ -22,10 +22,43 @@
  */
 
 const { StandardFonts } = require('pdf-lib');
-const fontkit = require('@pdf-lib/fontkit');
 const fs = require('fs');
 const path = require('path');
+const { Readable } = require('stream');
+const modernFontkit = require('fontkit');
 const { detectScript } = require('./textLayout');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// fontkit adapter
+//
+// pdf-lib ships with @pdf-lib/fontkit (a 2018 fork of fontkit 1.x) whose
+// subsetter silently CORRUPTS newer font builds — Google-Fonts static
+// instances and Amiri both embedded with empty Arabic outlines (verified with
+// both pdfjs and poppler; see MULTILINGUAL_EXPORT_ARCHITECTURE.md §7).
+// Modern fontkit 2.x subsets them correctly but dropped the streaming API
+// pdf-lib's embedder consumes, so this adapter restores exactly that:
+//   - create() accepts the Uint8Array pdf-lib passes (fontkit 2 wants Buffer)
+//   - subset.encodeStream() wraps fontkit 2's synchronous subset.encode(),
+//     evaluated lazily at read time so every includeGlyph() call that
+//     happens before pdf-lib serializes the font is included.
+// includeGlyph()/.cff keep identical semantics between the two versions.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function withEncodeStream(subset) {
+  if (typeof subset.encodeStream === 'function') return subset;
+  subset.encodeStream = () =>
+    Readable.from((function* () { yield Buffer.from(subset.encode()); })());
+  return subset;
+}
+
+const fontkit = {
+  create(bytes) {
+    const font = modernFontkit.create(Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes));
+    const createSubset = font.createSubset.bind(font);
+    font.createSubset = () => withEncodeStream(createSubset());
+    return font;
+  },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Script → bundled font files (backend/fonts/, see LICENSES.md there).

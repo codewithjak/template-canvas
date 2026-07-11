@@ -290,6 +290,55 @@ function visualSegments(text) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
+ * True iff the (embedded, fontkit-backed) font has a real glyph for every
+ * character of `text`. StandardFonts have no fontkit handle and return false.
+ * Reaches into pdf-lib's CustomFontEmbedder — the only place the underlying
+ * fontkit font is exposed — hence the defensive guards.
+ *
+ * @param {import('pdf-lib').PDFFont} font
+ * @param {string} text
+ * @returns {boolean}
+ */
+function fontCoversText(font, text) {
+  const fk = font && font.embedder && font.embedder.font;
+  if (!fk || typeof fk.hasGlyphForCodePoint !== 'function') return false;
+  for (const ch of String(text)) {
+    if (!fk.hasGlyphForCodePoint(ch.codePointAt(0))) return false;
+  }
+  return true;
+}
+
+/**
+ * Neutral-run font inheritance (found via the Arabic template E2E):
+ * parentheses, digits and punctuation between Arabic words are 'winansi'
+ * runs, which used to draw in Helvetica — visibly smaller and off-balance
+ * next to Naskh glyphs. Browsers (and therefore the editor preview) take
+ * those characters from the Arabic font itself when it covers them, so the
+ * export does the same: a winansi run whose nearest non-winansi neighbor is
+ * an RTL-script run inherits that script — gated on the embedded font
+ * actually covering every character (otherwise it stays on the fallback).
+ *
+ * @param {Array<{ text: string, script: string }>} runs  draw order
+ * @param {(script: string, text: string) => boolean} covers
+ * @returns {Array<{ text: string, script: string }>}
+ */
+function inheritNeutralScripts(runs, covers) {
+  return runs.map((run, i) => {
+    if (run.script !== 'winansi' || !run.text) return run;
+
+    let prev = null, next = null;
+    for (let j = i - 1; j >= 0; j--) if (runs[j].script !== 'winansi') { prev = runs[j].script; break; }
+    for (let j = i + 1; j < runs.length; j++) if (runs[j].script !== 'winansi') { next = runs[j].script; break; }
+
+    const candidate = FONTKIT_RTL_SCRIPTS.has(prev) ? prev
+                    : FONTKIT_RTL_SCRIPTS.has(next) ? next
+                    : null;
+    if (candidate && covers(candidate, run.text)) return { ...run, script: candidate };
+    return run;
+  });
+}
+
+/**
  * The text a run actually renders, and the font that renders it.
  * 'winansi' runs pass through on the caller's StandardFont; 'other' runs
  * (symbols, scripts we bundle no font for) are sanitized exactly as the
@@ -321,11 +370,17 @@ function resolveRun(run, fontCtx, fallbackFont, bold) {
  * @param {number} size
  * @returns {number}
  */
+/** The run list a mixed line measures AND draws — one source of truth. */
+function lineRuns(fontCtx, bold, text) {
+  const runs = hasRtl(text) ? visualSegments(text) : segmentRuns(text);
+  return inheritNeutralScripts(runs, (script, t) => fontCoversText(fontCtx.forRun(script, bold), t));
+}
+
 function mixedWidth(fontCtx, bold, fallbackFont, text, size) {
   const s = String(text ?? '');
   if (!fontCtx || allWinAnsi(s)) return safeWidth(fallbackFont, s, size);
   let w = 0;
-  for (const run of segmentRuns(s)) {
+  for (const run of lineRuns(fontCtx, bold, s)) {
     const r = resolveRun(run, fontCtx, fallbackFont, bold);
     w += safeWidth(r.font, r.text, size);
   }
@@ -357,9 +412,9 @@ function drawMixed(page, fontCtx, bold, fallbackFont, text, options) {
   }
   // Lines containing RTL text are laid out in visual run order (Phase 2);
   // pure-LTR mixed lines keep the logical order, which is already visual.
-  const runs = hasRtl(s) ? visualSegments(s) : segmentRuns(s);
+  // Neutral runs inherit their RTL neighbor's font (lineRuns).
   let x = options.x;
-  for (const run of runs) {
+  for (const run of lineRuns(fontCtx, bold, s)) {
     const r = resolveRun(run, fontCtx, fallbackFont, bold);
     if (r.text) drawTextSafe(page, r.text, { ...options, x, font: r.font });
     x += safeWidth(r.font, r.text, options.size);
@@ -369,5 +424,5 @@ function drawMixed(page, fontCtx, bold, fallbackFont, text, options) {
 module.exports = {
   safeWidth, drawTextSafe, encodableOrFallback, FALLBACK_CHAR,
   detectScript, segmentRuns, allWinAnsi, mixedWidth, drawMixed,
-  hasRtl, visualSegments, baseDirection,
+  hasRtl, visualSegments, baseDirection, inheritNeutralScripts, fontCoversText,
 };

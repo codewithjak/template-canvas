@@ -170,6 +170,31 @@ test('visualSegments orders RTL lines visually and keeps digit sequences readabl
   ]);
 });
 
+test('neutral runs inherit the neighboring RTL font when it covers them', () => {
+  const { inheritNeutralScripts } = require('../renderer/textLayout');
+  const runs = [
+    { text: '(',    script: 'winansi' },
+    { text: 'شهري', script: 'arabic' },
+    { text: ') 42', script: 'winansi' },
+    { text: 'Support', script: 'winansi' },
+  ];
+
+  // Full coverage: every winansi run near the Arabic inherits 'arabic'.
+  const all = inheritNeutralScripts(runs, () => true);
+  assert.deepStrictEqual(all.map((r) => r.script), ['arabic', 'arabic', 'arabic', 'arabic']);
+
+  // No coverage: nothing changes — falls back to the StandardFont.
+  const none = inheritNeutralScripts(runs, () => false);
+  assert.deepStrictEqual(none.map((r) => r.script), ['winansi', 'arabic', 'winansi', 'winansi']);
+
+  // No RTL neighbor at all: untouched regardless of coverage.
+  const latinOnly = inheritNeutralScripts(
+    [{ text: 'Hello', script: 'winansi' }, { text: '你好', script: 'cjk' }],
+    () => true,
+  );
+  assert.deepStrictEqual(latinOnly.map((r) => r.script), ['winansi', 'cjk']);
+});
+
 // ── 7. Phase 4: CSV encoding detection ───────────────────────────────────────
 
 test('legacy-encoded CSVs are transcoded; UTF-8 CSVs are untouched', () => {

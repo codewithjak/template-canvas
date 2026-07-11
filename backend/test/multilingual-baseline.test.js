@@ -246,7 +246,9 @@ test('auto direction right-aligns Arabic text; rtl table mirrors column order', 
   // The Arabic element sits at x=40px (≈29.99pt) with width 300px (≈224.9pt)
   // and no explicit textAlign. Right-aligned means its text matrix x is well
   // to the right of the element's left edge.
-  const tm = content.match(/\/NotoNaskhArabic[^\n]*Tf\n[^\n]*\n1 0 0 1 ([\d.]+) /);
+  // Positioned-glyph drawing emits Tf then per-glyph Tm (no TL), the plain
+  // path emits Tf, TL, Tm — accept either shape.
+  const tm = content.match(/\/NotoNaskhArabic[^\n]*Tf\n(?:[^\nT]*TL\n)?1 0 0 1 ([\d.]+) /);
   assert.ok(tm, 'Arabic run drawn with the Naskh font');
   assert.ok(Number(tm[1]) > 30 + 50, `auto-direction Arabic is right-aligned (Tm x = ${tm[1]})`);
 

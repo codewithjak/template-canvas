@@ -8,7 +8,7 @@ https://openfontlicense.org
 | File | Family | Source |
 |---|---|---|
 | NotoSans-Regular.ttf, NotoSans-Bold.ttf | Noto Sans (Latin/Greek/Cyrillic) | github.com/notofonts/latin-greek-cyrillic |
-| NotoNaskhArabic-Regular.ttf, NotoNaskhArabic-Bold.ttf | Noto Naskh Arabic | github.com/notofonts/arabic |
+| NotoNaskhArabic-Regular.ttf, NotoNaskhArabic-Bold.ttf | Noto Naskh Arabic | fonts.google.com (Google Fonts build — includes Basic Latin/punctuation glyphs, which the notofonts.github.io per-script build omits; needed so parens/digits inside Arabic text render in the same font) |
 | NotoSansHebrew-Regular.ttf | Noto Sans Hebrew | github.com/notofonts/hebrew |
 | NotoSansCJKsc-Regular.otf | Noto Sans CJK SC (Han + kana + hangul) | github.com/notofonts/noto-cjk |
 

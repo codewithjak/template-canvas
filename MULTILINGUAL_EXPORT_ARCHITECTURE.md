@@ -335,6 +335,20 @@ drew on Helvetica — visibly smaller/raised next to Naskh. Three-part fix:
    re-verified through the golden suite.
 Latin output stays byte-identical (StandardFonts don't touch fontkit).
 
+*Addendum (2026-07-11, user-reported السنوي → السنوى):* **pdf-lib discards
+the shaper's glyph positions.** Its embedder encodes only the glyph-id
+sequence (flat `Tj`), dropping fontkit's per-glyph `xOffset`/`yOffset` —
+and Arabic letter-dots are separate MARK glyphs placed entirely by those
+offsets (probe: السنوي = `twodotshorizontalbelowar` mark at
+xOffset 138 / yOffset −254 + dotless `uni0649` base). Result: final-yeh
+lost its dots, the noon dot floated. Fix: `drawPositionedGlyphs()` in
+textLayout.js — for embedded (fontkit-backed) fonts, `drawTextSafe` places
+every glyph with its own text matrix (baseline pen + shaper offsets,
+advancing by `xAdvance`), mirroring `PDFPage.drawText`'s resource and
+graphics-state handling. StandardFonts keep pdf-lib's plain path, so Latin
+output remains byte-identical. Verified visually at high DPI and by the
+full suite.
+
 *End-to-end validation (2026-07-10):* three Arabic builtin templates
 (`src/templates/builtins/`: `arabic-tax-invoice`, `zatca-simplified-receipt`
 with a ZATCA phase-1 TLV QR, `arabic-annual-report` with a data-bound Arabic

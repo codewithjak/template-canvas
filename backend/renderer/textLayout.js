@@ -22,6 +22,11 @@
 'use strict';
 
 const { toWinAnsiSafe, isWinAnsi } = require('../utils/resolver');
+const {
+  PDFHexString, beginText, endText, setFontAndSize, showText,
+  rotateAndSkewTextRadiansAndTranslate, pushGraphicsState, popGraphicsState,
+  setGraphicsState, setFillingColor,
+} = require('pdf-lib');
 const bidiFactory = require('bidi-js');
 
 // bidi-js is stateless after construction; one instance serves all renders.
@@ -86,11 +91,71 @@ function safeWidth(font, text, size) {
  */
 function drawTextSafe(page, text, options) {
   const s = String(text ?? '');
+  const fk = options.font && options.font.embedder && options.font.embedder.font;
+  if (fk && typeof fk.layout === 'function' && !options.rotate) {
+    try { drawPositionedGlyphs(page, s, options); return; }
+    catch { /* fall through to pdf-lib's plain path */ }
+  }
   try { page.drawText(s, options); return; }
   catch { /* fall through to the fallback draw */ }
   try {
     page.drawText(encodableOrFallback(options.font, s, options.size), options);
   } catch { /* a failure here means a broken font object — never abort the export for one string */ }
+}
+
+/**
+ * Draw one run on an embedded (fontkit-backed) font honoring the shaper's
+ * per-glyph positions. pdf-lib's own drawText emits a flat Tj of glyph ids
+ * and DISCARDS fontkit's xOffset/yOffset — Arabic letter-dots are separate
+ * mark glyphs placed via those offsets, so they landed in the wrong spot
+ * (السنوي exported as السنوى with a stray floating dot). Here every glyph is
+ * placed with its own text matrix: baseline pen + xOffset/yOffset, advancing
+ * by xAdvance — exactly what the shaper computed.
+ *
+ * Latin/StandardFonts never reach this path (no fontkit handle), so their
+ * output stays byte-identical.
+ *
+ * @param {import('pdf-lib').PDFPage} page
+ * @param {string} text
+ * @param {object} options  { font, size, x, y, color, opacity }
+ */
+function drawPositionedGlyphs(page, text, options) {
+  const font = options.font;
+  const fk   = font.embedder.font;             // fontkit font behind the embedder
+
+  // Registers every glyph with the subset and fills embedder.glyphIdMap.
+  font.encodeText(text);
+
+  const run   = fk.layout(text, font.embedder.fontFeatures);
+  const scale = options.size / fk.unitsPerEm;
+
+  // Mirror what PDFPage.drawText does for resources/graphics state, using
+  // the same (runtime-public) helpers it uses internally.
+  const { oldFont, newFontKey } = page.setOrEmbedFont(font);
+  const graphicsStateKey = page.maybeEmbedGraphicsState({ opacity: options.opacity });
+
+  const ops = [pushGraphicsState()];
+  if (graphicsStateKey) ops.push(setGraphicsState(graphicsStateKey));
+  ops.push(beginText(), setFillingColor(options.color), setFontAndSize(newFontKey, options.size));
+
+  let penX = options.x;
+  for (let i = 0; i < run.glyphs.length; i++) {
+    const pos = run.positions[i];
+    const subsetId = font.embedder.glyphIdMap.get(run.glyphs[i].id);
+    if (subsetId !== undefined) {
+      ops.push(
+        rotateAndSkewTextRadiansAndTranslate(0, 0, 0,
+          penX + pos.xOffset * scale,
+          options.y + pos.yOffset * scale),
+        showText(PDFHexString.of(subsetId.toString(16).padStart(4, '0'))),
+      );
+    }
+    penX += pos.xAdvance * scale;
+  }
+
+  ops.push(endText(), popGraphicsState());
+  page.getContentStream().push(...ops);
+  if (oldFont) page.setFont(oldFont);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

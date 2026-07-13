@@ -72,8 +72,10 @@ function PlanCard() {
           <i style={{ width: `${pct}%` }} />
         </div>
       )}
+      {/* "unlimited", not "∞" — the Dashboard tiles say "unlimited", and one fact
+          should not have two vocabularies across two surfaces. */}
       <small>
-        {used} / {unlimited ? '∞' : limit} templates
+        {used} / {unlimited ? 'unlimited' : limit.toLocaleString()} templates
       </small>
     </div>
   )

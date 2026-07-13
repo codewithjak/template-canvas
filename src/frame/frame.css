@@ -6,9 +6,16 @@
  * (APP_SHELL_RELAYOUT_ARCHITECTURE.md Phase 0) and deliberately not done here.
  */
 
+/* The shell is exactly the viewport, and ONLY `.frame-content` scrolls.
+   `min-height` here was a bug: it let the flex container GROW to the page's
+   content, so on a long page (Settings) the sidebar stretched with it and its
+   plan card ended up below the fold, `.frame-content`'s overflow never engaged,
+   and the document scrolled instead — two scrollbars, a sidebar that scrolls
+   away. A short page (Dashboard) hid all of it. */
 .frame {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: var(--color-background-secondary);
   color: var(--color-text-primary);
 }
@@ -23,6 +30,9 @@
   padding: 14px 10px;
   background: var(--color-background-primary);
   border-right: 1px solid var(--color-border-tertiary);
+  /* Full height and self-contained: the nav never scrolls with the page, and if
+     the nav itself ever outgrows a short viewport it scrolls on its own. */
+  overflow-y: auto;
 }
 
 .frame-brand {
@@ -181,6 +191,9 @@
   flex-direction: column;
   flex: 1;
   min-width: 0;
+  /* min-height:0 lets this flex child shrink below its content, which is what
+     allows .frame-content to scroll instead of pushing the shell taller. */
+  min-height: 0;
 }
 
 .frame-top {

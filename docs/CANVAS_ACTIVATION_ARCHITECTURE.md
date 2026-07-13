@@ -596,3 +596,57 @@ re-points the funnel at the Dashboard. That retirement was to be judged on
 before/after activation data. **There is no "before" data.** Either accept the
 retirement on its design merits (the shell answers cold-start earlier and better),
 or run the migration and collect a baseline first. Do not claim it was measured.
+
+---
+
+## AMENDMENT (2026-07-13) — `first_export_completed` implemented (resolves A.4)
+
+A.4 flagged that §5's terminal step existed in the doc and in no source file. It is
+now implemented (TC-0193). This records what shipped and where it deviates.
+
+### B.1 What it is, and why it is not just `pdf_exported`
+`pdf_exported` is logged by the **backend** on every export, so one user with 500
+exports writes 500 rows: it measures **volume, not activation**. §5's metric is
+"share of sessions that … end with a completed export", which needs a
+**once-per-user marker**. `first_export_completed` is that marker, and it makes the
+funnel's terminal step directly countable rather than derived.
+
+It IS derivable from `pdf_exported` (earliest row per user). The event buys a
+simpler read path at the cost of one redundant row per user. That trade is
+accepted, not overlooked.
+
+### B.2 DEVIATION from §5: scoped per USER, not per browser
+§5 says "once per browser". Implemented as **once per user per browser**
+(`mapdoc.firstExport.v1:<userId>`, the key shape `draftStore` already uses).
+
+§5's wording is a bug: on a shared machine, the second account to sign in would
+have its first export suppressed by the first account's flag and would **silently
+never appear to activate**. Per-user scoping is strictly more correct and no more
+complex.
+
+### B.3 Known bias, stated rather than hidden
+The flag is `localStorage`. A new device, a cleared browser, or a private window
+means the same user can emit `first_export_completed` more than once, so the metric
+**over-counts activation**. Anyone reading the funnel must treat it as an upper
+bound. Removing the bias means deriving from `pdf_exported` server-side instead —
+deliberately not done (§5 chose the event).
+
+### B.4 Fails CLOSED
+When `localStorage` is unavailable (private mode, quota, disabled),
+`markFirstExport` returns **false**, not true. Returning true would log "first
+export" on *every* export from that browser and destroy the metric it exists to
+produce. Under-counting is recoverable; a corrupted funnel is not.
+
+### B.5 All three export paths fire it
+Single download, **bulk**, and **email** — a first-time user can activate via any
+of them, and counting only the single-download path would bias the funnel.
+`BulkExportPanel` reports completion through a new `onExportCompleted` callback, so
+analytics and auth stay out of that component; it fires on the transition into
+`done`, so a re-render cannot double-report.
+
+### B.6 Schema
+`first_export_completed` is added to `AnalyticsEventType`, to `supabase/schema.sql`
+and to `supabase/canvas_activation_events.sql`. **The migration must run against the
+deployed database or this event is rejected on insert like the others** (see the
+previous amendment). `analytics.test.ts` fails the build if any of the three ever
+disagree again.

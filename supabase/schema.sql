@@ -206,7 +206,8 @@ create table if not exists public.analytics_events (
                 check (event_type in (
                   'login','template_created','pdf_exported','ai_build',
                   -- Canvas activation funnel (CANVAS_ACTIVATION §5)
-                  'start_layer_shown','start_layer_card_clicked','draft_restored','data_bound'
+                  'start_layer_shown','start_layer_card_clicked','draft_restored','data_bound',
+                  'first_export_completed'
                 )),
   metadata    jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now()

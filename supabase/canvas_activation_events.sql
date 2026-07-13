@@ -29,7 +29,10 @@ alter table public.analytics_events
     'start_layer_shown',
     'start_layer_card_clicked',
     'draft_restored',
-    'data_bound'
+    'data_bound',
+    -- Funnel terminal step (once per user per browser). pdf_exported fires on
+    -- every export, so it measures volume, not activation.
+    'first_export_completed'
   ));
 
 -- NOTE on the two 'start_layer_*' events: the Start Layer is scheduled for

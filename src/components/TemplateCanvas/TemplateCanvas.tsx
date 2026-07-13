@@ -96,14 +96,14 @@ import {
 } from '../../utils/relationshipDetector';
 import { useHistoryState } from '../../utils/useUndoRedo';
 import { useUnsavedChangesGuard } from '../../utils/useUnsavedChangesGuard';
-import { saveDraft, clearDraft, restoreDraft } from '../../services/draftStore';
+import { saveDraft, clearDraft, restoreDraft, offerableDraft } from '../../services/draftStore';
 import { samePageSize, sameStringMap } from '../../utils/documentDirty';
 import { draftDeadline, nextDraftDelay } from '../../utils/draftSchedule';
 import CanvasStartLayer from './CanvasStartLayer';
 import { shouldShowStartLayer, isCanvasPristine } from './startLayer';
 import { seedStarterLayoutFromStructure } from './seedLayout';
 import { logEvent } from '../../services/analytics';
-import { getActiveTeamId } from '../../services/teamService';
+import { useActiveTeamId } from '../../utils/useActiveTeamId';
 import { useAuth } from '../../auth/AuthContext';
 
 // ── NEW: RuntimeDataStructure imports ────────────────────────────────────────
@@ -273,11 +273,12 @@ function TemplateCanvas() {
   const userId = user?.id ?? null;
 
   // The active team, resolved once. Drafts record the team they were written
-  // under so the Continue card can withhold another team's draft (no cross-team
-  // leak — activation doc T1.6). Declared here (not in the Start Layer block)
-  // because the autosave/flush below stamp it onto every draft they write.
-  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
-  useEffect(() => { getActiveTeamId().then(setActiveTeamId).catch(() => setActiveTeamId(null)); }, []);
+  // under so a draft can be withheld from another team (no cross-team leak —
+  // activation doc T1.6). Needed here because the autosave/flush below stamp it
+  // onto every draft they write. `teamLoading` matters: until the lookup settles,
+  // `activeTeamId` is null for "not yet", which is indistinguishable from the
+  // legitimate "no team" — gating on it too early would withhold a good draft.
+  const { teamId: activeTeamId, loading: teamLoading } = useActiveTeamId();
 
   // Document-level dirty. The history hook tracks `pages`; page size and global
   // fields are separate state, so fold them in against a savepoint that moves
@@ -395,13 +396,15 @@ function TemplateCanvas() {
   //    (e.g. add an element, then delete it back to empty) is not "where you
   //    left off"; on a fresh mount isDirty is false, so a prior-session draft
   //    still shows, AND
-  //  - the draft's team matches the active team (no cross-team leak).
+  //  - the team is resolved and matches (`offerableDraft` — the same guard the
+  //    Dashboard card uses, so the two surfaces cannot disagree about what is
+  //    safe to offer).
   const priorDraft = useMemo(
     () => (showStartLayer ? restoreDraft(userId) : null),
     [showStartLayer, userId],
   );
   const continueDraft =
-    !isDirty && priorDraft && priorDraft.teamId === activeTeamId ? priorDraft : null;
+    !isDirty && !teamLoading ? offerableDraft(priorDraft, activeTeamId) : null;
 
   // Funnel: log the layer being shown ONCE per document session (§5), not on
   // every visibility flip (e.g. delete-to-empty would otherwise re-fire it).
@@ -891,6 +894,14 @@ function TemplateCanvas() {
     if (launchHandledRef.current) return;
     const intent = readLaunchIntent(launchState);
     if (!intent) return;
+
+    // `restore-draft` needs the active team before it can decide (offerableDraft),
+    // and the lookup is async — acting while it is still loading would compare the
+    // draft against a not-yet-resolved null and silently withhold it. Wait, and
+    // let the effect re-run when the team settles. The other intents do not read
+    // the team, so they must not be held up by it.
+    if (intent.kind === 'restore-draft' && teamLoading) return;
+
     launchHandledRef.current = true;
 
     switch (intent.kind) {
@@ -910,9 +921,24 @@ function TemplateCanvas() {
       case 'bind-data':
         setUploadPanelOpen(true);
         break;
+      case 'restore-draft': {
+        // The Dashboard already decided this draft was offerable, but it is
+        // re-checked here rather than trusted: the intent survives in the history
+        // entry, so a back/forward navigation could replay it after the active
+        // team changed. The draft itself is re-read from storage — it never rode
+        // in the router state (a document can embed base64 images).
+        const draft = offerableDraft(restoreDraft(userId), activeTeamId);
+        if (!draft) {
+          notify.error('draft.restoreUnavailable');
+          break;
+        }
+        applyDocument(draft.doc);
+        void logEvent('draft_restored');
+        break;
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [launchState]);
+  }, [launchState, teamLoading]);
 
   // Open a bundled built-in template. The template ships tokenized
   // ({{placeholders}}) plus a matching sample-data file; we resolve the tokens

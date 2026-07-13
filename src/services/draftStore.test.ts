@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type { TemplateDocument } from '../types/canvas'
-import { saveDraft, restoreDraft, clearDraft } from './draftStore'
+import { saveDraft, restoreDraft, clearDraft, offerableDraft, type DraftRestore } from './draftStore'
 
 // ── localStorage stub (node has no window) ──────────────────────────────────
 interface StorageStub {
@@ -93,4 +93,32 @@ test('rejects corrupt/foreign payloads (meta:null, missing elements, bad JSON)',
 
   store.set(key, '{ not json')
   assert.equal(restoreDraft('user-a'), null, 'corrupt JSON rejected')
+})
+
+// ── offerableDraft: the cross-team leak guard ───────────────────────────────
+
+const draft = (teamId: string | null): DraftRestore =>
+  ({ doc: doc(), savedAt: '2026-07-13T12:00:00Z', teamId }) as DraftRestore
+
+test('offerableDraft: same team → offered', () => {
+  const d = draft('team-a')
+  assert.equal(offerableDraft(d, 'team-a'), d)
+})
+
+test('offerableDraft: another team → withheld (the cross-team leak)', () => {
+  // Edit in team A, crash, switch to team B: B must not be shown A's work.
+  assert.equal(offerableDraft(draft('team-a'), 'team-b'), null)
+})
+
+test('offerableDraft: an unstamped draft is never handed to a team', () => {
+  assert.equal(offerableDraft(draft(null), 'team-a'), null)
+})
+
+test('offerableDraft: unstamped draft + no active team → offered', () => {
+  const d = draft(null)
+  assert.equal(offerableDraft(d, null), d)
+})
+
+test('offerableDraft: no draft → nothing to offer', () => {
+  assert.equal(offerableDraft(null, 'team-a'), null)
 })

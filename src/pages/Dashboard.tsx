@@ -10,6 +10,7 @@
  */
 import { usePlan } from '../plan/PlanProvider'
 import { usageTiles } from './dashboard/usageTiles'
+import ContinueDraft from './dashboard/ContinueDraft'
 import StatTile from './dashboard/StatTile'
 import StartActions from './dashboard/StartActions'
 import RecentProjects from './dashboard/RecentProjects'
@@ -50,6 +51,10 @@ function UsageStats() {
 function Dashboard() {
   return (
     <div className="dash">
+      {/* First thing a crash survivor sees on opening the app. Renders nothing
+          when there is no offerable draft, which is the common case. */}
+      <ContinueDraft />
+
       <UsageStats />
 
       <section className="dash-section">

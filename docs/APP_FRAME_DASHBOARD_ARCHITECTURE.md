@@ -374,6 +374,39 @@ must not be removed until this passes** (A2.3).
 Exit check: a draft written before a crash is offered here and restores; a draft from
 another team is not offered; `clearDraft` on Discard.
 
+**Phase 4 status (2026-07-13) — code complete, NOT yet verified.**
+`ContinueDraft.tsx` at the top of the Dashboard (T5.1/T5.3): it offers the draft, and on
+Continue navigates to `/canvas` with a `restore-draft` intent; Discard calls
+`clearDraft`. The canvas restores through its **existing** `applyDocument` and logs
+`draft_restored` (T5.4). `tsc -b` clean; ESLint clean on new files and byte-identical to
+baseline on the canvas; 51/51 tests.
+
+**T5.5 (verify end-to-end) is NOT done — it is auth-gated. The Start Layer therefore
+must NOT be retired yet (relayout T5.6).** That ordering is the whole point of A2.3: the
+layer is still the only *proven* restore surface.
+
+Design decisions worth recording:
+
+1. **`offerableDraft(draft, activeTeamId)` lives in `draftStore.ts`** (T5.2) and is now
+   used by **both** the Dashboard card and the canvas. `TemplateCanvas`'s inline
+   `priorDraft.teamId === activeTeamId` check was replaced by it (rule g: fix the
+   existing code, don't add a parallel copy), so the surface that *offers* a draft and
+   the surface that *restores* it cannot disagree about what is safe.
+2. **`useActiveTeamId` (new, `utils/`) reports `loading` separately from `teamId`.**
+   Extracted from the canvas, which had the only copy. This is not cosmetic: the lookup
+   is async, so on first render `teamId` is null — and null is *also* the legitimate "no
+   team" answer. A caller that cannot tell them apart compares the draft against a
+   not-yet-resolved null and **silently withholds a draft it should have offered**. Both
+   the card and the canvas's restore branch now wait for `loading` to settle. The other
+   launch intents do not read the team and are not held up by it.
+3. **The draft never rides in router state.** A document can embed base64 images and
+   router state is serialised into the history entry, so `restore-draft` carries no
+   payload; the canvas re-reads the draft from storage on arrival.
+4. **The canvas re-checks `offerableDraft` rather than trusting the Dashboard.** The
+   intent survives in the history entry, so a back/forward navigation could replay it
+   after the active team changed. If the draft is no longer offerable it says so
+   (`draft.restoreUnavailable`) instead of restoring the wrong team's work.
+
 ---
 
 ## 8. Definition of done

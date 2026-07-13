@@ -17,14 +17,20 @@ export type CanvasLaunchIntent =
   | { kind: 'open-template'; templateId: string }
   | { kind: 'rebuild-ai' }
   | { kind: 'bind-data' }
-// 'restore-draft' lands with the draft-restore card it belongs to (Phase 4).
-// Only what is used is defined.
+  | { kind: 'restore-draft' }
 
 /** The key the intent travels under in `navigate(path, { state })`. */
 export const LAUNCH_INTENT_KEY = 'launchIntent'
 
-/** Intents that carry no payload — the whole intent is its `kind`. */
-const BARE_KINDS = ['rebuild-ai', 'bind-data'] as const
+/**
+ * Intents that carry no payload — the whole intent is its `kind`.
+ *
+ * Note `restore-draft` carries NO document. The draft stays in localStorage and
+ * the canvas re-reads it on arrival: a document can embed base64 images, and
+ * router state is serialised into the history entry, so passing it here would be
+ * both wasteful and a second copy that could go stale.
+ */
+const BARE_KINDS = ['rebuild-ai', 'bind-data', 'restore-draft'] as const
 type BareKind = (typeof BARE_KINDS)[number]
 
 const isObject = (v: unknown): v is Record<string, unknown> =>

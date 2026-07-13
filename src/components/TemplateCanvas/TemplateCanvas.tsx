@@ -93,9 +93,14 @@ import {
 } from '../../utils/relationshipDetector';
 import { useHistoryState } from '../../utils/useUndoRedo';
 import { useUnsavedChangesGuard } from '../../utils/useUnsavedChangesGuard';
-import { saveDraft, clearDraft } from '../../services/draftStore';
+import { saveDraft, clearDraft, restoreDraft } from '../../services/draftStore';
 import { samePageSize, sameStringMap } from '../../utils/documentDirty';
 import { draftDeadline, nextDraftDelay } from '../../utils/draftSchedule';
+import CanvasStartLayer from './CanvasStartLayer';
+import { shouldShowStartLayer, isCanvasPristine } from './startLayer';
+import { seedStarterLayoutFromStructure } from './seedLayout';
+import { logEvent } from '../../services/analytics';
+import { getActiveTeamId } from '../../services/teamService';
 import { useAuth } from '../../auth/AuthContext';
 
 // ── NEW: RuntimeDataStructure imports ────────────────────────────────────────
@@ -259,6 +264,13 @@ function TemplateCanvas() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
+  // The active team, resolved once. Drafts record the team they were written
+  // under so the Continue card can withhold another team's draft (no cross-team
+  // leak — activation doc T1.6). Declared here (not in the Start Layer block)
+  // because the autosave/flush below stamp it onto every draft they write.
+  const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  useEffect(() => { getActiveTeamId().then(setActiveTeamId).catch(() => setActiveTeamId(null)); }, []);
+
   // Document-level dirty. The history hook tracks `pages`; page size and global
   // fields are separate state, so fold them in against a savepoint that moves
   // on every save and load. Without this, changing page size or global fields
@@ -308,8 +320,8 @@ function TemplateCanvas() {
   // in a ref, synced via effect (not during render), so event/unmount handlers
   // always call the latest closure without re-registering on every edit.
   const flushDraft = useCallback(() => {
-    if (isDirty) saveDraft(buildCurrentDocument(), userId);
-  }, [isDirty, buildCurrentDocument, userId]);
+    if (isDirty) saveDraft(buildCurrentDocument(), userId, activeTeamId);
+  }, [isDirty, buildCurrentDocument, userId, activeTeamId]);
   const flushRef = useRef(flushDraft);
   useEffect(() => { flushRef.current = flushDraft; }, [flushDraft]);
   const flushViaRef = useCallback(() => flushRef.current(), []);
@@ -332,11 +344,11 @@ function TemplateCanvas() {
     draftDeadlineRef.current = draftDeadline(draftDeadlineRef.current, now, DRAFT_MAX_WAIT_MS);
     const delay = nextDraftDelay(draftDeadlineRef.current, now, DRAFT_DEBOUNCE_MS);
     const timer = window.setTimeout(() => {
-      saveDraft(buildCurrentDocument(), userId);
+      saveDraft(buildCurrentDocument(), userId, activeTeamId);
       draftDeadlineRef.current = 0; // next unsaved edit starts a fresh window
     }, delay);
     return () => window.clearTimeout(timer);
-  }, [isDirty, buildCurrentDocument, userId]);
+  }, [isDirty, buildCurrentDocument, userId, activeTeamId]);
 
   // In-app navigation (e.g. the Integrations button) unmounts the canvas
   // without firing beforeunload — flush the pending draft on unmount.
@@ -362,6 +374,36 @@ function TemplateCanvas() {
     redoHistory();
     clearDraftIfClean();
   }, [redoHistory, clearDraftIfClean]);
+
+  // ── Start Layer (activation doc Phase 1) ──────────────────────────────────
+  // In-memory, per-document-session dismissal (T1.4): no localStorage flag, so
+  // a returning user with a pristine doc sees the layer again (desired).
+  const [startLayerDismissed, setStartLayerDismissed] = useState(false);
+  const showStartLayer = shouldShowStartLayer(pages, startLayerDismissed);
+
+  // The Continue card (T1.6). Offer a draft ONLY when:
+  //  - the layer is shown (pristine, not dismissed), AND
+  //  - the document is clean (isDirty false) — a draft written THIS session
+  //    (e.g. add an element, then delete it back to empty) is not "where you
+  //    left off"; on a fresh mount isDirty is false, so a prior-session draft
+  //    still shows, AND
+  //  - the draft's team matches the active team (no cross-team leak).
+  const priorDraft = useMemo(
+    () => (showStartLayer ? restoreDraft(userId) : null),
+    [showStartLayer, userId],
+  );
+  const continueDraft =
+    !isDirty && priorDraft && priorDraft.teamId === activeTeamId ? priorDraft : null;
+
+  // Funnel: log the layer being shown ONCE per document session (§5), not on
+  // every visibility flip (e.g. delete-to-empty would otherwise re-fire it).
+  const startLayerShownLogged = useRef(false);
+  useEffect(() => {
+    if (showStartLayer && !startLayerShownLogged.current) {
+      startLayerShownLogged.current = true;
+      void logEvent('start_layer_shown');
+    }
+  }, [showStartLayer]);
 
   // ── Sensors ───────────────────────────────────────────────────────────────
 
@@ -867,6 +909,19 @@ function TemplateCanvas() {
     setPreviewRowIndex(0);
     setUploadPanelOpen(false);
 
+    // T1.7: "Start from your data" must not end on an empty canvas. If the
+    // canvas is still pristine when data lands, seed a starter layout (title +
+    // a table bound to the detected structure) so the first click rewards.
+    // Gated on pristineness ALONE, not layer visibility — dismissing the layer
+    // ("Start blank") must not disable this data-flow post-condition.
+    if (isCanvasPristine(pages)) {
+      const seeded = seedStarterLayoutFromStructure(doc);
+      if (seeded.length > 0) {
+        setPages(prev => updatePageElements(prev, prev[0].pageId, () => seeded));
+        void logEvent('data_bound');
+      }
+    }
+
     if (incomingRds) {
       // UploadData v3 — full RDS with relationship approvals already applied
       setRds(incomingRds);
@@ -1276,12 +1331,29 @@ function TemplateCanvas() {
                   )}
 
                   {page.elements.length === 0 && (
-                    <div className="canvas-empty-hint">
-                      <div className="canvas-empty-hint__title">This page is empty</div>
-                      <div className="canvas-empty-hint__text">
-                        Pick a tool from the rail on the right to add text, tables, images and more.
+                    showStartLayer ? (
+                      <CanvasStartLayer
+                        onBrowseTemplates={() => { void logEvent('start_layer_card_clicked', { card: 'template' }); setLibraryMode('builtin'); }}
+                        onRebuildPdf={() => { void logEvent('start_layer_card_clicked', { card: 'ai_rebuild' }); setRebuildAiOpen(true); }}
+                        onBindData={() => { void logEvent('start_layer_card_clicked', { card: 'bind_data' }); setUploadPanelOpen(true); }}
+                        onStartBlank={() => { void logEvent('start_layer_card_clicked', { card: 'blank' }); setStartLayerDismissed(true); }}
+                        draft={continueDraft ? {
+                          savedAt: continueDraft.savedAt,
+                          onRestore: () => {
+                            void logEvent('start_layer_card_clicked', { card: 'continue_draft' });
+                            void logEvent('draft_restored');
+                            applyDocument(continueDraft.doc);
+                          },
+                        } : undefined}
+                      />
+                    ) : (
+                      <div className="canvas-empty-hint">
+                        <div className="canvas-empty-hint__title">This page is empty</div>
+                        <div className="canvas-empty-hint__text">
+                          Pick a tool from the rail on the right to add text, tables, images and more.
+                        </div>
                       </div>
-                    </div>
+                    )
                   )}
 
                   <BoundaryLine

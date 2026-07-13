@@ -419,6 +419,53 @@ non-empty canvas; a stored draft shows the continue card and restores; funnel
 events appear in `analytics_events`; keyboard-only operation works; rail and
 toolbar unaffected.
 
+Phase 1 status (2026-07-13) — implemented, no drift from the tasks above:
+- T1.1/T1.5/T1.9 `CanvasStartLayer.tsx` (+ `.css`): presentational, four
+  callbacks + optional `draft`, outcome-language cards, a11y contract (real
+  buttons, draft-first tab order, no focus steal, `--color-accent-ring`).
+- T1.2 `startLayer.ts` `shouldShowStartLayer(pages, dismissed)` — pure,
+  unit-tested (`startLayer.test.ts`).
+- T1.3/T1.4/T1.6 wired in `TemplateCanvas`: replaces the empty-hint block on
+  the pristine first page only (the hint stays for other empty pages);
+  in-memory `startLayerDismissed`; cards delegate to the existing handlers
+  (`setLibraryMode('builtin')`, `setRebuildAiOpen`, `setUploadPanelOpen`); the
+  Continue card reads `restoreDraft(userId)` and restores via `applyDocument`,
+  logging `draft_restored`.
+- T1.7 `seedLayout.ts` `seedStarterLayoutFromStructure(doc)` — pure, unit-tested
+  (`seedLayout.test.ts`): title + a table bound to the first collection, columns
+  = detected fields capped to A4 width, header title-cased, cells `{{field}}`.
+  Called from `handleDataConfirm` only when the canvas is pristine; logs
+  `data_bound`. (`makeRow` exported from `layoutTable.ts` for reuse.)
+- T1.8 `AnalyticsEventType` extended; `start_layer_shown` (once on show) and
+  `start_layer_card_clicked` (with `{ card }`) logged from the wiring.
+- Tests: 23 total pass (`npm test`); `tsc -b` clean.
+- NOT yet done (needs the running app + auth, same as Phase 0's browser pass):
+  the visual/keyboard exit check above and confirming funnel rows land in
+  `analytics_events`. The React wiring itself is not unit-covered.
+
+Phase 1 review fixes applied (2026-07-13):
+- Cross-team draft leak (blocking; the caveat at "keyed by user but NOT by
+  team…" required this): the draft payload now records the `teamId` it was
+  written under (`saveDraft(doc, userId, teamId)`), and the Continue card
+  offers it only when `draft.teamId === getActiveTeamId()`. Without this, a
+  user in teams A and B could restore team A's crash draft while active in
+  team B and save it into B. `activeTeamId` is resolved once and stamped onto
+  every draft write.
+- Seeding gated on the wrong condition: T1.7 said "canvas still pristine", but
+  the code gated on `shouldShowStartLayer` (which also requires !dismissed), so
+  clicking "Start blank" then binding data left an empty canvas — root cause #3.
+  Split out `isCanvasPristine(pages)`; seeding now gates on that alone, layer
+  visibility keeps the dismissal check.
+- Continue-card invariant corrected: a doc can return to pristine mid-session
+  (add element → autosave → delete it; deletion is a forward edit, not an undo,
+  so the undo-to-savepoint clear never fires). The card now also requires
+  `!isDirty`, so it never re-offers just-deleted content; on a fresh mount
+  isDirty is false so a genuine prior-session draft still shows. And
+  `start_layer_shown` now logs once per session (a ref guard), not on every
+  visibility flip.
+- Removed the redundant `pageIdx === 0` (shouldShowStartLayer already implies a
+  single page).
+
 ### Phase 2: Template gallery thumbnails
 
 - T2.1 Build-time script `scripts/generateTemplateThumbnails.ts`: iterate

@@ -38,37 +38,44 @@ const doc = (id = 't1'): TemplateDocument =>
     ai: null,
   }) as unknown as TemplateDocument
 
-test('round-trips a draft and returns its savedAt', () => {
+test('round-trips a draft and returns its savedAt + teamId', () => {
   installStorage()
-  saveDraft(doc('t1'), 'user-a')
+  saveDraft(doc('t1'), 'user-a', 'team-a')
   const r = restoreDraft('user-a')
   assert.equal(r?.doc.meta.templateId, 't1')
   assert.equal(typeof r?.savedAt, 'string')
+  assert.equal(r?.teamId, 'team-a', 'teamId round-trips so the card can compare it to the active team')
+})
+
+test('teamId is null when the draft was written without a team', () => {
+  installStorage()
+  saveDraft(doc(), 'user-a', null)
+  assert.equal(restoreDraft('user-a')?.teamId, null)
 })
 
 test('draft is user-scoped: another user (and anon) cannot read it', () => {
   installStorage()
-  saveDraft(doc(), 'user-a')
+  saveDraft(doc(), 'user-a', 'team-a')
   assert.equal(restoreDraft('user-b'), null)
   assert.equal(restoreDraft(null), null)
 })
 
 test('clearDraft removes the draft', () => {
   installStorage()
-  saveDraft(doc(), 'user-a')
+  saveDraft(doc(), 'user-a', 'team-a')
   clearDraft('user-a')
   assert.equal(restoreDraft('user-a'), null)
 })
 
 test('over-quota save skips AND deletes any stale draft', () => {
   const store = installStorage()
-  saveDraft(doc(), 'user-a') // succeeds
+  saveDraft(doc(), 'user-a', 'team-a') // succeeds
   ;(globalThis as unknown as { window: StorageStub }).window.localStorage.setItem = () => {
     const e = new Error('quota') as Error & { name: string }
     e.name = 'QuotaExceededError'
     throw e
   }
-  saveDraft(doc(), 'user-a') // must not throw
+  saveDraft(doc(), 'user-a', 'team-a') // must not throw
   assert.equal(restoreDraft('user-a'), null, 'stale draft deleted, not left behind')
   assert.ok(!store.has('mapdoc.canvas.draft.v1:user-a'))
 })

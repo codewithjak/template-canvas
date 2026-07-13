@@ -295,7 +295,7 @@ function emptyCell(): TableCell {
   };
 }
 
-function makeRow(columnCount: number, cellValues: string[]): TableRow {
+export function makeRow(columnCount: number, cellValues: string[]): TableRow {
   const cells: TableCell[] = [];
   for (let i = 0; i < columnCount; i += 1) {
     const c = emptyCell();

@@ -12,7 +12,16 @@
 import { supabase } from './supabaseClient'
 import { getActiveTeamId } from './teamService'
 
-export type AnalyticsEventType = 'login' | 'template_created' | 'pdf_exported'
+export type AnalyticsEventType =
+  | 'login'
+  | 'template_created'
+  | 'pdf_exported'
+  // Canvas activation funnel (activation doc §5). DB column is text, so these
+  // add no schema change — only the TypeScript union grows.
+  | 'start_layer_shown'
+  | 'start_layer_card_clicked'
+  | 'draft_restored'
+  | 'data_bound'
 
 export async function logEvent(
   eventType: AnalyticsEventType,

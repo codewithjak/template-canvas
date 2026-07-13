@@ -25,5 +25,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "//": "Test files are transpiled and run by scripts/run-tests.mjs (esbuild + node --test), which resolves node: builtins natively; excluded here so the DOM-oriented app build does not need @types/node.",
+  "exclude": ["src/**/*.test.ts"]
 }

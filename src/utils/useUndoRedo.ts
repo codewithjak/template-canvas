@@ -22,6 +22,18 @@ export function useHistoryState<T>(initial: T) {
   const future = useRef<T[]>([]);
   const LIMIT = 100;
 
+  // Savepoint: the value at the last durable save (or load). `isDirty` means
+  // "changed since then", which is NOT what canUndo means — canUndo is "any
+  // history since mount" and stays true after a save or an undo back to the
+  // saved state. State is immutable here, so reference identity is exact:
+  // undoing back to the savepoint restores the same reference → clean again.
+  // Kept in React state (not a ref) so isDirty derives purely during render.
+  const [savedState, setSavedState] = useState<T>(initial);
+
+  // Mirrors savedState for synchronous reads from event handlers (see
+  // isAtSavepoint), where the render closure's savedState may be a frame stale.
+  const savedRef = useRef<T>(initial);
+
   const set = useCallback((updater: SetStateAction<T>) => {
     const prev = stateRef.current;
     const next = typeof updater === 'function'
@@ -51,6 +63,47 @@ export function useHistoryState<T>(initial: T) {
     setState(next);
   }, []);
 
+  /**
+   * Mark a value as durably saved — `isDirty` becomes false while the live
+   * state equals it. Pass the EXACT snapshot that was persisted (not "current"):
+   * a save serializes at click time, so if edits raced in during the async
+   * save, marking `current` would stamp those un-persisted edits as saved.
+   * Passing the click-time snapshot keeps `isDirty` true when a race happened.
+   * Defaults to the current value for callers with no in-flight window.
+   */
+  const markSaved = useCallback((value: T = stateRef.current) => {
+    savedRef.current = value;
+    setSavedState(value);
+  }, []);
+
+  /**
+   * The latest committed value, readable synchronously from async callbacks
+   * (e.g. after `await`) where the render closure is stale. Never read during
+   * render — use `state` there.
+   */
+  const getLatest = useCallback(() => stateRef.current, []);
+
+  /**
+   * Is the live value back at the savepoint? Reads refs, so it is correct
+   * immediately after undo/redo inside the same event handler, before React
+   * re-renders and `isDirty` catches up.
+   */
+  const isAtSavepoint = useCallback(() => Object.is(stateRef.current, savedRef.current), []);
+
+  /**
+   * Replace the value wholesale as a LOAD, not an edit: history is cleared
+   * and the new value becomes the savepoint. Loading a document must not arm
+   * dirty-driven machinery (autosave, leave-site prompts) or occupy undo.
+   */
+  const reset = useCallback((value: T) => {
+    past.current = [];
+    future.current = [];
+    stateRef.current = value;
+    savedRef.current = value;
+    setSavedState(value);
+    setState(value);
+  }, []);
+
   return {
     state,
     set,
@@ -58,5 +111,10 @@ export function useHistoryState<T>(initial: T) {
     redo,
     canUndo: past.current.length > 0,
     canRedo: future.current.length > 0,
+    isDirty: !Object.is(state, savedState),
+    markSaved,
+    getLatest,
+    isAtSavepoint,
+    reset,
   } as const;
 }

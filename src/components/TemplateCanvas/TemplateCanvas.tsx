@@ -26,7 +26,7 @@
  *    (unchanged from prev)
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 
 import Toolbar             from './Toolbar';
@@ -92,6 +92,11 @@ import {
   buildRelatedCollectionsConfig,
 } from '../../utils/relationshipDetector';
 import { useHistoryState } from '../../utils/useUndoRedo';
+import { useUnsavedChangesGuard } from '../../utils/useUnsavedChangesGuard';
+import { saveDraft, clearDraft } from '../../services/draftStore';
+import { samePageSize, sameStringMap } from '../../utils/documentDirty';
+import { draftDeadline, nextDraftDelay } from '../../utils/draftSchedule';
+import { useAuth } from '../../auth/AuthContext';
 
 // ── NEW: RuntimeDataStructure imports ────────────────────────────────────────
 import type { RuntimeDataStructure } from '../../types/runtimeDataStructure';
@@ -135,6 +140,13 @@ import {
   createWatermarkElement,
 } from './elementFactories';
 
+// Draft autosave cadence (T0.4). DEBOUNCE: write this long after editing
+// pauses. MAX_WAIT: during uninterrupted editing (no pause), force a write at
+// least this often so a crash can lose at most MAX_WAIT of work. Scheduling
+// math lives in ../../utils/draftSchedule (pure + unit-tested).
+const DRAFT_DEBOUNCE_MS = 2000;
+const DRAFT_MAX_WAIT_MS = 10000;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -154,11 +166,17 @@ function TemplateCanvas() {
     redo: redoHistory,
     canUndo,
     canRedo,
+    isDirty: pagesDirty,
+    markSaved,
+    getLatest: getLatestPages,
+    isAtSavepoint: pagesAtSavepoint,
+    reset: resetPages,
   } = useHistoryState<CanvasPage[]>([
     createPage({ pageId: 'page-1', label: 'Page 1' }),
   ]);
   const [templateMeta, setTemplateMeta] = useState<Partial<TemplateMeta>>({});
   const [pageSize, setPageSize] = useState<PageSizeConfig>(defaultPageSize());
+
   const [exportFormat, setExportFormat] = useState<'pdf' | 'zpl' | 'png' | 'jpeg'>('pdf');
   const [showPageRulers, setShowPageRulers] = useState(false);
 
@@ -235,6 +253,115 @@ function TemplateCanvas() {
   const [libraryMode, setLibraryMode] = useState<'builtin' | 'projects' | null>(null);
   const [rebuildAiOpen, setRebuildAiOpen] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // ── Trust fixes (activation doc Phase 0) ──────────────────────────────────
+
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
+  // Document-level dirty. The history hook tracks `pages`; page size and global
+  // fields are separate state, so fold them in against a savepoint that moves
+  // on every save and load. Without this, changing page size or global fields
+  // and closing the tab would lose that work silently (isDirty would be false).
+  const [savepoint, setSavepoint] = useState<{ pageSize: PageSizeConfig; globalFields: Record<string, string> }>(
+    () => ({ pageSize, globalFields: savedGlobalFields }),
+  );
+  // Undo/redo only move `pages`, so the folded-in half is stable across them —
+  // which lets the undo handlers below decide cleanliness synchronously.
+  const fieldsDirty =
+    !samePageSize(pageSize, savepoint.pageSize) ||
+    !sameStringMap(savedGlobalFields, savepoint.globalFields);
+  const isDirty = pagesDirty || fieldsDirty;
+
+  // The exact document a save would produce — the single builder shared by
+  // cloud save and draft autosave, so a restored draft can never silently lack
+  // fields (e.g. globalFields) that the real save carries.
+  const buildCurrentDocument = useCallback((name?: string) => {
+    const doc = createTemplateDocument(pages, name || templateMeta.name || 'Untitled Template', templateMeta, pageSize);
+    return { ...doc, meta: { ...doc.meta, globalFields: savedGlobalFields } };
+  }, [pages, templateMeta, pageSize, savedGlobalFields]);
+
+  // Commit the whole savepoint (pages history + the folded-in fields) at once:
+  // the shared "this is now the saved/loaded baseline" operation. Pass the
+  // EXACT persisted/loaded values, not "current" — see markSaved's contract.
+  const markDocumentSaved = useCallback(
+    (savedPages: CanvasPage[], savedPageSize: PageSizeConfig, savedGlobals: Record<string, string>) => {
+      markSaved(savedPages);
+      setSavepoint({ pageSize: savedPageSize, globalFields: savedGlobals });
+    },
+    [markSaved],
+  );
+
+  // Absolute deadline (ms epoch) by which the current unsaved burst must be
+  // written; 0 when clean. See the autosave effect for the max-wait logic.
+  const draftDeadlineRef = useRef(0);
+
+  // Latest folded-in field values, readable synchronously from the async save
+  // callback (the render closure is stale after `await`) so the draft-clear
+  // race check can cover page size and global fields, not just pages.
+  const pageSizeRef = useRef(pageSize);
+  useEffect(() => { pageSizeRef.current = pageSize; }, [pageSize]);
+  const globalsRef = useRef(savedGlobalFields);
+  useEffect(() => { globalsRef.current = savedGlobalFields; }, [savedGlobalFields]);
+
+  // Write the current draft now (exit points the debounce would miss). Held
+  // in a ref, synced via effect (not during render), so event/unmount handlers
+  // always call the latest closure without re-registering on every edit.
+  const flushDraft = useCallback(() => {
+    if (isDirty) saveDraft(buildCurrentDocument(), userId);
+  }, [isDirty, buildCurrentDocument, userId]);
+  const flushRef = useRef(flushDraft);
+  useEffect(() => { flushRef.current = flushDraft; }, [flushDraft]);
+  const flushViaRef = useCallback(() => flushRef.current(), []);
+
+  // T0.3: while dirty, flush then prompt on a real tab close/reload.
+  useUnsavedChangesGuard(isDirty, flushViaRef);
+
+  // T0.4 (save side): while dirty, keep the draft current. A plain debounce
+  // re-arms on every edit (buildCurrentDocument depends on pages), so
+  // uninterrupted editing would NEVER write — a crash mid-burst would lose the
+  // whole burst, the exact loss the draft exists to prevent. So the debounce
+  // has a max-wait: the write fires DRAFT_DEBOUNCE_MS after editing pauses
+  // (the common case, cheap), but at most DRAFT_MAX_WAIT_MS after the first
+  // unsaved edit even if editing never pauses — bounding both worst-case loss
+  // and, for image-heavy docs, write frequency to that window.
+  // WRITE-ONLY: clearing is event-driven (clean save; undo-to-savepoint; load).
+  useEffect(() => {
+    if (!isDirty) { draftDeadlineRef.current = 0; return; }
+    const now = Date.now();
+    draftDeadlineRef.current = draftDeadline(draftDeadlineRef.current, now, DRAFT_MAX_WAIT_MS);
+    const delay = nextDraftDelay(draftDeadlineRef.current, now, DRAFT_DEBOUNCE_MS);
+    const timer = window.setTimeout(() => {
+      saveDraft(buildCurrentDocument(), userId);
+      draftDeadlineRef.current = 0; // next unsaved edit starts a fresh window
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [isDirty, buildCurrentDocument, userId]);
+
+  // In-app navigation (e.g. the Integrations button) unmounts the canvas
+  // without firing beforeunload — flush the pending draft on unmount.
+  useEffect(() => () => flushRef.current(), []);
+
+  // The other half of event-driven clearing (the first is a clean save).
+  // Undo/redo can land the document back ON the savepoint: it is then identical
+  // to what was last saved or loaded, and an already-written draft would still
+  // hold the changes the user just un-did. Restore must never offer those back,
+  // so drop it here. isAtSavepoint reads refs, so it is accurate immediately
+  // after the history op, before React re-renders; the autosave's pending timer
+  // is cancelled by its own cleanup on the resulting clean render.
+  const clearDraftIfClean = useCallback(() => {
+    if (pagesAtSavepoint() && !fieldsDirty) clearDraft(userId);
+  }, [pagesAtSavepoint, fieldsDirty, userId]);
+
+  const handleUndo = useCallback(() => {
+    undoHistory();
+    clearDraftIfClean();
+  }, [undoHistory, clearDraftIfClean]);
+
+  const handleRedo = useCallback(() => {
+    redoHistory();
+    clearDraftIfClean();
+  }, [redoHistory, clearDraftIfClean]);
 
   // ── Sensors ───────────────────────────────────────────────────────────────
 
@@ -536,12 +663,12 @@ function TemplateCanvas() {
       // Undo / redo — ⌘Z / ⌘⇧Z (and Ctrl+Y)
       if ((e.metaKey || e.ctrlKey) && !inField && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        if (e.shiftKey) redoHistory(); else undoHistory();
+        if (e.shiftKey) handleRedo(); else handleUndo();
         return;
       }
       if ((e.metaKey || e.ctrlKey) && !inField && e.key.toLowerCase() === 'y') {
         e.preventDefault();
-        redoHistory();
+        handleRedo();
         return;
       }
 
@@ -551,18 +678,23 @@ function TemplateCanvas() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedElementId, undoHistory, redoHistory]);
+  }, [selectedElementId, handleUndo, handleRedo]);
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
   // Persist the current canvas to Supabase (create on first save, update after).
   const persistToCloud = async (name: string) => {
-    const doc = createTemplateDocument(pages, name, templateMeta, pageSize);
-    const body = {
-      ...doc,
-      meta: { ...doc.meta, globalFields: savedGlobalFields },
-    };
-    setTemplateMeta(doc.meta);
+    // Same builder as the draft autosave — cloud save and draft can never
+    // diverge in what they serialize (T0.4 review fix).
+    const body = buildCurrentDocument(name);
+    // Snapshot the exact values that go into `body` at CLICK time. If the user
+    // edits during the async save, these still identify what was persisted, so
+    // the savepoint and the draft-clear decision are about the saved version,
+    // not whatever the canvas drifted to while the request was in flight.
+    const savedPages = pages;
+    const savedPageSize = pageSize;
+    const savedGlobals = savedGlobalFields;
+    setTemplateMeta(body.meta);
     setCloudStatus('saving');
     try {
       if (currentTemplateId) {
@@ -573,6 +705,19 @@ function TemplateCanvas() {
         void refreshPlan(); // a new template changed the team's template count
       }
       setCloudStatus('saved');
+      // Move the savepoint to exactly what was persisted. If pages raced in
+      // during the flight, isDirty stays true (live pages ≠ savedPages).
+      markDocumentSaved(savedPages, savedPageSize, savedGlobals);
+      // Clear the draft ONLY if the WHOLE document is still what we persisted —
+      // pages, page size, AND global fields. If anything raced in during the
+      // flight, the draft holds those un-persisted edits and must survive (the
+      // autosave keeps it current). Pages use reference identity (immutable
+      // history); the folded-in fields use value equality (fresh objects).
+      const documentClean =
+        Object.is(getLatestPages(), savedPages) &&
+        samePageSize(pageSizeRef.current, savedPageSize) &&
+        sameStringMap(globalsRef.current, savedGlobals);
+      if (documentClean) clearDraft(userId);
       window.setTimeout(() => setCloudStatus('idle'), 2500);
     } catch (err) {
       setCloudStatus('error');
@@ -601,16 +746,28 @@ function TemplateCanvas() {
   // Apply a parsed v2.0 template document to canvas state. Shared by file
   // import and cloud open.
   const applyDocument = (doc: any) => {
+    // Preserve the OUTGOING document's unsaved work: flush its draft before we
+    // switch away. No-op when the outgoing document is clean, so opening a
+    // template on a pristine canvas never touches a crash-survivor draft.
+    flushRef.current();
+
     const cleanPages: CanvasPage[] = doc.pages.map((p: CanvasPage) =>
       ensurePageDefaults({
         ...p,
         elements: p.elements.filter((el: any) => !isLegacyCanvasTable(el)),
       })
     );
-    setPages(cleanPages);
+    const nextPageSize = doc.pageSize ? doc.pageSize : defaultPageSize();
+    const nextGlobals = doc.meta?.globalFields ?? {};
+    // A load is not an edit: reset history AND the folded-in savepoint together,
+    // so the freshly opened document is pristine — no undo into the previous
+    // doc, no armed autosave, no leave-site prompt. Draft clearing is NOT done
+    // here (that would delete the outgoing document's just-flushed draft).
+    resetPages(cleanPages);
     setTemplateMeta(doc.meta || {});
-    setPageSize(doc.pageSize ? doc.pageSize : defaultPageSize());
-    setSavedGlobalFields(doc.meta?.globalFields ?? {});
+    setPageSize(nextPageSize);
+    setSavedGlobalFields(nextGlobals);
+    setSavepoint({ pageSize: nextPageSize, globalFields: nextGlobals });
     setSelectedElementId(null);
     setSelectedPageBreakId(null);
     setIr(null);
@@ -919,8 +1076,8 @@ function TemplateCanvas() {
           onSave={handleSaveTemplate}
           onOpenTemplates={() => setLibraryMode('builtin')}
           onOpenProjects={() => setLibraryMode('projects')}
-          onUndo={undoHistory}
-          onRedo={redoHistory}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
           canUndo={canUndo}
           canRedo={canRedo}
           dataMapped={!!ir}

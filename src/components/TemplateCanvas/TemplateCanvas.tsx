@@ -89,7 +89,7 @@ import {
   type TemplateRecord,
 } from '../../services/templatesRepo';
 import { readLaunchIntent } from '../../frame/launchIntent';
-import { type BuiltinTemplate } from '../../templates/registry';
+import { BUILTIN_TEMPLATES, type BuiltinTemplate } from '../../templates/registry';
 import {
   detectRelationships,
   buildRelatedCollectionsConfig,
@@ -916,6 +916,16 @@ function TemplateCanvas() {
             });
           });
         break;
+      case 'open-builtin': {
+        // Built-ins are bundled with the app, so this is a lookup, not a fetch.
+        const builtin = BUILTIN_TEMPLATES.find(t => t.id === intent.builtinId);
+        if (!builtin) {
+          notify.error('template.builtinMissing');
+          break;
+        }
+        handleOpenBuiltin(builtin);
+        break;
+      }
       case 'rebuild-ai':
         setRebuildAiOpen(true);
         break;

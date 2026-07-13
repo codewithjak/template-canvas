@@ -25,6 +25,12 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="3" y="13" width="8" height="8" rx="1.5" />
     </svg>
   ),
+  templates: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  ),
   integrations: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <path d="M6 3v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V3M9 21v-4M15 21v-4M12 12v9" />

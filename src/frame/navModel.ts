@@ -33,6 +33,7 @@ export interface NavItem {
  */
 const NAV_ITEMS: readonly NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', to: '/dashboard', group: 'main' },
+  { id: 'templates', label: 'Templates', to: '/templates', group: 'main' },
   { id: 'integrations', label: 'Integrations', to: '/settings#api', group: 'main' },
   { id: 'team', label: 'Team', to: '/settings#team', group: 'workspace' },
   { id: 'settings', label: 'Settings', to: '/settings', group: 'workspace' },

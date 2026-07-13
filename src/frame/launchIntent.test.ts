@@ -14,6 +14,16 @@ test('round-trips the payload-free intents', () => {
   }
 })
 
+test('round-trips an open-builtin intent', () => {
+  const { state } = toLaunchState({ kind: 'open-builtin', builtinId: 'invoice-a4' })
+  assert.deepEqual(readLaunchIntent(state), { kind: 'open-builtin', builtinId: 'invoice-a4' })
+})
+
+test('rejects an open-builtin with no usable id', () => {
+  assert.equal(readLaunchIntent({ launchIntent: { kind: 'open-builtin' } }), null)
+  assert.equal(readLaunchIntent({ launchIntent: { kind: 'open-builtin', builtinId: '' } }), null)
+})
+
 test('a plain /canvas visit (no state) yields no intent', () => {
   // The everyday case: the canvas must behave exactly as it does today.
   assert.equal(readLaunchIntent(null), null)

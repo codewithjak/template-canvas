@@ -529,3 +529,70 @@ Exit check: a tester can name each toolbar button's function from its label alon
   what shipped, then diff implementation against the phase tasks; any drift is
   either reverted or written back into this doc before the next phase starts.
 - No task outside this doc's scope ships under this workstream.
+
+---
+
+## AMENDMENT (2026-07-13) — §5's funnel recorded NOTHING; the doc's own claim was wrong
+
+Appended, not rewritten (rule k). This corrects **§5**; every other section stands.
+
+### A.1 The false claim, and where it came from
+§5 ends with:
+
+> "The events table is append-only; no schema change beyond the enum union in
+> TypeScript (the DB column is text)."
+
+**That is wrong.** The column is `text`, but it carries a CHECK constraint
+(`supabase/schema.sql`, re-asserted by `supabase/ai_metering.sql`):
+
+```sql
+check (event_type in ('login','template_created','pdf_exported','ai_build'))
+```
+
+An unlisted `event_type` is **rejected on insert**. And `analytics.logEvent`
+swallows errors by design ("analytics must never break the action it is
+measuring"), so the rejection surfaced only as a `console.warn`.
+
+The claim was copied verbatim into `analytics.ts` as a code comment when TC-0187
+extended the union, so the mistake was asserted twice and checked zero times.
+
+### A.2 What that means for anything §5 claims to measure
+From TC-0187 until the migration below, **every activation event was discarded by
+the database**: `start_layer_shown`, `start_layer_card_clicked`, `draft_restored`,
+`data_bound`. The funnel in §5 has **no data behind it**. Any conclusion drawn
+from it about cold-start activation is unfounded — not "thin", *absent*.
+
+`login`, `template_created` and `pdf_exported` were unaffected (they predate the
+constraint and are listed in it), so the *ends* of the funnel are real; every
+middle step is missing.
+
+### A.3 Fixed (TC-0192)
+- `supabase/canvas_activation_events.sql` — widens the constraint in place,
+  idempotent. **Must be run against the deployed database**; a frontend deploy
+  alone leaves the funnel dead.
+- `supabase/schema.sql` — inline constraint widened too, so a freshly created
+  database is not born broken.
+- `src/services/analytics.ts` — the false comment replaced with the opposite
+  instruction (adding a union member is NOT sufficient).
+- `src/services/analytics.test.ts` — **the actual fix.** It reads the TypeScript
+  union and both SQL files and fails if any frontend event would be rejected. A
+  subset check, not equality: the constraint legitimately holds `ai_build`, which
+  the backend logs. Nothing connected these two sources of truth before, which is
+  why the bug survived a whole phase.
+
+### A.4 Second drift in §5, unrelated to the constraint
+§5 also specifies **`'first_export_completed'`** ("once per browser, alongside the
+existing `'pdf_exported'`"). It was **never implemented** — it appears in no
+source file, frontend or backend. So the funnel's terminal step does not exist
+either, by a different mechanism.
+
+Decide before relying on §5: implement it, or strike it from the funnel and read
+`pdf_exported` as the terminal step. It is NOT covered by the migration above and
+would need its own constraint entry if implemented.
+
+### A.5 Consequence for the Start Layer retirement
+`APP_SHELL_RELAYOUT_ARCHITECTURE.md` T5.6/T5.7 retires the Start Layer and
+re-points the funnel at the Dashboard. That retirement was to be judged on
+before/after activation data. **There is no "before" data.** Either accept the
+retirement on its design merits (the shell answers cold-start earlier and better),
+or run the migration and collect a baseline first. Do not claim it was measured.

@@ -12,12 +12,25 @@
 import { supabase } from './supabaseClient'
 import { getActiveTeamId } from './teamService'
 
+/**
+ * Adding a member here is NOT enough to make the event land.
+ *
+ * `analytics_events.event_type` is text but carries a CHECK constraint, so an
+ * unlisted value is REJECTED on insert — and `logEvent` swallows the error by
+ * design (below), so the event disappears with only a console.warn. Every new
+ * type needs the constraint widened in `supabase/schema.sql` AND a migration for
+ * already-deployed databases (see `supabase/canvas_activation_events.sql`).
+ *
+ * This comment previously claimed the opposite ("DB column is text, so these add
+ * no schema change"). It was wrong: the four activation events below logged
+ * nothing from TC-0187 until the migration landed. `analytics.test.ts` now fails
+ * if the union and the constraint ever disagree again.
+ */
 export type AnalyticsEventType =
   | 'login'
   | 'template_created'
   | 'pdf_exported'
-  // Canvas activation funnel (activation doc §5). DB column is text, so these
-  // add no schema change — only the TypeScript union grows.
+  // Canvas activation funnel (activation doc §5)
   | 'start_layer_shown'
   | 'start_layer_card_clicked'
   | 'draft_restored'

@@ -12,6 +12,7 @@ import Pricing from './pages/Pricing'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import AcceptInvite from './pages/AcceptInvite'
+import AppFrame from './frame/AppFrame'
 import { PlanProvider } from './plan/PlanProvider'
 import AdminRoute from './admin/AdminRoute'        // [ADMIN PANEL]
 import AdminPage from './admin/AdminPage'          // [ADMIN PANEL]
@@ -50,14 +51,19 @@ function App() {
               </ProtectedRoute>
             }
           />
+          {/* Framed routes (app-frame doc T1.5): the sidebar + the app's one
+              header wrap the page. /canvas is NOT here yet — its rail, panel and
+              action bar are viewport-fixed and would float over the frame at the
+              wrong offsets until the editor re-chrome lands (Phase 1b). */}
           <Route
-            path="/settings"
             element={
               <ProtectedRoute>
-                <Settings />
+                <AppFrame />
               </ProtectedRoute>
             }
-          />
+          >
+            <Route path="/settings" element={<Settings />} />
+          </Route>
           {/* [ADMIN PANEL] isolated feature — remove this Route + its imports to disable */}
           <Route
             path="/admin"

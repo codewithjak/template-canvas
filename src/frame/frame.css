@@ -1,0 +1,234 @@
+/**
+ * frame.css — the app frame (app-frame doc Phase 1).
+ *
+ * Tokens only, no hex literals. These are the EXISTING editor tokens from
+ * index.css; re-pointing the palette to the mockup's is a separate change
+ * (APP_SHELL_RELAYOUT_ARCHITECTURE.md Phase 0) and deliberately not done here.
+ */
+
+.frame {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+
+.frame-side {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 220px;
+  padding: 14px 10px;
+  background: var(--color-background-primary);
+  border-right: 1px solid var(--color-border-tertiary);
+}
+
+.frame-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px 14px;
+  font-size: 16px;
+  letter-spacing: -0.02em;
+}
+.frame-brand__mark {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--color-accent);
+}
+.frame-brand__mark::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 3px;
+  background: var(--color-background-primary);
+}
+.frame-brand i {
+  font-style: normal;
+  color: var(--color-accent);
+}
+
+.frame-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px;
+  border: none;
+  border-radius: var(--btn-radius);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--btn-font-weight);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.frame-new:hover {
+  background: var(--color-accent-hover);
+}
+
+.frame-navlist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.frame-navlbl {
+  margin: 14px 0 5px;
+  padding: 0 10px;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.frame-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--btn-radius-sm);
+  background: none;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.frame-nav:hover {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}
+.frame-nav--active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.frame-nav--active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  width: 3px;
+  height: 17px;
+  border-radius: 3px;
+  background: var(--color-accent);
+}
+.frame-nav__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.frame-nav__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.frame-side__spacer {
+  flex: 1;
+}
+
+.frame-plan {
+  padding: 12px;
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 16px;
+  background: var(--color-background-secondary);
+}
+.frame-plan__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.frame-plan__bar {
+  height: 6px;
+  margin-bottom: 7px;
+  border-radius: 6px;
+  background: var(--color-border-tertiary);
+  overflow: hidden;
+}
+.frame-plan__bar i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--color-accent);
+}
+.frame-plan small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+/* ── Main column: the app's ONE header, then the page ─────────────────── */
+
+.frame-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.frame-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  height: 56px;
+  padding: 0 20px;
+  background: var(--color-background-primary);
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+.frame-top__titles {
+  min-width: 0;
+}
+.frame-top__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.frame-top__sub {
+  margin: 1px 0 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.frame-top__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.frame-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.frame-nav:focus-visible,
+.frame-new:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame-nav,
+  .frame-new {
+    transition: none;
+  }
+}

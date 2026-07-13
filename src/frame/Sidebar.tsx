@@ -25,6 +25,17 @@ const ICONS: Record<string, ReactNode> = {
       <rect x="3" y="13" width="8" height="8" rx="1.5" />
     </svg>
   ),
+  integrations: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M6 3v6a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V3M9 21v-4M15 21v-4M12 12v9" />
+    </svg>
+  ),
+  team: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 6a3 3 0 0 1 0 6M17 14c2.4.5 4 2.5 4 5" />
+    </svg>
+  ),
   settings: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <circle cx="12" cy="12" r="3" />
@@ -35,8 +46,10 @@ const ICONS: Record<string, ReactNode> = {
 
 function NavLink({ item }: { item: NavItem }) {
   const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const active = isActive(item.to, pathname)
+  const { pathname, hash } = useLocation()
+  // Pathname PLUS hash: Integrations and Team are anchors into /settings, so the
+  // hash is the only thing that tells them apart from Settings itself.
+  const active = isActive(item.to, `${pathname}${hash}`)
   return (
     <button
       type="button"

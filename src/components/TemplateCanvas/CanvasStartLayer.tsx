@@ -14,6 +14,7 @@
  * pristine the canvas stops rendering this component, so it leaves the DOM
  * entirely — nothing stale remains for assistive tech.
  */
+import { relativeTime } from '../../utils/relativeTime'
 import './CanvasStartLayer.css'
 
 interface StartCard {
@@ -34,16 +35,8 @@ interface Props {
   draft?: { savedAt: string; onRestore: () => void }
 }
 
-function savedAgo(savedAt: string): string {
-  const then = new Date(savedAt).getTime()
-  if (Number.isNaN(then)) return 'earlier'
-  const mins = Math.max(0, Math.round((Date.now() - then) / 60000))
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`
-  return new Date(savedAt).toLocaleDateString()
-}
+// `savedAgo` lived here until the Dashboard needed the same formatting; it is now
+// `utils/relativeTime` and both call it, so the two cannot drift.
 
 function CanvasStartLayer({ onBrowseTemplates, onRebuildPdf, onBindData, onStartBlank, draft }: Props) {
   const cards: StartCard[] = []
@@ -52,7 +45,7 @@ function CanvasStartLayer({ onBrowseTemplates, onRebuildPdf, onBindData, onStart
     cards.push({
       key: 'continue',
       title: 'Continue where you left off',
-      description: `Pick up your unsaved work from ${savedAgo(draft.savedAt)}.`,
+      description: `Pick up your unsaved work from ${relativeTime(draft.savedAt)}.`,
       onClick: draft.onRestore,
       emphasis: true,
       icon: (

@@ -5,7 +5,7 @@ import { navItems, navItemsInGroup, isActive } from './navModel'
 test('every nav item points at a route that exists today', () => {
   // The guard against a nav item that 404s. When Dashboard/Templates ship,
   // add them here and to NAV_ITEMS in the same commit.
-  const builtRoutes = ['/settings']
+  const builtRoutes = ['/dashboard', '/settings']
   for (const item of navItems()) {
     assert.ok(builtRoutes.includes(item.to), `${item.label} → ${item.to} is not a built route`)
   }

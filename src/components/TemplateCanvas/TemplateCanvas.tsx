@@ -27,6 +27,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 
 import Toolbar             from './Toolbar';
@@ -84,8 +85,10 @@ import type { PdfImportResult } from '../../services/pdfImportService';
 import {
   createTemplate as createCloudTemplate,
   updateTemplate as updateCloudTemplate,
+  getTemplate as getCloudTemplate,
   type TemplateRecord,
 } from '../../services/templatesRepo';
+import { readLaunchIntent } from '../../frame/launchIntent';
 import { type BuiltinTemplate } from '../../templates/registry';
 import {
   detectRelationships,
@@ -262,6 +265,11 @@ function TemplateCanvas() {
   // ── Trust fixes (activation doc Phase 0) ──────────────────────────────────
 
   const { user } = useAuth();
+
+  // Router state carrying an optional launch intent (app-frame doc §5). It is
+  // `unknown` at runtime — a user can land on a history entry we never wrote — so
+  // it is validated by `readLaunchIntent`, never trusted.
+  const { state: launchState } = useLocation();
   const userId = user?.id ?? null;
 
   // The active team, resolved once. Drafts record the team they were written
@@ -866,6 +874,35 @@ function TemplateCanvas() {
     setCurrentTemplateId(record.id);
     setLibraryMode(null);
   };
+
+  // A framed page (today: the Dashboard's "Jump back in") can ask the canvas to
+  // open a specific template on arrival — the canvas has no other deep link, as
+  // handleOpenCloudTemplate is otherwise reachable only from the templates modal.
+  // The page DECLARES the intent; the canvas EXECUTES it with the handler above,
+  // so hydration never leaves this component (app-frame doc §5).
+  //
+  // Runs once per mount: `location.state` is stale after the first read (a later
+  // in-canvas navigation must not re-open the template over the user's edits), and
+  // `readLaunchIntent` returns null for the ordinary /canvas visit with no state.
+  const launchHandledRef = useRef(false);
+  useEffect(() => {
+    if (launchHandledRef.current) return;
+    const intent = readLaunchIntent(launchState);
+    if (!intent) return;
+    launchHandledRef.current = true;
+
+    if (intent.kind === 'open-template') {
+      void getCloudTemplate(intent.templateId)
+        .then(handleOpenCloudTemplate)
+        .catch((err: unknown) => {
+          notify.error({
+            key: 'template.openFailed',
+            vars: { error: err instanceof Error ? err.message : String(err) },
+          });
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [launchState]);
 
   // Open a bundled built-in template. The template ships tokenized
   // ({{placeholders}}) plus a matching sample-data file; we resolve the tokens

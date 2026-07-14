@@ -977,12 +977,27 @@ function TemplateCanvas() {
     setPreviewRowIndex(0);
     setUploadPanelOpen(false);
 
-    // T1.7: "Start from your data" must not end on an empty canvas. If the
-    // canvas is still pristine when data lands, seed a starter layout (title +
-    // a table bound to the detected structure) so the first click rewards.
-    // Gated on pristineness ALONE, not layer visibility — dismissing the layer
-    // ("Start blank") must not disable this data-flow post-condition.
-    if (isCanvasPristine(pages)) {
+    // T1.7: "Start from your data" must not end on an empty canvas. If the canvas is
+    // still pristine when data lands, seed a starter layout (title + a table bound to
+    // the detected structure) so the first click rewards.
+    //
+    // `getLatestPages()`, NOT the `pages` closure. This is load-bearing, and getting it
+    // wrong DESTROYED TEMPLATES:
+    //
+    //   handleOpenBuiltin() calls applyDocument(template.doc) and then, in the SAME
+    //   tick, handleDataConfirm(template.data) to fill in the sample data. React has
+    //   not re-rendered yet, so the `pages` closure still holds the EMPTY canvas from
+    //   before the template loaded. `isCanvasPristine(pages)` was therefore true, and
+    //   the seeding below replaced page 1's elements — wiping the template that had
+    //   just been loaded and leaving a generic "Quarters" starter table in its place.
+    //
+    //   `useHistoryState.reset()` sets its ref eagerly, so `getLatestPages()` returns
+    //   the template's pages synchronously, in this same tick. A loaded template is not
+    //   pristine, so no seeding happens and the template renders as authored.
+    //
+    // Gated on pristineness ALONE, not layer visibility — dismissing the Start Layer
+    // must not disable this data-flow post-condition.
+    if (isCanvasPristine(getLatestPages())) {
       const seeded = seedStarterLayoutFromStructure(doc);
       if (seeded.length > 0) {
         setPages(prev => updatePageElements(prev, prev[0].pageId, () => seeded));

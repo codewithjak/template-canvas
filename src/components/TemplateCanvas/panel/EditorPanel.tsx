@@ -19,6 +19,7 @@
 import { useState } from 'react'
 import InsertPane, { type InsertActions } from './InsertPane'
 import DataPane, { type DataPaneInfo } from './DataPane'
+import ElementOptions, { type ElementOptionsProps } from './ElementOptions'
 import './panel.css'
 
 type PanelTab = 'insert' | 'data'
@@ -32,6 +33,13 @@ interface Props {
   insert: InsertActions
   data: DataPaneInfo
   /**
+   * The selected element's advanced controls — what used to hang off the "⋯" on the
+   * floating bar. They sit BELOW the tab content, so they are always in view for the
+   * element you have selected, whichever tab is open. Renders nothing for an element
+   * that has no overflow controls.
+   */
+  options: ElementOptionsProps
+  /**
    * Collapse is owned by the CANVAS, not by this panel. The width has to be stamped
    * on `--frame-panel-w`, and that var must live on an ancestor of the floating
    * format bars (which are `position: fixed` and centre on the stage by subtracting
@@ -41,7 +49,7 @@ interface Props {
   onToggleCollapsed: () => void
 }
 
-function EditorPanel({ insert, data, collapsed, onToggleCollapsed }: Props) {
+function EditorPanel({ insert, data, options, collapsed, onToggleCollapsed }: Props) {
   const [tab, setTab] = useState<PanelTab>('insert')
 
   const Toggle = (
@@ -88,6 +96,10 @@ function EditorPanel({ insert, data, collapsed, onToggleCollapsed }: Props) {
       <div className="ep-body">
         {tab === 'insert' && <InsertPane actions={insert} />}
         {tab === 'data' && <DataPane info={data} />}
+
+        {/* Below the tab's controls, not inside them: this is about the SELECTED
+            element, not about the tab you happen to be on. */}
+        <ElementOptions {...options} />
       </div>
     </aside>
   )

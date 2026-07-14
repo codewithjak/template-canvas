@@ -720,3 +720,66 @@ of them (sidebar 200 + rail 130 + panel 250 = 580 "fits", and is worse everywher
   not a re-layout, so it needs its own decision.
 - **Zoom / fit-to-width** — the real long-term answer, already out of scope with its own
   doc pending (it touches rendering and coordinate math).
+
+---
+
+## AMENDMENT 9 (2026-07-14) — collapsible sidebar + right panel; A8's shortfall closed
+
+Amendment 8 said "something must be able to collapse". Both now do (TC-0208).
+
+### A9.1 The sidebar collapses IN THE EDITOR, by default
+`navModel.defaultSidebarCollapsed(path)` — pure, unit-tested — returns true for
+`/canvas` and false everywhere else. `AppFrame` re-derives it on every route change,
+so **clicking "New template" lands you in the editor with the sidebar already
+collapsed**; a manual toggle then holds for as long as you stay on the page.
+
+Collapsed it is **56px**: icons only, each carrying its label as `title` *and*
+`aria-label` (the icon is all that is left, so it must name itself for a mouse and for
+a screen reader). The plan card hides — it is a paragraph of text with nowhere to go at
+56px, and a truncated usage bar tells nobody anything.
+
+The Dashboard, Templates and Settings keep the sidebar open: **those pages ARE
+navigation**, and hiding the nav on the pages built for navigating would be perverse.
+
+### A9.2 The right panel collapses to a 44px strip
+A strip, not nothing — *a panel that vanishes with no way back is a panel the user has
+lost*. It starts open (it is how you insert an element) and the toggle sits in the tab
+row.
+
+**Its collapse state lives in `TemplateCanvas`, not in `EditorPanel`.** That is not an
+accident: the width must be stamped on `--frame-panel-w`, and that var has to sit on an
+**ancestor of the floating format bars**. The panel is their sibling and cannot reach
+them; `.template-canvas-container` is their parent and can.
+
+### A9.3 The var overrides are the load-bearing part
+The bars and `CanvasStatusBar` are `position: fixed` and centre on the STAGE by
+subtracting the chrome from the window. **A column that collapses without moving its
+var takes the overlays off-centre with it** — 82px for the sidebar, 128px for the panel.
+So:
+
+```css
+.frame--sidebar-collapsed                    { --frame-sidebar-w: 56px; }
+.template-canvas-container--panel-collapsed  { --frame-panel-w: 44px; }
+```
+
+This is the fourth correction to that centring expression (sidebar → rail's real 168px
+→ panel → now collapse). The standing rule holds: **anything `position: fixed` inside
+the frame is mis-centred by default**, and the vars exist so there is exactly one place
+to fix it.
+
+### A9.4 A8's shortfall is closed
+At 1440px, A4 (794px), padding 48, scrollbar ~15:
+
+| state | chrome | usable stage | A4 fits |
+|---|---|---|---|
+| before (nothing collapsed) | 688 | 689 | **no — short 105px** |
+| **editor default (sidebar collapsed)** | **524** | **853** | **YES** |
+| panel collapsed only | 432 | 945 | yes |
+| both collapsed | 268 | 1109 | yes |
+
+The editor's default state now fits a full A4 page at 1440px with 59px to spare.
+
+**Not done:** the collapse preference is not persisted — it resets on every navigation.
+Deliberate: a remembered preference is a stored setting, and the auto-collapse already
+gives the right default on the only route where width is scarce. Revisit only if users
+ask.

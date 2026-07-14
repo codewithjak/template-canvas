@@ -1,6 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { navItems, navItemsInGroup, isActive, routeOf, pageTitle } from './navModel'
+import {
+  navItems,
+  navItemsInGroup,
+  isActive,
+  routeOf,
+  pageTitle,
+  defaultSidebarCollapsed,
+} from './navModel'
 
 test('every nav item points at a route that exists today', () => {
   // The guard against a nav item that 404s: add the route here and to NAV_ITEMS in
@@ -27,6 +34,19 @@ test('plain /settings lights up Settings alone', () => {
   assert.equal(isActive('/settings', '/settings'), true)
   assert.equal(isActive('/settings#team', '/settings'), false)
   assert.equal(isActive('/settings#api', '/settings'), false)
+})
+
+test('the sidebar starts collapsed in the editor, and only there', () => {
+  // The canvas is starved for width: an A4 page is 794px and the chrome leaves
+  // ~689px at 1440px. Collapsing the sidebar there is what makes a page fit.
+  assert.equal(defaultSidebarCollapsed('/canvas'), true)
+
+  // ...but the Dashboard and Templates ARE navigation. Hiding the nav on the pages
+  // built for navigating would be perverse.
+  assert.equal(defaultSidebarCollapsed('/dashboard'), false)
+  assert.equal(defaultSidebarCollapsed('/templates'), false)
+  assert.equal(defaultSidebarCollapsed('/settings'), false)
+  assert.equal(defaultSidebarCollapsed('/settings#team'), false)
 })
 
 test('the editor is named in the header even though it has no nav item', () => {

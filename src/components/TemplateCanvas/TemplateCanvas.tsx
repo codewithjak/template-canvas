@@ -256,6 +256,11 @@ function TemplateCanvas() {
 
   const [showSaveModal, setShowSaveModal] = useState(false);
 
+  // The right panel (Insert / Data) starts OPEN — it is how you insert an element —
+  // but it can be collapsed to give the page room. At 1440px the chrome does not
+  // leave enough width for an A4 page (relayout doc Amendment 8).
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+
   // ── Cloud persistence (Supabase, team-scoped) ──────────────────────────────
 
   const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null);
@@ -1209,7 +1214,13 @@ function TemplateCanvas() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="template-canvas-container">
+      {/* The modifier is what changes `--frame-panel-w`. That var is not decoration:
+          the floating format bars and the status bar are `position: fixed` and centre
+          on the STAGE by subtracting the chrome from the window. Collapse the panel
+          without moving the var and they all drift 128px off-centre. The container is
+          the nearest ancestor of those bars, which is why the state lives here and not
+          inside EditorPanel. */}
+      <div className={`template-canvas-container${panelCollapsed ? ' template-canvas-container--panel-collapsed' : ''}`}>
 
         <Toolbar
           onAddParagraph={handleAddParagraph}
@@ -1563,6 +1574,8 @@ function TemplateCanvas() {
             floating bars and their "⋯" — there is no properties/Layout tab here
             (relayout doc Amendment 5). Every callback below already exists. */}
         <EditorPanel
+          collapsed={panelCollapsed}
+          onToggleCollapsed={() => setPanelCollapsed(c => !c)}
           insert={{
             onAddText: handleAddText,
             onAddParagraph: handleAddParagraph,

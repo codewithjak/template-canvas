@@ -50,7 +50,7 @@ const ICONS: Record<string, ReactNode> = {
   ),
 }
 
-function NavLink({ item }: { item: NavItem }) {
+function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const navigate = useNavigate()
   const { pathname, hash } = useLocation()
   // Pathname PLUS hash: Integrations and Team are anchors into /settings, so the
@@ -61,10 +61,14 @@ function NavLink({ item }: { item: NavItem }) {
       type="button"
       className={`frame-nav${active ? ' frame-nav--active' : ''}`}
       aria-current={active ? 'page' : undefined}
+      // Collapsed, the icon is the only thing left, so it has to carry the name —
+      // both for a mouse (tooltip) and for a screen reader.
+      title={collapsed ? item.label : undefined}
+      aria-label={collapsed ? item.label : undefined}
       onClick={() => navigate(item.to)}
     >
       <span className="frame-nav__icon">{ICONS[item.id]}</span>
-      {item.label}
+      {!collapsed && item.label}
     </button>
   )
 }
@@ -100,46 +104,73 @@ function PlanCard() {
   )
 }
 
-function Sidebar() {
+interface Props {
+  collapsed: boolean
+  onToggle: () => void
+}
+
+function Sidebar({ collapsed, onToggle }: Props) {
   const navigate = useNavigate()
   const main = navItemsInGroup('main')
   const workspace = navItemsInGroup('workspace')
 
   return (
-    <aside className="frame-side">
+    <aside className={`frame-side${collapsed ? ' frame-side--collapsed' : ''}`}>
       <div className="frame-brand">
         <span className="frame-brand__mark" aria-hidden="true" />
-        <b>
-          map<i>doc</i>
-        </b>
+        {!collapsed && (
+          <b>
+            map<i>doc</i>
+          </b>
+        )}
+        <button
+          type="button"
+          className="frame-collapse"
+          onClick={onToggle}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+            <path d={collapsed ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
-      <button type="button" className="frame-new" onClick={() => navigate('/canvas')}>
+      <button
+        type="button"
+        className="frame-new"
+        onClick={() => navigate('/canvas')}
+        title={collapsed ? 'New template' : undefined}
+        aria-label={collapsed ? 'New template' : undefined}
+      >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
           <path d="M12 5v14M5 12h14" strokeLinecap="round" />
         </svg>
-        New template
+        {!collapsed && 'New template'}
       </button>
 
       <nav className="frame-navlist" aria-label="Main">
         {main.map((item) => (
-          <NavLink key={item.id} item={item} />
+          <NavLink key={item.id} item={item} collapsed={collapsed} />
         ))}
       </nav>
 
       {workspace.length > 0 && (
         <>
-          <div className="frame-navlbl">Workspace</div>
+          {!collapsed && <div className="frame-navlbl">Workspace</div>}
           <nav className="frame-navlist" aria-label="Workspace">
             {workspace.map((item) => (
-              <NavLink key={item.id} item={item} />
+              <NavLink key={item.id} item={item} collapsed={collapsed} />
             ))}
           </nav>
         </>
       )}
 
       <div className="frame-side__spacer" />
-      <PlanCard />
+      {/* The plan card is a paragraph of text; there is nowhere for it to go at 56px,
+          and a truncated usage bar tells no one anything. It hides. */}
+      {!collapsed && <PlanCard />}
     </aside>
   )
 }

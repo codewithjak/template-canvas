@@ -421,3 +421,14 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* ── Collapsed right panel ───────────────────────────────────────────────────
+   Overriding the var is the whole point: the floating format bars and the status bar
+   are `position: fixed` and centre on the STAGE by subtracting the chrome from the
+   window. Collapse the panel to a 44px strip without moving the var and they all sit
+   128px off-centre. The container is the nearest ancestor of those bars, so this is
+   where the override has to live. */
+.template-canvas-container--panel-collapsed {
+  --frame-panel-w: 44px;
+}

@@ -278,3 +278,46 @@
     transition: none;
   }
 }
+
+
+/* ── Collapsed panel ──────────────────────────────────────────────────────────
+   A strip, not nothing — a panel that vanishes with no way back is a panel the user
+   has lost. Width must match `--frame-panel-w` in the collapsed state. */
+.editor-panel--collapsed {
+  width         : 44px;
+  align-items   : center;
+  padding-top   : 10px;
+}
+
+.ep-collapse {
+  display      : grid;
+  place-items  : center;
+  flex-shrink  : 0;
+  width        : 28px;
+  height       : 28px;
+  margin-left  : auto;
+  border       : none;
+  border-radius: var(--btn-radius-sm);
+  background   : none;
+  color        : var(--color-text-tertiary);
+  cursor       : pointer;
+  transition   : var(--btn-transition);
+}
+.ep-collapse:hover {
+  background: var(--color-background-tertiary);
+  color     : var(--color-text-primary);
+}
+.ep-collapse:focus-visible {
+  outline       : 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+/* Centred in the strip, not shoved against an edge that is not there. */
+.editor-panel--collapsed .ep-collapse {
+  margin-left: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-collapse {
+    transition: none;
+  }
+}

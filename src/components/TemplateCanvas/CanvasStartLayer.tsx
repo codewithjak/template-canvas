@@ -7,6 +7,13 @@
  * data paths; it renders cards and calls the callbacks the canvas passes in
  * (which are the same handlers the toolbar buttons already use).
  *
+ * "Start from your data" was REMOVED (TC-0210). The right panel now carries a
+ * permanent Data tab with its own Upload button, so an empty-canvas card offering the
+ * same upload was a second door two feet from the first. The data flow's post-condition
+ * is unaffected: seeding a starter layout is gated on `isCanvasPristine(pages)` alone
+ * (activation doc T1.7), not on this card, so binding data from the Data tab onto a
+ * pristine canvas still lays out a starter table.
+ *
  * Accessibility (T1.9): every card is a real <button>; the layer is a plain
  * region, not a dialog (it traps nothing and steals no focus on mount); tab
  * order follows visual order (draft first when present); the focus ring uses
@@ -29,7 +36,6 @@ interface StartCard {
 interface Props {
   onBrowseTemplates: () => void
   onRebuildPdf: () => void
-  onBindData: () => void
   onStartBlank: () => void
   /** Present only when a restorable draft exists for the current user. */
   draft?: { savedAt: string; onRestore: () => void }
@@ -38,7 +44,7 @@ interface Props {
 // `savedAgo` lived here until the Dashboard needed the same formatting; it is now
 // `utils/relativeTime` and both call it, so the two cannot drift.
 
-function CanvasStartLayer({ onBrowseTemplates, onRebuildPdf, onBindData, onStartBlank, draft }: Props) {
+function CanvasStartLayer({ onBrowseTemplates, onRebuildPdf, onStartBlank, draft }: Props) {
   const cards: StartCard[] = []
 
   if (draft) {
@@ -76,17 +82,6 @@ function CanvasStartLayer({ onBrowseTemplates, onRebuildPdf, onBindData, onStart
       icon: (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12 3l1.9 4.6L18.5 9.5 13.9 11 12 15.6 10.1 11 5.5 9.5l4.6-1.9L12 3z" /><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" />
-        </svg>
-      ),
-    },
-    {
-      key: 'data',
-      title: 'Start from your data',
-      description: "Upload a spreadsheet and we'll lay it out for you.",
-      onClick: onBindData,
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
         </svg>
       ),
     },

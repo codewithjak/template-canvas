@@ -68,7 +68,6 @@ import type {
 import {
   createPage,
   createTemplateDocument,
-  migrateV1,
   ensurePageDefaults,
 } from '../../types/canvas';
 import {
@@ -839,32 +838,12 @@ function TemplateCanvas() {
     setActivePageId(cleanPages[0]?.pageId || 'page-1');
   };
 
-  const handleLoadTemplate = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-      try {
-        const raw = JSON.parse(ev.target?.result as string);
-        let doc;
-        if (raw.version === '2.0' && Array.isArray(raw.pages)) {
-          doc = raw;
-        } else if (Array.isArray(raw.elements)) {
-          doc = migrateV1(raw);
-        } else {
-          notify.error('template.invalidFile');
-          return;
-        }
-        applyDocument(doc);
-        // Imported from a file, not linked to a cloud row yet.
-        setCurrentTemplateId(null);
-      } catch {
-        notify.error('template.readError');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
+  // handleLoadTemplate (import a template .json from disk) is GONE with the header's
+  // "Load template" button (TC-0209). It was the only caller, and nothing in the app
+  // produces a template .json — export makes PDF/PNG/JPEG/ZPL — so it could only ever
+  // import a hand-made or externally-obtained file. `migrateV1` (v1 → v2 documents) was
+  // reachable only from here and is now unreferenced in the UI; the function still
+  // exists in types/canvas.ts if an import path is ever wanted again.
 
   // Apply a PDF rebuilt by Mapdoc AI into the editor. The RebuildWithAiModal owns
   // the upload + progress + fidelity-report UI and the importPdfAsTemplate call;
@@ -1239,8 +1218,6 @@ function TemplateCanvas() {
           onAddEllipse={handleAddEllipse}
           onDelete={() => selectedElementId && handleDeleteElement(selectedElementId)}
           onSave={handleSaveTemplate}
-          onOpenTemplates={() => setLibraryMode('builtin')}
-          onOpenProjects={() => setLibraryMode('projects')}
           onUndo={handleUndo}
           onRedo={handleRedo}
           canUndo={canUndo}
@@ -1276,7 +1253,6 @@ function TemplateCanvas() {
             setBulkPanelOpen(true);
           }}
           onClearData={handleClearData}
-          onLoad={handleLoadTemplate}
           onRebuildWithAi={() => {
             if (atLimit('aiBuildsThisMonth')) {
               promptUpgrade({
@@ -1287,7 +1263,6 @@ function TemplateCanvas() {
             }
             setRebuildAiOpen(true);
           }}
-          onUpload={() => setUploadPanelOpen(true)}
           onExportPDF={handleExportDocument}
           onAddPage={handleAddPage}
           showRulers={showPageRulers}
@@ -1446,7 +1421,6 @@ function TemplateCanvas() {
                       <CanvasStartLayer
                         onBrowseTemplates={() => { void logEvent('start_layer_card_clicked', { card: 'template' }); setLibraryMode('builtin'); }}
                         onRebuildPdf={() => { void logEvent('start_layer_card_clicked', { card: 'ai_rebuild' }); setRebuildAiOpen(true); }}
-                        onBindData={() => { void logEvent('start_layer_card_clicked', { card: 'bind_data' }); setUploadPanelOpen(true); }}
                         onStartBlank={() => { void logEvent('start_layer_card_clicked', { card: 'blank' }); setStartLayerDismissed(true); }}
                         draft={continueDraft ? {
                           savedAt: continueDraft.savedAt,

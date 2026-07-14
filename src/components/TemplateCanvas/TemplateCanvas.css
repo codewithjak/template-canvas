@@ -2,12 +2,22 @@
 
 /* ── Container ───────────────────────────────────────────────────────────────*/
 
+/* A flex ROW: [ tool rail ][ pages ]. The rail is the first DOM child (Toolbar
+   renders before the pages), so it sits on the left.
+
+   The old padding was `70px 320px 48px 340px`. Both gutters are obsolete: the 340px
+   on the left was carved out for the properties panel, which is deleted, and the
+   320px on the right for the tool rail, which has moved to the left and is now laid
+   out rather than floated. The pages centre themselves in whatever is left (see
+   .canvas-pages-wrapper's auto margins).
+
+   `min-height: 100%`, not `100vh`: this lives inside the frame's scrolling content
+   area now, and 100vh would add a second viewport's worth of height below the
+   frame's own header. */
 .template-canvas-container {
   display         : flex;
-  justify-content : center;
   align-items     : flex-start;
-  padding         : 70px 320px 48px 340px; /* top: sits just below the docked format bar (there's also a 52px header spacer above) */
-  min-height      : 100vh;
+  min-height      : 100%;
   background-color: var(--color-canvas);
   box-sizing      : border-box;
 }
@@ -19,6 +29,10 @@
   flex-direction : column;
   align-items    : center;
   gap            : 0;
+  /* Centre in the space the rail leaves. `padding-top` clears the floating format
+     bar, which is docked above the stage. */
+  margin         : 0 auto;
+  padding        : 70px 24px 48px;
 }
 
 /* ── Single page block ───────────────────────────────────────────────────────*/

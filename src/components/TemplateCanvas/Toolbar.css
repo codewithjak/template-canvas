@@ -653,3 +653,53 @@
   border-radius: 0;
   box-shadow : none;
 }
+
+
+/* ── The tool rail is LEFT, and laid out — not floated right ──────────────────
+   It was `position: fixed; top: 68px; right: 16px`: a pill floating over the right
+   of the canvas, with a `top` tuned to the 52px page header that no longer exists.
+   Flipping it to `left: 16px` would have put it UNDER the frame's 220px sidebar,
+   because a viewport-fixed element knows nothing about the sidebar.
+
+   So it is a real flex child now. `.template-canvas-container` is a flex row and
+   the Toolbar renders before the pages, so the rail lands on the left by DOM order.
+   `sticky` keeps it in view while the canvas scrolls. */
+.tb--rail {
+  position   : sticky;
+  top        : 0;
+  right      : auto;
+  left       : auto;
+  bottom     : auto;
+  transform  : none;
+  z-index    : 5;
+
+  flex-shrink: 0;
+  width      : var(--frame-rail-w, 58px);
+  height     : fit-content;
+  /* Deliberately NO overflow scroll — the shapes / page-size menus open out of the
+     rail and an `overflow` here would clip them. Same reason as the original rule
+     above; sized to content instead. */
+
+  border-radius: 0;
+  border-top   : none;
+  border-bottom: none;
+  border-left  : none;
+  box-shadow   : none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+
+/* ── Rail menus follow the rail ──────────────────────────────────────────────
+   The shapes / page-size dropdowns opened LEFT (`right: calc(100% + 12px)`) so they
+   stayed on-screen while the rail was floated against the right edge. The rail is on
+   the LEFT now, so a left-opening menu would fly out under the frame's sidebar. They
+   open RIGHT, into the canvas, where there is room. */
+.tb--rail .tb-shapes-menu,
+.tb--rail .tb-menu {
+  top      : 0;
+  right    : auto;
+  left     : calc(100% + 12px);
+  transform: none;
+  animation: tb-menu-in-right 0.15s ease;
+}

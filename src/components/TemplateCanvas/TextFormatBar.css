@@ -3,7 +3,11 @@
 .tfb {
   position        : fixed;
   top             : 84px;   /* its own row, with clear separation below the header toolbar */
-  left            : 50%;
+  /* Centred on the STAGE, not the window: a fixed element knows nothing about the
+     frame's sidebar and the tool rail sitting to its left, so a plain `left: 50%`
+     would sit noticeably left of the page it is formatting. The vars fall back to
+     0 outside the frame. */
+  left            : calc(50% + (var(--frame-sidebar-w, 0px) + var(--frame-rail-w, 0px)) / 2);
   transform       : translateX(-50%);
   z-index         : 1000;
 

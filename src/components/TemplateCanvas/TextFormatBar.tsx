@@ -15,6 +15,7 @@ import FontFamilyOptions from './properties/FontFamilyOptions';
 import type { TextElementType, ParagraphElementType, UpdateElement } from './properties/elementTypes';
 import FormatBarMore from './FormatBarMore';
 import PageNumberProperties from './PageNumberProperties';
+import PositionProperties from './properties/PositionProperties';
 import type { FooterConfig } from '../../types/canvas';
 import './TextFormatBar.css';
 
@@ -157,6 +158,27 @@ export default function TextFormatBar({ element, onUpdate, activePageFooter = nu
         </>
       )}
 
+      {/* Text direction (LTR/RTL). Re-housed from the deleted TypographyProperties,
+          which was the ONLY place it ever existed — and which the Properties panel
+          rendered only for page-number text. So RTL was, in practice, unsettable
+          from the UI despite the editor shipping full Arabic/bidi support. It
+          belongs on the text bar, for every text element. */}
+      <span className="tfb-divider" />
+      <div className="tfb-field">
+        <span className="tfb-label">Dir</span>
+        <select
+          className="tfb-select"
+          value={element.style.direction ?? 'auto'}
+          onChange={e => setStyle({ direction: e.target.value as 'ltr' | 'rtl' | 'auto' })}
+          aria-label="Text direction"
+          title="Auto follows the text's first strong character (Arabic data flips automatically)"
+        >
+          <option value="auto">Auto</option>
+          <option value="ltr">LTR</option>
+          <option value="rtl">RTL</option>
+        </select>
+      </div>
+
       {/* Page-number settings — re-housed from the Properties panel. */}
       {element.type === 'text' && showPageNumber && (
         <FormatBarMore label="Page number options">
@@ -164,6 +186,8 @@ export default function TextFormatBar({ element, onUpdate, activePageFooter = nu
             config={element.pageNumber}
             onChange={pn => onUpdate(element.id, { pageNumber: pn } as Partial<TextElementType>)}
           />
+          {/* Page-number text had numeric X/Y in the panel — it keeps it. */}
+          <PositionProperties element={element} onUpdate={onUpdate} />
         </FormatBarMore>
       )}
     </div>

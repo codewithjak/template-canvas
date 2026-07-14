@@ -34,6 +34,7 @@ import { resolveActiveCell } from './properties/layoutTableCellHelpers';
 import LayoutTableProperties from './properties/LayoutTableProperties';
 import LayoutTableTypography from './properties/LayoutTableTypography';
 import ChartProperties from './properties/ChartProperties';
+import PositionProperties from './properties/PositionProperties';
 import './TextFormatBar.css';
 
 type SupportedElement =
@@ -108,12 +109,17 @@ export default function ElementFormatBar({
             activeRC={activeRC}
             activeCell={activeCell}
           />
+          {/* The panel showed Position for every element it rendered, so a table
+              had numeric X/Y. Keeping it here preserves that exactly. */}
+          <PositionProperties element={element} onUpdate={onUpdate} />
         </FormatBarMore>
       )}
 
       {element.type === 'chart' && (
         <FormatBarMore label="Chart options">
           <ChartProperties element={element} onUpdate={onUpdate} />
+          {/* A chart had numeric X/Y in the panel — it keeps it. */}
+          <PositionProperties element={element} onUpdate={onUpdate} />
         </FormatBarMore>
       )}
     </div>

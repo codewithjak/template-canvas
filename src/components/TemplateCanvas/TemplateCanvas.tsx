@@ -38,9 +38,8 @@ import BoundaryLine        from './BoundaryLine';
 import SaveTemplateModal   from './SaveTemplateModal';
 import TemplatesLibraryModal from './TemplatesLibraryModal';
 import RebuildWithAiModal  from './RebuildWithAiModal';
-import PropertiesPanel     from './PropertiesPanel';
 import TextFormatBar       from './TextFormatBar';
-import ElementFormatBar    from './ElementFormatBar';
+import ElementFormatBar, { ELEMENT_BAR_TYPES } from './ElementFormatBar';
 import ElementQuickBar     from './ElementQuickBar';
 import CanvasStatusBar     from './CanvasStatusBar';
 import PageRulers from './PageRulers';
@@ -1537,65 +1536,27 @@ function TemplateCanvas() {
           ))}
         </div>
 
+        {/* The floating bars are the editing model. The left Properties panel is
+            GONE: its last three cases — table, chart and page-number text — now open
+            from the "⋯" on the bar (relayout doc A5.3). */}
         {selectedElement &&
           (selectedElement.type === 'text' || selectedElement.type === 'paragraph') && (
-            <TextFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
-          )}
-
-        {selectedElement &&
-          ['image', 'box', 'line', 'table', 'barcode', 'radio', 'checkbox', 'date'].includes(selectedElement.type) && (
-            <ElementFormatBar
+            <TextFormatBar
               element={selectedElement as any}
               onUpdate={handleUpdateElement}
-              staticPlaceholders={staticPlaceholders}
+              activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
             />
           )}
 
-        {/* Properties panel is kept only for tables, charts, and page-number text.
-            Everything else is edited from the format bars above. */}
-        {/* The panel is now ALWAYS mounted (relayout T4.3). It was gated to chart /
-            table / page-number text, which meant every other element could only be
-            edited from the floating bars. It already rendered every element type —
-            it was only the call site that hid it. */}
-        <PropertiesPanel
-          selectedElement={selectedElement as any}
-          onUpdate={handleUpdateElement}
-          layoutTableActiveCell={layoutTableCellSelection}
-          layoutTableRange={layoutTableRange}
-          activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
-          staticPlaceholders={staticPlaceholders}
-          insert={{
-            onAddText: handleAddText,
-            onAddParagraph: handleAddParagraph,
-            onAddImage: handleAddImage,
-            onAddTable: handleAddTable,
-            onAddBarcode: handleAddBarcode,
-            onAddChart: handleAddChart,
-            onAddDate: handleAddDate,
-            onAddRadio: handleAddRadio,
-            onAddCheckbox: handleAddCheckbox,
-            onAddWatermark: handleAddWatermark,
-            onAddSignature: handleAddSignature,
-            onAddLine: handleAddLine,
-            onAddBox: handleAddBox,
-          }}
-          data={{
-            hasData: !!ir,
-            fileName: ir?.source?.fileName,
-            fieldCount: ir ? Object.keys(ir.fields ?? {}).length : undefined,
-            rowCount: totalRows || undefined,
-            placeholders: staticPlaceholders,
-            onUploadData: () => setUploadPanelOpen(true),
-            onViewStructure: () => setShowDataStructureViewer(true),
-          }}
-          arrange={selectedElement ? {
-            canDuplicate: selectedElement.type !== 'table',
-            onBringToFront: () => handleBringToFront(selectedElement.id),
-            onSendToBack: () => handleSendToBack(selectedElement.id),
-            onDuplicate: () => handleDuplicateElement(selectedElement.id),
-            onDelete: () => handleDeleteElement(selectedElement.id),
-          } : null}
-        />
+        {selectedElement && ELEMENT_BAR_TYPES.includes(selectedElement.type as never) && (
+          <ElementFormatBar
+            element={selectedElement as any}
+            onUpdate={handleUpdateElement}
+            staticPlaceholders={staticPlaceholders}
+            layoutTableActiveCell={layoutTableCellSelection}
+            layoutTableRange={layoutTableRange}
+          />
+        )}
 
         <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} onAddPage={handleAddPage} />
 

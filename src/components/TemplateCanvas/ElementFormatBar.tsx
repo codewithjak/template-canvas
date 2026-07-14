@@ -3,11 +3,16 @@
  *
  * The contextual top-centre bar for non-text elements. It carries the FULL set
  * of controls for each element type (image, box, line, barcode, radio,
- * checkbox, date) plus quick table controls, so the Properties panel is no
- * longer needed for these — the panel is kept only for tables and charts.
+ * checkbox, date) plus quick table controls.
  *
- * Everything writes through the same update handler the panel used and only
- * touches fields that already exist on the model.
+ * It now also owns the last two cases the Properties panel was kept for — TABLE
+ * (columns, binding, cell typography) and CHART — behind the "⋯" overflow. The
+ * panel is therefore gone (relayout doc A5.3). Chart previously had NO bar at
+ * all: the panel was its only surface.
+ *
+ * The controls inside "⋯" are the EXISTING property components, re-housed rather
+ * than rewritten. Everything writes through the same update handler the panel
+ * used and only touches fields that already exist on the model.
  */
 
 import type React from 'react';
@@ -24,6 +29,11 @@ import type {
 } from './properties/elementTypes';
 import { type LayoutTableElement, insertColumnAt } from '../../model/layoutTable';
 import { notify } from '../../notify';
+import FormatBarMore from './FormatBarMore';
+import { resolveActiveCell } from './properties/layoutTableCellHelpers';
+import LayoutTableProperties from './properties/LayoutTableProperties';
+import LayoutTableTypography from './properties/LayoutTableTypography';
+import ChartProperties from './properties/ChartProperties';
 import './TextFormatBar.css';
 
 type SupportedElement =
@@ -34,34 +44,78 @@ type SupportedElement =
   | BarcodeElementType
   | RadioElementType
   | CheckboxElementType
-  | DateElementType;
+  | DateElementType
+  // Chart had no bar at all — the Properties panel was its only surface.
+  | CanvasElement;
 
-/** Element types this bar fully owns (no Properties panel for these). */
-export const ELEMENT_BAR_TYPES = ['image', 'box', 'line', 'table', 'barcode', 'radio', 'checkbox', 'date'] as const;
+/** Element types this bar owns. There is no Properties panel any more. */
+export const ELEMENT_BAR_TYPES = ['image', 'box', 'line', 'table', 'barcode', 'radio', 'checkbox', 'date', 'chart'] as const;
 
 interface Props {
   element: SupportedElement;
   onUpdate: UpdateElement;
   staticPlaceholders?: string[];
+  /** Which table cell is selected — the re-housed table controls need it. */
+  layoutTableActiveCell?: { tableId: string; rowIndex: number; colIndex: number } | null;
+  layoutTableRange?: { tableId: string; r0: number; c0: number; r1: number; c1: number } | null;
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
-export default function ElementFormatBar({ element, onUpdate, staticPlaceholders = [] }: Props) {
+export default function ElementFormatBar({
+  element,
+  onUpdate,
+  staticPlaceholders = [],
+  layoutTableActiveCell = null,
+  layoutTableRange = null,
+}: Props) {
   const setStyle = (patch: Record<string, unknown>) =>
     onUpdate(element.id, { style: { ...(element as { style?: object }).style, ...patch } } as Partial<CanvasElement>);
   const update = (patch: Record<string, unknown>) =>
     onUpdate(element.id, patch as Partial<CanvasElement>);
 
+  const isTable = element.type === 'table';
+
+  // The table's advanced controls act on the selected cell, exactly as they did in
+  // the panel — same helper, same arguments.
+  const { rc: activeRC, cell: activeCell } = isTable
+    ? resolveActiveCell(element as LayoutTableElement, layoutTableActiveCell)
+    : { rc: null, cell: null };
+
   return (
     <div className="tfb" role="toolbar" aria-label="Element formatting">
-      {element.type === 'image'    && renderImage(element, setStyle, update)}
-      {element.type === 'box'      && renderBox(element, setStyle)}
-      {element.type === 'line'     && renderLine(element, setStyle)}
-      {element.type === 'table'    && renderTable(element, setStyle, update)}
-      {element.type === 'barcode'  && renderBarcode(element, setStyle, update, staticPlaceholders)}
-      {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element, update)}
-      {element.type === 'date'     && renderDate(element, update)}
+      {element.type === 'image'    && renderImage(element as ImageElementType, setStyle, update)}
+      {element.type === 'box'      && renderBox(element as BoxElementType, setStyle)}
+      {element.type === 'line'     && renderLine(element as LineElementType, setStyle)}
+      {isTable                     && renderTable(element as LayoutTableElement, setStyle, update)}
+      {element.type === 'barcode'  && renderBarcode(element as BarcodeElementType, setStyle, update, staticPlaceholders)}
+      {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element as RadioElementType | CheckboxElementType, update)}
+      {element.type === 'date'     && renderDate(element as DateElementType, update)}
+
+      {/* The two cases the Properties panel was kept for, re-housed behind "⋯". */}
+      {isTable && (
+        <FormatBarMore label="Table options">
+          <LayoutTableProperties
+            element={element as LayoutTableElement}
+            onUpdate={onUpdate}
+            layoutTableRange={layoutTableRange}
+            activeRC={activeRC}
+            activeCell={activeCell}
+          />
+          <LayoutTableTypography
+            element={element as LayoutTableElement}
+            onUpdate={onUpdate}
+            activeRC={activeRC}
+            activeCell={activeCell}
+          />
+        </FormatBarMore>
+      )}
+
+      {element.type === 'chart' && (
+        <FormatBarMore label="Chart options">
+          <ChartProperties element={element} onUpdate={onUpdate} />
+        </FormatBarMore>
+      )}
     </div>
   );
 }

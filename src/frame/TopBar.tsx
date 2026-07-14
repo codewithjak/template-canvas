@@ -32,7 +32,11 @@ function TopBar({ title, subtitle, actions, actionsRef }: Props) {
         <h1 className="frame-top__title">{title}</h1>
         {subtitle && <p className="frame-top__sub">{subtitle}</p>}
       </div>
-      <div className="frame-top__actions" ref={actionsRef}>
+      <div className="frame-top__actions">
+        {/* The portal target is its OWN node, and it comes FIRST. `createPortal`
+            appends into its container, so portalling into the row itself put the
+            editor's toolbar AFTER the avatar — actions belong left of it. */}
+        <div className="frame-top__slot" ref={actionsRef} />
         {actions}
         <UserMenu />
       </div>

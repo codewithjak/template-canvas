@@ -17,7 +17,14 @@
      centre on the STAGE instead of the window — a fixed element knows nothing
      about the sidebar or rail sitting to its left. */
   --frame-sidebar-w: 220px;
-  --frame-rail-w: 58px;
+  /* The tool rail is the LABELED variant — `.tb--rail.tb--labeled` is 168px wide
+     (two classes, so it wins on specificity over any single-class rule). This must
+     match it: the value is what the floating format bars centre against, and a wrong
+     one silently pushes them off the page they are formatting. */
+  --frame-rail-w: 168px;
+  /* The editor's right panel (Insert / Data). It sits to the RIGHT of the stage, so
+     it shifts the stage's centre LEFT — hence the minus sign in the overlay calcs. */
+  --frame-panel-w: 300px;
 
   display: flex;
   height: 100vh;
@@ -231,6 +238,12 @@
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+/* Where a framed page portals its own controls. Left of the avatar. */
+.frame-top__slot {
+  display: flex;
+  align-items: center;
 }
 
 .frame-content {

@@ -40,6 +40,7 @@ import TemplatesLibraryModal from './TemplatesLibraryModal';
 import RebuildWithAiModal  from './RebuildWithAiModal';
 import TextFormatBar       from './TextFormatBar';
 import ElementFormatBar, { ELEMENT_BAR_TYPES } from './ElementFormatBar';
+import EditorPanel from './panel/EditorPanel';
 import ElementQuickBar     from './ElementQuickBar';
 import CanvasStatusBar     from './CanvasStatusBar';
 import PageRulers from './PageRulers';
@@ -1557,6 +1558,36 @@ function TemplateCanvas() {
             layoutTableRange={layoutTableRange}
           />
         )}
+
+        {/* Right panel: Insert and Data ONLY. Element formatting stays on the
+            floating bars and their "⋯" — there is no properties/Layout tab here
+            (relayout doc Amendment 5). Every callback below already exists. */}
+        <EditorPanel
+          insert={{
+            onAddText: handleAddText,
+            onAddParagraph: handleAddParagraph,
+            onAddImage: handleAddImage,
+            onAddTable: handleAddTable,
+            onAddBarcode: handleAddBarcode,
+            onAddChart: handleAddChart,
+            onAddDate: handleAddDate,
+            onAddRadio: handleAddRadio,
+            onAddCheckbox: handleAddCheckbox,
+            onAddWatermark: handleAddWatermark,
+            onAddSignature: handleAddSignature,
+            onAddLine: handleAddLine,
+            onAddBox: handleAddBox,
+          }}
+          data={{
+            hasData: !!ir,
+            fileName: ir?.source?.fileName,
+            fieldCount: ir ? Object.keys(ir.fields ?? {}).length : undefined,
+            rowCount: totalRows || undefined,
+            placeholders: staticPlaceholders,
+            onUploadData: () => setUploadPanelOpen(true),
+            onViewStructure: () => setShowDataStructureViewer(true),
+          }}
+        />
 
         <CanvasStatusBar pageCount={previewPages.length} pageSizePreset={pageSize.preset} onAddPage={handleAddPage} />
 

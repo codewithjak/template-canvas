@@ -29,6 +29,13 @@ test('plain /settings lights up Settings alone', () => {
   assert.equal(isActive('/settings#api', '/settings'), false)
 })
 
+test('the editor is named in the header even though it has no nav item', () => {
+  // /canvas is reached by action (New template / opening a template), so it is
+  // deliberately not a nav destination — but the frame's one header must still
+  // name it, or the editor renders under a blank title.
+  assert.equal(pageTitle('/canvas'), 'Editor')
+})
+
 test('the header says which PAGE you are on, not which section', () => {
   assert.equal(pageTitle('/settings#team'), 'Settings')
   assert.equal(pageTitle('/settings'), 'Settings')

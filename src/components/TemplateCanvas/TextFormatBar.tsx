@@ -12,6 +12,7 @@
  */
 
 import FontFamilyOptions from './properties/FontFamilyOptions';
+import PositionFields from './PositionFields';
 import type { TextElementType, ParagraphElementType, UpdateElement } from './properties/elementTypes';
 import './TextFormatBar.css';
 
@@ -138,6 +139,11 @@ export default function TextFormatBar({ element, onUpdate }: Props) {
           </div>
         </>
       )}
+
+      <span className="tfb-divider" />
+      {/* Numeric position — restored for every element on the bar itself
+          (see docs/POSITION_ON_FORMAT_BAR_ARCHITECTURE.md). */}
+      <PositionFields element={element} onUpdate={onUpdate} />
 
       {/* NO direction control, deliberately (TC-0211).
           `TextElement`/`ParagraphElement` render `dir={style.direction ?? 'auto'}`, and

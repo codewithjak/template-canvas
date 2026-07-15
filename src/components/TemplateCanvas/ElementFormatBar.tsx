@@ -30,6 +30,7 @@ import type {
 import { type LayoutTableElement, insertColumnAt } from '../../model/layoutTable';
 import { notify } from '../../notify';
 import FontFamilyOptions from './properties/FontFamilyOptions';
+import PositionFields from './PositionFields';
 import './TextFormatBar.css';
 
 type SupportedElement =
@@ -72,6 +73,11 @@ export default function ElementFormatBar({ element, onUpdate, staticPlaceholders
       {element.type === 'barcode'  && renderBarcode(element as BarcodeElementType, setStyle, update, staticPlaceholders)}
       {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element as RadioElementType | CheckboxElementType, update)}
       {element.type === 'date'     && renderDate(element as DateElementType, setStyle, update)}
+
+      <span className="tfb-divider" />
+      {/* Numeric position, shared with the text bar — every element has X/Y on its
+          own bar now (see docs/POSITION_ON_FORMAT_BAR_ARCHITECTURE.md). */}
+      <PositionFields element={element as CanvasElement} onUpdate={onUpdate} />
 
       {/* No "⋯" here any more (TC-0212). A table's columns, binding and per-cell
           typography — and a chart's series — are dense, and a 300px popover hanging off

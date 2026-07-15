@@ -35,6 +35,10 @@ export type AnalyticsEventType =
   | 'start_layer_card_clicked'
   | 'draft_restored'
   | 'data_bound'
+  // Funnel terminal step: once per user per browser, the first time an export
+  // actually completes. `pdf_exported` (backend) fires on EVERY export, so it
+  // measures volume, not activation. See services/firstExport.ts.
+  | 'first_export_completed'
 
 export async function logEvent(
   eventType: AnalyticsEventType,

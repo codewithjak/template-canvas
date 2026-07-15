@@ -97,6 +97,7 @@ import {
 import { useHistoryState } from '../../utils/useUndoRedo';
 import { useUnsavedChangesGuard } from '../../utils/useUnsavedChangesGuard';
 import { saveDraft, clearDraft, restoreDraft, offerableDraft } from '../../services/draftStore';
+import { markFirstExport } from '../../services/firstExport';
 import { samePageSize, sameStringMap } from '../../utils/documentDirty';
 import { draftDeadline, nextDraftDelay } from '../../utils/draftSchedule';
 import CanvasStartLayer from './CanvasStartLayer';
@@ -1091,6 +1092,18 @@ function TemplateCanvas() {
     };
   };
 
+  // The funnel's terminal step (§5). Fires only on the user's FIRST completed
+  // export — `pdf_exported` (logged by the backend on every export) measures
+  // volume, not activation. Called from all three ways an export can complete:
+  // single download, bulk, and email — a first-time user could activate via any
+  // of them, and counting only one would bias the metric.
+  const logFirstExportOnce = useCallback(
+    (format: string) => {
+      if (markFirstExport(userId)) void logEvent('first_export_completed', { format });
+    },
+    [userId],
+  );
+
   const handleExportDocument = async (formatOverride?: 'pdf' | 'zpl' | 'png' | 'jpeg') => {
     if (allElements.length === 0) { notify.warning('export.nothingToExport'); return; }
     const fmt = formatOverride ?? exportFormat;
@@ -1105,6 +1118,7 @@ function TemplateCanvas() {
       const params = buildExportParams(fmt);
       const blob   = await generateDocument(params);
       downloadBlob(blob, `${params.outputFileName}.${extFromBlob(blob, fmt)}`);
+      logFirstExportOnce(fmt);
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('export.failed'));
     } finally {
@@ -1118,7 +1132,9 @@ function TemplateCanvas() {
   const handleSendDocument = async (delivery: DeliverySpec): Promise<SendDocumentResult> => {
     if (allElements.length === 0) throw new Error('No template to send.');
     try {
-      return await sendDocument(buildExportParams(), delivery);
+      const result = await sendDocument(buildExportParams(), delivery);
+      logFirstExportOnce('email'); // emailing a document IS a completed export
+      return result;
     } finally {
       void refreshPlan(); // sending counts against the monthly cap too
     }
@@ -1312,6 +1328,7 @@ function TemplateCanvas() {
             onGlobalFieldsSave={fields => setSavedGlobalFields(fields)}
             pageSize={pageSize}
             exportFormat={exportFormat}
+            onExportCompleted={() => logFirstExportOnce('bulk')}
           />
         )}
 

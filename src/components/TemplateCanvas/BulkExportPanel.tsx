@@ -20,7 +20,7 @@
  * 5. Progress section integrated into footer area to save vertical space.
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { detectRelationships, buildRelatedCollectionsConfig } from '../../utils/relationshipDetector';
 import { classifyPlaceholders } from '../../utils/classifyPlaceholders';
 import { useBulkExport } from '../../services/useBulkExport';
@@ -55,6 +55,13 @@ export interface BulkExportPanelProps {
   onGlobalFieldsSave?:     (fields: Record<string, string>) => void;
   pageSize?:               { canvasWidth: number; canvasHeight: number; pdfWidth: number; pdfHeight: number };
   exportFormat?:           'pdf' | 'zpl' | 'png' | 'jpeg';
+  /**
+   * Called once when a bulk run completes successfully. The canvas uses it for the
+   * `first_export_completed` funnel step — a first-time user can activate via bulk
+   * just as well as via a single export, so it must not be missed. Kept as a
+   * callback so analytics (and auth) stay out of this panel.
+   */
+  onExportCompleted?:      () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,6 +109,7 @@ export function BulkExportPanel({
   onGlobalFieldsSave,
   pageSize,
   exportFormat = 'pdf',
+  onExportCompleted,
 }: BulkExportPanelProps) {
 
   // ── Relationship detection ────────────────────────────────────────────────
@@ -196,6 +204,16 @@ export function BulkExportPanel({
   const isRunning = status === 'running';
   const isDone    = status === 'done';
   const isError   = status === 'error';
+
+  // A completed bulk run is a completed export. Fires on the transition into
+  // 'done' (not on every render while done), so a re-render cannot double-report.
+  const completionReported = useRef(false);
+  useEffect(() => {
+    if (!isDone) { completionReported.current = false; return; }
+    if (completionReported.current) return;
+    completionReported.current = true;
+    onExportCompleted?.();
+  }, [isDone, onExportCompleted]);
 
   const missingMetaCount = classification.trueMetadata.filter(
     ph => !(globalFieldValues[ph] ?? '').trim()

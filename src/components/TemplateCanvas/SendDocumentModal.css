@@ -109,6 +109,13 @@
   width          : 72px;
 }
 
+.sdm-hint {
+  font-size      : 12px;
+  color          : #64748b;
+  line-height    : 1.5;
+  margin         : 12px 0 0;
+}
+
 .sdm-error {
   color          : #dc2626;
   font-size      : 13px;

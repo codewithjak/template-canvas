@@ -131,14 +131,23 @@ export interface EmailDelivery {
   message?: string;
 }
 
+export interface WhatsAppDelivery {
+  to:       string;   // E.164, e.g. "+14155550123"
+  message?: string;   // optional caption
+}
+
 export interface CalendarReminder {
   title?:   string;
   deadline: DeadlineSpec;
 }
 
-/** Where an export should be sent. `calendar` adds an optional .ics reminder. */
+/**
+ * Where an export should be sent. Exactly one channel is used per send.
+ * `calendar` adds an optional .ics reminder (email channel only).
+ */
 export interface DeliverySpec {
-  email:     EmailDelivery;
+  email?:    EmailDelivery;
+  whatsapp?: WhatsAppDelivery;
   calendar?: CalendarReminder;
 }
 

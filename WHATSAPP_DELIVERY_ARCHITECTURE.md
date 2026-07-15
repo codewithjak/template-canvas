@@ -7,7 +7,8 @@
 >
 > **Date:** 2026-07-15 · **Branch context:** TC-0211 (delivery lineage: TC-0072)
 > **Status:** P1 done (media store, per A1). P2 done (provider seam + Twilio).
-> P3 done (WhatsApp channel + route wiring, session-window send). P4–P6 pending.
+> P3 done (WhatsApp channel + route wiring, session-window send).
+> P4 done (frontend Email|WhatsApp toggle). **v1 (P1–P4) complete.** P5–P6 pending.
 > **Provider (v1):** Twilio WhatsApp API (concrete), behind a provider-agnostic
 > channel interface so Meta Cloud API can be swapped in later without touching
 > the orchestrator or the route.
@@ -252,10 +253,22 @@ behind the interface. `isConfigured` here feeds P3's `isWhatsAppConfigured`.
 configured Twilio + `S3_MEDIA_BUCKET`; unit tests use injected fakes, so no live
 call in CI. Frontend UI is P4; no frontend changes here.
 
-### P4 — Frontend "Send via WhatsApp"
+### P4 — Frontend "Send via WhatsApp" ✅ done
 Add a channel toggle to `SendDocumentModal.tsx` (Email | WhatsApp). WhatsApp shows
 a phone-number field + caption + a one-line note about the 24h window. Reuse the
-existing submit/status flow. **Deliverable:** users send from the editor UI.
+existing submit/status flow.
+**Delivered:**
+- `src/services/dataSourceService.ts` — new `WhatsAppDelivery` type; `DeliverySpec`
+  now has optional `email`/`whatsapp` (exactly one channel per send). `calendar`
+  stays email-only.
+- `src/components/TemplateCanvas/SendDocumentModal.tsx` — Email|WhatsApp toggle;
+  WhatsApp branch (E.164 field + caption + 24h-window note), light client-side
+  E.164 gate on submit, per-channel button/success text. `buildDelivery()` assembles
+  the spec per channel; the email branch is unchanged.
+- `src/components/TemplateCanvas/SendDocumentModal.css` — `.sdm-hint` for the note.
+- Parent (`TemplateCanvas.handleSendDocument` → `sendDocument`) is channel-agnostic
+  and needed **no change** — it forwards whatever `DeliverySpec` the modal builds.
+**Verified:** `tsc --noEmit` clean, eslint clean, project test suite 80/80.
 
 ### P5 — Approved-template sending (cold recipients)
 Add optional template config (`ContentSid`/template name + media header) so sends

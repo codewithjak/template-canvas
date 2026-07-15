@@ -675,3 +675,33 @@ What this does and does not mean:
   the "before" baseline starts accumulating only now. Either wait for a baseline
   before retiring the layer, or retire it on design merits and say so — but do not
   claim it was measured against prior data, because there is none.
+
+---
+
+## AMENDMENT (2026-07-14) — "Start from your data" removed from the Start Layer (TC-0210)
+
+§4's card 3 ("Start from your data") and its T1.7 wiring in the Start Layer are
+**removed**. The layer now offers four cards: Continue where you left off · Start from
+a template · Rebuild a PDF with AI · Start blank.
+
+**Why.** The editor's right panel now carries a permanent **Data** tab with its own
+Upload button (relayout Amendment 7). An empty-canvas card offering the same upload was
+a second door two feet from the first.
+
+**T1.7 is NOT affected, and this is the important part.** §4's post-condition — *"the
+flow must not end on an empty canvas"* — is enforced in `handleDataConfirm`, gated on
+`isCanvasPristine(pages)` **alone**, never on the card. So binding data from the Data
+tab onto a pristine canvas still seeds a starter layout (title + a table bound to the
+detected structure) and still logs `data_bound`. That decoupling was made deliberately
+in Phase 1 (so that dismissing the layer with "Start blank" could not disable the
+post-condition) and it is what makes this removal safe.
+
+**Funnel consequence.** `start_layer_card_clicked` is documented in §5 with
+`metadata: { card: 'continue_draft' | 'template' | 'ai_rebuild' | 'bind_data' | 'blank'
+| 'sample' }`. **`'bind_data'` is now never fired** — nothing emits it. No schema impact
+(`metadata` is `jsonb`), but any funnel query splitting on that value will find an empty
+branch from today. `'data_bound'` still fires and remains the mid-funnel step for the
+bind leg, which is the one §5 actually needs.
+
+Note the Dashboard's own "Start from your data" action card is **unchanged** — it
+dispatches the `bind-data` launch intent and is a different surface.

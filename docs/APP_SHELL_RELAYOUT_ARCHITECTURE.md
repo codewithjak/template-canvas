@@ -783,3 +783,43 @@ The editor's default state now fits a full A4 page at 1440px with 59px to spare.
 Deliberate: a remembered preference is a stored setting, and the auto-collapse already
 gives the right default on the only route where width is scarce. Revisit only if users
 ask.
+
+---
+
+## AMENDMENT 10 (2026-07-14) — four buttons leave the editor header (TC-0209)
+
+The header was carrying four doors into rooms you can already walk into. Removed:
+
+| Removed | Where it lives now |
+|---|---|
+| **Templates** (`onOpenTemplates`) | the `/templates` page — the built-in gallery |
+| **Projects** (`onOpenProjects`) | the `/templates` page — "My projects" |
+| **Upload data file** (`onUpload`) | the right panel's **Data** tab |
+| **Load template (.json)** (`onLoad`) | **dropped outright** — see A10.2 |
+
+### A10.1 Every removed door still has a room — verified, not assumed
+- **Upload data** is reachable from three places: the Data tab (`onUploadData`), the
+  Start Layer's "Start from your data", and the Dashboard's `bind-data` launch intent.
+- **Templates** is reachable from the `/templates` page and the Start Layer's "Start
+  from a template" (`setLibraryMode('builtin')`), so `TemplatesLibraryModal` stays.
+
+### A10.2 "Load template" is gone, not relocated
+`handleLoadTemplate` imported a template `.json` from disk. It had exactly one caller
+(this button), and **nothing in the app produces a template `.json`** — export makes
+PDF / PNG / JPEG / ZPL. So it could only ever import a hand-made or externally-obtained
+file. Dropped on the product owner's call.
+
+Consequence: **`migrateV1`** (v1 → v2 document migration) was reachable only from that
+handler and is now unreferenced in the UI. The function is still exported from
+`types/canvas.ts`, so an import path can be rebuilt on it if one is ever wanted.
+
+### A10.3 Dead code left behind, deliberately not deleted
+1. **`TemplatesLibraryModal`'s `mode="projects"` branch is now unreachable** —
+   `setLibraryMode('projects')` has no caller. The modal is still used for
+   `mode="builtin"` (the Start Layer), and "My projects" lives on the `/templates`
+   page, so nothing is lost. The dead branch is small and harmless.
+2. **Four icons are now unused**: `Icons.Library`, `Icons.Folder`, `Icons.Load`,
+   `Icons.Upload` in `toolbar/icons.tsx`.
+
+Both are cleanup, not correctness. Left for an explicit call rather than deleted on my
+own judgement (safety rule).

@@ -3,7 +3,6 @@
  * SVG icons, tooltip system, keyboard shortcut hints, visual hierarchy
  */
 
-import React from 'react';
 import './Toolbar.css';
 import { Icons } from './toolbar/icons';
 import { IconBtn, Divider } from './toolbar/IconButton';
@@ -32,8 +31,6 @@ export interface ToolbarProps {
   onAddEllipse   ?: () => void;
   onDelete       ?: () => void;
   onSave         ?: () => void;
-  onOpenTemplates?: () => void;
-  onOpenProjects?: () => void;
   onUndo         ?: () => void;
   onRedo         ?: () => void;
   canUndo        ?: boolean;
@@ -50,9 +47,7 @@ export interface ToolbarProps {
   onSendEmail    ?: () => void;
   onBulkExport   ?: () => void;
   onClearData    ?: () => void;
-  onLoad         ?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRebuildWithAi?: () => void;
-  onUpload       ?: () => void;
   onExportPDF    ?: (format?: 'pdf' | 'zpl' | 'png' | 'jpeg') => void;
   onAddPage      ?: () => void;
   onToggleRulers ?: () => void;
@@ -72,7 +67,7 @@ export default function Toolbar({
   onAddParagraph, onAddRadio, onAddCheckbox, onAddDate,
   onAddText, onAddTable, onAddImage, onAddBarcode, onAddChart, onAddWatermark, onAddSignature,
   onAddLine, onAddBox, onAddRectangle, onAddTriangle, onAddEllipse,
-  onSave, onOpenTemplates, onOpenProjects, onLoad, onRebuildWithAi, onUpload, onExportPDF,
+  onSave, onRebuildWithAi, onExportPDF,
   onUndo, onRedo, canUndo, canRedo,
   dataMapped, isSingleMode, totalRows = 0, previewRowIndex = 0, isExporting,
   onPrevRow, onNextRow, onViewStructure, onSendEmail, onBulkExport, onClearData,
@@ -81,7 +76,6 @@ export default function Toolbar({
   onPageSizeChange, currentPageSize,
   onCustomPageSize, customPageWidth, customPageHeight,
 }: ToolbarProps) {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const hasShapes = onAddLine || onAddBox || onAddRectangle || onAddTriangle || onAddEllipse;
 
   // Export formats offered in the Export menu (ZPL only for label page sizes).
@@ -176,24 +170,16 @@ export default function Toolbar({
             <IconBtn icon={<Icons.Save />} label="Save template" shortcut="⌘S"
               onClick={onSave} disabled={!hasElements} variant="action" />
           )}
-          {onOpenTemplates && (
-            <IconBtn icon={<Icons.Library />} label="Templates" onClick={onOpenTemplates} variant="action" />
-          )}
-          {onOpenProjects && (
-            <IconBtn icon={<Icons.Folder />} label="Projects" onClick={onOpenProjects} variant="action" />
-          )}
-          {onLoad && (
-            <>
-              <input ref={fileInputRef} type="file" accept=".json" onChange={onLoad} style={{ display: 'none' }} />
-              <IconBtn icon={<Icons.Load />} label="Load template" shortcut="⌘O"
-                onClick={() => fileInputRef.current?.click()} variant="action" />
-            </>
-          )}
+          {/* Templates / Projects / Load template / Upload data file are GONE from the
+              header (TC-0209). The header was carrying four doors into rooms you can
+              already walk into:
+                · Templates, Projects   → the /templates page (gallery + My projects)
+                · Upload data file      → the right panel's Data tab
+                · Load template (.json) → dropped outright: nothing in the app produces
+                                          that file, so it could only import a hand-made
+                                          one. */}
           {onRebuildWithAi && (
             <IconBtn icon={<Icons.Ai />} label="Rebuild with Mapdoc AI" onClick={onRebuildWithAi} variant="action" />
-          )}
-          {onUpload && (
-            <IconBtn icon={<Icons.Upload />} label="Upload data file" onClick={onUpload} variant="action" />
           )}
         </div>
 

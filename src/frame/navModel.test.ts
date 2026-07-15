@@ -1,14 +1,38 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { navItems, navItemsInGroup, isActive } from './navModel'
+import { navItems, navItemsInGroup, isActive, routeOf, pageTitle } from './navModel'
 
 test('every nav item points at a route that exists today', () => {
-  // The guard against a nav item that 404s. When Dashboard/Templates ship,
-  // add them here and to NAV_ITEMS in the same commit.
+  // The guard against a nav item that 404s. When Templates ships, add it here
+  // and to NAV_ITEMS in the same commit. Anchors are stripped: Integrations and
+  // Team are sections of /settings, not routes.
   const builtRoutes = ['/dashboard', '/settings']
   for (const item of navItems()) {
-    assert.ok(builtRoutes.includes(item.to), `${item.label} → ${item.to} is not a built route`)
+    assert.ok(
+      builtRoutes.includes(routeOf(item.to)),
+      `${item.label} → ${item.to} is not a built route`,
+    )
   }
+})
+
+test('an anchored item lights up alone — not alongside its parent page', () => {
+  // The bug this prevents: Integrations, Team and Settings all live at /settings,
+  // so a naive path match would highlight all three at once.
+  assert.equal(isActive('/settings#team', '/settings#team'), true, 'Team on #team')
+  assert.equal(isActive('/settings', '/settings#team'), false, 'Settings NOT on #team')
+  assert.equal(isActive('/settings#api', '/settings#team'), false, 'Integrations NOT on #team')
+})
+
+test('plain /settings lights up Settings alone', () => {
+  assert.equal(isActive('/settings', '/settings'), true)
+  assert.equal(isActive('/settings#team', '/settings'), false)
+  assert.equal(isActive('/settings#api', '/settings'), false)
+})
+
+test('the header says which PAGE you are on, not which section', () => {
+  assert.equal(pageTitle('/settings#team'), 'Settings')
+  assert.equal(pageTitle('/settings'), 'Settings')
+  assert.equal(pageTitle('/dashboard'), 'Dashboard')
 })
 
 test('groups partition the items (nothing is dropped or duplicated)', () => {

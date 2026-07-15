@@ -7,7 +7,7 @@
  * Styling lives in Settings.css and rides the app's design tokens (index.css).
  */
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   issueApiKey,
   getApiKeyMeta,
@@ -64,9 +64,14 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
   )
 }
 
-function Card({ title, subtitle, icon, children }: { title: string; subtitle?: string; icon?: React.ReactNode; children: React.ReactNode }) {
+/**
+ * `id` makes a card addressable as `/settings#<id>`. The frame's Integrations and
+ * Team nav items are anchors into this page, not routes of their own — these
+ * cards ARE those features (app-frame doc §2.3).
+ */
+function Card({ id, title, subtitle, icon, children }: { id?: string; title: string; subtitle?: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="scard">
+    <section className="scard" id={id}>
       <div className="scard__head">
         <h2 className="scard__title">{icon && <span className="scard__icon">{icon}</span>}{title}</h2>
         {subtitle && <p className="scard__sub">{subtitle}</p>}
@@ -171,7 +176,7 @@ function TeamCard() {
   }
 
   if (loading) {
-    return <Card title="Team" icon={I.team}><div className="settings__muted">Loading…</div></Card>
+    return <Card id="team" title="Team" icon={I.team}><div className="settings__muted">Loading…</div></Card>
   }
 
   const manager = data ? (data.role === 'owner' || data.role === 'admin') : false
@@ -179,7 +184,7 @@ function TeamCard() {
   const atCap = !!seats && seats.limit != null && seats.used + seats.pending >= seats.limit
 
   return (
-    <Card title="Team" subtitle="Members share this workspace's templates, usage and plan." icon={I.team}>
+    <Card id="team" title="Team" subtitle="Members share this workspace's templates, usage and plan." icon={I.team}>
       {err && <div className="alert--danger">{err}</div>}
 
       {teams.length > 1 && (
@@ -263,6 +268,7 @@ function TeamCard() {
 
 export default function Settings() {
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const { plan, can } = usePlan()
   const [meta, setMeta] = useState<ApiKeyMeta | null>(null)
   const [usage, setUsage] = useState<UsageSummary | null>(null)
@@ -271,6 +277,19 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [freshKey, setFreshKey] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  // The sidebar's Integrations and Team items are anchors into this page
+  // (/settings#api, /settings#team). A router navigation does not scroll to a
+  // hash the way a full page load would, so do it here.
+  //
+  // Depends on `loading` as well as `hash`: while the page is fetching, the cards
+  // are not in the DOM yet, so scrolling on the hash alone would silently find
+  // nothing and leave the user at the top of a page they asked a section of.
+  useEffect(() => {
+    if (!hash) return
+    const target = document.getElementById(hash.slice(1))
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [hash, loading])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -354,7 +373,7 @@ export default function Settings() {
 
             <TeamCard />
 
-            <Card title="API access" subtitle="Push data into your templates from any system using a team API key." icon={I.key}>
+            <Card id="api" title="API access" subtitle="Push data into your templates from any system using a team API key." icon={I.key}>
               {!can('api') ? (
                 <div className="srow">
                   <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>

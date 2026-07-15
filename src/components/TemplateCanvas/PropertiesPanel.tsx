@@ -1,15 +1,25 @@
 /**
- * PropertiesPanel.tsx
+ * PropertiesPanel.tsx — the editor's right-hand panel (relayout doc T4.3).
  *
- * The panel on the right that shows the settings for whatever element is
- * selected on the canvas. It is mostly a "reader": it looks at the selected
- * element and shows the matching little boxes (sections). Each box lives in
- * its own file inside the ./properties folder, so this file stays short.
+ * REBUILT (not replaced) into the three-tab panel: Insert · Data · Layout. It was
+ * already the 300px right-hand panel and already rendered every element type; what
+ * it lacked was the tab shell, the Insert and Data panes, and z-order/duplicate/
+ * delete. Building a second panel alongside it would have left two in the tree,
+ * so this file grew the tabs instead.
  *
- * The order of the boxes below is the order they appear on screen.
+ * LAYOUT is still the same "reader" it always was: it looks at the selected element
+ * and shows the matching boxes, each in its own file under ./properties. The order
+ * of the boxes below is the order they appear on screen. Nothing about that changed.
+ *
+ * It owns exactly one piece of state: which tab is open. Everything else is props.
  */
 
+import { useState } from 'react';
 import './PropertiesPanel.css';
+import './panel/panel.css';
+import InsertPane, { type InsertActions } from './panel/InsertPane';
+import DataPane, { type DataPaneInfo } from './panel/DataPane';
+import ArrangeSection, { type ArrangeActions } from './panel/ArrangeSection';
 import { isLayoutTable } from '../../model/layoutTable';
 import type { FooterConfig } from '../../types/canvas';
 import PageNumberProperties from './PageNumberProperties';
@@ -37,21 +47,71 @@ interface PropertiesPanelProps {
   layoutTableRange: { tableId: string; r0: number; c0: number; r1: number; c1: number } | null;
   activePageFooter?: FooterConfig | null;
   staticPlaceholders?: string[];
+  /** Insert tab: the canvas's existing add-element handlers. */
+  insert: InsertActions;
+  /** Data tab: what the canvas already knows about the bound dataset. */
+  data: DataPaneInfo;
+  /** Layout tab → Arrange: null when nothing is selected. */
+  arrange: ArrangeActions | null;
 }
 
-function PropertiesPanel({
+type PanelTab = 'insert' | 'data' | 'layout';
+
+const TABS: readonly { id: PanelTab; label: string }[] = [
+  { id: 'insert', label: 'Insert' },
+  { id: 'data', label: 'Data' },
+  { id: 'layout', label: 'Layout' },
+];
+
+function PropertiesPanel(props: PropertiesPanelProps) {
+  // Layout is the default: selecting an element is the overwhelmingly common
+  // reason to look at this panel, and it is what the panel did before the tabs.
+  const [tab, setTab] = useState<PanelTab>('layout');
+
+  return (
+    <div className="properties-panel">
+      <div className="ep-tabs" role="tablist" aria-label="Editor panel">
+        {TABS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={`ep-tab${tab === id ? ' ep-tab--on' : ''}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="properties-panel-content">
+        {tab === 'insert' && <InsertPane actions={props.insert} />}
+        {tab === 'data' && <DataPane info={props.data} />}
+        {tab === 'layout' && <LayoutTab {...props} />}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The Layout tab — the panel's original job, unchanged: read the selected element
+ * and show the matching boxes. `Arrange` is appended at the end; it is the only
+ * section that is new (it re-houses the floating quick bar).
+ */
+function LayoutTab({
   selectedElement,
   onUpdate,
   layoutTableActiveCell,
   layoutTableRange,
   activePageFooter,
   staticPlaceholders = [],
+  arrange,
 }: PropertiesPanelProps) {
-  // Nothing selected: show the empty panel.
+  // Nothing selected: show the empty state.
   if (!selectedElement) {
     return (
-      <div className="properties-panel">
-        <div className="properties-panel-header">Properties</div>
+      <>
         <div className="properties-panel-empty">
           <div className="properties-panel-empty__icon" aria-hidden="true">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -64,7 +124,7 @@ function PropertiesPanel({
             Select an element on the canvas to edit it, or add one from the tool rail.
           </p>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -92,13 +152,13 @@ function PropertiesPanel({
       : selectedElement.type;
 
   return (
-    <div className="properties-panel">
-      <div className="properties-panel-header">
-        Properties
+    <>
+      <div className="ep-selected">
+        Selected
         <span className="panel-type-label">{panelTypeLabel}</span>
       </div>
-      <div className="properties-panel-content">
-        {/* The main box: depends on what kind of element is selected. */}
+
+      {/* The main box: depends on what kind of element is selected. */}
         {selectedElement.type === 'text' ? (
           <TextContentProperties element={selectedElement} onUpdate={onUpdate} />
         ) : selectedElement.type === 'image' ? (
@@ -167,12 +227,16 @@ function PropertiesPanel({
           <ChartProperties element={selectedElement} onUpdate={onUpdate} />
         )}
 
-        {/* Font settings for a date element. */}
-        {selectedElement.type === 'date' && (
-          <DateTypography element={selectedElement} onUpdate={onUpdate} />
-        )}
-      </div>
-    </div>
+      {/* Font settings for a date element. */}
+      {selectedElement.type === 'date' && (
+        <DateTypography element={selectedElement} onUpdate={onUpdate} />
+      )}
+
+      {/* Z-order, duplicate, delete — the one thing the floating quick bar had
+          that this panel never did. The quick bar is retired only once this is
+          verified (T4.10), not before. */}
+      {arrange && <ArrangeSection actions={arrange} />}
+    </>
   );
 }
 

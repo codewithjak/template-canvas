@@ -343,6 +343,8 @@ Verified in code — this is why a parallel structure was a mistake:
 - `PropertiesPanel.css:2-10` is **`position: fixed; top: 68px; width: 300px`**,
   right-aligned, `z-index: 999`. That is *already* the mockup's 300px right panel,
   same edge, same width. It already hosts every property component.
+  **[CORRECTED by Amendment 4: it is `left: 12px` — the panel is on the LEFT and the
+  rail is on the right. Same width, wrong side. 4C is a swap, not a restyle.]**
 - `Toolbar.tsx` already renders **two** fixed bars: `tb--rail` (vertical, left — the
   mockup's icon rail) and `tb--export` (`top: 68px; right: 16px` — the mockup's
   topbar actions).
@@ -526,3 +528,90 @@ shipped. Both become false when T5.6 lands. That doc needs its own **amendment**
 (appended, not rewritten) recording that Phase 1's component was superseded by the
 shell, that T1.6 relocated to the Dashboard, and that T1.7 survives unchanged. Do not
 fork or restate its content here.
+
+---
+
+## AMENDMENT 3 (2026-07-14) — Phase 4 is sliced; the panel is smaller than it looked
+
+Phase 4 as written is one phase covering ~700 lines across four components
+(`PropertiesPanel` 179, `TextFormatBar` 161, `ElementFormatBar` 287,
+`ElementQuickBar` 65), plus un-fixing the viewport-fixed chrome, plus `/canvas`
+joining the frame. That is not one reviewable commit, and it lands on the surface
+users touch every day. It is sliced below. The tasks are unchanged; only their
+grouping is.
+
+### A3.1 Discovery: `PropertiesPanel` is already complete
+It already renders **every** element type — text, image, line, box, layout table,
+radio, checkbox, paragraph, date, barcode, chart, page-number — *and* typography
+(`TypographyProperties`, `LayoutTableTypography`, `DateTypography`) and
+`PositionProperties`. It is not missing features; it is **gated at the call site**
+(`TemplateCanvas` renders it only for chart / layout table / page-number text).
+
+So T4.3's "un-gate it" is a call-site change, not a rebuild. The only things the
+floating bars have that the panel lacks are **z-order / duplicate / delete**
+(`ElementQuickBar`) — the "Arrange" section.
+
+### A3.2 Slices (each ships working; nothing is deleted before its replacement is proven)
+- **4A — the panel.** Rebuild `PropertiesPanel` into the 3-tab panel: un-gate it,
+  add the tab header, add the Insert and Data panes, add the Arrange section.
+  Covers T4.3–T4.6. The floating bars **stay**: typography is briefly reachable from
+  both, which is deliberate — the alternative is deleting them before their
+  replacement is proven.
+- **4B — retire the floating bars** (T4.10), only after 4A is verified in a browser.
+  Deletion of the files is a separate commit needing explicit confirmation.
+- **4C — the chrome.** Rail to the left, editor topbar, stage/paper/region/hint
+  (T4.1, T4.2, T4.7–T4.9). This is where the viewport-fixed positioning becomes a
+  real layout.
+- **4D — `/canvas` joins the frame** (app-frame doc Phase 1b), which 4C unblocks.
+
+### A3.3 Why this order
+4A adds a surface without removing one, so a bug is visible but not blocking. 4B
+only removes what 4A proved. 4C changes positioning, which is the part most likely
+to look wrong and least likely to be caught by a test — it goes last, when the panel
+underneath it is already trusted. The `min-height: 100vh` bug in the frame (TC-0194)
+was exactly this class of thing: invisible to 60 passing tests, obvious on screen.
+
+---
+
+## AMENDMENT 4 (2026-07-14) — correction to A1.2, and Phase 4A status
+
+### A4.1 CORRECTION: the panel is on the LEFT, not the right
+A1.2 (line ~343) states `PropertiesPanel` is "`position: fixed; top: 68px;
+width: 300px`, **right-aligned**". **That is wrong.** `PropertiesPanel.css:1-12` is
+`position: fixed; left: 12px; top: 68px; width: 300px`. There is no `right` rule in
+the file. The tool rail (`Toolbar.css:29`, `.tb--rail`) is the one on the right
+(`right: 16px`).
+
+So today's editor is: **panel LEFT, rail RIGHT.** The mockup is the opposite:
+**rail LEFT (58px), panel RIGHT (300px).**
+
+Consequence for **4C**: it is a **swap of sides**, not a restyle in place. That is a
+bigger change than A1.2 implied and the reason to keep 4C as its own slice. The
+claim in A1.2 that the panel "is *already* the mockup's 300px right panel" was
+false — it is the mockup's panel in width and behaviour, on the wrong side.
+
+Everything else in A1.2 stands: the panel exists, holds the slot's width, and is
+rebuilt rather than duplicated.
+
+### A4.2 Phase 4A (the panel) — implemented
+`PropertiesPanel` rebuilt into the three-tab panel: `panel/InsertPane.tsx` (T4.4),
+`panel/DataPane.tsx` (T4.5), `panel/ArrangeSection.tsx` (T4.6), `panel/panel.css`.
+The panel is now **always mounted** — the call-site gate (chart / layout table /
+page-number text) is gone, so every element type is editable from it. It already
+rendered them all; only the gate hid it.
+
+- Layout tab: the panel's original content, unchanged, plus `Arrange`.
+- Insert tab: pure delegation to the canvas's existing add-element handlers.
+- Data tab: the bound source, the template's `{{placeholders}}`, and buttons that
+  open the EXISTING upload panel and data-structure viewer.
+- Panel state: **one** `useState` (which tab). Everything else is props.
+
+The floating bars **remain** for now (T4.10 retires them, only after 4A is verified
+in a browser). Typography is briefly reachable from both — deliberate, per A3.2.
+
+`tsc -b` clean; 67/67 tests; ESLint clean on all new files. Canvas lint went from
+17 problems to **16** — removing the gate removed an `as any`.
+
+**Not verified in a browser.** Note the transitional oddity: with the panel now
+always mounted and still `left: 12px`, the editor has a permanent 300px panel on the
+left until 4C swaps the sides.

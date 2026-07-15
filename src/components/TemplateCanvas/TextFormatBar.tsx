@@ -13,11 +13,20 @@
 
 import FontFamilyOptions from './properties/FontFamilyOptions';
 import type { TextElementType, ParagraphElementType, UpdateElement } from './properties/elementTypes';
+import FormatBarMore from './FormatBarMore';
+import PageNumberProperties from './PageNumberProperties';
+import type { FooterConfig } from '../../types/canvas';
 import './TextFormatBar.css';
 
 interface Props {
   element: TextElementType | ParagraphElementType;
   onUpdate: UpdateElement;
+  /**
+   * The active page's footer config. A text element that IS a page number, or that
+   * sits inside the footer zone, gets the page-number controls behind "⋯" — the
+   * third and last case the Properties panel was kept for (relayout doc A5.3).
+   */
+  activePageFooter?: FooterConfig | null;
 }
 
 const MIN_SIZE = 8;
@@ -25,7 +34,7 @@ const MAX_SIZE = 160;
 
 const clampSize = (n: number) => Math.min(MAX_SIZE, Math.max(MIN_SIZE, n));
 
-export default function TextFormatBar({ element, onUpdate }: Props) {
+export default function TextFormatBar({ element, onUpdate, activePageFooter = null }: Props) {
   // Patch a single field on the element's style, same shape the panel uses.
   const setStyle = (patch: Record<string, unknown>) => {
     onUpdate(element.id, { style: { ...element.style, ...patch } } as Partial<TextElementType>);
@@ -35,6 +44,15 @@ export default function TextFormatBar({ element, onUpdate }: Props) {
   const isBold = element.style.fontWeight === 'bold';
   // Alignment only exists on plain text elements, not paragraphs.
   const align  = (element.type === 'text' ? element.style.textAlign : undefined) ?? 'left';
+
+  // Same rule the panel used: a text element that is already a page number, or one
+  // sitting below the footer boundary, can be turned into one.
+  const isPageNumber = element.type === 'text' && !!element.pageNumber?.enabled;
+  const inFooterZone =
+    element.type === 'text' &&
+    activePageFooter?.enabled === true &&
+    (element.position?.y ?? 0) >= (activePageFooter?.boundaryY ?? Infinity);
+  const showPageNumber = isPageNumber || inFooterZone;
 
   return (
     <div className="tfb" role="toolbar" aria-label="Text formatting">
@@ -137,6 +155,16 @@ export default function TextFormatBar({ element, onUpdate }: Props) {
               onChange={e => setStyle({ lineHeight: Number(e.target.value) || 1 })} aria-label="Line height" />
           </div>
         </>
+      )}
+
+      {/* Page-number settings — re-housed from the Properties panel. */}
+      {element.type === 'text' && showPageNumber && (
+        <FormatBarMore label="Page number options">
+          <PageNumberProperties
+            config={element.pageNumber}
+            onChange={pn => onUpdate(element.id, { pageNumber: pn } as Partial<TextElementType>)}
+          />
+        </FormatBarMore>
       )}
     </div>
   );

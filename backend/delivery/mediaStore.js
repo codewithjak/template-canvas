@@ -117,6 +117,11 @@ function createMediaStore(cfg) {
   return { isRemote: true, newKey, putArtifact, signedUrlFor };
 }
 
+/** True when the media store has the region + bucket it needs. */
+function isConfigured() {
+  return Boolean(process.env.AWS_REGION && process.env.S3_MEDIA_BUCKET);
+}
+
 /** Build the store from environment configuration. */
 function fromEnv() {
   const region = process.env.AWS_REGION;
@@ -136,4 +141,4 @@ function fromEnv() {
   });
 }
 
-module.exports = { createMediaStore, fromEnv, extensionFor };
+module.exports = { createMediaStore, fromEnv, isConfigured, extensionFor };

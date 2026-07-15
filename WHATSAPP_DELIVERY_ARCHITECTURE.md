@@ -6,7 +6,7 @@
 > receiver gets the finished file directly in their chat.
 >
 > **Date:** 2026-07-15 · **Branch context:** TC-0211 (delivery lineage: TC-0072)
-> **Status:** P1 done (media store, per A1). P2–P6 pending.
+> **Status:** P1 done (media store, per A1). P2 done (provider seam + Twilio). P3–P6 pending.
 > **Provider (v1):** Twilio WhatsApp API (concrete), behind a provider-agnostic
 > channel interface so Meta Cloud API can be swapped in later without touching
 > the orchestrator or the route.
@@ -216,11 +216,17 @@ Build `backend/delivery/mediaStore.js`: `putArtifact` (returns a **key**),
 minted only on demand, proven by test. Independent of `s3Store.js` and the
 cloud-builder presign path.
 
-### P2 — Provider seam + Twilio sender
+### P2 — Provider seam + Twilio sender ✅ done
 `providers/whatsappSender.js` (interface + `fromEnv` selector) and
 `providers/twilioWhatsApp.js` (`send({to,body,mediaUrl})` via Twilio REST).
-Injectable HTTP transport for tests; no live calls in CI. **Deliverable:** a
-`send()` that, given a mock transport, forms the correct Twilio request.
+Injectable HTTP transport for tests; no live calls in CI.
+**Delivered:** `backend/delivery/providers/whatsappSender.js` (seam: `fromEnv`,
+`isConfigured`, `providerName`; Twilio is the only entry in `PROVIDERS`) +
+`backend/delivery/providers/twilioWhatsApp.js` (form-encoded Basic-auth POST to
+the Messages resource, sends the export as `MediaUrl`) + `backend/test/
+whatsapp-provider.test.js` (8 tests). A mock transport proves the exact request
+shape (URL, auth header, `To`/`From`/`Body`/`MediaUrl`) and the vendor stays
+behind the interface. `isConfigured` here feeds P3's `isWhatsAppConfigured`.
 
 ### P3 — WhatsApp channel + route wiring (session-window send) — *v1 ship*
 `whatsappDelivery.js` orchestrates `putArtifact` → `sender.send`. Add the

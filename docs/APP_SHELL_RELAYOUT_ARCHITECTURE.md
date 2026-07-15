@@ -579,7 +579,15 @@ editing model.
   - page-number text → `PageNumberProperties` (in `TextFormatBar`)
 - **4C** Delete `PropertiesPanel.tsx`. `PropertiesPanel.css` STAYS — the property
   components still use its classes inside the popover.
-- **4D** The dead property components are listed, not deleted, pending explicit
-  confirmation (safety rule).
+- **4D** The dead property components are DELETED (confirmed 2026-07-14). Removing
+  the panel orphaned ten of them — they had already been unreachable behind the old
+  call-site gate, and after the panel went nothing imported them at all:
+  `BarcodeProperties`, `BoxProperties`, `DateProperties`, `DateTypography`,
+  `ImageProperties`, `LineProperties`, `PositionProperties`,
+  `RadioCheckboxProperties`, `TextContentProperties`, `TypographyProperties`.
+  Their functionality lives in `ElementFormatBar` / `TextFormatBar`; nothing was
+  lost. `properties/` now holds only what is still rendered: `ChartProperties`,
+  `LayoutTableProperties`, `LayoutTableTypography`, plus the shared
+  `elementTypes`, `FontFamilyOptions` and `layoutTableCellHelpers`.
 - **4E** The chrome (rail/topbar/stage) and `/canvas` joining the frame — unchanged
   from before, still last.

@@ -8,7 +8,7 @@ test('round-trips an open-template intent', () => {
 })
 
 test('round-trips the payload-free intents', () => {
-  for (const kind of ['rebuild-ai', 'bind-data'] as const) {
+  for (const kind of ['rebuild-ai', 'bind-data', 'restore-draft'] as const) {
     const { state } = toLaunchState({ kind })
     assert.deepEqual(readLaunchIntent(state), { kind })
   }

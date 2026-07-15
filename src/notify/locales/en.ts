@@ -29,6 +29,7 @@ const en = {
   // Templates — save / load / delete
   'template.saveFailed': 'Could not save template: {error}',
   'template.openFailed': 'Could not open that template: {error}',
+  'draft.restoreUnavailable': 'That unsaved work is no longer available to restore.',
   'template.invalidFile': 'Invalid template file.',
   'template.readError': 'Error reading template file.',
   'templates.deleteConfirm': 'Delete “{name}”? This cannot be undone.',

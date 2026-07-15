@@ -38,6 +38,31 @@ export interface DraftRestore {
   teamId: string | null
 }
 
+/**
+ * May this draft be offered back to the user right now? The ONE place that
+ * decides, so the surface that offers the draft (the Dashboard card) and the
+ * surface that restores it (the canvas) cannot disagree about what is safe.
+ *
+ * The rule is the cross-team leak guard: templates save team-scoped, but the
+ * draft key is only user-scoped, so a draft written in team A must never be
+ * offered — or restored — while team B is active.
+ *
+ * Strict equality, which means a draft stamped `teamId: null` (written before the
+ * team resolved, or by a user with no team) is offered only when the active team
+ * is also null. That is the conservative direction: an unstamped draft is never
+ * handed to a team.
+ *
+ * Callers MUST resolve the active team before calling this — passing a
+ * not-yet-loaded null would withhold a perfectly good draft (see useActiveTeamId).
+ */
+export function offerableDraft(
+  draft: DraftRestore | null,
+  activeTeamId: string | null,
+): DraftRestore | null {
+  if (!draft) return null
+  return draft.teamId === activeTeamId ? draft : null
+}
+
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null
 

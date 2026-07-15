@@ -10,12 +10,12 @@
  * own 52px header was removed and its action bar stopped being viewport-fixed — it
  * portals into this header instead (see FrameActions), so there is exactly one.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { FrameActionsProvider } from './FrameActions'
-import { pageTitle } from './navModel'
+import { pageTitle, defaultSidebarCollapsed } from './navModel'
 import './frame.css'
 
 function AppFrame() {
@@ -26,9 +26,21 @@ function AppFrame() {
   // node exists — a ref would still be null on the page's first render.
   const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null)
 
+  // Collapsed in the editor, open everywhere else — the canvas is starved for width
+  // (Amendment 8). Re-derived on every route change, so entering the editor always
+  // collapses it, while a manual toggle holds for as long as you stay on the page.
+  const [collapsed, setCollapsed] = useState(() => defaultSidebarCollapsed(pathname))
+  useEffect(() => {
+    setCollapsed(defaultSidebarCollapsed(pathname))
+  }, [pathname])
+
   return (
-    <div className="frame">
-      <Sidebar />
+    // The class is what changes `--frame-sidebar-w`. That var is not decoration: the
+    // floating format bars and the status bar are `position: fixed` and centre on the
+    // STAGE by subtracting the chrome from the window. Collapse the sidebar without
+    // changing the var and they all drift 82px off-centre.
+    <div className={`frame${collapsed ? ' frame--sidebar-collapsed' : ''}`}>
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="frame-main">
         <TopBar title={pageTitle(pathname)} actionsRef={setActionsSlot} />
         <main className="frame-content">

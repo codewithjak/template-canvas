@@ -31,10 +31,41 @@ const TABS: readonly { id: PanelTab; label: string }[] = [
 interface Props {
   insert: InsertActions
   data: DataPaneInfo
+  /**
+   * Collapse is owned by the CANVAS, not by this panel. The width has to be stamped
+   * on `--frame-panel-w`, and that var must live on an ancestor of the floating
+   * format bars (which are `position: fixed` and centre on the stage by subtracting
+   * the chrome). The panel cannot reach them; the container can.
+   */
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }
 
-function EditorPanel({ insert, data }: Props) {
+function EditorPanel({ insert, data, collapsed, onToggleCollapsed }: Props) {
   const [tab, setTab] = useState<PanelTab>('insert')
+
+  const Toggle = (
+    <button
+      type="button"
+      className="ep-collapse"
+      onClick={onToggleCollapsed}
+      title={collapsed ? 'Show Insert and Data' : 'Hide panel'}
+      aria-label={collapsed ? 'Show Insert and Data' : 'Hide panel'}
+      aria-expanded={!collapsed}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+        <path d={collapsed ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
+
+  if (collapsed) {
+    // A thin strip, not nothing: a panel that vanishes with no way back is a panel
+    // the user has lost.
+    return (
+      <aside className="editor-panel editor-panel--collapsed">{Toggle}</aside>
+    )
+  }
 
   return (
     <aside className="editor-panel">
@@ -51,6 +82,7 @@ function EditorPanel({ insert, data }: Props) {
             {label}
           </button>
         ))}
+        {Toggle}
       </div>
 
       <div className="ep-body">

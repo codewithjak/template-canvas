@@ -83,6 +83,21 @@ const OFF_NAV_TITLES: Readonly<Record<string, string>> = {
   '/canvas': 'Editor',
 }
 
+/**
+ * Should the sidebar start collapsed on this route?
+ *
+ * The editor, yes: the canvas is starved for width. An A4 page is 794px and the
+ * chrome (sidebar 220 + tool rail 168 + right panel 300) leaves only ~689px at
+ * 1440px, so the page does not fit. Collapsing the sidebar to 56px there recovers
+ * 164px and an A4 page fits again (see relayout doc Amendment 8).
+ *
+ * Everywhere else, no: the Dashboard and Templates ARE navigation, and hiding the
+ * nav on the pages built for navigating would be perverse.
+ */
+export function defaultSidebarCollapsed(currentPath: string): boolean {
+  return routeOf(currentPath) === '/canvas'
+}
+
 export function pageTitle(currentPath: string): string {
   // Match on the ROUTE, not the anchor: /settings#team is still the Settings page,
   // and the header should say so rather than renaming the page per section.

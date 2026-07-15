@@ -21,7 +21,6 @@ import { resolveActiveCell } from '../properties/layoutTableCellHelpers'
 import LayoutTableProperties from '../properties/LayoutTableProperties'
 import LayoutTableTypography from '../properties/LayoutTableTypography'
 import ChartProperties from '../properties/ChartProperties'
-import PositionProperties from '../properties/PositionProperties'
 import PageNumberProperties from '../PageNumberProperties'
 import '../PropertiesPanel.css'
 import './panel.css'
@@ -104,9 +103,9 @@ function ElementOptions({
         />
       )}
 
-      {/* Numeric X/Y. The deleted Properties panel showed this for every element it
-          rendered, so these three have always had it — it comes along, unchanged. */}
-      <PositionProperties element={el} onUpdate={onUpdate} />
+      {/* Numeric X/Y is no longer here: it moved onto the floating format bars, so
+          every element can set it (not just the three that open this panel). See
+          docs/POSITION_ON_FORMAT_BAR_ARCHITECTURE.md §2.3. */}
     </section>
   )
 }

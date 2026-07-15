@@ -417,3 +417,38 @@ three pure, unit-tested functions — `navItems`/`isActive` (T1.7) and `usageTil
 (T2.1) — plus a typed string and one `useEffect` (§5).
 
 If the diff shows more, this document has been violated.
+
+
+---
+
+## AMENDMENT (2026-07-14) — Phase 1b done: /canvas is in the frame
+
+§2.2 and §4.5 said `/canvas` could not be framed while its chrome was viewport-fixed.
+That is resolved for the header; the rail is next.
+
+**What changed (TC-0202)**
+- `pages/Canvas.tsx` is now just `<TemplateCanvas />`. Its fixed 52px header — a
+  `UserMenu`, an "Integrations" button, both inline-styled, plus a 52px spacer — is
+  deleted. The UserMenu lives in the frame's header; Integrations is a nav item.
+- `/canvas` moved into the frame's layout route.
+- **`frame/FrameActions.tsx`** is the new seam. `TopBar` is rendered by `AppFrame`,
+  *above* the `<Outlet/>`, so a page cannot pass it anything by props. `AppFrame` now
+  publishes the header's actions container through context and the page portals into
+  it. The editor keeps ownership of its buttons and handlers — only where they LAND
+  changes. Outside the frame the portal renders in place, so nothing is dropped.
+  The slot is React **state**, not a ref: a ref would still be null on the page's
+  first render and the toolbar would silently never appear.
+- `Toolbar`'s `.tb--export` half portals up. Its CSS stops being
+  `position: fixed; top: 12px` — kept fixed, it would float *over* the header it is
+  meant to be part of.
+- `pageTitle('/canvas')` → **"Editor"**. The editor is reached by action, not by nav,
+  so it has no nav item — but the one header still has to name it, or it renders
+  under a blank title. Pinned by a test.
+
+**Not done, and still true from §4.5:** the tool rail is still
+`position: fixed; right: 16px` — it floats on the RIGHT of the canvas. The mockup puts
+it on the left at 58px. Moving it is the next slice; it is a real layout change (the
+rail must become a flex child instead of a viewport-fixed pill), not a restyle.
+
+The floating format bars (`.tfb`) stay fixed and centred over the canvas — they are
+the editing model (relayout Amendment 5) and are not part of the frame.

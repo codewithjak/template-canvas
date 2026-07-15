@@ -74,6 +74,15 @@ export function isActive(itemPath: string, currentPath: string): boolean {
  * The title the frame's one header shows for a route. Kept as data next to the
  * nav so the two cannot drift; the TopBar renders it and decides nothing.
  */
+/**
+ * Titles for framed routes that are NOT nav destinations. The editor is reached by
+ * action ("New template", or opening a template), so it has no nav item — but the
+ * frame's one header still has to name it.
+ */
+const OFF_NAV_TITLES: Readonly<Record<string, string>> = {
+  '/canvas': 'Editor',
+}
+
 export function pageTitle(currentPath: string): string {
   // Match on the ROUTE, not the anchor: /settings#team is still the Settings page,
   // and the header should say so rather than renaming the page per section.
@@ -85,5 +94,5 @@ export function pageTitle(currentPath: string): string {
   const match = NAV_ITEMS.filter((item) => !item.to.includes('#')).find((item) =>
     isActive(item.to, route),
   )
-  return match?.label ?? ''
+  return match?.label ?? OFF_NAV_TITLES[route] ?? ''
 }

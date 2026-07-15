@@ -6,28 +6,35 @@
  * Owns NO domain state. It renders navigation and a header; the page inside the
  * Outlet renders everything else.
  *
- * Currently framed: /settings. /canvas joins in Phase 1b — NOT before: its rail,
- * properties panel and action bar are all `position: fixed` to the viewport with
- * offsets tuned to the 52px header that this frame replaces (see
- * APP_FRAME_DASHBOARD_ARCHITECTURE.md §4.5), so it would float over the frame at
- * the wrong offsets until the editor re-chrome lands.
+ * Framed: /dashboard, /templates, /settings and /canvas. The editor joined once its
+ * own 52px header was removed and its action bar stopped being viewport-fixed — it
+ * portals into this header instead (see FrameActions), so there is exactly one.
  */
+import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import { FrameActionsProvider } from './FrameActions'
 import { pageTitle } from './navModel'
 import './frame.css'
 
 function AppFrame() {
   const { pathname } = useLocation()
 
+  // The header's actions container, published to the page below so it can portal
+  // its own controls up here. State (not a ref) so the page re-renders once the
+  // node exists — a ref would still be null on the page's first render.
+  const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null)
+
   return (
     <div className="frame">
       <Sidebar />
       <div className="frame-main">
-        <TopBar title={pageTitle(pathname)} />
+        <TopBar title={pageTitle(pathname)} actionsRef={setActionsSlot} />
         <main className="frame-content">
-          <Outlet />
+          <FrameActionsProvider value={actionsSlot}>
+            <Outlet />
+          </FrameActionsProvider>
         </main>
       </div>
     </div>

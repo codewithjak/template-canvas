@@ -10,6 +10,7 @@ import { IconBtn, Divider } from './toolbar/IconButton';
 import ShapesMenu from './toolbar/ShapesMenu';
 import PageSizeMenu from './toolbar/PageSizeMenu';
 import ExportMenu from './toolbar/ExportMenu';
+import { FrameActionsPortal } from '../../frame/FrameActions';
 
 /* ── Toolbar ───────────────────────────────────────────────── */
 export interface ToolbarProps {
@@ -136,7 +137,11 @@ export default function Toolbar({
 
     </div>
 
-      {/* ── Top-right bar: action buttons + export ── */}
+      {/* ── Editor actions: undo/redo, page size, save, data, export ──
+          These live in the FRAME's header now (relayout 4E), so the editor does not
+          draw a second header of its own. The buttons and their handlers are
+          unchanged — only where they land. Outside the frame they render in place. */}
+      <FrameActionsPortal>
       <div className="tb tb--export" role="toolbar" aria-label="Actions and export">
 
         {/* Undo / redo */}
@@ -234,6 +239,7 @@ export default function Toolbar({
           </>
         )}
       </div>
+      </FrameActionsPortal>
     </>
   );
 }

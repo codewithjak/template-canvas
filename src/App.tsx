@@ -45,18 +45,9 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/canvas"
-            element={
-              <ProtectedRoute>
-                <Canvas />
-              </ProtectedRoute>
-            }
-          />
-          {/* Framed routes (app-frame doc T1.5): the sidebar + the app's one
-              header wrap the page. /canvas is NOT here yet — its rail, panel and
-              action bar are viewport-fixed and would float over the frame at the
-              wrong offsets until the editor re-chrome lands (Phase 1b). */}
+          {/* Framed routes: the sidebar + the app's ONE header wrap the page.
+              /canvas is here now (relayout 4E) — its old fixed 52px header is gone
+              and its toolbar portals up into the frame's header instead. */}
           <Route
             element={
               <ProtectedRoute>
@@ -66,6 +57,7 @@ function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/templates" element={<Templates />} />
+            <Route path="/canvas" element={<Canvas />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           {/* [ADMIN PANEL] isolated feature — remove this Route + its imports to disable */}

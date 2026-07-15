@@ -629,3 +629,27 @@
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+
+/* ── The actions bar now lives INSIDE the frame's header ─────────────────────
+   It used to be `position: fixed; top: 12px; right: 16px` — its own floating pill
+   above the canvas, sitting beside the old 52px page header. It is portalled into
+   the frame's header now (relayout 4E), so it must be a plain inline row: keeping
+   it fixed would float it over the header it is supposed to be part of. */
+.tb--export {
+  position   : static;
+  top        : auto;
+  right      : auto;
+  left       : auto;
+  z-index    : auto;
+
+  height     : auto;
+  padding    : 0;
+
+  background : none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border     : none;
+  border-radius: 0;
+  box-shadow : none;
+}

@@ -650,3 +650,28 @@ and to `supabase/canvas_activation_events.sql`. **The migration must run against
 deployed database or this event is rejected on insert like the others** (see the
 previous amendment). `analytics.test.ts` fails the build if any of the three ever
 disagree again.
+
+---
+
+## AMENDMENT (2026-07-13) — migration APPLIED
+
+`supabase/canvas_activation_events.sql` was run against the deployed database and
+succeeded. The CHECK constraint now accepts all five funnel events. This resolves
+the "must be run" caveat in both amendments above.
+
+What this does and does not mean:
+
+- **From now on, the funnel records.** The four events already live in prod
+  (`start_layer_shown`, `start_layer_card_clicked`, `draft_restored`, `data_bound`
+  shipped in TC-0187 and were being rejected on every insert) will start landing
+  from the moment the next event fires. No frontend deploy is needed for those —
+  the code was always correct; the database was rejecting it.
+- **`first_export_completed` still needs the frontend deployed** (TC-0193). The
+  constraint accepts it; nothing emits it yet in prod.
+- **There is NO backfill.** Every activation event between TC-0187 and today was
+  rejected at insert time and is gone — not recoverable, not derivable. §5's funnel
+  has data starting today and nothing before it.
+- **Consequence for the Start Layer retirement** (APP_SHELL_RELAYOUT T5.6/T5.7):
+  the "before" baseline starts accumulating only now. Either wait for a baseline
+  before retiring the layer, or retire it on design merits and say so — but do not
+  claim it was measured against prior data, because there is none.

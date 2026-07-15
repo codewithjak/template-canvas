@@ -22,6 +22,7 @@ export interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', to: '/dashboard', group: 'main' },
   { id: 'settings', label: 'Settings', to: '/settings', group: 'workspace' },
 ] as const
 

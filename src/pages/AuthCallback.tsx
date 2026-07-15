@@ -25,7 +25,8 @@ export default function AuthCallback() {
       // per genuine sign-in (unlike onAuthStateChange, which also fires on
       // tab focus and token refresh).
       void logEvent('login')
-      const next = sessionStorage.getItem(POST_LOGIN_KEY) || '/canvas'
+      // Same default as Login.tsx: the Dashboard, not an empty canvas (T2.4).
+      const next = sessionStorage.getItem(POST_LOGIN_KEY) || '/dashboard'
       sessionStorage.removeItem(POST_LOGIN_KEY)
       navigate(next, { replace: true })
     }

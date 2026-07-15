@@ -104,7 +104,10 @@ export default function Login() {
   const { session, loading: authLoading, signInWithGoogle, signInWithEmail } =
     useAuth()
   const [params] = useSearchParams()
-  const next = params.get('next') || '/canvas'
+  // Signing in with no explicit destination lands on the Dashboard, not straight
+  // into an empty canvas (app-frame doc T2.4). `?next=` still wins, so a deep link
+  // into /canvas or /settings survives the login round-trip.
+  const next = params.get('next') || '/dashboard'
 
   // Invite links arrive with ?mode=signup so a brand-new invitee gets a
   // magic link (shouldCreateUser:true) instead of a silent "user not found".

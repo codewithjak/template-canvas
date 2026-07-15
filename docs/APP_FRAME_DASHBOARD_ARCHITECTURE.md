@@ -186,8 +186,28 @@ already has.
 
 ```ts
 // src/frame/launchIntent.ts
-export type CanvasLaunchIntent = 'restore-draft' | 'rebuild-ai' | 'bind-data'
+export type CanvasLaunchIntent =
+  | { kind: 'open-template'; templateId: string }
+  | { kind: 'restore-draft' }
+  | { kind: 'rebuild-ai' }
+  | { kind: 'bind-data' }
 ```
+
+**AMENDED 2026-07-13, before Phase 2 was written.** The original type was a bare string
+union with no `open-template`, and the mechanism sat in Phase 3 — both wrong:
+
+- **The canvas has no deep link.** `handleOpenCloudTemplate` (`TemplateCanvas.tsx:864`)
+  is reachable *only* from the templates modal. So "Jump back in" (T2.3) cannot open the
+  template it names without this mechanism, and a recent-projects list whose cards don't
+  open their template is not worth shipping. **The mechanism therefore moves into
+  Phase 2** (T2.0 below); Phase 3 keeps only the two action cards that need the other
+  kinds.
+- **A bare string cannot carry a template id**, so the type is now a discriminated union.
+  It ships with only the member Phase 2 needs; Phase 3 and 4 add theirs.
+
+Router state is `unknown` at runtime, so a pure `readLaunchIntent(state: unknown)`
+validates it and returns `null` on anything unrecognised — a malformed or stale history
+entry must never wedge the canvas (same contract as `restoreDraft`).
 
 - Passed as router state when navigating to `/canvas`.
 - The canvas consumes it **once** on mount and calls its existing handler:
@@ -269,18 +289,51 @@ Exit check: one header; the canvas has no viewport-fixed chrome left; every edit
 reachable today is still reachable.
 
 ### Phase 2 — Dashboard: usage + recent
+- T2.0 `launchIntent.ts` — the union (§5) with its `open-template` member, plus pure
+  `readLaunchIntent(state: unknown)`. Canvas consumes it once on mount and calls the
+  **existing** `handleOpenCloudTemplate` with a record from `getTemplate(id)`. Moved here
+  from Phase 3: T2.3 cannot work without it (§5, amended).
 - T2.1 Pure `usageTiles(usage: UsageSummary | null): Tile[]` — encodes §4.1 and §4.2:
   omits `aiBuildsThisMonth` when absent, handles `limit: null`, returns `[]` when
   `usage` is null. **Unit-tested; this is where the honesty lives.**
 - T2.2 `StatTile.tsx` — presentational.
 - T2.3 `RecentProjects.tsx` — `listTemplates('document')`, already sorted. Name +
-  relative time. Opens the canvas.
-- T2.4 `/dashboard` route; add it to the frame; make it the post-login landing.
+  relative time. A card opens its template in the canvas via T2.0.
+- T2.4 `/dashboard` route; add it to the frame and to `NAV_ITEMS`; make it the post-login
+  landing (the `'/canvas'` default in `Login.tsx:107` and `AuthCallback.tsx:28`).
 - T2.5 Loading skeleton + failure state that renders no numbers (§4.3).
 - T2.6 Empty state for an account with no templates.
 
 Exit check: no number on the page comes from anywhere but `usage` / `listTemplates()`;
-with a server lacking `aiBuildsThisMonth`, two tiles render and nothing is `undefined`.
+with a server lacking `aiBuildsThisMonth`, two tiles render and nothing is `undefined`;
+a recent card opens *that* template; a direct `/canvas` visit with no intent behaves
+exactly as today.
+
+**Phase 2 status (2026-07-13) — implemented.**
+`frame/launchIntent.ts` + test (T2.0); `pages/dashboard/usageTiles.ts` + test (T2.1);
+`StatTile.tsx` (T2.2); `RecentProjects.tsx` (T2.3); `pages/Dashboard.tsx` +
+`dashboard.css`; `/dashboard` in the frame's layout route and in `NAV_ITEMS`; post-login
+default moved from `/canvas` to `/dashboard` in **both** places (`Login.tsx:107`,
+`AuthCallback.tsx:28`) — `?next=` still wins, so deep links survive login (T2.4).
+Skeleton + "usage unavailable" state render **no numbers** (T2.5); empty state for a new
+account (T2.6). `TemplateCanvas` consumes the intent once per mount and calls the
+**existing** `handleOpenCloudTemplate` with a record from `getTemplate(id)`.
+`tsc -b` clean; ESLint on the canvas is byte-identical to its baseline (13 errors, 4
+warnings — all pre-existing `any`); 45/45 tests.
+
+Two additions beyond the task list, recorded rather than hidden (rule j):
+
+1. **`utils/relativeTime.ts` (+ test)** — the recent list needed "3 hours ago", and
+   `CanvasStartLayer.savedAgo` was already the exact same function. Rather than write a
+   second copy, it was **extracted and both now call it** (rule g: fix the existing code,
+   do not layer a parallel one). It also pre-empts a third copy when the draft-restore
+   card lands.
+2. **`template.openFailed`** locale key — the intent path can fail (a deleted template,
+   a network error) and reusing `template.readError` would have described the wrong
+   failure.
+
+Not verified: the visual/keyboard pass. `/dashboard` is behind `ProtectedRoute`, so it
+needs a signed-in session. Build, lint and unit tests are green.
 
 ### Phase 3 — Launch intent + "Start something"
 - T3.1 `launchIntent.ts` — the type (§5).

@@ -28,6 +28,7 @@ const en = {
 
   // Templates — save / load / delete
   'template.saveFailed': 'Could not save template: {error}',
+  'template.openFailed': 'Could not open that template: {error}',
   'template.invalidFile': 'Invalid template file.',
   'template.readError': 'Error reading template file.',
   'templates.deleteConfirm': 'Delete “{name}”? This cannot be undone.',

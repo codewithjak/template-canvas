@@ -7,6 +7,13 @@ test('round-trips an open-template intent', () => {
   assert.deepEqual(readLaunchIntent(state), { kind: 'open-template', templateId: 't1' })
 })
 
+test('round-trips the payload-free intents', () => {
+  for (const kind of ['rebuild-ai', 'bind-data'] as const) {
+    const { state } = toLaunchState({ kind })
+    assert.deepEqual(readLaunchIntent(state), { kind })
+  }
+})
+
 test('a plain /canvas visit (no state) yields no intent', () => {
   // The everyday case: the canvas must behave exactly as it does today.
   assert.equal(readLaunchIntent(null), null)

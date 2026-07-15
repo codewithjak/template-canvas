@@ -11,6 +11,7 @@
 import { usePlan } from '../plan/PlanProvider'
 import { usageTiles } from './dashboard/usageTiles'
 import StatTile from './dashboard/StatTile'
+import StartActions from './dashboard/StartActions'
 import RecentProjects from './dashboard/RecentProjects'
 import './dashboard/dashboard.css'
 
@@ -50,6 +51,11 @@ function Dashboard() {
   return (
     <div className="dash">
       <UsageStats />
+
+      <section className="dash-section">
+        <h2 className="dash-section__title">Start something</h2>
+        <StartActions />
+      </section>
 
       <section className="dash-section">
         <h2 className="dash-section__title">Jump back in</h2>

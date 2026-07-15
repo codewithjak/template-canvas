@@ -15,14 +15,23 @@
 
 export type CanvasLaunchIntent =
   | { kind: 'open-template'; templateId: string }
-// 'restore-draft' | 'rebuild-ai' | 'bind-data' land with the Dashboard cards
-// they belong to (Phases 3 and 4). Only what is used is defined.
+  | { kind: 'rebuild-ai' }
+  | { kind: 'bind-data' }
+// 'restore-draft' lands with the draft-restore card it belongs to (Phase 4).
+// Only what is used is defined.
 
 /** The key the intent travels under in `navigate(path, { state })`. */
 export const LAUNCH_INTENT_KEY = 'launchIntent'
 
+/** Intents that carry no payload — the whole intent is its `kind`. */
+const BARE_KINDS = ['rebuild-ai', 'bind-data'] as const
+type BareKind = (typeof BARE_KINDS)[number]
+
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null
+
+const isBareKind = (v: unknown): v is BareKind =>
+  typeof v === 'string' && (BARE_KINDS as readonly string[]).includes(v)
 
 export function readLaunchIntent(state: unknown): CanvasLaunchIntent | null {
   if (!isObject(state)) return null
@@ -31,6 +40,9 @@ export function readLaunchIntent(state: unknown): CanvasLaunchIntent | null {
 
   if (intent.kind === 'open-template' && typeof intent.templateId === 'string' && intent.templateId) {
     return { kind: 'open-template', templateId: intent.templateId }
+  }
+  if (isBareKind(intent.kind)) {
+    return { kind: intent.kind }
   }
   return null
 }

@@ -344,6 +344,28 @@ needs a signed-in session. Build, lint and unit tests are green.
 Exit check: each card lands in the canvas with the right modal open; a direct visit to
 `/canvas` with no intent behaves exactly as today.
 
+**Phase 3 status (2026-07-13) — implemented.**
+T3.1: the union gains `{kind:'rebuild-ai'}` and `{kind:'bind-data'}`; `readLaunchIntent`
+validates them via a `BARE_KINDS` allow-list, so an unknown `kind` still returns null.
+T3.2: the canvas's mount effect is now a `switch` calling the **existing**
+`setRebuildAiOpen(true)` / `setUploadPanelOpen(true)` — no new logic, and the union makes
+the switch exhaustive, so a future intent kind cannot be silently forgotten.
+T3.3: `StartActions.tsx` — two cards, presentational, dispatching intents.
+T3.4 shipped in Phase 1 (the sidebar's New template button already navigates to `/canvas`
+with no intent).
+`tsc -b` clean; ESLint clean on new files and byte-identical to baseline on the canvas
+(17 pre-existing problems, none added); 46/46 tests.
+
+No drift from the task list. One deliberate omission: **no analytics events on these
+cards.** The activation doc's funnel (`start_layer_card_clicked`) is re-pointed by
+`APP_SHELL_RELAYOUT_ARCHITECTURE.md` **T5.7**, which owns that change; adding events here
+would fork it (rules h, k).
+
+Not verified: the visual/keyboard pass — `/dashboard` is behind `ProtectedRoute` and
+needs a signed-in session. **Three phases are now unverified behind auth**; a signed-in
+pass should happen before Phase 4 adds the draft-restore card, whose whole value is that
+it fires after a crash.
+
 ### Phase 4 — Draft restore card (host only)
 The card itself is **T5.1–T5.5 of `APP_SHELL_RELAYOUT_ARCHITECTURE.md`**. This phase
 only mounts it at the top of the Dashboard and verifies it end-to-end. **The Start Layer

@@ -875,15 +875,17 @@ function TemplateCanvas() {
     setLibraryMode(null);
   };
 
-  // A framed page (today: the Dashboard's "Jump back in") can ask the canvas to
-  // open a specific template on arrival — the canvas has no other deep link, as
-  // handleOpenCloudTemplate is otherwise reachable only from the templates modal.
-  // The page DECLARES the intent; the canvas EXECUTES it with the handler above,
-  // so hydration never leaves this component (app-frame doc §5).
+  // A framed page (the Dashboard) can ask the canvas to do one thing on arrival:
+  // open a template, or open the AI-rebuild / upload-data panel. The page DECLARES
+  // the intent; the canvas EXECUTES it with handlers it already has, so no
+  // hydration logic leaves this component (app-frame doc §5). Opening a template
+  // needs this because handleOpenCloudTemplate is otherwise reachable only from
+  // the templates modal — the canvas has no other deep link.
   //
-  // Runs once per mount: `location.state` is stale after the first read (a later
-  // in-canvas navigation must not re-open the template over the user's edits), and
-  // `readLaunchIntent` returns null for the ordinary /canvas visit with no state.
+  // Runs once per mount: `location.state` survives in the history entry, so a
+  // later in-canvas re-render must not re-fire it over the user's edits.
+  // `readLaunchIntent` returns null for the ordinary /canvas visit with no state,
+  // which is the path that must keep behaving exactly as it does today.
   const launchHandledRef = useRef(false);
   useEffect(() => {
     if (launchHandledRef.current) return;
@@ -891,15 +893,23 @@ function TemplateCanvas() {
     if (!intent) return;
     launchHandledRef.current = true;
 
-    if (intent.kind === 'open-template') {
-      void getCloudTemplate(intent.templateId)
-        .then(handleOpenCloudTemplate)
-        .catch((err: unknown) => {
-          notify.error({
-            key: 'template.openFailed',
-            vars: { error: err instanceof Error ? err.message : String(err) },
+    switch (intent.kind) {
+      case 'open-template':
+        void getCloudTemplate(intent.templateId)
+          .then(handleOpenCloudTemplate)
+          .catch((err: unknown) => {
+            notify.error({
+              key: 'template.openFailed',
+              vars: { error: err instanceof Error ? err.message : String(err) },
+            });
           });
-        });
+        break;
+      case 'rebuild-ai':
+        setRebuildAiOpen(true);
+        break;
+      case 'bind-data':
+        setUploadPanelOpen(true);
+        break;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [launchState]);

@@ -35,6 +35,7 @@ import LayoutTableProperties from './properties/LayoutTableProperties';
 import LayoutTableTypography from './properties/LayoutTableTypography';
 import ChartProperties from './properties/ChartProperties';
 import PositionProperties from './properties/PositionProperties';
+import FontFamilyOptions from './properties/FontFamilyOptions';
 import './TextFormatBar.css';
 
 type SupportedElement =
@@ -91,7 +92,7 @@ export default function ElementFormatBar({
       {isTable                     && renderTable(element as LayoutTableElement, setStyle, update)}
       {element.type === 'barcode'  && renderBarcode(element as BarcodeElementType, setStyle, update, staticPlaceholders)}
       {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element as RadioElementType | CheckboxElementType, update)}
-      {element.type === 'date'     && renderDate(element as DateElementType, update)}
+      {element.type === 'date'     && renderDate(element as DateElementType, setStyle, update)}
 
       {/* The two cases the Properties panel was kept for, re-housed behind "⋯". */}
       {isTable && (
@@ -322,8 +323,20 @@ function renderRadioCheckbox(el: RadioElementType | CheckboxElementType, update:
   );
 }
 
-function renderDate(el: DateElementType, update: Update) {
+/**
+ * A date element's value/format controls, plus its TYPOGRAPHY.
+ *
+ * The typography half closes a gap that predates the panel's removal: those four
+ * controls lived only in `DateTypography`, which the Properties panel rendered —
+ * but the panel was gated to chart / table / page-number text, so it NEVER opened
+ * for a date. A date element has therefore had no font controls for as long as that
+ * gate existed. `DateElementType.style` is exactly `{fontSize, fontWeight, color,
+ * fontFamily}` and `DateElement` renders with all four, so they were settable by the
+ * model and unreachable from the UI.
+ */
+function renderDate(el: DateElementType, setStyle: SetStyle, update: Update) {
   const showTime = el.includeTime || false;
+  const isBold = el.style.fontWeight === 'bold';
   return (
     <>
       <ToggleBtn label="Include time" active={showTime} onClick={() => update({ includeTime: !showTime })} />
@@ -342,6 +355,27 @@ function renderDate(el: DateElementType, update: Update) {
       <SelectField label="Format" value={el.format || 'MM/DD/YYYY'}
         options={[['MM/DD/YYYY', 'MM/DD/YYYY'], ['DD/MM/YYYY', 'DD/MM/YYYY'], ['YYYY-MM-DD', 'YYYY-MM-DD'], ['MMM DD, YYYY', 'MMM DD, YYYY'], ['DD Mon YYYY', 'DD Mon YYYY']]}
         onChange={v => update({ format: v })} />
+
+      <span className="tfb-divider" />
+
+      {/* Typography — the same four fields DateTypography had, in the bar's own
+          idioms. The font list is the SHARED FontFamilyOptions, not a second copy. */}
+      <select
+        className="tfb-font"
+        value={el.style.fontFamily}
+        onChange={e => setStyle({ fontFamily: e.target.value })}
+        aria-label="Font family"
+      >
+        <FontFamilyOptions />
+      </select>
+
+      <Stepper label="Size" value={el.style.fontSize} min={8} max={160}
+        onChange={n => setStyle({ fontSize: n })} />
+
+      <ToggleBtn label="B" active={isBold}
+        onClick={() => setStyle({ fontWeight: isBold ? 'normal' : 'bold' })} />
+
+      <Swatch label="Color" value={el.style.color} onChange={v => setStyle({ color: v })} />
     </>
   );
 }

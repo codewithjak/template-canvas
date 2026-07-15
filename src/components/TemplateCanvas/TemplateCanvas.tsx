@@ -1527,11 +1527,7 @@ function TemplateCanvas() {
             from the "⋯" on the bar (relayout doc A5.3). */}
         {selectedElement &&
           (selectedElement.type === 'text' || selectedElement.type === 'paragraph') && (
-            <TextFormatBar
-              element={selectedElement as any}
-              onUpdate={handleUpdateElement}
-              activePageFooter={pages.find(p => p.pageId === activePageId)?.footer ?? null}
-            />
+            <TextFormatBar element={selectedElement as any} onUpdate={handleUpdateElement} />
           )}
 
         {selectedElement && ELEMENT_BAR_TYPES.includes(selectedElement.type as never) && (
@@ -1539,8 +1535,6 @@ function TemplateCanvas() {
             element={selectedElement as any}
             onUpdate={handleUpdateElement}
             staticPlaceholders={staticPlaceholders}
-            layoutTableActiveCell={layoutTableCellSelection}
-            layoutTableRange={layoutTableRange}
           />
         )}
 
@@ -1550,6 +1544,13 @@ function TemplateCanvas() {
         <EditorPanel
           collapsed={panelCollapsed}
           onToggleCollapsed={() => setPanelCollapsed(c => !c)}
+          options={{
+            selectedElement: selectedElement as any,
+            onUpdate: handleUpdateElement,
+            layoutTableActiveCell: layoutTableCellSelection,
+            layoutTableRange,
+            activePageFooter: pages.find(p => p.pageId === activePageId)?.footer ?? null,
+          }}
           insert={{
             onAddText: handleAddText,
             onAddParagraph: handleAddParagraph,

@@ -321,3 +321,21 @@
     transition: none;
   }
 }
+
+
+/* ── Selected element's advanced controls ────────────────────────────────────
+   Below the tab content, separated from it: this section is about the SELECTED
+   element, not about the tab you happen to be on. It is what used to hang off the
+   "⋯" on the floating bar — a table's columns and binding need a column, not a
+   popover. Renders nothing when the selection has no overflow controls. */
+.ep-options {
+  margin-top   : 18px;
+  padding-top  : 14px;
+  border-top   : 1px solid var(--color-border-tertiary);
+}
+
+/* The property boxes inside were built for the old panel; drop the leading margin so
+   the first one sits flush under the heading. */
+.ep-options .property-section:first-of-type {
+  margin-top: 0;
+}

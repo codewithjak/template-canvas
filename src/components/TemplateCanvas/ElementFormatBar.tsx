@@ -29,12 +29,6 @@ import type {
 } from './properties/elementTypes';
 import { type LayoutTableElement, insertColumnAt } from '../../model/layoutTable';
 import { notify } from '../../notify';
-import FormatBarMore from './FormatBarMore';
-import { resolveActiveCell } from './properties/layoutTableCellHelpers';
-import LayoutTableProperties from './properties/LayoutTableProperties';
-import LayoutTableTypography from './properties/LayoutTableTypography';
-import ChartProperties from './properties/ChartProperties';
-import PositionProperties from './properties/PositionProperties';
 import FontFamilyOptions from './properties/FontFamilyOptions';
 import './TextFormatBar.css';
 
@@ -57,32 +51,17 @@ interface Props {
   element: SupportedElement;
   onUpdate: UpdateElement;
   staticPlaceholders?: string[];
-  /** Which table cell is selected — the re-housed table controls need it. */
-  layoutTableActiveCell?: { tableId: string; rowIndex: number; colIndex: number } | null;
-  layoutTableRange?: { tableId: string; r0: number; c0: number; r1: number; c1: number } | null;
 }
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
-export default function ElementFormatBar({
-  element,
-  onUpdate,
-  staticPlaceholders = [],
-  layoutTableActiveCell = null,
-  layoutTableRange = null,
-}: Props) {
+export default function ElementFormatBar({ element, onUpdate, staticPlaceholders = [] }: Props) {
   const setStyle = (patch: Record<string, unknown>) =>
     onUpdate(element.id, { style: { ...(element as { style?: object }).style, ...patch } } as Partial<CanvasElement>);
   const update = (patch: Record<string, unknown>) =>
     onUpdate(element.id, patch as Partial<CanvasElement>);
 
   const isTable = element.type === 'table';
-
-  // The table's advanced controls act on the selected cell, exactly as they did in
-  // the panel — same helper, same arguments.
-  const { rc: activeRC, cell: activeCell } = isTable
-    ? resolveActiveCell(element as LayoutTableElement, layoutTableActiveCell)
-    : { rc: null, cell: null };
 
   return (
     <div className="tfb" role="toolbar" aria-label="Element formatting">
@@ -94,35 +73,11 @@ export default function ElementFormatBar({
       {(element.type === 'radio' || element.type === 'checkbox') && renderRadioCheckbox(element as RadioElementType | CheckboxElementType, update)}
       {element.type === 'date'     && renderDate(element as DateElementType, setStyle, update)}
 
-      {/* The two cases the Properties panel was kept for, re-housed behind "⋯". */}
-      {isTable && (
-        <FormatBarMore label="Table options">
-          <LayoutTableProperties
-            element={element as LayoutTableElement}
-            onUpdate={onUpdate}
-            layoutTableRange={layoutTableRange}
-            activeRC={activeRC}
-            activeCell={activeCell}
-          />
-          <LayoutTableTypography
-            element={element as LayoutTableElement}
-            onUpdate={onUpdate}
-            activeRC={activeRC}
-            activeCell={activeCell}
-          />
-          {/* The panel showed Position for every element it rendered, so a table
-              had numeric X/Y. Keeping it here preserves that exactly. */}
-          <PositionProperties element={element} onUpdate={onUpdate} />
-        </FormatBarMore>
-      )}
-
-      {element.type === 'chart' && (
-        <FormatBarMore label="Chart options">
-          <ChartProperties element={element} onUpdate={onUpdate} />
-          {/* A chart had numeric X/Y in the panel — it keeps it. */}
-          <PositionProperties element={element} onUpdate={onUpdate} />
-        </FormatBarMore>
-      )}
+      {/* No "⋯" here any more (TC-0212). A table's columns, binding and per-cell
+          typography — and a chart's series — are dense, and a 300px popover hanging off
+          a floating bar was a bad place for them. They live in the right panel now,
+          below the tab content (panel/ElementOptions). The bar keeps the everyday
+          controls above, which is what a bar is for. */}
     </div>
   );
 }

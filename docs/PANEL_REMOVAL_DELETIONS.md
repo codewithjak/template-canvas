@@ -61,18 +61,27 @@ their element types), so removing them changed nothing a user could see.
 | Text Align | `TextFormatBar` — align buttons |
 | **Direction (LTR/RTL/Auto)** | **WAS LOST. Restored in TC-0200** → `TextFormatBar`, "Dir" select. |
 
-**The Direction miss is the serious one.** `ElementFormatBar` has a control labelled
-"Dir", which made it look covered — but that one is `renderLine`'s
-**horizontal/vertical line orientation**, nothing to do with text. Deleting
-`TypographyProperties` removed the only text-direction control in the product.
+**CORRECTED (TC-0211). The Direction control is gone again, and that is right.**
 
-Worth recording because it is a product fact, not just a commit fact: **before this
-work, RTL was already effectively unsettable from the UI.** The control existed only
-in `TypographyProperties`, which the panel rendered only for page-number text — so a
-user could not set direction on an ordinary text element, despite the editor shipping
-full Arabic/bidi support (TC-0179 → TC-0185). The Arabic built-ins set `direction` in
-their template JSON. It is now on the text bar for **every** text and paragraph
-element, which is slightly wider than a pure restore and deliberately so.
+TC-0200 put an LTR/RTL/Auto select on the text bar, reasoning that deleting
+`TypographyProperties` had removed "the only text-direction control in the product"
+and that RTL was therefore "unsettable". **That reasoning was wrong on the part that
+mattered.**
+
+The panel rendered `TypographyProperties` only for **page-number text**, so the real
+prior behaviour was **no direction control anywhere** — and the editor worked
+correctly, because it never needed one:
+
+- `TextElement` and `ParagraphElement` render `dir={style.direction ?? 'auto'}`, and
+  **`dir="auto"` follows the text's first strong character**. Arabic and other RTL
+  content flips itself. That is why RTL "was working correctly before".
+- A template that genuinely wants an explicit direction sets `style.direction` in its
+  JSON — several Arabic built-ins do — and that is still honoured. The model keeps the
+  field.
+
+So the control was not a restored capability; it was a knob for something the browser
+already gets right, and it invited users to break correct behaviour. Removed on the
+product owner's call. **The model and the rendering are untouched.**
 
 ### 2.4 `PositionProperties` — deleted in error, restored
 

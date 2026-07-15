@@ -591,3 +591,132 @@ editing model.
   `elementTypes`, `FontFamilyOptions` and `layoutTableCellHelpers`.
 - **4E** The chrome (rail/topbar/stage) and `/canvas` joining the frame — unchanged
   from before, still last.
+
+---
+
+## AMENDMENT 6 (2026-07-14) — the 58px icon rail is REJECTED; the labeled rail stays
+
+§2's row *"Editor: 58px icon rail + tooltips → BUILD (restyle; keep all 13 types)"* is
+**withdrawn**. Confirmed with the product owner (2026-07-14).
+
+**The rail stays as it is: `.tb--rail.tb--labeled`, 168px, text labels.**
+
+Why the mockup loses this one:
+- The labeled rail is a **deliberate decision already taken** (TC-0125 → TC-0127, the
+  design change), not an accident of the old layout.
+- `CANVAS_ACTIVATION_ARCHITECTURE.md` Phase 4 (T4.2) explicitly asks for **text labels
+  on the discovery-critical tools**. Reverting to icons-only would undo a decision made
+  to fix the very problem that workstream exists to fix.
+- The mockup was drawn before that work.
+
+Only the rail's **position** changed (right → left, and laid out rather than
+viewport-fixed — TC-0203). Its width and labels are unchanged.
+
+**Consequence — a bug this caused (fixed in TC-0204).** `.tb--rail.tb--labeled` is a
+TWO-class selector, so it wins on specificity over any single-class `.tb--rail` width.
+A `width: 58px` written on `.tb--rail` therefore never applied — but it read as truth,
+and `--frame-rail-w` was set to 58px to match it. That var is what the floating format
+bars centre against, so the bars were centring **110px off the actual stage**. The var
+is now 168px and the dead rule is deleted.
+
+The lesson is worth keeping: **a CSS rule that never applies but reads as true is worse
+than no rule.** It was invisible to `tsc`, to ESLint and to all 68 tests, and only
+showed up when the deployed editor was put side by side with the mock.
+
+---
+
+## AMENDMENT 7 (2026-07-14) — the right panel: Insert + Data ONLY
+
+Confirmed with the product owner: **"insert and data tabs only, formatting stays on
+the bars."** This settles the question A5.2 left open.
+
+### A7.1 What is built (TC-0206)
+`panel/EditorPanel.tsx` — a full-height column on the RIGHT of the stage, mirroring
+the tool rail on the left. Two tabs:
+
+- **Insert** (`panel/InsertPane.tsx`) — a grid of add-element buttons. Pure
+  delegation to the add-element handlers the tool rail already calls; it adds no
+  element type and no logic. A second door, not a replacement — the rail is unchanged.
+- **Data** (`panel/DataPane.tsx`) — the bound source (file, field count, row count)
+  and the `{{placeholders}}` this template uses. Opens the **existing** upload panel
+  and data-structure viewer. It does not fetch, parse or bind anything itself.
+
+The panel owns exactly one piece of state: which tab is open.
+
+### A7.2 What is NOT built, and must never be
+**There is no Layout / Properties tab, and one must not be added.** Element formatting
+lives on the floating bars (`TextFormatBar`, `ElementFormatBar`) with the overflow
+behind their "⋯" — that is the editing model (Amendment 5), and the properties panel
+was deleted for it (TC-0198). `ArrangeSection` from the reverted TC-0197 was
+deliberately **not** recovered.
+
+`EditorPanel`'s header comment says this, so the next person to open the file cannot
+mistake it for the old panel coming back.
+
+### A7.3 The overlays are bounded on BOTH sides now
+The stage is the space between [sidebar + rail] and [panel]. The floating format bars
+and `CanvasStatusBar` are `position: fixed`, so they centre on the WINDOW unless told
+otherwise — and a right-hand panel shifts the stage's centre LEFT:
+
+```css
+left: calc(50% + (var(--frame-sidebar-w) + var(--frame-rail-w) - var(--frame-panel-w)) / 2);
+```
+
+Note the **minus** on the panel. This is the third correction to that expression
+(sidebar, then rail's true 168px, now the panel). **Anything `position: fixed` inside
+the frame is mis-centred by default** and has to opt into the stage geometry — that is
+the standing rule, and the vars exist so there is one place to change it.
+
+### A7.4 Known dead CSS, not urgent
+`PropertiesPanel.css` is still imported (by `FormatBarMore` — the ⋯ popover reuses its
+`.property-section` styles), so `.properties-panel`, `-header`, `-content` and
+`-empty` survive in the bundle with nothing rendering them. Harmless; worth a cleanup
+pass that separates the live section styles from the dead container ones.
+
+---
+
+## AMENDMENT 8 (2026-07-14) — the stage does not fit an A4 page at 1440px
+
+### A8.1 The numbers
+| | px |
+|---|---|
+| viewport | 1440 |
+| − sidebar (`--frame-sidebar-w`) | 220 |
+| − tool rail (`.tb--rail.tb--labeled`) | 168 |
+| − right panel (`--frame-panel-w`) | 300 |
+| = stage | **752** |
+| − stage padding (24 × 2) | 48 |
+| − vertical scrollbar | ~15 |
+| = usable | **~689** |
+| **A4 page** (`PAGE_SIZE_PRESETS.a4.canvasWidth`) | **794** |
+
+**Short by 105px.** US Letter (816) is short by 127. **A4 needs a ~1545px viewport**
+to fit; Letter needs ~1567. A 1440px laptop cannot show a full page.
+
+### A8.2 The bug this caused, and the fix (TC-0207)
+`.canvas-page-block` was `width: 100%` + `align-items: center`, so an oversized page
+overflowed **equally on both sides**. A scroll container can only reach overflow on the
+right, so **~52px of the page's LEFT edge was permanently unreachable** — clipped, with
+no scroll that could get to it.
+
+Fixed with `min-width: fit-content` on the block: the page centres *inside* the block,
+and the block overflows the stage to the right only, which is scrollable. When the
+stage is wide enough, `width: 100%` still wins and the page stays centred.
+`.canvas-pages-wrapper` now says `overflow: auto` explicitly rather than relying on the
+spec's "one axis non-visible forces the other to auto".
+
+This is the classic flexbox centre-plus-overflow trap and it is worth remembering: **a
+centred flex child that outgrows its scroll container loses its leading edge.**
+
+### A8.3 Still true: it does not FIT, it only scrolls
+The chrome budget to fit A4 at 1440px is `1440 − 794 − 48 − 15 = 583px`. The chrome is
+**688px**. There is no trim across three columns that reaches 583 without degrading all
+of them (sidebar 200 + rail 130 + panel 250 = 580 "fits", and is worse everywhere).
+
+**Something must be able to collapse.** Open decision, NOT implemented:
+- **Collapse the right panel** (recommended). Insert/Data are reference surfaces, not
+  ones held open while nudging elements. Collapsed, the chrome is 388px and A4 fits at
+  1440 with room to spare. Cost: a toggle + a remembered preference — a small feature,
+  not a re-layout, so it needs its own decision.
+- **Zoom / fit-to-width** — the real long-term answer, already out of scope with its own
+  doc pending (it touches rendering and coordinate math).

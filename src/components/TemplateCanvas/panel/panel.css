@@ -1,0 +1,280 @@
+/**
+ * panel.css — the editor's right-hand panel: Insert and Data.
+ *
+ * NOT the old properties panel. Element formatting lives on the floating bars and
+ * their "⋯" overflow; there is no Layout tab here and there must never be one
+ * (relayout doc Amendment 5). Existing tokens only, no hex literals.
+ */
+
+/* A full-height column on the right of the stage, mirroring the tool rail on the
+   left: laid out, flush, flat. Not a floating card — the container is
+   `align-items: stretch`, so this fills it, and only the stage scrolls. */
+.editor-panel {
+  display       : flex;
+  flex-direction: column;
+  flex-shrink   : 0;
+  width         : var(--frame-panel-w, 300px);
+  align-self    : stretch;
+  min-height    : 0;
+
+  background    : var(--color-background-primary);
+  border-left   : 1px solid var(--color-border-tertiary);
+}
+
+/* Only the panel's body scrolls; its tabs stay put. */
+.ep-body {
+  flex      : 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding   : 14px 12px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
+
+.ep-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--color-border-tertiary);
+}
+
+.ep-tab {
+  position: relative;
+  flex: 1;
+  padding: 9px 0;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  background: none;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.ep-tab:hover {
+  color: var(--color-text-primary);
+}
+.ep-tab--on {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}
+.ep-tab--on::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+.ep-tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.ep-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.ep-section-label {
+  margin: 0 2px 9px;
+  color: var(--color-text-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.ep-section-label:not(:first-child) {
+  margin-top: 18px;
+}
+
+/* ── Insert grid ──────────────────────────────────────────────────────── */
+
+.ep-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.ep-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  aspect-ratio: 1;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--color-background-tertiary);
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.ep-cell:hover {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-bg);
+  color: var(--color-text-primary);
+}
+.ep-cell__icon {
+  display: grid;
+  place-items: center;
+}
+.ep-cell__icon svg {
+  width: 16px;
+  height: 16px;
+}
+.ep-cell__label {
+  font-size: 8.5px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.15;
+}
+
+/* ── Data tab ─────────────────────────────────────────────────────────── */
+
+.ep-source {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 9px 10px;
+  border: 1px solid var(--color-success-border);
+  border-radius: 9px;
+  background: var(--color-success-bg);
+}
+.ep-source__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--color-success);
+  color: var(--color-accent-contrast);
+}
+.ep-source__icon svg {
+  width: 13px;
+  height: 13px;
+}
+.ep-source__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ep-source__text b {
+  font-size: 12px;
+}
+.ep-source__text small {
+  color: var(--color-text-muted);
+  font-size: 10.5px;
+}
+.ep-source__change {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--color-success);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ep-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.ep-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  font-size: 11.5px;
+}
+.ep-field:hover {
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+}
+.ep-field__dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+.ep-field code {
+  font-size: 11px;
+}
+
+.ep-hint {
+  margin: 0 0 14px;
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.ep-empty {
+  padding: 20px 4px;
+  text-align: center;
+}
+.ep-empty__text {
+  margin: 0 0 14px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.ep-primary,
+.ep-secondary {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: var(--btn-font-weight);
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.ep-primary {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+.ep-primary:hover {
+  background: var(--color-accent-hover);
+}
+.ep-secondary {
+  border-color: var(--color-border-secondary);
+  background: var(--color-background-primary);
+  color: var(--color-text-secondary);
+}
+.ep-secondary:hover {
+  border-color: var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+
+.ep-cell:focus-visible,
+.ep-primary:focus-visible,
+.ep-secondary:focus-visible,
+.ep-source__change:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-tab,
+  .ep-cell,
+  .ep-primary,
+  .ep-secondary {
+    transition: none;
+  }
+}

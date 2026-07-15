@@ -14,34 +14,57 @@
    `min-height: 100%`, not `100vh`: this lives inside the frame's scrolling content
    area now, and 100vh would add a second viewport's worth of height below the
    frame's own header. */
+/* The editor fills the frame's content area exactly: [ rail ][ stage ].
+   `height: 100%` + `overflow: hidden` means the CONTAINER never scrolls — only the
+   stage does. That is what keeps the rail full-height and always in view instead of
+   scrolling away with the canvas (it was a floating card that stopped mid-page). */
 .template-canvas-container {
   display         : flex;
-  align-items     : flex-start;
-  min-height      : 100%;
+  align-items     : stretch;
+  height          : 100%;
+  overflow        : hidden;
   background-color: var(--color-canvas);
   box-sizing      : border-box;
 }
 
 /* ── Pages wrapper ───────────────────────────────────────────────────────────*/
 
+/* The stage: the only thing that scrolls. Pages centre in the space the rail
+   leaves; `padding-top` clears the floating format bar docked above them. */
 .canvas-pages-wrapper {
   display        : flex;
   flex-direction : column;
   align-items    : center;
   gap            : 0;
-  /* Centre in the space the rail leaves. `padding-top` clears the floating format
-     bar, which is docked above the stage. */
-  margin         : 0 auto;
+  flex           : 1;
+  min-width      : 0;
+  /* Both axes: a page can be wider than the stage (A4 is 794px and the chrome —
+     sidebar 220 + rail 168 + panel 300 — leaves ~689px at 1440px). Relying on the
+     spec's "one axis non-visible forces the other to auto" is too subtle to leave
+     implicit. */
+  overflow       : auto;
   padding        : 70px 24px 48px;
 }
 
 /* ── Single page block ───────────────────────────────────────────────────────*/
 
+/* `min-width: fit-content` is load-bearing, not tidiness.
+   With plain `width: 100%` + `align-items: center`, a page wider than the stage
+   overflows EQUALLY on both sides — and a scroll container can only reach overflow
+   on the right, so the left edge of the page becomes permanently unreachable. At
+   1440px an A4 page (794px) is ~105px wider than the stage, which put ~52px of it
+   beyond reach.
+
+   `fit-content` makes this block as wide as its widest child, so the page centres
+   INSIDE the block and the block overflows the stage to the right only — which is
+   scrollable. When the stage is wide enough, `width: 100%` still wins and the page
+   stays centred. */
 .canvas-page-block {
   display        : flex;
   flex-direction : column;
   align-items    : center;
   width          : 100%;
+  min-width      : fit-content;
 }
 
 .canvas-page-stage {

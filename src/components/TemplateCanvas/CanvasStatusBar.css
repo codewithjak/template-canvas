@@ -3,7 +3,10 @@
 .canvas-statusbar {
   position        : fixed;
   bottom          : 16px;
-  left            : 50%;
+  /* Centred on the STAGE, not the window — a fixed element knows nothing about the
+     frame's sidebar and the tool rail to its left. Same fix as the format bars; the
+     vars fall back to 0 outside the frame. */
+  left            : calc(50% + (var(--frame-sidebar-w, 0px) + var(--frame-rail-w, 0px) - var(--frame-panel-w, 0px)) / 2);
   transform       : translateX(-50%);
   z-index         : 1000;
 

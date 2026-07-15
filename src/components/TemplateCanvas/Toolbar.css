@@ -674,17 +674,25 @@
   z-index    : 5;
 
   flex-shrink: 0;
-  width      : var(--frame-rail-w, 58px);
-  height     : fit-content;
-  /* Deliberately NO overflow scroll — the shapes / page-size menus open out of the
-     rail and an `overflow` here would clip them. Same reason as the original rule
-     above; sized to content instead. */
+  /* No width here: the rail is the LABELED variant and `.tb--rail.tb--labeled`
+     (168px) wins on specificity anyway. A width here would be dead code that reads
+     as truth — which is how --frame-rail-w came to be wrong. */
 
-  border-radius: 0;
-  border-top   : none;
-  border-bottom: none;
-  border-left  : none;
-  box-shadow   : none;
+  /* A FULL-HEIGHT column flush against the sidebar, not a floating card. It used to
+     stop mid-page and scroll away with the canvas. The container is
+     `align-items: stretch`, so this fills it; only the stage scrolls. */
+  align-self : stretch;
+  height     : auto;
+
+  /* Deliberately NO overflow scroll — the shapes / page-size menus open out of the
+     rail and an `overflow` here would clip them. */
+
+  /* Flat, not a pill: one divider against the stage, and nothing else. */
+  border         : none;
+  border-right   : 1px solid var(--color-border-tertiary);
+  border-radius  : 0;
+  box-shadow     : none;
+  background     : var(--color-background-primary);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }

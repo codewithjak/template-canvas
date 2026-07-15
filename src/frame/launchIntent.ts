@@ -15,6 +15,7 @@
 
 export type CanvasLaunchIntent =
   | { kind: 'open-template'; templateId: string }
+  | { kind: 'open-builtin'; builtinId: string }
   | { kind: 'rebuild-ai' }
   | { kind: 'bind-data' }
   | { kind: 'restore-draft' }
@@ -46,6 +47,9 @@ export function readLaunchIntent(state: unknown): CanvasLaunchIntent | null {
 
   if (intent.kind === 'open-template' && typeof intent.templateId === 'string' && intent.templateId) {
     return { kind: 'open-template', templateId: intent.templateId }
+  }
+  if (intent.kind === 'open-builtin' && typeof intent.builtinId === 'string' && intent.builtinId) {
+    return { kind: 'open-builtin', builtinId: intent.builtinId }
   }
   if (isBareKind(intent.kind)) {
     return { kind: intent.kind }

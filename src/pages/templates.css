@@ -1,0 +1,70 @@
+/**
+ * templates.css — the Templates page (relayout doc T3.4).
+ *
+ * Only the page's own chrome (padding, section heads, chips). The tiles and the
+ * project rows keep the `tlm-*` styles they already had in the modal, because they
+ * are the same components — restyling them is Phase 4's job, not this one.
+ */
+
+.tpl-page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 24px 64px;
+}
+
+.tpl-section + .tpl-section {
+  margin-top: 36px;
+}
+
+.tpl-section__head {
+  margin-bottom: 12px;
+}
+.tpl-section__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.tpl-section__sub {
+  margin: 2px 0 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+.tpl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tpl-chip {
+  padding: 6px 13px;
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: 20px;
+  background: var(--color-background-primary);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--btn-transition);
+}
+.tpl-chip:hover {
+  border-color: var(--color-border-primary);
+  color: var(--color-text-primary);
+}
+.tpl-chip--on {
+  border-color: var(--color-text-primary);
+  background: var(--color-text-primary);
+  color: var(--color-background-primary);
+}
+.tpl-chip:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tpl-chip {
+    transition: none;
+  }
+}

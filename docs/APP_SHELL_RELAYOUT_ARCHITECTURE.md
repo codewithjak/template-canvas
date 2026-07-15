@@ -206,6 +206,39 @@ Exit check: no number on this page comes from anywhere but `UsageSummary` / `lis
 Exit check: modal and page render the same tiles from the same components; opening a
 template from either path does exactly what it does today.
 
+**Phase 3 status (2026-07-14) — implemented.**
+`library/TemplateGallery.tsx` (T3.1) and `library/ProjectList.tsx` (T3.2) extracted;
+`TemplatesLibraryModal` now renders both and is otherwise unchanged (T3.3);
+`pages/Templates.tsx` + `templates.css` (T3.4); `templates/filterByCategory.ts` +
+test (T3.5). `/templates` added to the frame's routes and to `NAV_ITEMS`.
+`tsc -b` clean; ESLint clean on all new files and byte-identical to baseline on the
+canvas; 67/67 tests.
+
+Design notes:
+
+1. **`ProjectList` owns its data, not its meaning of "open".** It fetches, and owns
+   loading/error/delete/copy-id/busy — but takes `onOpen(id)`, which may be async.
+   That is the one thing that genuinely differs between its two callers: the modal
+   lives *inside* the canvas, so its `onOpen` fetches the record and hands it over
+   (exactly today's behaviour); the page is a different route, so its `onOpen`
+   navigates with a launch intent. Awaiting the callback covers both without the
+   component knowing which is which.
+2. **New intent kind `open-builtin`** (T3.4 needs it, and it did not exist).
+   Built-ins are bundled with the app, so the canvas resolves the id against
+   `BUILTIN_TEMPLATES` — a lookup, not a fetch — and calls the **existing**
+   `handleOpenBuiltin`, which still bakes in the template's sample data through the
+   normal data path. A missing id says so (`template.builtinMissing`) rather than
+   opening a blank canvas.
+3. **Chips are derived from the templates**, not hard-coded (`categoriesOf`). A chip
+   therefore cannot filter to an empty page, and adding a built-in with a new
+   category makes its chip appear on its own. A test pins that against the real
+   registry.
+4. **Deliberately absent: thumbnails** (owned by canvas-activation Phase 2 — not
+   forked here), favourites, and search. Nothing backs the latter two.
+
+Not verified in a browser: the page renders behind auth. Build, lint and unit tests
+are green.
+
 ### Phase 4 — Editor chrome
 - T4.1 Editor topbar: back, breadcrumb (`templateMeta.name`), `cloudStatus` chip,
   undo/redo, export — **all existing handlers, re-housed**.

@@ -14,6 +14,7 @@ import AuthCallback from './pages/AuthCallback'
 import AcceptInvite from './pages/AcceptInvite'
 import AppFrame from './frame/AppFrame'
 import Dashboard from './pages/Dashboard'
+import Templates from './pages/Templates'
 import { PlanProvider } from './plan/PlanProvider'
 import AdminRoute from './admin/AdminRoute'        // [ADMIN PANEL]
 import AdminPage from './admin/AdminPage'          // [ADMIN PANEL]
@@ -64,6 +65,7 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/templates" element={<Templates />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           {/* [ADMIN PANEL] isolated feature — remove this Route + its imports to disable */}

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { navItems, navItemsInGroup, isActive, routeOf, pageTitle } from './navModel'
 
 test('every nav item points at a route that exists today', () => {
-  // The guard against a nav item that 404s. When Templates ships, add it here
-  // and to NAV_ITEMS in the same commit. Anchors are stripped: Integrations and
-  // Team are sections of /settings, not routes.
-  const builtRoutes = ['/dashboard', '/settings']
+  // The guard against a nav item that 404s: add the route here and to NAV_ITEMS in
+  // the same commit. Anchors are stripped: Integrations and Team are sections of
+  // /settings, not routes of their own.
+  const builtRoutes = ['/dashboard', '/templates', '/settings']
   for (const item of navItems()) {
     assert.ok(
       builtRoutes.includes(routeOf(item.to)),

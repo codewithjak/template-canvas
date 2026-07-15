@@ -138,3 +138,11 @@ Verified: `npm run build` clean, `npm test` 71/71 (3 new), `npm run lint` unchan
 from master (54 problems, all pre-existing). Not driven in a live browser: `/canvas`
 is auth-gated, so verification is the type-checked render tree plus the unit test,
 not a manual editor session.
+
+### 5.1 Follow-up done
+
+The orphaned `properties/PositionProperties.tsx` (noted in §2.3 / T1.4 as left in
+place pending confirmation) has now been deleted on explicit request. It was
+verified to have zero importers first, so no working code was affected — the X/Y
+editor on the bars (`PositionFields.tsx` / `positionPatch.ts`) is a separate,
+untouched implementation. `npm run build` and `npm test` (71/71) stay green.

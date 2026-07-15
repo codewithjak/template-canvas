@@ -1,10 +1,10 @@
 /**
- * src/pages/WebhooksCard.tsx
+ * src/account/WebhooksSection.tsx
  *
- * Settings card for configuring outbound webhooks to no-code tools (Zapier,
+ * Integrations section for configuring outbound webhooks to no-code tools (Zapier,
  * n8n, Make) or any custom endpoint. JWT-authed via the backend's requireTeam;
  * rendered only when the team has the `api` capability. Styling rides
- * Settings.css / the app design tokens.
+ * account.css / the app design tokens.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
@@ -21,7 +21,7 @@ import {
   type WebhookDelivery,
 } from '../services/apiIntegration'
 import { confirm, notify } from '../notify'
-import './Settings.css'
+import './account.css'
 
 const SYSTEMS = [
   { id: 'custom', label: 'Custom', placeholder: 'https://your-service.example.com/webhook', hint: 'Any HTTPS URL that should receive events.' },
@@ -135,7 +135,7 @@ function Deliveries({ endpointId }: { endpointId: string }) {
   )
 }
 
-export default function WebhooksCard() {
+export default function WebhooksSection() {
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([])
   const [loading, setLoading] = useState(true)
   const [system, setSystem] = useState<typeof SYSTEMS[number]['id']>('custom')

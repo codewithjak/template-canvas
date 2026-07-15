@@ -6,7 +6,8 @@
 > receiver gets the finished file directly in their chat.
 >
 > **Date:** 2026-07-15 · **Branch context:** TC-0211 (delivery lineage: TC-0072)
-> **Status:** P1 done (media store, per A1). P2 done (provider seam + Twilio). P3–P6 pending.
+> **Status:** P1 done (media store, per A1). P2 done (provider seam + Twilio).
+> P3 done (WhatsApp channel + route wiring, session-window send). P4–P6 pending.
 > **Provider (v1):** Twilio WhatsApp API (concrete), behind a provider-agnostic
 > channel interface so Meta Cloud API can be swapped in later without touching
 > the orchestrator or the route.
@@ -228,12 +229,28 @@ whatsapp-provider.test.js` (8 tests). A mock transport proves the exact request
 shape (URL, auth header, `To`/`From`/`Body`/`MediaUrl`) and the vendor stays
 behind the interface. `isConfigured` here feeds P3's `isWhatsAppConfigured`.
 
-### P3 — WhatsApp channel + route wiring (session-window send) — *v1 ship*
+### P3 — WhatsApp channel + route wiring (session-window send) — *v1 ship* ✅ done
 `whatsappDelivery.js` orchestrates `putArtifact` → `sender.send`. Add the
 `whatsapp` branch to `delivery/index.js` (`validateWhatsApp`, dispatch) and the
 `isWhatsAppConfigured`/`wantsDelivery` extension in `backend/index.js`.
-**Deliverable:** POST `/generate-document` with `delivery.whatsapp` sends a real
-media message to a recipient in an open session window.
+**Delivered:**
+- `backend/delivery/whatsappDelivery.js` — `deliverByWhatsApp({artifact,whatsapp,
+  sender,mediaStore})`: store key → mint short-lived URL → send; `sender`/`mediaStore`
+  injected (testable without S3/Twilio).
+- `backend/delivery/index.js` — `validateWhatsApp` (E.164 + message bound),
+  `validateDelivery` now accepts email **or** whatsapp, `isWhatsAppConfigured`
+  (sender **and** media store configured), and `deliver()` dispatches to a
+  per-channel helper (`deliverViaEmail` / `deliverViaWhatsApp`). Email path
+  behaviour unchanged — the old body was refactored into `deliverViaEmail`, not
+  duplicated (rule g).
+- `backend/index.js` — `wantsDelivery` and the delivery block now cover WhatsApp,
+  with a per-channel `503` config check; email path untouched.
+- Added `mediaStore.isConfigured()` (feeds `isWhatsAppConfigured`).
+- `backend/test/whatsapp-delivery.test.js` (7 tests): channel flow (sends the
+  minted URL, not a buffer) + validation.
+**Note:** the actual live send requires a warm recipient (open 24h window) and
+configured Twilio + `S3_MEDIA_BUCKET`; unit tests use injected fakes, so no live
+call in CI. Frontend UI is P4; no frontend changes here.
 
 ### P4 — Frontend "Send via WhatsApp"
 Add a channel toggle to `SendDocumentModal.tsx` (Email | WhatsApp). WhatsApp shows

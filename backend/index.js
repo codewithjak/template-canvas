@@ -31,7 +31,7 @@ const { buildRowIr }        = require('./lib/buildRowIr');
 const { renderDocEntries }  = require('./lib/renderDocEntries');
 const { buildExportArtifact } = require('./lib/exportArtifact');
 const { isEmailConfigured, makeRateLimiter, clientIp } = require('./lib/email');
-const { deliver, validateDelivery } = require('./delivery');
+const { deliver, validateDelivery, isWhatsAppConfigured } = require('./delivery');
 
 // Throttle export emails: max 20 per hour per IP.
 const deliveryRateLimited = makeRateLimiter(20, 60 * 60 * 1000);
@@ -201,7 +201,7 @@ app.post('/generate-document', async (req, res) => {
 
   // Entitlement gate (plan capability + monthly cap). Runs before any work.
   // Emailing the export is itself a paid capability ("delivery").
-  const wantsDelivery = Boolean(req.body.delivery && req.body.delivery.email);
+  const wantsDelivery = Boolean(req.body.delivery && (req.body.delivery.email || req.body.delivery.whatsapp));
   const gate = await checkExportAllowed({
     authHeader: req.headers.authorization, mode: 'single', rows: 1, format,
     delivery: wantsDelivery,
@@ -245,15 +245,18 @@ app.post('/generate-document', async (req, res) => {
     // When the caller asks to email the export, render it to a single
     // artifact and send it instead of streaming the file back.
     const delivery = req.body.delivery;
-    if (delivery && delivery.email) {
-      if (!isEmailConfigured()) {
+    if (delivery && (delivery.email || delivery.whatsapp)) {
+      if (delivery.email && !isEmailConfigured()) {
         return res.status(503).json({ error: 'Email delivery is not configured.' });
+      }
+      if (delivery.whatsapp && !isWhatsAppConfigured()) {
+        return res.status(503).json({ error: 'WhatsApp delivery is not configured.' });
       }
       const deliveryError = validateDelivery(delivery);
       if (deliveryError) return res.status(400).json({ error: deliveryError });
 
       if (deliveryRateLimited(clientIp(req))) {
-        return res.status(429).json({ error: 'Too many emails sent — please try again in a little while.' });
+        return res.status(429).json({ error: 'Too many messages sent — please try again in a little while.' });
       }
 
       const artifact = await buildExportArtifact({

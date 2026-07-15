@@ -47,6 +47,11 @@ export interface ImageElementType {
     objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
     opacity?: number;
   };
+  // Crop-to-shape (IMAGE_CROP_ARCHITECTURE.md): `src` holds the baked masked PNG;
+  // `originalSrc` keeps the pre-crop image so the crop is re-editable and resettable.
+  // Kept in sync with the parallel declaration in types/canvas.ts.
+  originalSrc?: string;
+  crop?: { shape: 'rect' | 'ellipse' | 'triangle'; rect: { x: number; y: number; w: number; h: number } };
 }
 
 export interface LineElementType {

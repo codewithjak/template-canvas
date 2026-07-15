@@ -1,0 +1,105 @@
+/* CropModal.css — crop-to-shape editor. Rides the app design tokens. */
+
+.crop-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.crop-card {
+  background: var(--color-background-primary, #fff);
+  color: var(--color-text-primary, #0f172a);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--shadow-pop, 0 20px 60px rgba(0, 0, 0, 0.25));
+  max-width: calc(100vw - 32px);
+}
+
+.crop-title { font-size: 16px; font-weight: 700; margin: 0 0 14px; }
+
+.crop-shapes { display: flex; gap: 8px; margin-bottom: 14px; }
+
+.crop-shape-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-tertiary, #e2e8f0);
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.crop-shape-btn--on {
+  border-color: var(--color-accent, #2355f4);
+  background: color-mix(in srgb, var(--color-accent, #2355f4) 12%, transparent);
+  font-weight: 600;
+}
+
+.crop-error {
+  color: #b91c1c;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* The image + region overlay live in one relatively-positioned stage. */
+.crop-stage {
+  position: relative;
+  margin: 0 auto;
+  user-select: none;
+  touch-action: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0f172a10;
+}
+
+.crop-img { display: block; pointer-events: none; }
+
+/* The region is bright; its huge box-shadow dims everything OUTSIDE it. */
+.crop-region {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.5);
+  outline: 1.5px solid var(--color-accent, #2355f4);
+  cursor: move;
+}
+
+/* Mask preview: dim the cut-away part; outline the kept shape. */
+.crop-shape-preview { position: absolute; inset: 0; pointer-events: none; }
+.crop-cut { fill: rgba(15, 23, 42, 0.55); }
+.crop-outline { fill: none; stroke: var(--color-accent, #2355f4); stroke-width: 1.5; }
+
+.crop-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 1.5px solid var(--color-accent, #2355f4);
+  border-radius: 2px;
+}
+.crop-handle--nw { left: -6px; top: -6px; cursor: nwse-resize; }
+.crop-handle--ne { right: -6px; top: -6px; cursor: nesw-resize; }
+.crop-handle--se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+.crop-handle--sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+
+.crop-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+.crop-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.crop-btn--cancel {
+  background: transparent;
+  border-color: var(--color-border-tertiary, #e2e8f0);
+  color: inherit;
+}
+.crop-btn--apply {
+  background: var(--color-accent, #2355f4);
+  color: #fff;
+}
+.crop-btn:disabled { opacity: 0.6; cursor: default; }

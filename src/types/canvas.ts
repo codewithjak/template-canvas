@@ -101,6 +101,10 @@ export interface ImageElementType {
   id: string; type: 'image'; src: string; role?: 'signature';
   position: { x: number; y: number };
   style: { width: number; height: number; objectFit: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'; opacity?: number };
+  // Crop-to-shape (IMAGE_CROP_ARCHITECTURE.md): `src` holds the baked masked PNG;
+  // `originalSrc` keeps the pre-crop image so the crop is re-editable and resettable.
+  originalSrc?: string;
+  crop?: { shape: 'rect' | 'ellipse' | 'triangle'; rect: { x: number; y: number; w: number; h: number } };
 }
 
 export interface LineElementType {

@@ -197,8 +197,17 @@ create table if not exists public.analytics_events (
   id          bigint generated always as identity primary key,
   team_id     uuid not null references public.teams(id) on delete cascade,
   user_id     uuid references public.profiles(id) on delete set null,
+  -- Widening this list is a SCHEMA CHANGE, not just a TypeScript one: the column
+  -- is text but constrained, so an unlisted event_type is rejected on insert and
+  -- analytics.logEvent swallows the error — the event vanishes silently. Add the
+  -- value here AND ship a migration for already-deployed databases
+  -- (see ai_metering.sql, canvas_activation_events.sql).
   event_type  text not null
-                check (event_type in ('login','template_created','pdf_exported','ai_build')),
+                check (event_type in (
+                  'login','template_created','pdf_exported','ai_build',
+                  -- Canvas activation funnel (CANVAS_ACTIVATION §5)
+                  'start_layer_shown','start_layer_card_clicked','draft_restored','data_bound'
+                )),
   metadata    jsonb not null default '{}'::jsonb,
   created_at  timestamptz not null default now()
 );

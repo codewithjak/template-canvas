@@ -1566,21 +1566,6 @@ function TemplateCanvas() {
             layoutTableRange,
             activePageFooter: pages.find(p => p.pageId === activePageId)?.footer ?? null,
           }}
-          insert={{
-            onAddText: handleAddText,
-            onAddParagraph: handleAddParagraph,
-            onAddImage: handleAddImage,
-            onAddTable: handleAddTable,
-            onAddBarcode: handleAddBarcode,
-            onAddChart: handleAddChart,
-            onAddDate: handleAddDate,
-            onAddRadio: handleAddRadio,
-            onAddCheckbox: handleAddCheckbox,
-            onAddWatermark: handleAddWatermark,
-            onAddSignature: handleAddSignature,
-            onAddLine: handleAddLine,
-            onAddBox: handleAddBox,
-          }}
           data={{
             hasData: !!ir,
             fileName: ir?.source?.fileName,

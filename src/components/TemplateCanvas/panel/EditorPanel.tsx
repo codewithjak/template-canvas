@@ -1,5 +1,5 @@
 /**
- * EditorPanel.tsx — the editor's right-hand panel: **Insert** and **Data**.
+ * EditorPanel.tsx — the editor's right-hand panel: **Edit** and **Data**.
  *
  * WHAT THIS IS NOT. It is not the old Properties panel, and it must never grow into
  * one. Element formatting lives on the floating format bars (`TextFormatBar`,
@@ -8,8 +8,9 @@
  * (TC-0198). There is deliberately **no Layout/Properties tab here**.
  *
  * What it IS: the two surfaces the bars do not cover.
- *  - Insert — a second door to the add-element handlers the tool rail already calls.
- *    Nothing new; the rail keeps working exactly as it does.
+ *  - Edit — element-contextual tools that need more room than a bar (image
+ *    crop-to-shape; see IMAGE_CROP_ARCHITECTURE.md). This REPLACED an "Insert" tab
+ *    that only duplicated the left tool rail's add-element buttons.
  *  - Data — the bound source and the `{{placeholders}}` this template uses, visible
  *    at a glance instead of only inside a modal.
  *
@@ -17,20 +18,19 @@
  * and every callback it fires already exists on the canvas.
  */
 import { useState } from 'react'
-import InsertPane, { type InsertActions } from './InsertPane'
+import EditPane from './EditPane'
 import DataPane, { type DataPaneInfo } from './DataPane'
 import ElementOptions, { type ElementOptionsProps } from './ElementOptions'
 import './panel.css'
 
-type PanelTab = 'insert' | 'data'
+type PanelTab = 'edit' | 'data'
 
 const TABS: readonly { id: PanelTab; label: string }[] = [
-  { id: 'insert', label: 'Insert' },
+  { id: 'edit', label: 'Edit' },
   { id: 'data', label: 'Data' },
 ]
 
 interface Props {
-  insert: InsertActions
   data: DataPaneInfo
   /**
    * The selected element's advanced controls — what used to hang off the "⋯" on the
@@ -49,16 +49,16 @@ interface Props {
   onToggleCollapsed: () => void
 }
 
-function EditorPanel({ insert, data, options, collapsed, onToggleCollapsed }: Props) {
-  const [tab, setTab] = useState<PanelTab>('insert')
+function EditorPanel({ data, options, collapsed, onToggleCollapsed }: Props) {
+  const [tab, setTab] = useState<PanelTab>('edit')
 
   const Toggle = (
     <button
       type="button"
       className="ep-collapse"
       onClick={onToggleCollapsed}
-      title={collapsed ? 'Show Insert and Data' : 'Hide panel'}
-      aria-label={collapsed ? 'Show Insert and Data' : 'Hide panel'}
+      title={collapsed ? 'Show Edit and Data' : 'Hide panel'}
+      aria-label={collapsed ? 'Show Edit and Data' : 'Hide panel'}
       aria-expanded={!collapsed}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
@@ -94,7 +94,7 @@ function EditorPanel({ insert, data, options, collapsed, onToggleCollapsed }: Pr
       </div>
 
       <div className="ep-body">
-        {tab === 'insert' && <InsertPane actions={insert} />}
+        {tab === 'edit' && <EditPane selectedElement={options.selectedElement} onUpdate={options.onUpdate} />}
         {tab === 'data' && <DataPane info={data} />}
 
         {/* Below the tab's controls, not inside them: this is about the SELECTED

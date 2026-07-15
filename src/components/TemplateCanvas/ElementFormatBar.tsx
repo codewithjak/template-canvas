@@ -158,19 +158,22 @@ function ToggleBtn({ label, active, onClick }: { label: string; active: boolean;
 
 function renderImage(el: ImageElementType, setStyle: SetStyle, update: Update) {
   const inputId = `tfb-img-${el.id}`;
+  // Replacing the image must drop any prior crop, or the new image would keep a
+  // stale mask (crop stores the OLD original). Cleared in the same patch.
+  const replaceSrc = (src: string) => update({ src, originalSrc: undefined, crop: undefined });
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { notify.error('image.selectImageFile'); return; }
     const reader = new FileReader();
-    reader.onload = ev => { const b64 = ev.target?.result as string; if (b64) update({ src: b64 }); };
+    reader.onload = ev => { const b64 = ev.target?.result as string; if (b64) replaceSrc(b64); };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
   return (
     <>
       <input className="tfb-input tfb-src" type="text" value={el.src}
-        onChange={e => update({ src: e.target.value })} placeholder="Image URL or {{field}}" aria-label="Image source" />
+        onChange={e => replaceSrc(e.target.value)} placeholder="Image URL or {{field}}" aria-label="Image source" />
       <input id={inputId} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFile} />
       <button className="tfb-textbtn" onClick={() => document.getElementById(inputId)?.click()}>Upload</button>
       <span className="tfb-divider" />

@@ -34,6 +34,8 @@ const draftKey = (userId: string | null | undefined): string =>
 export interface DraftRestore {
   doc: TemplateDocument
   savedAt: string
+  /** The team the draft was written under; the card compares it to the active team. */
+  teamId: string | null
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -52,9 +54,17 @@ function isTemplateDocument(value: unknown): value is TemplateDocument {
   return value.pages.every((p) => isObject(p) && Array.isArray(p.elements))
 }
 
-export function saveDraft(doc: TemplateDocument, userId: string | null | undefined): void {
+export function saveDraft(
+  doc: TemplateDocument,
+  userId: string | null | undefined,
+  teamId: string | null,
+): void {
   try {
-    const payload = JSON.stringify({ savedAt: new Date().toISOString(), doc })
+    // teamId is stored in the PAYLOAD (not the key) so the restore card can
+    // withhold a draft written under a different team — templates save
+    // team-scoped, so restoring another team's draft would leak content across
+    // teams (activation doc T0.4 caveat / T1.6).
+    const payload = JSON.stringify({ savedAt: new Date().toISOString(), teamId, doc })
     window.localStorage.setItem(draftKey(userId), payload)
   } catch {
     // Quota exceeded (or storage unavailable): skip this draft and drop any
@@ -68,12 +78,12 @@ export function restoreDraft(userId: string | null | undefined): DraftRestore | 
     const raw = window.localStorage.getItem(draftKey(userId))
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
-    const { savedAt, doc } = parsed as { savedAt?: unknown; doc?: unknown }
+    const { savedAt, teamId, doc } = parsed as { savedAt?: unknown; teamId?: unknown; doc?: unknown }
     if (typeof savedAt !== 'string' || !isTemplateDocument(doc)) {
       clearDraft(userId)
       return null
     }
-    return { doc, savedAt }
+    return { doc, savedAt, teamId: typeof teamId === 'string' ? teamId : null }
   } catch {
     clearDraft(userId)
     return null

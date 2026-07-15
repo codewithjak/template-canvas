@@ -1,0 +1,110 @@
+/* CanvasStartLayer — first-run outcome cards (activation doc T1.1). */
+
+.canvas-start-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  pointer-events: none; /* only the cards are interactive */
+}
+
+.csl-inner {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.csl-heading {
+  text-align: center;
+}
+
+.csl-title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.csl-subtitle {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.csl-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.csl-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 12px;
+  box-shadow: var(--shadow-pop);
+  cursor: pointer;
+  transition: var(--btn-transition), box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.csl-card:hover {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-bg);
+}
+
+.csl-card:active {
+  transform: translateY(1px);
+}
+
+.csl-card:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 4px var(--color-accent-ring);
+}
+
+.csl-card--emphasis {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-bg);
+}
+
+.csl-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--color-accent);
+  background: var(--color-accent-bg-strong);
+}
+
+.csl-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.csl-card-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.csl-card-desc {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}

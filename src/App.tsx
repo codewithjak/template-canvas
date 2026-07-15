@@ -8,6 +8,8 @@ import Canvas from './pages/Canvas'
 import Builder from './pages/Builder'
 import BuilderConnect from './pages/BuilderConnect'
 import Settings from './pages/Settings'
+import Team from './pages/Team'
+import Integrations from './pages/Integrations'
 import Pricing from './pages/Pricing'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
@@ -58,6 +60,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/canvas" element={<Canvas />} />
+            <Route path="/integrations" element={<Integrations />} />
+            <Route path="/team" element={<Team />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           {/* [ADMIN PANEL] isolated feature — remove this Route + its imports to disable */}

@@ -1,7 +1,8 @@
 /**
- * src/pages/Settings.css
+ * src/account/account.css
  *
- * Settings surface styling, built on the app's canonical design tokens
+ * Account surface styling (Integrations · Team · Settings), built on the app's
+ * canonical design tokens
  * (src/index.css): slate text ramp, accent #2355f4, elevation shadows, and the
  * shared button geometry. Replaces the page's old flat inline styles so it
  * matches the editor + marketing surfaces.
@@ -19,6 +20,12 @@
 
 .settings__main { max-width: 760px; margin: 0 auto; padding: 28px 24px 64px; }
 .settings__muted { color: var(--color-text-muted); font-size: 14px; }
+
+/* ── Quickstart steps ────────────────────────────────────────────────── */
+.quickstart { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 14px; }
+.quickstart li { font-size: 14px; color: var(--color-text-secondary); line-height: 1.5; }
+.quickstart li strong { color: var(--color-text-primary); }
+.quickstart .codeblock { margin-top: 10px; }
 
 /* ── Card ────────────────────────────────────────────────────────────── */
 .scard {

@@ -11,9 +11,8 @@ import {
 
 test('every nav item points at a route that exists today', () => {
   // The guard against a nav item that 404s: add the route here and to NAV_ITEMS in
-  // the same commit. Anchors are stripped: Integrations and Team are sections of
-  // /settings, not routes of their own.
-  const builtRoutes = ['/dashboard', '/templates', '/settings']
+  // the same commit. Integrations, Team and Settings are now three real routes.
+  const builtRoutes = ['/dashboard', '/templates', '/integrations', '/team', '/settings']
   for (const item of navItems()) {
     assert.ok(
       builtRoutes.includes(routeOf(item.to)),
@@ -22,18 +21,19 @@ test('every nav item points at a route that exists today', () => {
   }
 })
 
-test('an anchored item lights up alone — not alongside its parent page', () => {
-  // The bug this prevents: Integrations, Team and Settings all live at /settings,
-  // so a naive path match would highlight all three at once.
-  assert.equal(isActive('/settings#team', '/settings#team'), true, 'Team on #team')
-  assert.equal(isActive('/settings', '/settings#team'), false, 'Settings NOT on #team')
-  assert.equal(isActive('/settings#api', '/settings#team'), false, 'Integrations NOT on #team')
-})
+test('each account route lights up its own nav item alone', () => {
+  // Integrations, Team and Settings are distinct routes now, so each highlights
+  // exactly one item and none of the others.
+  assert.equal(isActive('/integrations', '/integrations'), true, 'Integrations on /integrations')
+  assert.equal(isActive('/team', '/integrations'), false, 'Team NOT on /integrations')
+  assert.equal(isActive('/settings', '/integrations'), false, 'Settings NOT on /integrations')
 
-test('plain /settings lights up Settings alone', () => {
-  assert.equal(isActive('/settings', '/settings'), true)
-  assert.equal(isActive('/settings#team', '/settings'), false)
-  assert.equal(isActive('/settings#api', '/settings'), false)
+  assert.equal(isActive('/team', '/team'), true, 'Team on /team')
+  assert.equal(isActive('/settings', '/team'), false, 'Settings NOT on /team')
+
+  assert.equal(isActive('/settings', '/settings'), true, 'Settings on /settings')
+  assert.equal(isActive('/team', '/settings'), false, 'Team NOT on /settings')
+  assert.equal(isActive('/integrations', '/settings'), false, 'Integrations NOT on /settings')
 })
 
 test('the sidebar starts collapsed in the editor, and only there', () => {
@@ -46,7 +46,8 @@ test('the sidebar starts collapsed in the editor, and only there', () => {
   assert.equal(defaultSidebarCollapsed('/dashboard'), false)
   assert.equal(defaultSidebarCollapsed('/templates'), false)
   assert.equal(defaultSidebarCollapsed('/settings'), false)
-  assert.equal(defaultSidebarCollapsed('/settings#team'), false)
+  assert.equal(defaultSidebarCollapsed('/integrations'), false)
+  assert.equal(defaultSidebarCollapsed('/team'), false)
 })
 
 test('the editor is named in the header even though it has no nav item', () => {
@@ -56,8 +57,9 @@ test('the editor is named in the header even though it has no nav item', () => {
   assert.equal(pageTitle('/canvas'), 'Editor')
 })
 
-test('the header says which PAGE you are on, not which section', () => {
-  assert.equal(pageTitle('/settings#team'), 'Settings')
+test('the header names each account route on its own', () => {
+  assert.equal(pageTitle('/integrations'), 'Integrations')
+  assert.equal(pageTitle('/team'), 'Team')
   assert.equal(pageTitle('/settings'), 'Settings')
   assert.equal(pageTitle('/dashboard'), 'Dashboard')
 })

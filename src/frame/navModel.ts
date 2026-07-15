@@ -22,20 +22,20 @@ export interface NavItem {
 }
 
 /**
- * Integrations and Team are SECTIONS of the Settings page, not routes of their
- * own: `pages/Settings.tsx` already renders the Team card (members, invites,
- * seats) and the API access / Webhooks cards, and the canvas's old "Integrations"
- * button already pointed there. They are therefore anchors into `/settings`.
+ * Integrations, Team and Settings are three sibling routes, each owning one
+ * concern (see docs/ACCOUNT_ROUTES_ARCHITECTURE.md):
+ *   - /integrations — API key, webhooks, quickstart
+ *   - /team         — members, invites, seats, team switcher
+ *   - /settings     — plan, usage, future account config
  *
- * That is why `to` may carry a hash. It also keeps the highlight honest: an item
- * is active only when the CURRENT hash matches, so landing on `/settings#team`
- * lights up Team alone, not Team *and* Settings.
+ * They were once hash anchors into a single `/settings` page; splitting them into
+ * real routes removed the hash-matching machinery this model used to carry.
  */
 const NAV_ITEMS: readonly NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', to: '/dashboard', group: 'main' },
   { id: 'templates', label: 'Templates', to: '/templates', group: 'main' },
-  { id: 'integrations', label: 'Integrations', to: '/settings#api', group: 'main' },
-  { id: 'team', label: 'Team', to: '/settings#team', group: 'workspace' },
+  { id: 'integrations', label: 'Integrations', to: '/integrations', group: 'main' },
+  { id: 'team', label: 'Team', to: '/team', group: 'workspace' },
   { id: 'settings', label: 'Settings', to: '/settings', group: 'workspace' },
 ] as const
 
@@ -55,15 +55,9 @@ export function navItemsInGroup(group: NavGroup): readonly NavItem[] {
 /**
  * Is `item` the one the current location is on?
  *
- * `currentPath` is the pathname PLUS the hash (e.g. `/settings#team`), because
- * anchored items are distinguished only by their hash. Consequences, both wanted:
- *  - on `/settings#team`, Team is active and plain Settings is NOT (the hash makes
- *    the exact match fail, and `/settings#team` does not start with `/settings/`).
- *  - on `/settings`, Settings is active and the anchored items are not.
- *
- * Otherwise a prefix match, so a nested route like `/settings/billing` keeps its
- * parent highlighted. The prefix must end at a segment boundary, or `/team` would
- * light up for `/teams-archive`.
+ * An exact match, or a prefix match so a nested route like `/settings/billing`
+ * keeps its parent highlighted. The prefix must end at a segment boundary, or
+ * `/team` would light up for `/teams-archive`.
  */
 export function isActive(itemPath: string, currentPath: string): boolean {
   if (itemPath === currentPath) return true
@@ -99,15 +93,9 @@ export function defaultSidebarCollapsed(currentPath: string): boolean {
 }
 
 export function pageTitle(currentPath: string): string {
-  // Match on the ROUTE, not the anchor: /settings#team is still the Settings page,
-  // and the header should say so rather than renaming the page per section.
-  //
-  // Only PAGE-level items (no anchor) may name a page. Without that filter,
-  // /settings#team resolves to the first item whose route is /settings — which is
-  // "Integrations" — and the header lies about which page you are on.
+  // Every nav item is now a distinct route, so the first one whose route matches
+  // names the page. `routeOf` drops any incidental hash before matching.
   const route = routeOf(currentPath)
-  const match = NAV_ITEMS.filter((item) => !item.to.includes('#')).find((item) =>
-    isActive(item.to, route),
-  )
+  const match = NAV_ITEMS.find((item) => isActive(item.to, route))
   return match?.label ?? OFF_NAV_TITLES[route] ?? ''
 }

@@ -52,10 +52,8 @@ const ICONS: Record<string, ReactNode> = {
 
 function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const navigate = useNavigate()
-  const { pathname, hash } = useLocation()
-  // Pathname PLUS hash: Integrations and Team are anchors into /settings, so the
-  // hash is the only thing that tells them apart from Settings itself.
-  const active = isActive(item.to, `${pathname}${hash}`)
+  const { pathname } = useLocation()
+  const active = isActive(item.to, pathname)
   return (
     <button
       type="button"

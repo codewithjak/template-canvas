@@ -214,3 +214,91 @@ browser check of the canvas→transparent-PNG bake (the one path unit tests cann
 exercise) was interrupted. Outstanding before this can be called end-to-end verified:
 crop an uploaded image to a triangle, confirm the canvas shows it, and confirm the
 PDF export shows the same transparency.
+
+---
+
+## 6. Amendment (2026-07-16) — P2 expanded: placeholder crop authoring
+
+> Amends §4 **P2 — Bound / URL images**. The original P2 bullet is left as written
+> (rule k); this section supersedes it where they differ and fills the two gaps it
+> left: (1) it only described *honoring* a stored crop at render, never *how the
+> shape is authored* on an image that has no pixels at design time; (2) it named
+> `elementDrawers.drawImage`, which is **dead code** — the live path is
+> `case 'image'` in `backend/renderer/pdfLibRenderer.js`.
+
+### 6.1 The requirement this adds
+
+The user selects an image element bound to a token (`{{field}}`) — one whose pixels
+arrive later from an API, sheet, or any datasource — and **crops it to a shape
+before any image exists**. At generation the incoming image is masked to that
+stored shape, so every generated document shows the datasource image already
+cropped, identical to the shape the designer drew on the empty placeholder.
+
+### 6.2 Current behaviour (verified against source)
+
+- `EditPane.croppableImage()` (`panel/EditPane.tsx:15`) returns true only when
+  `(originalSrc ?? src).startsWith('data:')`. A `{{field}}` (or `http`) src fails,
+  so the panel shows the hint — no way to author a crop.
+- `CropModal` (`crop/CropModal.tsx:67`) opens on `originalSrc ?? src` and probes it
+  as an `Image` for natural size. A token has no loadable pixels, so the modal
+  cannot render its drag surface.
+- The model already carries `crop?: { shape: CropShape; rect: NormRect }` (§2.1) —
+  the field needed to persist a shape **without** a baked `src` already exists.
+- Live export `case 'image'` (`pdfLibRenderer.js`) embeds `_imgBytes` and draws a
+  plain rectangle; it never reads `el.crop`. (`elementDrawers.drawImage` is dead.)
+
+### 6.3 Target architecture — author the shape, mask at render (no bake)
+
+The Phase-1 path **bakes** a masked PNG into `src` (§2.1). A placeholder has no
+pixels to bake, so P2 splits crop into its two halves and defers the mask to
+render time:
+
+1. **Authoring (editor) — persist shape + rect only.** For a token/URL image the
+   Edit tab offers a **shape-only** crop: the designer picks a shape and a region
+   over the *element box* (not over image pixels), and Apply writes **only**
+   `{ crop: { shape, rect } }`. `src` (the `{{field}}` token) and `originalSrc` are
+   left untouched — nothing is baked, nothing is destroyed (rule g).
+2. **Preview (editor canvas).** `ImageElement.tsx` applies the crop shape as a CSS
+   `clip-path` (derived from the same `shapePolygon`/geometry) so the empty
+   placeholder box already shows the intended silhouette — "looks the same as it
+   was cropped before uploading."
+3. **Honoring (export, live path).** In `pdfLibRenderer.js` `case 'image'`, when
+   `el.crop` is set, set a **PDF clipping path** to the shape (positioned/scaled in
+   the element box, and offset so `crop.rect` selects the shown region of the
+   source) and draw the fetched image inside it. Clip, not re-encode: it reuses the
+   vector path machinery already in the renderer (the same `drawSvgPath`/path
+   approach used by the box-radius fix and chart triangles), so **no image-masking
+   dependency is added** (`sharp` is not resolvable from the backend here anyway).
+
+This keeps the two flows cleanly separated (SRP): Phase-1 data-URL images stay on
+the bake path unchanged; token/URL images take the store-shape-then-clip path.
+Byte-for-byte, any image with no `crop` is unaffected.
+
+### 6.4 Phase P2 tasks (small, single-responsibility)
+
+| Task | Description |
+| ---- | ----------- |
+| P2.1 | `shapeAuthorable(el)` predicate in `EditPane` — true for an image whose src is a `{{field}}`/`http` (i.e. not croppable-by-bake but valid to carry a shape). Keep `croppableImage` as-is; add the new predicate beside it. |
+| P2.2 | Shape-only authoring UI: reuse `CropModal` in a **no-pixels mode** (render the element box + draggable region over a neutral backdrop, shape picker) OR a lightweight inline shape picker. Apply patches `{ crop: { shape, rect } }` only — never `src`/`originalSrc`. |
+| P2.3 | `ImageElement.tsx` — when `crop` is set and src is a placeholder/URL, apply `clip-path` from `shapePolygon(crop.shape, rect)` so the canvas previews the silhouette. |
+| P2.4 | `pdfLibRenderer.js` `case 'image'` — when `el.crop` is set, push a clip path for the shape+rect, `drawImage`, pop state. Pure helper `imageClipPath(shape, rect, wPt, hPt)` reusing `cropGeometry`. |
+| P2.5 | Retarget the dead reference: this work lands in the **live** renderer; do not touch `elementDrawers.drawImage`. |
+| P2.6 | Tests — geometry for `imageClipPath` (unit); an export assertion that a `{{field}}` image with `crop.shape='ellipse'` produces curve/clip operators (not a bare rectangle), mirroring the box-radius verification. |
+
+Exit check: bind an image to `{{photo}}`, author an ellipse crop on the empty
+placeholder, fill `{{photo}}` from sample data, export → the generated image is a
+clean ellipse; an image with no `crop` exports byte-identical to today.
+
+### 6.5 Caveats
+
+1. **Clip vs. bake fidelity.** Clipping at render avoids re-encoding but relies on
+   the renderer's clip support; if a shape proves hard to clip cleanly, the
+   fallback is a render-time raster mask, which *would* add an image dependency —
+   a conscious trade, not a silent one.
+2. **`rect` semantics for bound images.** For a placeholder the `rect` is authored
+   over the element box (aspect unknown until fill), so at render it maps to the
+   fetched image via `objectFit: cover` within the shape. Documented so the
+   authoring rect is not mistaken for original-pixel coordinates (§2.1's meaning
+   for baked crops).
+3. **Still no `shape`/`objectFit` unification** with box shapes — out of scope
+   (rule h); P2 only adds the image clip path.

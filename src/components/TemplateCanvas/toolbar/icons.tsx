@@ -133,10 +133,12 @@ export const Icons = {
       <path d="M3 8c0 1.1 2.2 2 5 2s5-.9 5-2" stroke="currentColor" strokeWidth="1.4"/>
     </svg>
   ),
-  Email: () => (
+  Share: () => (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="2" y="3.5" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="m2.5 4.5 5.5 4 5.5-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+      <circle cx="4" cy="8" r="1.9" stroke="currentColor" strokeWidth="1.4"/>
+      <circle cx="12" cy="3.5" r="1.9" stroke="currentColor" strokeWidth="1.4"/>
+      <circle cx="12" cy="12.5" r="1.9" stroke="currentColor" strokeWidth="1.4"/>
+      <path d="m5.7 7 4.6-2.6M5.7 9l4.6 2.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
     </svg>
   ),
   Bulk: () => (

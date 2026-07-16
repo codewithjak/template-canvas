@@ -199,7 +199,7 @@ export default function Toolbar({
               )}
               <IconBtn icon={<Icons.Structure />} label="View data structure"
                 onClick={onViewStructure} variant="action" />
-              <IconBtn icon={<Icons.Email />} label="Email export"
+              <IconBtn icon={<Icons.Share />} label="Share export"
                 onClick={onSendEmail} disabled={isExporting || !hasElements} variant="action" />
               {!isSingleMode && (
                 <IconBtn icon={<Icons.Bulk />} label="Bulk export — one per row"

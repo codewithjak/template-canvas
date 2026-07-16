@@ -101,6 +101,32 @@ function normalizeOpacity(value) {
   return Math.max(0, Math.min(1, n > 1 ? n / 100 : n));
 }
 
+/**
+ * SVG path for a rounded rectangle, origin at the box's top-left with +y going
+ * DOWN — the coordinate convention page.drawSvgPath uses when given {x, y}.
+ * All arguments are already in PDF points. When w === h and r === w/2 the path
+ * is a circle, so callers need no separate circle case.
+ *
+ * @param {number} w  width in pt
+ * @param {number} h  height in pt
+ * @param {number} r  corner radius in pt (caller clamps to <= min(w,h)/2)
+ * @returns {string}  SVG path data
+ */
+function roundedRectSvgPath(w, h, r) {
+  return [
+    `M ${r} 0`,
+    `H ${w - r}`,
+    `A ${r} ${r} 0 0 1 ${w} ${r}`,
+    `V ${h - r}`,
+    `A ${r} ${r} 0 0 1 ${w - r} ${h}`,
+    `H ${r}`,
+    `A ${r} ${r} 0 0 1 0 ${h - r}`,
+    `V ${r}`,
+    `A ${r} ${r} 0 0 1 ${r} 0`,
+    'Z',
+  ].join(' ');
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Coordinate conversion  (single source of truth)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -746,11 +772,29 @@ async function drawElement(pdfDoc, pages, el, absoluteY, fonts, dim) {
       const hPt = (s.height || 0) * SCALE;
       const bw  = Math.max(0, (s.borderWidth || 0) * SCALE);
       const opacity = normalizeOpacity(s.opacity);
-      if (s.backgroundColor && s.backgroundColor !== 'transparent')
-        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
-          color: toColor(s.backgroundColor), opacity });
+      const hasFill = s.backgroundColor && s.backgroundColor !== 'transparent';
+      // Clamp the radius so it can never exceed half the shorter side (a larger
+      // value produces a degenerate path). radius 0/unset keeps the original
+      // rectangle path below, so existing boxes export byte-identically.
+      const rPt = Math.min((s.borderRadius || 0) * SCALE, wPt / 2, hPt / 2);
+
+      if (rPt <= 0) {
+        if (hasFill)
+          page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+            color: toColor(s.backgroundColor), opacity });
+        if (bw > 0)
+          page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+            borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw, borderOpacity: opacity });
+        break;
+      }
+
+      // Rounded (or, when r === w/2 === h/2, circular). drawSvgPath maps the
+      // path's top-left origin to (x, y) with +y going down, so pass the box top.
+      const path = roundedRectSvgPath(wPt, hPt, rPt);
+      if (hasFill)
+        page.drawSvgPath(path, { x: xPt, y: pdfY, color: toColor(s.backgroundColor), opacity });
       if (bw > 0)
-        page.drawRectangle({ x: xPt, y: pdfY - hPt, width: wPt, height: hPt,
+        page.drawSvgPath(path, { x: xPt, y: pdfY,
           borderColor: toColor(s.borderColor || '#000000'), borderWidth: bw, borderOpacity: opacity });
       break;
     }

@@ -66,6 +66,8 @@ import packingListDoc from './builtins/packing-list.template.json'
 import packingListData from './builtins/packing-list.data.json'
 import eventQuotationDoc from './builtins/event-quotation.template.json'
 import eventQuotationData from './builtins/event-quotation.data.json'
+import hotelQrMenuDoc from './builtins/hotel-qr-menu.template.json'
+import hotelQrMenuData from './builtins/hotel-qr-menu.data.json'
 import realtorBrochureDoc from './builtins/realtor-brochure.template.json'
 import realtorBrochureData from './builtins/realtor-brochure.data.json'
 import postexLoadSheetDoc from './builtins/postex-load-sheet.template.json'
@@ -396,6 +398,15 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: eventQuotationDoc as unknown as TemplateDocument,
     data: eventQuotationData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-hotel-qr-menu',
+    name: 'Hotel QR Menu',
+    description: 'US hotel restaurant menu: four photo bands of dishes with names, prices and descriptions, and a bottom "Scan to order" QR strip.',
+    category: 'Events & Hospitality',
+    sizeLabel: 'Letter',
+    doc: hotelQrMenuDoc as unknown as TemplateDocument,
+    data: hotelQrMenuData as unknown as CanonicalDocument,
   },
   // ── Arabic / RTL (Saudi market) ──
   {

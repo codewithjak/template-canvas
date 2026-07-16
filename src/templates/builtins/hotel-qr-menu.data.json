@@ -1,0 +1,43 @@
+{
+  "fields": {
+    "venue_name": "THE GRAND HARBOR KITCHEN",
+    "menu_heading": "OUR MENU LIST",
+    "item_1_name": "Pacific Oysters",
+    "item_1_price": "$21",
+    "item_1_desc": "Half dozen, mignonette, lemon",
+    "item_2_name": "Dungeness Crab Cake",
+    "item_2_price": "$19",
+    "item_2_desc": "Remoulade, shaved fennel, citrus",
+    "item_3_name": "Heirloom Tomato Salad",
+    "item_3_price": "$16",
+    "item_3_desc": "Burrata, basil oil, sea salt",
+    "item_4_name": "Cedar-Plank Salmon",
+    "item_4_price": "$36",
+    "item_4_desc": "Wild king salmon, dill butter, greens",
+    "item_5_name": "Grilled Ribeye",
+    "item_5_price": "$48",
+    "item_5_desc": "12oz prime, roasted potatoes, jus",
+    "item_6_name": "Dungeness Crab Linguine",
+    "item_6_price": "$34",
+    "item_6_desc": "White wine, chili, garlic, herbs",
+    "item_7_name": "Marionberry Cobbler",
+    "item_7_price": "$12",
+    "item_7_desc": "Vanilla bean ice cream",
+    "item_8_name": "Dark Chocolate Torte",
+    "item_8_price": "$13",
+    "item_8_desc": "Sea salt, espresso cream",
+    "band_1_image": "",
+    "band_2_image": "",
+    "band_3_image": "",
+    "band_4_image": "",
+    "order_url": "https://order.grandharborkitchen.com/t/14",
+    "scan_caption": "Browse, order and pay right from your table.",
+    "hours": "Breakfast 7-11am   |   Dinner 5-10pm   |   Lounge until midnight",
+    "footer_note": "1200 Alaskan Way, Seattle, WA 98101  -  Prices in USD. A 20% service charge is added to parties of six or more. Tax not included."
+  },
+  "collections": {},
+  "source": {
+    "type": "json",
+    "fileName": "hotel-qr-menu.data.json"
+  }
+}

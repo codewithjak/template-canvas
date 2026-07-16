@@ -1,0 +1,946 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-hotel-qr-menu",
+    "name": "Hotel QR Menu",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "updatedAt": "2026-07-16T00:00:00.000Z",
+    "executionMode": "single"
+  },
+  "pageSize": {
+    "preset": "letter",
+    "canvasWidth": 816,
+    "canvasHeight": 1056,
+    "pdfWidth": 612,
+    "pdfHeight": 792
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "Menu",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 80,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 1,
+          "opacity": 1
+        }
+      },
+      "footer": {
+        "enabled": false,
+        "scope": "first-page-only",
+        "repeatOnOverflow": false,
+        "boundaryY": 976,
+        "style": {
+          "backgroundColor": "transparent",
+          "borderColor": "#e2e8f0",
+          "borderWidth": 0,
+          "opacity": 1
+        }
+      },
+      "elements": [
+        {
+          "id": "bg-page",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "style": {
+            "width": 816,
+            "height": 1056,
+            "borderWidth": 0,
+            "borderColor": "#f4efe3",
+            "borderStyle": "solid",
+            "backgroundColor": "#f4efe3",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "hdr-title",
+          "type": "text",
+          "content": "{{venue_name}}",
+          "position": {
+            "x": 0,
+            "y": 44
+          },
+          "style": {
+            "fontSize": 38,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Georgia, 'Times New Roman', serif",
+            "width": 816,
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "pill-box",
+          "type": "box",
+          "position": {
+            "x": 288,
+            "y": 104
+          },
+          "style": {
+            "width": 240,
+            "height": 34,
+            "borderWidth": 0,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#b5471f",
+            "borderRadius": 17,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "pill-text",
+          "type": "text",
+          "content": "{{menu_heading}}",
+          "position": {
+            "x": 288,
+            "y": 111
+          },
+          "style": {
+            "fontSize": 15,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif",
+            "width": 240,
+            "textAlign": "center"
+          }
+        },
+        {
+          "id": "b1-card",
+          "type": "box",
+          "position": {
+            "x": 40,
+            "y": 170
+          },
+          "style": {
+            "width": 736,
+            "height": 156,
+            "borderWidth": 1,
+            "borderColor": "#ead9c3",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 78,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b1-leader-1",
+          "type": "line",
+          "position": {
+            "x": 214,
+            "y": 210
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b1-leader-2",
+          "type": "line",
+          "position": {
+            "x": 214,
+            "y": 272
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b1-frame",
+          "type": "box",
+          "position": {
+            "x": 59,
+            "y": 178
+          },
+          "style": {
+            "width": 140,
+            "height": 140,
+            "borderWidth": 3,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 70,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b1-img",
+          "type": "image",
+          "src": "{{band_1_image}}",
+          "position": {
+            "x": 64,
+            "y": 183
+          },
+          "style": {
+            "width": 130,
+            "height": 130,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b1-name-1",
+          "type": "text",
+          "content": "{{item_1_name}}",
+          "position": {
+            "x": 214,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b1-price-1",
+          "type": "text",
+          "content": "{{item_1_price}}",
+          "position": {
+            "x": 214,
+            "y": 200
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b1-desc-1",
+          "type": "text",
+          "content": "{{item_1_desc}}",
+          "position": {
+            "x": 214,
+            "y": 222
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b1-name-2",
+          "type": "text",
+          "content": "{{item_2_name}}",
+          "position": {
+            "x": 214,
+            "y": 262
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b1-price-2",
+          "type": "text",
+          "content": "{{item_2_price}}",
+          "position": {
+            "x": 214,
+            "y": 262
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b1-desc-2",
+          "type": "text",
+          "content": "{{item_2_desc}}",
+          "position": {
+            "x": 214,
+            "y": 284
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b2-card",
+          "type": "box",
+          "position": {
+            "x": 40,
+            "y": 348
+          },
+          "style": {
+            "width": 736,
+            "height": 156,
+            "borderWidth": 1,
+            "borderColor": "#ead9c3",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 78,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b2-leader-1",
+          "type": "line",
+          "position": {
+            "x": 64,
+            "y": 388
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b2-leader-2",
+          "type": "line",
+          "position": {
+            "x": 64,
+            "y": 450
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b2-frame",
+          "type": "box",
+          "position": {
+            "x": 627,
+            "y": 356
+          },
+          "style": {
+            "width": 140,
+            "height": 140,
+            "borderWidth": 3,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 70,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b2-img",
+          "type": "image",
+          "src": "{{band_2_image}}",
+          "position": {
+            "x": 632,
+            "y": 361
+          },
+          "style": {
+            "width": 130,
+            "height": 130,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b2-name-1",
+          "type": "text",
+          "content": "{{item_3_name}}",
+          "position": {
+            "x": 64,
+            "y": 378
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b2-price-1",
+          "type": "text",
+          "content": "{{item_3_price}}",
+          "position": {
+            "x": 64,
+            "y": 378
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b2-desc-1",
+          "type": "text",
+          "content": "{{item_3_desc}}",
+          "position": {
+            "x": 64,
+            "y": 400
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b2-name-2",
+          "type": "text",
+          "content": "{{item_4_name}}",
+          "position": {
+            "x": 64,
+            "y": 440
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b2-price-2",
+          "type": "text",
+          "content": "{{item_4_price}}",
+          "position": {
+            "x": 64,
+            "y": 440
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b2-desc-2",
+          "type": "text",
+          "content": "{{item_4_desc}}",
+          "position": {
+            "x": 64,
+            "y": 462
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b3-card",
+          "type": "box",
+          "position": {
+            "x": 40,
+            "y": 526
+          },
+          "style": {
+            "width": 736,
+            "height": 156,
+            "borderWidth": 1,
+            "borderColor": "#ead9c3",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 78,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b3-leader-1",
+          "type": "line",
+          "position": {
+            "x": 214,
+            "y": 566
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b3-leader-2",
+          "type": "line",
+          "position": {
+            "x": 214,
+            "y": 628
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b3-frame",
+          "type": "box",
+          "position": {
+            "x": 59,
+            "y": 534
+          },
+          "style": {
+            "width": 140,
+            "height": 140,
+            "borderWidth": 3,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 70,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b3-img",
+          "type": "image",
+          "src": "{{band_3_image}}",
+          "position": {
+            "x": 64,
+            "y": 539
+          },
+          "style": {
+            "width": 130,
+            "height": 130,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b3-name-1",
+          "type": "text",
+          "content": "{{item_5_name}}",
+          "position": {
+            "x": 214,
+            "y": 556
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b3-price-1",
+          "type": "text",
+          "content": "{{item_5_price}}",
+          "position": {
+            "x": 214,
+            "y": 556
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b3-desc-1",
+          "type": "text",
+          "content": "{{item_5_desc}}",
+          "position": {
+            "x": 214,
+            "y": 578
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b3-name-2",
+          "type": "text",
+          "content": "{{item_6_name}}",
+          "position": {
+            "x": 214,
+            "y": 618
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b3-price-2",
+          "type": "text",
+          "content": "{{item_6_price}}",
+          "position": {
+            "x": 214,
+            "y": 618
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b3-desc-2",
+          "type": "text",
+          "content": "{{item_6_desc}}",
+          "position": {
+            "x": 214,
+            "y": 640
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b4-card",
+          "type": "box",
+          "position": {
+            "x": 40,
+            "y": 704
+          },
+          "style": {
+            "width": 736,
+            "height": 156,
+            "borderWidth": 1,
+            "borderColor": "#ead9c3",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 78,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b4-leader-1",
+          "type": "line",
+          "position": {
+            "x": 64,
+            "y": 744
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b4-leader-2",
+          "type": "line",
+          "position": {
+            "x": 64,
+            "y": 806
+          },
+          "style": {
+            "length": 510,
+            "thickness": 1,
+            "direction": "horizontal",
+            "color": "#e3b9a6",
+            "style": "dotted"
+          }
+        },
+        {
+          "id": "b4-frame",
+          "type": "box",
+          "position": {
+            "x": 627,
+            "y": 712
+          },
+          "style": {
+            "width": 140,
+            "height": 140,
+            "borderWidth": 3,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 70,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b4-img",
+          "type": "image",
+          "src": "{{band_4_image}}",
+          "position": {
+            "x": 632,
+            "y": 717
+          },
+          "style": {
+            "width": 130,
+            "height": 130,
+            "objectFit": "cover",
+            "opacity": 100
+          }
+        },
+        {
+          "id": "b4-name-1",
+          "type": "text",
+          "content": "{{item_7_name}}",
+          "position": {
+            "x": 64,
+            "y": 734
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b4-price-1",
+          "type": "text",
+          "content": "{{item_7_price}}",
+          "position": {
+            "x": 64,
+            "y": 734
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b4-desc-1",
+          "type": "text",
+          "content": "{{item_7_desc}}",
+          "position": {
+            "x": 64,
+            "y": 756
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "b4-name-2",
+          "type": "text",
+          "content": "{{item_8_name}}",
+          "position": {
+            "x": 64,
+            "y": 796
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "b4-price-2",
+          "type": "text",
+          "content": "{{item_8_price}}",
+          "position": {
+            "x": 64,
+            "y": 796
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#b5471f",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510,
+            "textAlign": "right"
+          }
+        },
+        {
+          "id": "b4-desc-2",
+          "type": "text",
+          "content": "{{item_8_desc}}",
+          "position": {
+            "x": 64,
+            "y": 818
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#5b5b52",
+            "fontFamily": "Arial, sans-serif",
+            "width": 510
+          }
+        },
+        {
+          "id": "ftr-band",
+          "type": "box",
+          "position": {
+            "x": 0,
+            "y": 900
+          },
+          "style": {
+            "width": 816,
+            "height": 156,
+            "borderWidth": 0,
+            "borderColor": "#b5471f",
+            "borderStyle": "solid",
+            "backgroundColor": "#b5471f",
+            "borderRadius": 0,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "ftr-qr-card",
+          "type": "box",
+          "position": {
+            "x": 48,
+            "y": 916
+          },
+          "style": {
+            "width": 124,
+            "height": 124,
+            "borderWidth": 0,
+            "borderColor": "#ffffff",
+            "borderStyle": "solid",
+            "backgroundColor": "#ffffff",
+            "borderRadius": 12,
+            "opacity": 100
+          }
+        },
+        {
+          "id": "ftr-qr",
+          "type": "barcode",
+          "content": "{{order_url}}",
+          "position": {
+            "x": 56,
+            "y": 924
+          },
+          "style": {
+            "width": 108,
+            "height": 108
+          },
+          "barcode": {
+            "format": "qrcode",
+            "showText": false
+          }
+        },
+        {
+          "id": "ftr-scan-label",
+          "type": "text",
+          "content": "SCAN TO ORDER",
+          "position": {
+            "x": 196,
+            "y": 926
+          },
+          "style": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "color": "#ffffff",
+            "fontFamily": "Arial, sans-serif"
+          }
+        },
+        {
+          "id": "ftr-caption",
+          "type": "text",
+          "content": "{{scan_caption}}",
+          "position": {
+            "x": 196,
+            "y": 952
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#f3d9cc",
+            "fontFamily": "Arial, sans-serif",
+            "width": 572
+          }
+        },
+        {
+          "id": "ftr-hours",
+          "type": "text",
+          "content": "{{hours}}",
+          "position": {
+            "x": 196,
+            "y": 984
+          },
+          "style": {
+            "fontSize": 12,
+            "fontWeight": "normal",
+            "color": "#f3d9cc",
+            "fontFamily": "Arial, sans-serif",
+            "width": 572
+          }
+        },
+        {
+          "id": "ftr-note",
+          "type": "text",
+          "content": "{{footer_note}}",
+          "position": {
+            "x": 196,
+            "y": 1012
+          },
+          "style": {
+            "fontSize": 10,
+            "fontWeight": "normal",
+            "color": "#f3d9cc",
+            "fontFamily": "Arial, sans-serif",
+            "width": 572
+          }
+        }
+      ]
+    }
+  ]
+}

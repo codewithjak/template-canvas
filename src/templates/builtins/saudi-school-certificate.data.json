@@ -1,0 +1,19 @@
+{
+  "fields": {
+    "region": "الرياض",
+    "school_name": "مدرسة الملك عبدالعزيز الثانوية",
+    "student_name": "عبدالله محمد الشهري",
+    "national_id": "1098765432",
+    "grade": "الثالث الثانوي",
+    "section": "أ",
+    "academic_year": "١٤٤٦ / ١٤٤٧ هـ (2025 - 2026م)",
+    "result": "ناجح ومنقول للصف الأعلى",
+    "gpa": "4.75 من 5.00",
+    "percentage": "95.2٪",
+    "principal_name": "أ. سعد بن فهد القحطاني",
+    "certificate_no": "ش/2026/0473",
+    "issue_date": "15 / 04 / 1447 هـ"
+  },
+  "collections": {},
+  "source": { "type": "json", "fileName": "saudi-school-certificate-sample", "sheets": [], "warnings": [] }
+}

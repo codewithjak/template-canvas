@@ -1,0 +1,161 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-saudi-marks-certificate",
+    "name": "كشف الدرجات — Detailed Marks Certificate",
+    "createdAt": "2026-07-16T00:00:00.000Z",
+    "updatedAt": "2026-07-16T00:00:00.000Z",
+    "executionMode": "single",
+    "direction": "rtl",
+    "lang": "ar"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "كشف الدرجات",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "elements": [
+        { "id": "head-band", "type": "box", "position": { "x": 0, "y": 0 },
+          "style": { "width": 794, "height": 118, "borderWidth": 0, "borderColor": "#065f46", "borderStyle": "solid", "backgroundColor": "#065f46" } },
+        { "id": "head-accent", "type": "box", "position": { "x": 0, "y": 118 },
+          "style": { "width": 794, "height": 6, "borderWidth": 0, "borderColor": "#b45309", "borderStyle": "solid", "backgroundColor": "#b45309" } },
+
+        { "id": "kingdom", "type": "text", "content": "المملكة العربية السعودية",
+          "position": { "x": 434, "y": 24 },
+          "style": { "fontSize": 15, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 336, "textAlign": "right" } },
+        { "id": "ministry", "type": "text", "content": "وزارة التعليم — الإدارة العامة للتعليم بمنطقة {{region}}",
+          "position": { "x": 334, "y": 50 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#d1fae5", "fontFamily": "'Noto Naskh Arabic', serif", "width": 436, "textAlign": "right" } },
+        { "id": "school", "type": "text", "content": "{{school_name}}",
+          "position": { "x": 334, "y": 74 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 436, "textAlign": "right" } },
+
+        { "id": "title", "type": "text", "content": "كشف الدرجات",
+          "position": { "x": 24, "y": 34 },
+          "style": { "fontSize": 30, "fontWeight": "bold", "color": "#ffffff", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "left" } },
+        { "id": "title-sub", "type": "text", "content": "الفصل الدراسي {{semester}}",
+          "position": { "x": 24, "y": 78 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#d1fae5", "fontFamily": "'Noto Naskh Arabic', serif", "width": 300, "textAlign": "left" } },
+
+        { "id": "info-box", "type": "box", "position": { "x": 40, "y": 150 },
+          "style": { "width": 714, "height": 96, "borderWidth": 1, "borderColor": "#cbd5e1", "borderStyle": "solid", "backgroundColor": "#f8fafc" } },
+        { "id": "info-name", "type": "text", "content": "اسم الطالب: {{student_name}}",
+          "position": { "x": 414, "y": 166 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 326, "textAlign": "right" } },
+        { "id": "info-id", "type": "text", "content": "رقم الهوية: {{national_id}}",
+          "position": { "x": 414, "y": 192 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 326, "textAlign": "right" } },
+        { "id": "info-grade", "type": "text", "content": "الصف: {{grade}} — الفصل ({{section}})",
+          "position": { "x": 414, "y": 216 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 326, "textAlign": "right" } },
+        { "id": "info-year", "type": "text", "content": "العام الدراسي: {{academic_year}}",
+          "position": { "x": 54, "y": 166 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 320, "textAlign": "right" } },
+        { "id": "info-no", "type": "text", "content": "رقم الكشف: {{statement_no}}",
+          "position": { "x": 54, "y": 192 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 320, "textAlign": "right" } },
+        { "id": "info-date", "type": "text", "content": "تاريخ الإصدار: {{issue_date}}",
+          "position": { "x": 54, "y": 216 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 320, "textAlign": "right" } },
+
+        { "id": "subjects", "type": "table", "schemaVersion": 2,
+          "position": { "x": 40, "y": 272 },
+          "columns": [
+            { "id": "c-subject",  "width": 246, "alignment": "right" },
+            { "id": "c-max",      "width": 150, "alignment": "center" },
+            { "id": "c-obtained", "width": 150, "alignment": "center" },
+            { "id": "c-rating",   "width": 168, "alignment": "center" }
+          ],
+          "binding": { "enabled": true, "collectionKey": "subjects", "itemAlias": "subject" },
+          "headerRow": { "id": "hr", "cells": [
+            { "id": "h-subject",  "content": { "type": "text", "value": "المادة الدراسية" } },
+            { "id": "h-max",      "content": { "type": "text", "value": "الدرجة العظمى" } },
+            { "id": "h-obtained", "content": { "type": "text", "value": "الدرجة المكتسبة" } },
+            { "id": "h-rating",   "content": { "type": "text", "value": "التقدير" } }
+          ] },
+          "rows": [
+            { "id": "r1", "cells": [
+              { "id": "r1-subject",  "content": { "type": "text", "value": "{{subject}}" } },
+              { "id": "r1-max",      "content": { "type": "text", "value": "{{max}}" } },
+              { "id": "r1-obtained", "content": { "type": "text", "value": "{{obtained}}" } },
+              { "id": "r1-rating",   "content": { "type": "text", "value": "{{rating}}" } }
+            ] }
+          ],
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif",
+            "borderColor": "#065f46", "borderWidth": 1, "showBorders": true, "direction": "rtl",
+            "headerBg": "#065f46", "headerColor": "#ffffff" } },
+
+        { "id": "totals-box", "type": "box", "position": { "x": 394, "y": 360 },
+          "style": { "width": 360, "height": 176, "borderWidth": 1, "borderColor": "#cbd5e1", "borderStyle": "solid", "backgroundColor": "#f8fafc" } },
+        { "id": "tot-obtained", "type": "text", "content": "مجموع الدرجات المكتسبة: {{total_obtained}}",
+          "position": { "x": 410, "y": 376 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 328, "textAlign": "right" } },
+        { "id": "tot-max", "type": "text", "content": "المجموع الكلي من: {{total_max}}",
+          "position": { "x": 410, "y": 402 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 328, "textAlign": "right" } },
+        { "id": "tot-pct", "type": "text", "content": "النسبة المئوية: {{percentage}}",
+          "position": { "x": 410, "y": 428 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 328, "textAlign": "right" } },
+        { "id": "tot-gpa", "type": "text", "content": "المعدل التراكمي: {{gpa}}",
+          "position": { "x": 410, "y": 454 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 328, "textAlign": "right" } },
+        { "id": "tot-rule", "type": "line", "position": { "x": 410, "y": 482 },
+          "style": { "length": 328, "thickness": 1, "direction": "horizontal", "color": "#065f46", "style": "solid" } },
+        { "id": "tot-result", "type": "text", "content": "النتيجة العامة: {{result}}  —  التقدير: {{overall_grade}}",
+          "position": { "x": 410, "y": 492 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#065f46", "fontFamily": "'Noto Naskh Arabic', serif", "width": 328, "textAlign": "right" } },
+
+        { "id": "note-h", "type": "text", "content": "ملاحظة:",
+          "position": { "x": 40, "y": 360 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 330, "textAlign": "right" } },
+
+        { "id": "sig-leader-h", "type": "text", "content": "رائد الفصل",
+          "position": { "x": 60, "y": 720 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 220, "textAlign": "center" } },
+        { "id": "sig-leader-line", "type": "line", "position": { "x": 90, "y": 768 },
+          "style": { "length": 160, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" } },
+        { "id": "sig-leader-name", "type": "text", "content": "{{class_leader}}",
+          "position": { "x": 60, "y": 774 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 220, "textAlign": "center" } },
+
+        { "id": "sig-principal-h", "type": "text", "content": "مدير المدرسة",
+          "position": { "x": 514, "y": 720 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 220, "textAlign": "center" } },
+        { "id": "sig-principal-line", "type": "line", "position": { "x": 544, "y": 768 },
+          "style": { "length": 160, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" } },
+        { "id": "sig-principal-name", "type": "text", "content": "{{principal_name}}",
+          "position": { "x": 514, "y": 774 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 220, "textAlign": "center" } },
+
+        { "id": "stamp-box", "type": "box", "position": { "x": 349, "y": 708 },
+          "style": { "width": 96, "height": 96, "borderWidth": 1, "borderColor": "#94a3b8", "borderStyle": "dashed", "backgroundColor": "transparent" } },
+        { "id": "stamp-label", "type": "text", "content": "ختم المدرسة",
+          "position": { "x": 319, "y": 756 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "'Noto Naskh Arabic', serif", "width": 156, "textAlign": "center" } },
+
+        { "id": "foot-rule", "type": "line", "position": { "x": 40, "y": 850 },
+          "style": { "length": 714, "thickness": 1, "direction": "horizontal", "color": "#065f46", "style": "solid" } },
+        { "id": "foot-note", "type": "text", "content": "{{school_name}} — {{region}} — المملكة العربية السعودية",
+          "position": { "x": 40, "y": 860 },
+          "style": { "fontSize": 9, "fontWeight": "normal", "color": "#64748b", "fontFamily": "'Noto Naskh Arabic', serif", "width": 714, "textAlign": "center" } },
+
+        { "id": "note-body", "type": "paragraph", "content": "هذا الكشف صادر آلياً من نظام نور ولا يُعتمد إلا بختم المدرسة وتوقيع مديرها. يُرجى مراجعة إدارة المدرسة للتحقق من صحة البيانات.",
+          "position": { "x": 40, "y": 386 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#475569", "fontFamily": "'Noto Naskh Arabic', serif", "width": 330, "lineHeight": 18, "direction": "rtl" } }
+      ]
+    }
+  ]
+}

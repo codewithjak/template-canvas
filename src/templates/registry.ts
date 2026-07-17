@@ -86,6 +86,10 @@ import zatcaReceiptDoc from './builtins/zatca-simplified-receipt.template.json'
 import zatcaReceiptData from './builtins/zatca-simplified-receipt.data.json'
 import arabicAnnualReportDoc from './builtins/arabic-annual-report.template.json'
 import arabicAnnualReportData from './builtins/arabic-annual-report.data.json'
+import saudiSchoolCertificateDoc from './builtins/saudi-school-certificate.template.json'
+import saudiSchoolCertificateData from './builtins/saudi-school-certificate.data.json'
+import saudiMarksCertificateDoc from './builtins/saudi-marks-certificate.template.json'
+import saudiMarksCertificateData from './builtins/saudi-marks-certificate.data.json'
 
 export type BuiltinCategory =
   | 'Courier & Last-Mile'
@@ -435,6 +439,24 @@ export const BUILTIN_TEMPLATES: BuiltinTemplate[] = [
     sizeLabel: 'A4',
     doc: arabicAnnualReportDoc as unknown as TemplateDocument,
     data: arabicAnnualReportData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-saudi-school-certificate',
+    name: 'شهادة نجاح ونقل — Saudi School Certificate',
+    description: 'RTL Ministry of Education end-of-year certificate: framed layout, student details, overall result, GPA and principal sign-off.',
+    category: 'Arabic (RTL)',
+    sizeLabel: 'A4',
+    doc: saudiSchoolCertificateDoc as unknown as TemplateDocument,
+    data: saudiSchoolCertificateData as unknown as CanonicalDocument,
+  },
+  {
+    id: 'builtin-saudi-marks-certificate',
+    name: 'كشف الدرجات — Detailed Marks Certificate',
+    description: 'RTL school transcript with a data-bound subjects table, per-subject marks and ratings, totals, percentage, GPA and result.',
+    category: 'Arabic (RTL)',
+    sizeLabel: 'A4',
+    doc: saudiMarksCertificateDoc as unknown as TemplateDocument,
+    data: saudiMarksCertificateData as unknown as CanonicalDocument,
   },
   // ── Real Estate ──
   {

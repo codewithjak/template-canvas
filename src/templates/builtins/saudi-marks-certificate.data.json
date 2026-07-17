@@ -1,0 +1,36 @@
+{
+  "fields": {
+    "region": "الرياض",
+    "school_name": "مدرسة الملك عبدالعزيز الثانوية",
+    "student_name": "عبدالله محمد الشهري",
+    "national_id": "1098765432",
+    "grade": "الثالث الثانوي",
+    "section": "أ",
+    "semester": "الثاني",
+    "academic_year": "١٤٤٦ / ١٤٤٧ هـ",
+    "statement_no": "ك/2026/1185",
+    "issue_date": "15 / 04 / 1447 هـ",
+    "total_obtained": "571",
+    "total_max": "600",
+    "percentage": "95.2٪",
+    "gpa": "4.75 من 5.00",
+    "result": "ناجح ومنقول",
+    "overall_grade": "ممتاز",
+    "class_leader": "أ. خالد بن ناصر العتيبي",
+    "principal_name": "أ. سعد بن فهد القحطاني"
+  },
+  "collections": {
+    "subjects": {
+      "columns": ["subject", "max", "obtained", "rating"],
+      "rows": [
+        { "subject": "القرآن الكريم والتجويد", "max": "100", "obtained": "98", "rating": "ممتاز" },
+        { "subject": "التوحيد والفقه", "max": "100", "obtained": "96", "rating": "ممتاز" },
+        { "subject": "اللغة العربية", "max": "100", "obtained": "94", "rating": "ممتاز" },
+        { "subject": "اللغة الإنجليزية", "max": "100", "obtained": "92", "rating": "ممتاز" },
+        { "subject": "الرياضيات", "max": "100", "obtained": "95", "rating": "ممتاز" },
+        { "subject": "الفيزياء", "max": "100", "obtained": "96", "rating": "ممتاز" }
+      ]
+    }
+  },
+  "source": { "type": "json", "fileName": "saudi-marks-certificate-sample", "sheets": [], "warnings": [] }
+}

@@ -1,0 +1,109 @@
+{
+  "version": "2.0",
+  "meta": {
+    "templateId": "builtin-saudi-school-certificate",
+    "name": "شهادة نجاح ونقل — Saudi School Certificate",
+    "createdAt": "2026-07-16T00:00:00.000Z",
+    "updatedAt": "2026-07-16T00:00:00.000Z",
+    "executionMode": "single",
+    "direction": "rtl",
+    "lang": "ar"
+  },
+  "pageSize": {
+    "preset": "a4",
+    "canvasWidth": 794,
+    "canvasHeight": 1123,
+    "pdfWidth": 595.28,
+    "pdfHeight": 841.89
+  },
+  "ai": null,
+  "pages": [
+    {
+      "pageId": "page-1",
+      "label": "شهادة نجاح ونقل",
+      "repeatHeader": false,
+      "headerElementIds": [],
+      "header": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 80,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "footer": { "enabled": false, "scope": "first-page-only", "repeatOnOverflow": false, "boundaryY": 1043,
+        "style": { "backgroundColor": "transparent", "borderColor": "#e2e8f0", "borderWidth": 1, "opacity": 1 } },
+      "elements": [
+        { "id": "frame-outer", "type": "box", "position": { "x": 30, "y": 30 },
+          "style": { "width": 734, "height": 1063, "borderWidth": 3, "borderColor": "#065f46", "borderStyle": "solid", "backgroundColor": "transparent" } },
+        { "id": "frame-inner", "type": "box", "position": { "x": 44, "y": 44 },
+          "style": { "width": 706, "height": 1035, "borderWidth": 1, "borderColor": "#b45309", "borderStyle": "solid", "backgroundColor": "transparent" } },
+
+        { "id": "kingdom", "type": "text", "content": "المملكة العربية السعودية",
+          "position": { "x": 64, "y": 82 },
+          "style": { "fontSize": 16, "fontWeight": "bold", "color": "#065f46", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "ministry", "type": "text", "content": "وزارة التعليم",
+          "position": { "x": 64, "y": 110 },
+          "style": { "fontSize": 14, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "directorate", "type": "text", "content": "الإدارة العامة للتعليم بمنطقة {{region}}",
+          "position": { "x": 64, "y": 136 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "school", "type": "text", "content": "{{school_name}}",
+          "position": { "x": 64, "y": 158 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+
+        { "id": "head-rule", "type": "line", "position": { "x": 247, "y": 192 },
+          "style": { "length": 300, "thickness": 1, "direction": "horizontal", "color": "#b45309", "style": "solid" } },
+
+        { "id": "title", "type": "text", "content": "شهادة نجاح ونقل",
+          "position": { "x": 64, "y": 226 },
+          "style": { "fontSize": 40, "fontWeight": "bold", "color": "#065f46", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "title-rule", "type": "line", "position": { "x": 297, "y": 288 },
+          "style": { "length": 200, "thickness": 2, "direction": "horizontal", "color": "#065f46", "style": "solid" } },
+
+        { "id": "body-1", "type": "text", "content": "تشهد إدارة المدرسة بأن الطالب/الطالبة",
+          "position": { "x": 64, "y": 328 },
+          "style": { "fontSize": 15, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "student-name", "type": "text", "content": "{{student_name}}",
+          "position": { "x": 64, "y": 366 },
+          "style": { "fontSize": 30, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "body-2", "type": "text", "content": "المقيّد برقم الهوية الوطنية {{national_id}}",
+          "position": { "x": 64, "y": 424 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "body-3", "type": "text", "content": "قد أتمّ بنجاح دراسة الصف {{grade}} — الفصل ({{section}})",
+          "position": { "x": 64, "y": 456 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+        { "id": "body-4", "type": "text", "content": "للعام الدراسي {{academic_year}}",
+          "position": { "x": 64, "y": 488 },
+          "style": { "fontSize": 14, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 666, "textAlign": "center" } },
+
+        { "id": "result-box", "type": "box", "position": { "x": 197, "y": 540 },
+          "style": { "width": 400, "height": 108, "borderWidth": 1, "borderColor": "#065f46", "borderStyle": "solid", "backgroundColor": "#ecfdf5" } },
+        { "id": "result-h", "type": "text", "content": "النتيجة",
+          "position": { "x": 197, "y": 556 },
+          "style": { "fontSize": 12, "fontWeight": "bold", "color": "#065f46", "fontFamily": "'Noto Naskh Arabic', serif", "width": 400, "textAlign": "center" } },
+        { "id": "result-val", "type": "text", "content": "{{result}}",
+          "position": { "x": 197, "y": 578 },
+          "style": { "fontSize": 18, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 400, "textAlign": "center" } },
+        { "id": "result-kpi", "type": "text", "content": "المعدل التراكمي: {{gpa}}     |     النسبة المئوية: {{percentage}}",
+          "position": { "x": 197, "y": 614 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 400, "textAlign": "center" } },
+
+        { "id": "sig-principal-h", "type": "text", "content": "مدير المدرسة",
+          "position": { "x": 430, "y": 940 },
+          "style": { "fontSize": 13, "fontWeight": "bold", "color": "#0f172a", "fontFamily": "'Noto Naskh Arabic', serif", "width": 280, "textAlign": "center" } },
+        { "id": "sig-principal-line", "type": "line", "position": { "x": 470, "y": 992 },
+          "style": { "length": 200, "thickness": 1, "direction": "horizontal", "color": "#94a3b8", "style": "solid" } },
+        { "id": "sig-principal-name", "type": "text", "content": "{{principal_name}}",
+          "position": { "x": 430, "y": 998 },
+          "style": { "fontSize": 12, "fontWeight": "normal", "color": "#334155", "fontFamily": "'Noto Naskh Arabic', serif", "width": 280, "textAlign": "center" } },
+
+        { "id": "stamp-box", "type": "box", "position": { "x": 154, "y": 924 },
+          "style": { "width": 96, "height": 96, "borderWidth": 1, "borderColor": "#94a3b8", "borderStyle": "dashed", "backgroundColor": "transparent" } },
+        { "id": "stamp-label", "type": "text", "content": "ختم المدرسة",
+          "position": { "x": 124, "y": 964 },
+          "style": { "fontSize": 11, "fontWeight": "normal", "color": "#94a3b8", "fontFamily": "'Noto Naskh Arabic', serif", "width": 156, "textAlign": "center" } },
+
+        { "id": "foot-rule", "type": "line", "position": { "x": 84, "y": 1042 },
+          "style": { "length": 626, "thickness": 1, "direction": "horizontal", "color": "#b45309", "style": "solid" } },
+        { "id": "foot-info", "type": "text", "content": "رقم الشهادة: {{certificate_no}}     •     تاريخ الإصدار: {{issue_date}}",
+          "position": { "x": 84, "y": 1052 },
+          "style": { "fontSize": 10, "fontWeight": "normal", "color": "#64748b", "fontFamily": "'Noto Naskh Arabic', serif", "width": 626, "textAlign": "center" } }
+      ]
+    }
+  ]
+}
